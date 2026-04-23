@@ -71,6 +71,30 @@ def test_export_writes_json_file(tmp_path: Path) -> None:
     assert json.loads(text)["metrics"]["total_energy"] == -8.0
 
 
+def test_collect_extracts_band_and_dos_summaries(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "summary-case")
+    prepare(workspace)
+    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -8.0\nBAND GAP = 1.2\nSCF CONVERGED\n")
+    workspace.write_text("outputs/stderr.log", "")
+    workspace.write_text("outputs/BANDS_1.dat", "0.0 -1.0 0.5\n1.0 -0.8 0.7\n")
+    workspace.write_text("outputs/DOS1_smearing.dat", "-10.0 0.0\n0.0 1.0\n")
+    workspace.write_text("outputs/DOS2_smearing.dat", "-10.0 0.0\n0.0 0.8\n")
+    workspace.write_text("outputs/PDOS", "Ni 0.4\nO 0.6\n")
+    workspace.write_text("outputs/TDOS", "-1.0 0.1\n0.0 1.0\n")
+    workspace.write_json("reports/metrics_band.json", {"band_gap": 1.2})
+    workspace.write_json("reports/metrics_dos.json", {"energy_window": {"emin_ev": -10.0, "emax_ev": 10.0}})
+    workspace.write_json("reports/metrics_pdos.json", {"projection_mode": "species"})
+
+    result = collect(workspace)
+
+    assert result.metrics["band_summary"]["num_kpoints"] == 2
+    assert result.metrics["band_metrics"]["band_gap"] == 1.2
+    assert result.metrics["dos_summary"]["points"] == 4
+    assert result.metrics["dos_metrics"]["energy_window"]["emax_ev"] == 10.0
+    assert result.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert result.metrics["pdos_metrics"]["projection_mode"] == "species"
+
+
 def test_runner_builds_mpirun_command(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "mpi-case")
     workspace.ensure_layout()

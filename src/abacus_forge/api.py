@@ -74,7 +74,7 @@ def collect(workspace: str | Path | Workspace) -> CollectionResult:
     stderr_path = ws.outputs_dir / "stderr.log"
     content = stdout_path.read_text(encoding="utf-8") if stdout_path.exists() else ""
 
-    metrics: dict[str, float | bool | str] = {}
+    metrics: dict[str, Any] = {}
     for key, pattern in _METRIC_PATTERNS.items():
         match = pattern.search(content)
         if match:
@@ -92,6 +92,7 @@ def collect(workspace: str | Path | Workspace) -> CollectionResult:
         status = "unfinished"
 
     artifacts = _collect_artifacts(ws)
+    metrics.update(_collect_task_summaries(ws, artifacts, metrics))
     return CollectionResult(workspace=ws.root, status=status, metrics=metrics, artifacts=artifacts)
 
 
@@ -115,3 +116,78 @@ def _collect_artifacts(workspace: Workspace) -> dict[str, str]:
             if path.is_file():
                 artifacts[str(path.relative_to(workspace.root))] = str(path)
     return artifacts
+
+
+def _artifact_path(artifacts: dict[str, str], suffix: str) -> Path | None:
+    for relative, path in artifacts.items():
+        if relative.endswith(suffix):
+            return Path(path)
+    return None
+
+
+def _read_numeric_table(path: Path) -> list[list[float]]:
+    rows: list[list[float]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        try:
+            rows.append([float(token) for token in stripped.split()])
+        except ValueError:
+            continue
+    return rows
+
+
+def _collect_task_summaries(
+    workspace: Workspace,
+    artifacts: dict[str, str],
+    metrics: dict[str, Any],
+) -> dict[str, Any]:
+    summaries: dict[str, Any] = {}
+
+    band_file = _artifact_path(artifacts, "BANDS_1.dat")
+    if band_file is not None and band_file.exists():
+        rows = _read_numeric_table(band_file)
+        summaries["band_summary"] = {
+            "band_file": str(band_file),
+            "num_kpoints": len(rows),
+            "num_columns": len(rows[0]) if rows else 0,
+            "band_gap": metrics.get("band_gap"),
+        }
+    metrics_band_path = _artifact_path(artifacts, "metrics_band.json")
+    if metrics_band_path is not None and metrics_band_path.exists():
+        summaries["band_metrics"] = json.loads(metrics_band_path.read_text(encoding="utf-8"))
+
+    dos1_file = _artifact_path(artifacts, "DOS1_smearing.dat")
+    dos2_file = _artifact_path(artifacts, "DOS2_smearing.dat")
+    if dos1_file is not None or dos2_file is not None:
+        dos_files = [path for path in (dos1_file, dos2_file) if path is not None and path.exists()]
+        energies: list[float] = []
+        for path in dos_files:
+            for row in _read_numeric_table(path):
+                if row:
+                    energies.append(row[0])
+        summaries["dos_summary"] = {
+            "dos_files": [str(path) for path in dos_files],
+            "points": sum(len(_read_numeric_table(path)) for path in dos_files),
+            "energy_min": min(energies) if energies else None,
+            "energy_max": max(energies) if energies else None,
+        }
+    metrics_dos_path = _artifact_path(artifacts, "metrics_dos.json")
+    if metrics_dos_path is not None and metrics_dos_path.exists():
+        summaries["dos_metrics"] = json.loads(metrics_dos_path.read_text(encoding="utf-8"))
+
+    pdos_file = _artifact_path(artifacts, "PDOS")
+    tdos_file = _artifact_path(artifacts, "TDOS")
+    if pdos_file is not None or tdos_file is not None:
+        summaries["pdos_summary"] = {
+            "pdos_file": str(pdos_file) if pdos_file is not None and pdos_file.exists() else None,
+            "tdos_file": str(tdos_file) if tdos_file is not None and tdos_file.exists() else None,
+        }
+    metrics_pdos_path = _artifact_path(artifacts, "metrics_pdos.json")
+    if metrics_pdos_path is not None and metrics_pdos_path.exists():
+        summaries["pdos_metrics"] = json.loads(metrics_pdos_path.read_text(encoding="utf-8"))
+
+    if summaries:
+        summaries["workspace"] = str(workspace.root)
+    return summaries

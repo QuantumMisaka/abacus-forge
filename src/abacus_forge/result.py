@@ -35,7 +35,7 @@ class CollectionResult:
 
     workspace: Path
     status: str
-    metrics: dict[str, float | bool | str] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
