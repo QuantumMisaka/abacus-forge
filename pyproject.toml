@@ -15,7 +15,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 
-dependencies = []
+dependencies = [
+    "ase",
+    "dpdata",
+    "matplotlib",
+    "numpy",
+    "pymatgen",
+]
 
 [project.optional-dependencies]
 dev = [
