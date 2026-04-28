@@ -18,6 +18,7 @@ class RunResult:
     stdout_path: Path
     stderr_path: Path
     omp_threads: int
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -37,6 +38,10 @@ class CollectionResult:
     status: str
     metrics: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, str] = field(default_factory=dict)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
+    inputs_snapshot: dict[str, Any] = field(default_factory=dict)
+    structure_snapshot: dict[str, Any] | None = None
+    final_structure_snapshot: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -44,4 +49,8 @@ class CollectionResult:
             "status": self.status,
             "metrics": self.metrics,
             "artifacts": self.artifacts,
+            "diagnostics": self.diagnostics,
+            "inputs_snapshot": self.inputs_snapshot,
+            "structure_snapshot": self.structure_snapshot,
+            "final_structure_snapshot": self.final_structure_snapshot,
         }

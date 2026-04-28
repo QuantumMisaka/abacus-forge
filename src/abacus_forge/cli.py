@@ -18,8 +18,15 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser = subparsers.add_parser("prepare", help="prepare a minimal workspace")
     prepare_parser.add_argument("workspace")
     prepare_parser.add_argument("--structure")
+    prepare_parser.add_argument("--structure-format")
+    prepare_parser.add_argument("--task", default="scf")
     prepare_parser.add_argument("--parameter", action="append", default=[], help="KEY=VALUE")
+    prepare_parser.add_argument("--remove-parameter", action="append", default=[])
     prepare_parser.add_argument("--kpoint", action="append", type=int, default=[])
+    prepare_parser.add_argument("--pseudo-path")
+    prepare_parser.add_argument("--orbital-path")
+    prepare_parser.add_argument("--asset-mode", choices=["copy", "link"], default="link")
+    prepare_parser.add_argument("--ensure-pbc", action="store_true")
 
     run_parser = subparsers.add_parser("run", help="run a prepared workspace")
     run_parser.add_argument("workspace")
@@ -45,7 +52,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "prepare":
         parameters = _parse_parameters(args.parameter)
         kpoints = args.kpoint if args.kpoint else None
-        workspace = prepare(args.workspace, structure=args.structure, parameters=parameters, kpoints=kpoints)
+        workspace = prepare(
+            args.workspace,
+            structure=args.structure,
+            structure_format=args.structure_format,
+            task=args.task,
+            parameters=parameters,
+            remove_parameters=args.remove_parameter,
+            kpoints=kpoints,
+            pseudo_path=args.pseudo_path,
+            orbital_path=args.orbital_path,
+            asset_mode=args.asset_mode,
+            ensure_pbc=args.ensure_pbc,
+        )
         print(workspace.root)
         return 0
 

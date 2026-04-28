@@ -3,29 +3,43 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import Atoms
+from ase.io import write as ase_write
+
 from abacus_forge.cli import main
 from abacus_forge.workspace import Workspace
 
 
 def test_cli_prepare_collect_and_export(tmp_path: Path, capsys) -> None:
-    structure = tmp_path / "Si.stru"
-    structure.write_text("ATOMIC_SPECIES\nSi 28.085 Si.upf\n", encoding="utf-8")
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]])
+    structure_path = tmp_path / "Si.xyz"
+    ase_write(structure_path, structure)
     workspace = tmp_path / "cli-case"
 
-    assert main([
-        "prepare",
-        str(workspace),
-        "--structure",
-        str(structure),
-        "--parameter",
-        "calculation=scf",
-        "--kpoint",
-        "3",
-        "--kpoint",
-        "3",
-        "--kpoint",
-        "1",
-    ]) == 0
+    assert (
+        main(
+            [
+                "prepare",
+                str(workspace),
+                "--structure",
+                str(structure_path),
+                "--structure-format",
+                "xyz",
+                "--task",
+                "relax",
+                "--ensure-pbc",
+                "--parameter",
+                "ecutwfc=70",
+                "--kpoint",
+                "3",
+                "--kpoint",
+                "3",
+                "--kpoint",
+                "1",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     (workspace / "outputs").mkdir(exist_ok=True)
@@ -34,7 +48,10 @@ def test_cli_prepare_collect_and_export(tmp_path: Path, capsys) -> None:
 
     assert main(["collect", str(workspace), "--json"]) == 0
     collect_out = capsys.readouterr().out
-    assert json.loads(collect_out)["status"] == "completed"
+    payload = json.loads(collect_out)
+    assert payload["status"] == "completed"
+    assert payload["structure_snapshot"] is not None
+    assert payload["inputs_snapshot"]["INPUT"]["calculation"] == "relax"
 
     export_path = tmp_path / "cli-result.json"
     assert main(["export", str(workspace), "--output", str(export_path)]) == 0

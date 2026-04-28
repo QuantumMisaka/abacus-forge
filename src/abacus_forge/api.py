@@ -1,59 +1,100 @@
-"""Thin prepare/run/collect/export primitives."""
+"""Prepare/run/collect/export primitives for ABACUS workspaces."""
 
 from __future__ import annotations
 
 import json
-import re
-import shutil
 from pathlib import Path
 from typing import Any, Iterable
 
+from ase import Atoms
+
+from abacus_forge.assets import collect_assets, stage_assets
+from abacus_forge.collectors.abacus import collect_abacus_metrics
+from abacus_forge.input_io import read_input, write_input, write_kpt_line_mode, write_kpt_mesh
+from abacus_forge.prepare_profiles import build_task_parameters
 from abacus_forge.result import CollectionResult, RunResult
 from abacus_forge.runner import LocalRunner
+from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
-
-_METRIC_PATTERNS = {
-    "total_energy": re.compile(r"TOTAL\s+ENERGY\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-    "fermi_energy": re.compile(r"FERMI\s+ENERGY\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-    "band_gap": re.compile(r"BAND\s+GAP\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-}
+from abacus_forge.validation import validate_inputs
 
 
 def prepare(
     workspace: str | Path | Workspace,
     *,
-    structure: str | Path | None = None,
+    structure: str | Path | AbacusStructure | Atoms | Any | None = None,
+    structure_format: str | None = None,
+    task: str | None = None,
     parameters: dict[str, Any] | None = None,
+    input_overrides: dict[str, Any] | None = None,
+    remove_parameters: Iterable[str] | None = None,
     kpoints: Iterable[int] | None = None,
+    kpt_mode: str = "mesh",
+    line_kpoints: Iterable[tuple[Iterable[float], str | None]] | None = None,
     metadata: dict[str, Any] | None = None,
+    pseudo_path: str | Path | None = None,
+    orbital_path: str | Path | None = None,
+    asset_mode: str = "link",
+    ensure_pbc: bool = False,
+    structure_standardization: str | None = None,
 ) -> Workspace:
-    """Create a minimal run workspace with canonical input files."""
+    """Create a prepared workspace with canonical ABACUS inputs."""
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
     ws.ensure_layout()
 
+    structure_payload = None
+    structure_info: dict[str, Any] | None = None
     if structure is not None:
-        source = Path(structure)
-        shutil.copyfile(source, ws.inputs_dir / "STRU")
+        try:
+            structure_payload = AbacusStructure.from_input(structure, structure_format=structure_format)
+        except Exception:
+            structure_payload = None
+            if not _write_structure_fallback(ws, structure):
+                raise
+        if structure_payload is not None:
+            if ensure_pbc:
+                structure_payload = structure_payload.ensure_3d_pbc()
+            if structure_standardization == "conventional":
+                structure_payload = structure_payload.primitive_to_conventional()
+            elif structure_standardization == "primitive":
+                structure_payload = structure_payload.conventional_to_primitive()
+            elif structure_standardization == "swap-layer-to-c":
+                meta = structure_payload.metadata()
+                if meta.structure_class == "layer" and meta.layer_info and meta.layer_info["long_axis"] != 2:
+                    structure_payload = structure_payload.swap_axes(meta.layer_info["long_axis"], 2)
+                elif meta.structure_class == "string" and meta.string_info and meta.string_info["extension_axis"] != 2:
+                    structure_payload = structure_payload.swap_axes(meta.string_info["extension_axis"], 2)
+            pseudo_map = collect_assets(pseudo_path)
+            orbital_map = collect_assets(orbital_path)
+            ws.write_text("inputs/STRU", structure_payload.to_stru(pp_map=_basename_map(pseudo_map), orb_map=_basename_map(orbital_map)))
+            stage_assets(ws.inputs_dir, pseudo_map=pseudo_map, orbital_map=orbital_map, mode=asset_mode)
+            structure_info = structure_payload.metadata().to_dict()
 
-    params = parameters or {}
-    lines = ["INPUT_PARAMETERS"]
-    lines.extend(f"{key} {value}" for key, value in sorted(params.items()))
-    ws.write_text("inputs/INPUT", "\n".join(lines) + "\n")
+    params = build_task_parameters(task, metadata=structure_payload.metadata() if structure_payload is not None else None, parameters=parameters)
+    if input_overrides:
+        params.update(input_overrides)
+    for key in remove_parameters or ():
+        params.pop(str(key), None)
+    write_input(ws.inputs_dir / "INPUT", params)
 
     mesh = list(kpoints or [1, 1, 1])
-    ws.write_text(
-        "inputs/KPT",
-        f"K_POINTS\n0\nGamma\n{' '.join(str(value) for value in mesh)} 0 0 0\n",
-    )
+    if kpt_mode == "line" and line_kpoints:
+        write_kpt_line_mode(ws.inputs_dir / "KPT", list(line_kpoints))
+    else:
+        write_kpt_mesh(ws.inputs_dir / "KPT", mesh)
 
     ws.record_metadata(
         {
             "kind": "abacus-forge.workspace",
-            "structure": str(Path(structure)) if structure is not None else None,
+            "task": task or "scf",
+            "structure": str(Path(structure)) if isinstance(structure, (str, Path)) else None,
+            "structure_format": structure_payload.source_format if structure_payload is not None else structure_format,
+            "structure_metadata": structure_info,
             "parameters": params,
             "kpoints": mesh,
             "metadata": metadata or {},
+            "validation": validate_inputs(ws.inputs_dir),
         }
     )
     return ws
@@ -67,33 +108,28 @@ def run(workspace: str | Path | Workspace, *, runner: LocalRunner | None = None,
 
 
 def collect(workspace: str | Path | Workspace) -> CollectionResult:
-    """Parse basic metrics and artifacts from one workspace."""
+    """Parse metrics, structures, and artifacts from one workspace."""
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
-    stdout_path = ws.outputs_dir / "stdout.log"
-    stderr_path = ws.outputs_dir / "stderr.log"
-    content = stdout_path.read_text(encoding="utf-8") if stdout_path.exists() else ""
-
-    metrics: dict[str, Any] = {}
-    for key, pattern in _METRIC_PATTERNS.items():
-        match = pattern.search(content)
-        if match:
-            metrics[key] = float(match.group(1))
-
-    lowered = content.lower()
-    metrics["converged"] = "converged" in lowered
-
-    status = "completed"
-    if stderr_path.exists() and stderr_path.read_text(encoding="utf-8").strip():
-        status = "failed"
-    elif not content:
-        status = "missing-output"
-    elif not metrics["converged"]:
-        status = "unfinished"
-
     artifacts = _collect_artifacts(ws)
-    metrics.update(_collect_task_summaries(ws, artifacts, metrics))
-    return CollectionResult(workspace=ws.root, status=status, metrics=metrics, artifacts=artifacts)
+    log_paths = _log_paths(ws, artifacts)
+    text_blobs = [path.read_text(encoding="utf-8", errors="ignore") for path in log_paths if path.exists()]
+    stderr_path = ws.outputs_dir / "stderr.log"
+    metrics, diagnostics = collect_abacus_metrics(text_blobs=text_blobs, artifacts=artifacts, workspace_root=ws.root)
+    status = _determine_status(metrics, stderr_path=stderr_path, text_blobs=text_blobs)
+    inputs_snapshot = _inputs_snapshot(ws)
+    structure_snapshot = _structure_snapshot(ws.inputs_dir / "STRU")
+    final_structure_snapshot = _final_structure_snapshot(artifacts)
+    return CollectionResult(
+        workspace=ws.root,
+        status=status,
+        metrics=metrics,
+        artifacts=artifacts,
+        diagnostics=diagnostics,
+        inputs_snapshot=inputs_snapshot,
+        structure_snapshot=structure_snapshot,
+        final_structure_snapshot=final_structure_snapshot,
+    )
 
 
 def export(result: RunResult | CollectionResult, destination: str | Path | None = None, *, pretty: bool = True) -> str:
@@ -118,76 +154,128 @@ def _collect_artifacts(workspace: Workspace) -> dict[str, str]:
     return artifacts
 
 
-def _artifact_path(artifacts: dict[str, str], suffix: str) -> Path | None:
+def _log_paths(workspace: Workspace, artifacts: dict[str, str]) -> list[Path]:
+    paths: list[Path] = []
+    for preferred in (
+        workspace.outputs_dir / "stdout.log",
+        workspace.outputs_dir / "stderr.log",
+    ):
+        if preferred.exists():
+            paths.append(preferred)
+    for relative, path in sorted(artifacts.items()):
+        if Path(relative).name.startswith("running_") and relative.endswith(".log"):
+            paths.append(Path(path))
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            unique.append(path)
+            seen.add(path)
+    return unique
+
+
+def _determine_status(metrics: dict[str, Any], *, stderr_path: Path, text_blobs: list[str]) -> str:
+    if stderr_path.exists() and stderr_path.read_text(encoding="utf-8", errors="ignore").strip():
+        return "failed"
+    if not any(blob.strip() for blob in text_blobs):
+        return "missing-output"
+    if not metrics.get("converged", False):
+        return "unfinished"
+    return "completed"
+
+
+def _inputs_snapshot(workspace: Workspace) -> dict[str, Any]:
+    snapshot: dict[str, Any] = {}
+    input_path = workspace.inputs_dir / "INPUT"
+    if input_path.exists():
+        snapshot["INPUT"] = read_input(input_path)
+    kpt_path = workspace.inputs_dir / "KPT"
+    if kpt_path.exists():
+        snapshot["KPT"] = kpt_path.read_text(encoding="utf-8")
+    return snapshot
+
+
+def _structure_snapshot(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        structure = AbacusStructure.from_input(path, structure_format="stru")
+        payload = structure.metadata().to_dict()
+        payload["source"] = str(path)
+        return payload
+    except Exception as exc:
+        return {
+            "source": str(path),
+            "parse_error": str(exc),
+        }
+
+
+def _final_structure_snapshot(artifacts: dict[str, str]) -> dict[str, Any] | None:
+    candidates = (
+        "STRU_ION_D",
+        "STRU_NOW.cif",
+        "STRU.cif",
+        "STRU",
+    )
+    for candidate in candidates:
+        path = _artifact_from_suffix(artifacts, candidate)
+        if path is None or not path.exists():
+            continue
+        try:
+            fmt = "stru" if candidate.endswith("STRU") or candidate == "STRU_ION_D" else None
+            structure = AbacusStructure.from_input(path, structure_format=fmt)
+            payload = structure.metadata().to_dict()
+            payload["source"] = str(path)
+            return payload
+        except Exception as exc:
+            return {
+                "source": str(path),
+                "parse_error": str(exc),
+            }
+    return None
+
+
+def _artifact_from_suffix(artifacts: dict[str, str], suffix: str) -> Path | None:
     for relative, path in artifacts.items():
         if relative.endswith(suffix):
             return Path(path)
     return None
 
 
-def _read_numeric_table(path: Path) -> list[list[float]]:
-    rows: list[list[float]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        try:
-            rows.append([float(token) for token in stripped.split()])
-        except ValueError:
-            continue
-    return rows
+def _basename_map(mapping: dict[str, Path]) -> dict[str, str]:
+    return {element: path.name for element, path in mapping.items()}
 
 
-def _collect_task_summaries(
-    workspace: Workspace,
-    artifacts: dict[str, str],
-    metrics: dict[str, Any],
-) -> dict[str, Any]:
-    summaries: dict[str, Any] = {}
+def _write_structure_fallback(workspace: Workspace, structure: Any) -> bool:
+    if isinstance(structure, Path):
+        if structure.exists() and structure.is_file():
+            workspace.write_text("inputs/STRU", structure.read_text(encoding="utf-8", errors="ignore"))
+            return True
+        return False
+    if isinstance(structure, str):
+        path = _existing_path(structure)
+        if path is not None:
+            workspace.write_text("inputs/STRU", path.read_text(encoding="utf-8", errors="ignore"))
+            return True
+        if _looks_like_stru_text(structure):
+            workspace.write_text("inputs/STRU", structure if structure.endswith("\n") else structure + "\n")
+            return True
+    return False
 
-    band_file = _artifact_path(artifacts, "BANDS_1.dat")
-    if band_file is not None and band_file.exists():
-        rows = _read_numeric_table(band_file)
-        summaries["band_summary"] = {
-            "band_file": str(band_file),
-            "num_kpoints": len(rows),
-            "num_columns": len(rows[0]) if rows else 0,
-            "band_gap": metrics.get("band_gap"),
-        }
-    metrics_band_path = _artifact_path(artifacts, "metrics_band.json")
-    if metrics_band_path is not None and metrics_band_path.exists():
-        summaries["band_metrics"] = json.loads(metrics_band_path.read_text(encoding="utf-8"))
 
-    dos1_file = _artifact_path(artifacts, "DOS1_smearing.dat")
-    dos2_file = _artifact_path(artifacts, "DOS2_smearing.dat")
-    if dos1_file is not None or dos2_file is not None:
-        dos_files = [path for path in (dos1_file, dos2_file) if path is not None and path.exists()]
-        energies: list[float] = []
-        for path in dos_files:
-            for row in _read_numeric_table(path):
-                if row:
-                    energies.append(row[0])
-        summaries["dos_summary"] = {
-            "dos_files": [str(path) for path in dos_files],
-            "points": sum(len(_read_numeric_table(path)) for path in dos_files),
-            "energy_min": min(energies) if energies else None,
-            "energy_max": max(energies) if energies else None,
-        }
-    metrics_dos_path = _artifact_path(artifacts, "metrics_dos.json")
-    if metrics_dos_path is not None and metrics_dos_path.exists():
-        summaries["dos_metrics"] = json.loads(metrics_dos_path.read_text(encoding="utf-8"))
+def _existing_path(value: str) -> Path | None:
+    try:
+        candidate = Path(value)
+    except OSError:
+        return None
+    try:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    except OSError:
+        return None
+    return None
 
-    pdos_file = _artifact_path(artifacts, "PDOS")
-    tdos_file = _artifact_path(artifacts, "TDOS")
-    if pdos_file is not None or tdos_file is not None:
-        summaries["pdos_summary"] = {
-            "pdos_file": str(pdos_file) if pdos_file is not None and pdos_file.exists() else None,
-            "tdos_file": str(tdos_file) if tdos_file is not None and tdos_file.exists() else None,
-        }
-    metrics_pdos_path = _artifact_path(artifacts, "metrics_pdos.json")
-    if metrics_pdos_path is not None and metrics_pdos_path.exists():
-        summaries["pdos_metrics"] = json.loads(metrics_pdos_path.read_text(encoding="utf-8"))
 
-    if summaries:
-        summaries["workspace"] = str(workspace.root)
-    return summaries
+def _looks_like_stru_text(payload: str) -> bool:
+    markers = ("ATOMIC_SPECIES", "ATOMIC_POSITIONS", "LATTICE_VECTORS")
+    return sum(marker in payload for marker in markers) >= 2

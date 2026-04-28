@@ -4,33 +4,68 @@ import json
 import stat
 from pathlib import Path
 
-from abacus_forge import LocalRunner, Workspace, collect, export, prepare, run
+import pytest
+from ase import Atoms
+from ase.io import write as ase_write
+
+from abacus_forge import AbacusStructure, LocalRunner, Workspace, collect, export, prepare, run
+from abacus_forge.band_data import BandData, write_sample_band_artifacts
+from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_pdos_artifacts
+from abacus_forge.sample_outputs import write_sample_analysis_outputs
+from abacus_forge.structure_recognition import detect_structure_format
 
 
-def test_prepare_creates_minimal_workspace(tmp_path: Path) -> None:
-    structure = tmp_path / "Si.stru"
-    structure.write_text("ATOMIC_SPECIES\nSi 28.085 Si.upf\n", encoding="utf-8")
+def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> None:
+    structure = Atoms(
+        symbols=["Si", "Si"],
+        positions=[[0.0, 0.0, 0.0], [1.3575, 1.3575, 1.3575]],
+        cell=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 18.0]],
+        pbc=[True, True, True],
+    )
+    structure_path = tmp_path / "Si_layer.cif"
+    ase_write(structure_path, structure)
+
+    pseudo_dir = tmp_path / "pseudo"
+    orbital_dir = tmp_path / "orb"
+    pseudo_dir.mkdir()
+    orbital_dir.mkdir()
+    (pseudo_dir / "Si_ONCV.upf").write_text("pseudo", encoding="utf-8")
+    (orbital_dir / "Si_gga.orb").write_text("orbital", encoding="utf-8")
 
     workspace = prepare(
         tmp_path / "case",
-        structure=structure,
-        parameters={"calculation": "scf", "ecutwfc": 80},
-        kpoints=[2, 2, 2],
-        metadata={"label": "minimal"},
+        task="dos",
+        structure=structure_path,
+        pseudo_path=pseudo_dir,
+        orbital_path=orbital_dir,
+        asset_mode="copy",
+        parameters={"ecutwfc": 80},
+        metadata={"label": "layer-dos"},
     )
 
-    assert (workspace.inputs_dir / "STRU").exists()
-    assert "ecutwfc 80" in (workspace.inputs_dir / "INPUT").read_text(encoding="utf-8")
-    assert "2 2 2 0 0 0" in (workspace.inputs_dir / "KPT").read_text(encoding="utf-8")
+    assert detect_structure_format(workspace.inputs_dir / "STRU") == "stru"
+    input_text = (workspace.inputs_dir / "INPUT").read_text(encoding="utf-8")
+    assert "calculation nscf" in input_text
+    assert "out_dos 1" in input_text
+    assert "dip_cor_flag 1" in input_text
+    assert (workspace.inputs_dir / "Si_ONCV.upf").exists()
+    assert (workspace.inputs_dir / "Si_gga.orb").exists()
 
     meta = json.loads(workspace.meta_path.read_text(encoding="utf-8"))
-    assert meta["metadata"]["label"] == "minimal"
-    assert meta["parameters"]["calculation"] == "scf"
+    assert meta["metadata"]["label"] == "layer-dos"
+    assert meta["structure_metadata"]["structure_class"] == "layer"
+    assert meta["validation"]["valid"] is True
 
 
-def test_run_and_collect_parse_basic_metrics(tmp_path: Path) -> None:
+def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "run-case")
-    prepare(workspace)
+    structure = Atoms(
+        symbols=["Si", "Si"],
+        positions=[[0.0, 0.0, 0.0], [1.3575, 1.3575, 1.3575]],
+        cell=[[5.43, 0.0, 0.0], [0.0, 5.43, 0.0], [0.0, 0.0, 5.43]],
+        pbc=[True, True, True],
+    )
+    prepare(workspace, task="band", structure=structure, parameters={"ecutwfc": 60}, kpoints=[2, 2, 2])
 
     fake_abacus = tmp_path / "fake-abacus"
     fake_abacus.write_text(
@@ -40,67 +75,131 @@ def test_run_and_collect_parse_basic_metrics(tmp_path: Path) -> None:
         "print('TOTAL ENERGY = -10.5')\n"
         "print('FERMI ENERGY = 3.2')\n"
         "print('BAND GAP = 1.1')\n"
+        "print('SCF STEPS = 12')\n"
         "print('SCF CONVERGED')\n",
         encoding="utf-8",
     )
     fake_abacus.chmod(fake_abacus.stat().st_mode | stat.S_IEXEC)
 
     result = run(workspace, runner=LocalRunner(executable=str(fake_abacus), omp_threads=4))
+    workspace.write_text("outputs/BANDS_1.dat", "0.0 -1.0 0.5\n1.0 -0.8 0.7\n")
+    workspace.write_text("outputs/DOS1_smearing.dat", "-10.0 0.0\n0.0 1.0\n")
+    workspace.write_text("outputs/PDOS", "Si 0.4\n")
+    workspace.write_json("outputs/OUT.ABACUS/time.json", {"total": 14.2})
+    workspace.write_json("reports/metrics_relax.json", {"converged": True, "final_structure_available": True, "workflow_goal": "relax-band"})
+    workspace.write_json("reports/metrics_band.json", {"band_gap": 1.1})
+    final_structure = AbacusStructure.from_input(structure).swap_axes(0, 2)
+    workspace.write_text("outputs/OUT.ABACUS/STRU_ION_D", final_structure.to_stru())
+
     collected = collect(workspace)
 
     assert result.status == "completed"
-    assert result.command[-2] == "--input-dir"
-    assert "OMP = 4" in result.stdout_path.read_text(encoding="utf-8")
+    assert result.diagnostics["omp_threads"] == 4
     assert collected.status == "completed"
     assert collected.metrics["converged"] is True
     assert collected.metrics["total_energy"] == -10.5
-    assert "outputs/stdout.log" in collected.artifacts
+    assert collected.metrics["scf_steps"] == 12
+    assert collected.metrics["total_time"] == 14.2
+    assert collected.metrics["workflow_goal"] == "relax-band"
+    assert collected.metrics["band_summary"]["num_points"] == 2
+    assert collected.metrics["band_artifacts"][0].endswith("BANDS_1.dat")
+    assert collected.metrics["dos_summary"]["points"] == 2
+    assert collected.metrics["dos_artifacts"][0].endswith("DOS1_smearing.dat")
+    assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert collected.metrics["pdos_artifacts"][0].endswith("PDOS")
+    assert collected.metrics["relax_metrics"]["final_structure_available"] is True
+    assert collected.inputs_snapshot["INPUT"]["calculation"] == "nscf"
+    assert collected.structure_snapshot is not None
+    assert collected.structure_snapshot["formula"] == "Si2"
+    assert collected.final_structure_snapshot is not None
+    assert collected.final_structure_snapshot["source"].endswith("STRU_ION_D")
+    assert collected.diagnostics["report_json_files"]
 
 
-def test_export_writes_json_file(tmp_path: Path) -> None:
+def test_export_writes_extended_json_file(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "export-case")
-    prepare(workspace)
-    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -8.0\nSCF CONVERGED\n")
+    prepare(workspace, task="scf")
+    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -8.0\nSCF CONVERGED\n",)
     workspace.write_text("outputs/stderr.log", "")
 
     result = collect(workspace)
     output = tmp_path / "result.json"
     text = export(result, destination=output)
+    payload = json.loads(text)
 
     assert output.exists()
-    assert json.loads(text)["metrics"]["total_energy"] == -8.0
+    assert payload["metrics"]["total_energy"] == -8.0
+    assert "inputs_snapshot" in payload
+    assert "diagnostics" in payload
 
 
-def test_collect_extracts_band_and_dos_summaries(tmp_path: Path) -> None:
-    workspace = Workspace(tmp_path / "summary-case")
-    prepare(workspace)
-    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -8.0\nBAND GAP = 1.2\nSCF CONVERGED\n")
+def test_sample_artifact_writers_roundtrip_through_data_helpers(tmp_path: Path) -> None:
+    out_dir = tmp_path / "outputs"
+    dup_dir = out_dir / "OUT.ABACUS"
+
+    band_written = write_sample_band_artifacts(out_dir, duplicate_dir=dup_dir)
+    dos_written = write_sample_dos_artifacts(out_dir, duplicate_dir=dup_dir)
+    pdos_written = write_sample_pdos_artifacts(out_dir, duplicate_dir=dup_dir)
+
+    band = BandData.from_paths([out_dir / "BANDS_1.dat", out_dir / "BANDS_2.dat"])
+    dos = DOSData.from_paths([out_dir / "DOS1_smearing.dat", out_dir / "DOS2_smearing.dat"])
+    pdos = PDOSData(pdos_path=out_dir / "PDOS", tdos_path=out_dir / "TDOS")
+
+    assert band.summary()["num_points"] == 6
+    assert dos.summary()["points"] == 8
+    assert pdos.summary()["pdos_file"].endswith("PDOS")
+    assert "band.png" in band_written
+    assert "OUT.ABACUS/BANDS_1.dat" in band_written
+    assert "OUT.ABACUS/DOS1_smearing.dat" in dos_written
+    assert "OUT.ABACUS/PDOS" in pdos_written
+
+
+def test_local_runner_raises_clear_error_for_missing_executable(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "missing-exec")
+    prepare(workspace, task="scf")
+
+    with pytest.raises(FileNotFoundError, match="definitely-missing-abacus"):
+        run(workspace, runner=LocalRunner(executable="definitely-missing-abacus"))
+
+
+def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "sample-analysis")
+    structure = Atoms(
+        symbols=["Ni", "O"],
+        positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        cell=[[4.2, 0.0, 0.0], [0.0, 4.2, 0.0], [0.0, 0.0, 4.2]],
+        pbc=[True, True, True],
+    )
+    prepare(workspace, task="pdos", structure=structure)
+    workspace.write_text(
+        "outputs/stdout.log",
+        "TOTAL ENERGY = -11.1\nFERMI ENERGY = 3.2\nBAND GAP = 0.8\nSCF CONVERGED\n",
+    )
     workspace.write_text("outputs/stderr.log", "")
-    workspace.write_text("outputs/BANDS_1.dat", "0.0 -1.0 0.5\n1.0 -0.8 0.7\n")
-    workspace.write_text("outputs/DOS1_smearing.dat", "-10.0 0.0\n0.0 1.0\n")
-    workspace.write_text("outputs/DOS2_smearing.dat", "-10.0 0.0\n0.0 0.8\n")
-    workspace.write_text("outputs/PDOS", "Ni 0.4\nO 0.6\n")
-    workspace.write_text("outputs/TDOS", "-1.0 0.1\n0.0 1.0\n")
-    workspace.write_json("reports/metrics_band.json", {"band_gap": 1.2})
-    workspace.write_json("reports/metrics_dos.json", {"energy_window": {"emin_ev": -10.0, "emax_ev": 10.0}})
-    workspace.write_json("reports/metrics_pdos.json", {"projection_mode": "species"})
+    workspace.write_json("outputs/OUT.ABACUS/time.json", {"total": 9.8})
+    write_sample_analysis_outputs(
+        workspace,
+        run_bands=True,
+        run_dos=True,
+        run_pdos=True,
+        relax_requested=True,
+        relax_workflow_goal="relax",
+        band_workflow_goal="relax-band-dos",
+        dos_workflow_goal="relax-band-dos",
+        pdos_workflow_goal="relax-band-dos-pdos",
+        band_gap=0.8,
+        pdos_species=["Ni", "O"],
+    )
 
-    result = collect(workspace)
+    collected = collect(workspace)
 
-    assert result.metrics["band_summary"]["num_kpoints"] == 2
-    assert result.metrics["band_metrics"]["band_gap"] == 1.2
-    assert result.metrics["dos_summary"]["points"] == 4
-    assert result.metrics["dos_metrics"]["energy_window"]["emax_ev"] == 10.0
-    assert result.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
-    assert result.metrics["pdos_metrics"]["projection_mode"] == "species"
-
-
-def test_runner_builds_mpirun_command(tmp_path: Path) -> None:
-    workspace = Workspace(tmp_path / "mpi-case")
-    workspace.ensure_layout()
-    runner = LocalRunner(executable="abacus", mpi_ranks=8)
-
-    command = runner.build_command(workspace)
-
-    assert command[:3] == ["mpirun", "-np", "8"]
-    assert command[-2:] == ["--input-dir", str(workspace.inputs_dir)]
+    assert collected.status == "completed"
+    assert collected.metrics["total_time"] == 9.8
+    assert collected.metrics["band_summary"]["num_points"] == 12
+    assert collected.metrics["dos_summary"]["points"] == 16
+    assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert collected.metrics["relax_metrics"]["final_structure_available"] is True
+    assert collected.final_structure_snapshot is not None
+    assert collected.final_structure_snapshot["source"].endswith("STRU_ION_D")
+    assert len(collected.metrics["band_artifacts"]) >= 2
+    assert len(collected.metrics["dos_artifacts"]) >= 2

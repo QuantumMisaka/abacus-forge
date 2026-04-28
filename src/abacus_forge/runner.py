@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Sequence
 
 from abacus_forge.result import RunResult
@@ -32,8 +34,22 @@ class LocalRunner:
         command.extend(["--input-dir", str(workspace.inputs_dir)])
         return command
 
+    def _resolve_executable(self) -> str:
+        candidate = Path(self.executable)
+        if candidate.parent != Path():
+            resolved = candidate if candidate.is_absolute() else candidate.resolve()
+            if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
+                return str(resolved)
+            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+
+        resolved = shutil.which(self.executable)
+        if resolved is None:
+            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+        return resolved
+
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
+        self._resolve_executable()
         command = self.build_command(workspace)
         stdout_path = workspace.outputs_dir / "stdout.log"
         stderr_path = workspace.outputs_dir / "stderr.log"
@@ -66,4 +82,10 @@ class LocalRunner:
             stdout_path=stdout_path,
             stderr_path=stderr_path,
             omp_threads=self.omp_threads,
+            diagnostics={
+                "launcher": list(self.launcher),
+                "extra_args": list(self.extra_args),
+                "mpi_ranks": self.mpi_ranks,
+                "omp_threads": self.omp_threads,
+            },
         )
