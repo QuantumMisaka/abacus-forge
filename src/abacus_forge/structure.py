@@ -9,7 +9,6 @@ from typing import Any, Mapping
 
 import numpy as np
 from ase import Atoms
-from ase.build import sort as ase_sort
 from ase.io import read as ase_read
 
 from abacus_forge.structure_recognition import StructureMetadata, detect_structure_format, get_structure_metadata
@@ -132,12 +131,21 @@ class AbacusStructure:
         pp_map: dict[str, str] | None = None,
         orb_map: dict[str, str] | None = None,
     ) -> str:
-        atoms = ase_sort(self.atoms)
-        symbols = atoms.get_chemical_symbols()
+        atoms = self.atoms
+        order = np.argsort(atoms.get_atomic_numbers(), kind="stable")
+        symbols = [atoms[idx].symbol for idx in order]
         species = list(OrderedDict.fromkeys(symbols))
         masses = {atom.symbol: atom.mass for atom in atoms}
-        scaled_positions = atoms.get_scaled_positions(wrap=False)
-        magmoms = atoms.get_initial_magnetic_moments() if atoms.has("initial_magmoms") else np.zeros(len(atoms))
+        scaled_positions = atoms.get_scaled_positions(wrap=False)[order]
+        magmoms = (
+            atoms.get_initial_magnetic_moments()[order]
+            if atoms.has("initial_magmoms")
+            else np.zeros(len(atoms))
+        )
+        source_move_flags = atoms.info.get("abacus_move_flags")
+        if not isinstance(source_move_flags, list) or len(source_move_flags) != len(atoms):
+            source_move_flags = [[1, 1, 1] for _ in range(len(atoms))]
+        move_flags = [source_move_flags[idx] for idx in order]
 
         lines = [
             "ATOMIC_SPECIES",
@@ -162,12 +170,21 @@ class AbacusStructure:
         lines.extend(["", "ATOMIC_POSITIONS", "Direct"])
         for symbol in species:
             idxs = [idx for idx, atom_symbol in enumerate(symbols) if atom_symbol == symbol]
+            species_magmoms = [float(magmoms[idx]) for idx in idxs]
+            write_site_magmoms = bool(species_magmoms) and not np.allclose(
+                species_magmoms,
+                np.full(len(species_magmoms), species_magmoms[0]),
+            )
             lines.append(symbol)
-            lines.append(f"{float(np.mean([magmoms[idx] for idx in idxs])):.8f}" if idxs else "0.0")
+            lines.append(f"{0.0 if write_site_magmoms else (species_magmoms[0] if species_magmoms else 0.0):.8f}")
             lines.append(str(len(idxs)))
             for idx in idxs:
                 coords = " ".join(f"{float(component):.12f}" for component in scaled_positions[idx])
-                lines.append(f"{coords} m 1 1 1")
+                flags = " ".join(str(int(value)) for value in move_flags[idx])
+                extras = [f"m {flags}"]
+                if write_site_magmoms:
+                    extras.append(f"mag {float(magmoms[idx]):.8f}")
+                lines.append(f"{coords} {' '.join(extras)}")
         return "\n".join(lines) + "\n"
 
 
@@ -258,13 +275,29 @@ def _read_stru(path: Path) -> Atoms:
                     parts = lines[index].split()
                     coords = [float(token) for token in parts[:3]]
                     move = [1, 1, 1]
-                    if len(parts) >= 7 and parts[3].lower() == "m":
-                        move = [int(float(token)) for token in parts[4:7]]
-                    elif len(parts) >= 6:
-                        move = [int(float(token)) for token in parts[3:6]]
+                    atom_mag = species_mag
+                    cursor = 3
+                    while cursor < len(parts):
+                        token = parts[cursor].lower()
+                        if token == "m" and cursor + 3 < len(parts):
+                            move = [int(float(value)) for value in parts[cursor + 1 : cursor + 4]]
+                            cursor += 4
+                            continue
+                        if token in {"mag", "magmom"} and cursor + 1 < len(parts):
+                            if cursor + 3 < len(parts) and all(_is_float(value) for value in parts[cursor + 1 : cursor + 4]):
+                                cursor += 4
+                                continue
+                            atom_mag = float(parts[cursor + 1])
+                            cursor += 2
+                            continue
+                        if cursor + 2 < len(parts) and all(_is_int_like(value) for value in parts[cursor : cursor + 3]):
+                            move = [int(float(value)) for value in parts[cursor : cursor + 3]]
+                            cursor += 3
+                            continue
+                        cursor += 1
                     positions.append(coords)
                     symbols.append(symbol)
-                    magmoms.append(species_mag)
+                    magmoms.append(atom_mag)
                     move_flags.append(move)
                     index += 1
             continue
@@ -287,3 +320,19 @@ def _read_stru(path: Path) -> Atoms:
     atoms.info["abacus_move_flags"] = move_flags
     atoms.info["abacus_species_meta"] = species_meta
     return atoms
+
+
+def _is_float(token: str) -> bool:
+    try:
+        float(token)
+        return True
+    except Exception:
+        return False
+
+
+def _is_int_like(token: str) -> bool:
+    try:
+        value = float(token)
+    except Exception:
+        return False
+    return value.is_integer()

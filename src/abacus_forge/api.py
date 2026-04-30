@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -10,7 +11,7 @@ from ase import Atoms
 
 from abacus_forge.assets import collect_assets, stage_assets
 from abacus_forge.collectors.abacus import collect_abacus_metrics
-from abacus_forge.input_io import read_input, write_input, write_kpt_line_mode, write_kpt_mesh
+from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt_line_mode, write_kpt_mesh
 from abacus_forge.prepare_profiles import build_task_parameters
 from abacus_forge.result import CollectionResult, RunResult
 from abacus_forge.runner import LocalRunner
@@ -37,6 +38,7 @@ def prepare(
     asset_mode: str = "link",
     ensure_pbc: bool = False,
     structure_standardization: str | None = None,
+    magmom_by_element: dict[str, float] | None = None,
 ) -> Workspace:
     """Create a prepared workspace with canonical ABACUS inputs."""
 
@@ -65,6 +67,14 @@ def prepare(
                     structure_payload = structure_payload.swap_axes(meta.layer_info["long_axis"], 2)
                 elif meta.structure_class == "string" and meta.string_info and meta.string_info["extension_axis"] != 2:
                     structure_payload = structure_payload.swap_axes(meta.string_info["extension_axis"], 2)
+            if magmom_by_element:
+                atoms = structure_payload.atoms.copy()
+                initial_magmoms = [
+                    float(magmom_by_element.get(symbol, 0.0))
+                    for symbol in atoms.get_chemical_symbols()
+                ]
+                atoms.set_initial_magnetic_moments(initial_magmoms)
+                structure_payload = AbacusStructure(atoms, source_format=structure_payload.source_format)
             pseudo_map = collect_assets(pseudo_path)
             orbital_map = collect_assets(orbital_path)
             ws.write_text("inputs/STRU", structure_payload.to_stru(pp_map=_basename_map(pseudo_map), orb_map=_basename_map(orbital_map)))
@@ -107,19 +117,61 @@ def run(workspace: str | Path | Workspace, *, runner: LocalRunner | None = None,
     return (runner or LocalRunner()).run(ws, check=check)
 
 
-def collect(workspace: str | Path | Workspace) -> CollectionResult:
-    """Parse metrics, structures, and artifacts from one workspace."""
+_OUTPUT_BANNER_MARKERS = (
+    "Atomic-orbital Based Ab-initio",
+)
+
+
+def collect(
+    workspace: str | Path | Workspace,
+    *,
+    output_log: str | Path | None = None,
+) -> CollectionResult:
+    """Parse metrics, structures, and artifacts from one workspace.
+
+    Parameters
+    ----------
+    workspace:
+        Target Forge workspace.
+    output_log:
+        Optional explicit stdout-like output log path. Relative paths are
+        resolved against the workspace root.
+    """
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
     artifacts = _collect_artifacts(ws)
-    log_paths = _log_paths(ws, artifacts)
-    text_blobs = [path.read_text(encoding="utf-8", errors="ignore") for path in log_paths if path.exists()]
-    stderr_path = ws.outputs_dir / "stderr.log"
-    metrics, diagnostics = collect_abacus_metrics(text_blobs=text_blobs, artifacts=artifacts, workspace_root=ws.root)
-    status = _determine_status(metrics, stderr_path=stderr_path, text_blobs=text_blobs)
     inputs_snapshot = _inputs_snapshot(ws)
+    log_selection = _select_log_sources(ws, artifacts, inputs_snapshot=inputs_snapshot, output_log=output_log)
+    main_log_path = log_selection["main_log_path"]
+    output_log_path = log_selection["output_log_path"]
+    main_log_text = _read_text_if_exists(main_log_path)
+    output_log_text = _read_text_if_exists(output_log_path)
+    stderr_path = ws.outputs_dir / "stderr.log"
     structure_snapshot = _structure_snapshot(ws.inputs_dir / "STRU")
     final_structure_snapshot = _final_structure_snapshot(artifacts)
+    metrics, diagnostics = collect_abacus_metrics(
+        main_log_text=main_log_text,
+        output_log_text=output_log_text,
+        artifacts=artifacts,
+        workspace_root=ws.root,
+        structure_volume=_snapshot_volume(final_structure_snapshot) or _snapshot_volume(structure_snapshot),
+    )
+    diagnostics.update(log_selection["diagnostics"])
+    diagnostics["log_paths"] = [
+        str(path)
+        for path in (main_log_path, output_log_path)
+        if path is not None
+    ]
+    diagnostics["stderr_nonempty"] = bool(
+        stderr_path.exists() and stderr_path.read_text(encoding="utf-8", errors="ignore").strip()
+    )
+    if log_selection["warning"] is not None:
+        diagnostics.setdefault("warnings", []).append(log_selection["warning"])
+    status = _determine_status(
+        metrics,
+        stderr_path=stderr_path,
+        text_blobs=[text for text in (main_log_text, output_log_text) if text is not None],
+    )
     return CollectionResult(
         workspace=ws.root,
         status=status,
@@ -154,24 +206,99 @@ def _collect_artifacts(workspace: Workspace) -> dict[str, str]:
     return artifacts
 
 
-def _log_paths(workspace: Workspace, artifacts: dict[str, str]) -> list[Path]:
-    paths: list[Path] = []
-    for preferred in (
-        workspace.outputs_dir / "stdout.log",
-        workspace.outputs_dir / "stderr.log",
-    ):
-        if preferred.exists():
-            paths.append(preferred)
-    for relative, path in sorted(artifacts.items()):
+def _select_log_sources(
+    workspace: Workspace,
+    artifacts: dict[str, str],
+    *,
+    inputs_snapshot: dict[str, Any],
+    output_log: str | Path | None = None,
+) -> dict[str, Any]:
+    input_parameters = inputs_snapshot.get("INPUT", {})
+    calculation = str(input_parameters.get("calculation", "")).strip() if isinstance(input_parameters, dict) else ""
+
+    running_candidates: list[tuple[str, Path]] = []
+    for relative, path in artifacts.items():
         if Path(relative).name.startswith("running_") and relative.endswith(".log"):
-            paths.append(Path(path))
-    unique: list[Path] = []
-    seen: set[Path] = set()
-    for path in paths:
-        if path not in seen:
-            unique.append(path)
-            seen.add(path)
-    return unique
+            running_candidates.append((relative, Path(path)))
+    running_candidates.sort(key=lambda item: _natural_sort_key(item[0]))
+
+    selected_path: Path | None = None
+    selected_reason = "no-log-selected"
+    log_strategy = "no-log"
+    ambiguous = False
+    warning: str | None = None
+
+    if calculation:
+        expected_name = f"running_{calculation}.log"
+        expected_matches = [path for relative, path in running_candidates if Path(relative).name == expected_name]
+        if len(expected_matches) == 1:
+            selected_path = expected_matches[0]
+            selected_reason = f"matched-input-calculation:{expected_name}"
+            log_strategy = "selected-running-log"
+        elif len(expected_matches) > 1:
+            ambiguous = True
+            warning = f"Multiple running logs match calculation={calculation}; no unique main log selected."
+
+    if selected_path is None and len(running_candidates) == 1:
+        selected_path = running_candidates[0][1]
+        selected_reason = "single-running-log"
+        log_strategy = "selected-running-log"
+    elif selected_path is None and len(running_candidates) > 1:
+        ambiguous = True
+        warning = warning or f"Multiple running logs detected without unique match for calculation={calculation or 'unknown'}."
+
+    fallback_candidates: list[Path] = []
+    for candidate in (
+        workspace.outputs_dir / "stdout.log",
+        workspace.outputs_dir / "out.log",
+    ):
+        if candidate.exists():
+            fallback_candidates.append(candidate)
+
+    if selected_path is None:
+        if fallback_candidates:
+            selected_path = fallback_candidates[0]
+            selected_reason = f"fallback:{selected_path.name}"
+            log_strategy = "fallback-log"
+            if ambiguous:
+                warning = warning or f"Falling back to {selected_path.name} because running log selection is ambiguous."
+        elif ambiguous:
+            log_strategy = "ambiguous-no-selection"
+
+    ignored_log_paths = [
+        str(path)
+        for _, path in running_candidates
+        if selected_path is None or path != selected_path
+    ]
+    if selected_path is not None:
+        ignored_log_paths.extend(str(path) for path in fallback_candidates if path != selected_path)
+
+    output_selection = _discover_output_log(
+        workspace,
+        explicit_output_log=output_log,
+    )
+
+    return {
+        "main_log_path": selected_path,
+        "output_log_path": output_selection["selected_path"],
+        "warning": warning,
+        "diagnostics": {
+            "log_strategy": log_strategy,
+            "selected_log_path": str(selected_path) if selected_path is not None else None,
+            "selected_log_reason": selected_reason,
+            "running_log_candidates": [str(path) for _, path in running_candidates],
+            "fallback_log_candidates": [str(path) for path in fallback_candidates],
+            "ignored_log_paths": ignored_log_paths,
+            "log_selection_ambiguous": ambiguous,
+            "output_log_path": str(output_selection["selected_path"]) if output_selection["selected_path"] is not None else None,
+            "output_log_reason": output_selection["selected_reason"],
+            "output_log_candidates": output_selection["candidate_paths"],
+            "output_log_selection_ambiguous": output_selection["ambiguous"],
+            "output_log_override_requested": output_selection["override_requested"],
+            "output_log_override_missing": output_selection["override_missing"],
+            "output_log_ignored_paths": output_selection["ignored_paths"],
+        },
+    }
 
 
 def _determine_status(metrics: dict[str, Any], *, stderr_path: Path, text_blobs: list[str]) -> str:
@@ -184,6 +311,123 @@ def _determine_status(metrics: dict[str, Any], *, stderr_path: Path, text_blobs:
     return "completed"
 
 
+def _natural_sort_key(value: str) -> list[Any]:
+    parts = []
+    for chunk in value.replace("\\", "/").split("/"):
+        for token in __import__("re").split(r"(\d+)", chunk):
+            if not token:
+                continue
+            parts.append(int(token) if token.isdigit() else token)
+    return parts
+
+
+def _discover_output_log(
+    workspace: Workspace,
+    *,
+    explicit_output_log: str | Path | None,
+) -> dict[str, Any]:
+    override_requested = str(explicit_output_log) if explicit_output_log is not None else None
+    override_missing = False
+    if explicit_output_log is not None:
+        explicit_path = _resolve_workspace_path(workspace, explicit_output_log)
+        if explicit_path.exists() and explicit_path.is_file():
+            return {
+                "selected_path": explicit_path,
+                "selected_reason": "override",
+                "candidate_paths": [str(explicit_path)],
+                "ambiguous": False,
+                "override_requested": override_requested,
+                "override_missing": False,
+                "ignored_paths": [],
+            }
+        override_missing = True
+
+    fixed_candidates = [
+        candidate
+        for candidate in (
+            workspace.outputs_dir / "stdout.log",
+            workspace.outputs_dir / "out.log",
+        )
+        if candidate.exists() and candidate.is_file()
+    ]
+    if fixed_candidates:
+        selected = sorted(fixed_candidates, key=lambda path: _natural_sort_key(str(path.relative_to(workspace.root))))[0]
+        return {
+            "selected_path": selected,
+            "selected_reason": f"fixed-candidate:{selected.name}",
+            "candidate_paths": [str(path) for path in fixed_candidates],
+            "ambiguous": len(fixed_candidates) > 1,
+            "override_requested": override_requested,
+            "override_missing": override_missing,
+            "ignored_paths": [str(path) for path in fixed_candidates if path != selected],
+        }
+
+    content_candidates = _candidate_output_logs(workspace)
+    matching_candidates = [path for path in content_candidates if _file_contains_output_banner(path)]
+    if not matching_candidates:
+        return {
+            "selected_path": None,
+            "selected_reason": "not-found",
+            "candidate_paths": [],
+            "ambiguous": False,
+            "override_requested": override_requested,
+            "override_missing": override_missing,
+            "ignored_paths": [],
+        }
+
+    selected = matching_candidates[0]
+    return {
+        "selected_path": selected,
+        "selected_reason": "banner-discovery",
+        "candidate_paths": [str(path) for path in matching_candidates],
+        "ambiguous": len(matching_candidates) > 1,
+        "override_requested": override_requested,
+        "override_missing": override_missing,
+        "ignored_paths": [str(path) for path in matching_candidates if path != selected],
+    }
+
+
+def _candidate_output_logs(workspace: Workspace) -> list[Path]:
+    candidates: list[Path] = []
+    for base in (workspace.root, workspace.outputs_dir):
+        if not base.exists():
+            continue
+        for path in sorted(base.iterdir(), key=lambda item: _natural_sort_key(str(item.relative_to(workspace.root)))):
+            if not path.is_file():
+                continue
+            if path.name == "stderr.log":
+                continue
+            candidates.append(path)
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in candidates:
+        if path not in seen:
+            unique.append(path)
+            seen.add(path)
+    return unique
+
+
+def _file_contains_output_banner(path: Path) -> bool:
+    try:
+        content = path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return False
+    return any(marker in content for marker in _OUTPUT_BANNER_MARKERS)
+
+
+def _resolve_workspace_path(workspace: Workspace, raw_path: str | Path) -> Path:
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        return candidate
+    return workspace.root / candidate
+
+
+def _read_text_if_exists(path: Path | None) -> str | None:
+    if path is None or not path.exists():
+        return None
+    return path.read_text(encoding="utf-8", errors="ignore")
+
+
 def _inputs_snapshot(workspace: Workspace) -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
     input_path = workspace.inputs_dir / "INPUT"
@@ -192,6 +436,10 @@ def _inputs_snapshot(workspace: Workspace) -> dict[str, Any]:
     kpt_path = workspace.inputs_dir / "KPT"
     if kpt_path.exists():
         snapshot["KPT"] = kpt_path.read_text(encoding="utf-8")
+        try:
+            snapshot["KPT_PARSED"] = read_kpt(kpt_path)
+        except Exception as exc:
+            snapshot["KPT_PARSE_ERROR"] = str(exc)
     return snapshot
 
 
@@ -240,6 +488,13 @@ def _artifact_from_suffix(artifacts: dict[str, str], suffix: str) -> Path | None
         if relative.endswith(suffix):
             return Path(path)
     return None
+
+
+def _snapshot_volume(snapshot: dict[str, Any] | None) -> float | None:
+    if not isinstance(snapshot, dict):
+        return None
+    value = snapshot.get("volume")
+    return float(value) if isinstance(value, (int, float)) else None
 
 
 def _basename_map(mapping: dict[str, Path]) -> dict[str, str]:
