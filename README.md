@@ -2,7 +2,7 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 的标准化能力，可作为 Python 库或 CLI 使用。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，以及 `scf / relax / band / dos` 单任务 CLI 闭环，可作为 Python 库或 CLI 使用。
 
 ## 当前定位
 - 面向单个工作目录的输入准备、输入编辑、程序拉起与结果收集。
@@ -29,6 +29,14 @@
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
 
+### 单任务闭环
+- `run_scf(...)` / `abacus-forge scf`
+- `run_relax(...)` / `abacus-forge relax`
+- `run_band(...)` / `abacus-forge band`
+- `run_dos(...)` / `abacus-forge dos`
+- `dos` task 会在同一个任务中同时启用 DOS 与 PDOS 输出
+- `band` task 需要显式提供 line-mode K 点路径，不隐式生成高对称路径
+
 ## 安装与运行方式
 
 ### 开发态
@@ -44,7 +52,28 @@ abacus-forge --help
 
 ## CLI 快速上手
 
-### 1. 准备一个工作目录
+### 1. 直接运行一个 SCF 任务
+```bash
+PYTHONPATH=src python -m abacus_forge.cli scf runs/Si_scf \
+  --structure Si.cif \
+  --ensure-pbc \
+  --parameter ecutwfc=70 \
+  --executable abacus \
+  --json
+```
+
+### 2. 直接运行一个 DOS+PDOS 任务
+```bash
+PYTHONPATH=src python -m abacus_forge.cli dos runs/FeO_dos \
+  --structure FeO.cif \
+  --magmom Fe=3.0 \
+  --magmom O=0.5 \
+  --executable abacus \
+  --output result.json \
+  --json
+```
+
+### 3. 准备一个工作目录
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli prepare runs/Si_scf \
   --structure Si.cif \
@@ -53,7 +82,7 @@ PYTHONPATH=src python -m abacus_forge.cli prepare runs/Si_scf \
   --kpoint 3 --kpoint 3 --kpoint 1
 ```
 
-### 2. 对 INPUT 做轻量编辑
+### 4. 对 INPUT 做轻量编辑
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli modify-input runs/Si_scf/inputs/INPUT \
   --output runs/Si_scf/inputs/INPUT.modified \
@@ -62,7 +91,7 @@ PYTHONPATH=src python -m abacus_forge.cli modify-input runs/Si_scf/inputs/INPUT 
   --remove smearing_sigma
 ```
 
-### 3. 对 STRU 做磁矩编辑
+### 5. 对 STRU 做磁矩编辑
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli modify-stru FeO.cif \
   --output STRU \
@@ -71,7 +100,7 @@ PYTHONPATH=src python -m abacus_forge.cli modify-stru FeO.cif \
   --afm
 ```
 
-### 4. 对 KPT 做 mesh 编辑
+### 6. 对 KPT 做 mesh 编辑
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli modify-kpt runs/Si_scf/inputs/KPT \
   --output runs/Si_scf/inputs/KPT.modified \
@@ -80,7 +109,7 @@ PYTHONPATH=src python -m abacus_forge.cli modify-kpt runs/Si_scf/inputs/KPT \
   --shifts 1 1 1
 ```
 
-### 5. 对 KPT 做 line 编辑
+### 7. 对 KPT 做 line 编辑
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli modify-kpt KPT.line \
   --output KPT.line.modified \
@@ -90,7 +119,7 @@ PYTHONPATH=src python -m abacus_forge.cli modify-kpt KPT.line \
   --point 0.5,0,0:X
 ```
 
-### 6. 运行与收集
+### 8. 运行与收集
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli run runs/Si_scf --executable abacus --mpi 32 --omp 1
 PYTHONPATH=src python -m abacus_forge.cli collect runs/Si_scf --json
@@ -105,6 +134,7 @@ PYTHONPATH=src python -m abacus_forge.cli export runs/Si_scf --output result.jso
 from abacus_forge.api import collect, prepare
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.runner import LocalRunner
+from abacus_forge.tasks import run_dos, run_scf
 
 workspace = prepare(
     "runs/Si_scf",
@@ -120,6 +150,10 @@ modify_stru(workspace.inputs_dir / "STRU", destination=workspace.inputs_dir / "S
 
 result = collect(workspace, output_log="outputs/abacus.log")
 print(result.status)
+
+task_result = run_scf("runs/Si_task", structure="Si.cif", executable="abacus")
+dos_result = run_dos("runs/FeO_dos", structure="FeO.cif", executable="abacus")
+print(task_result.status, dos_result.metrics.get("pdos_summary"))
 ```
 
 ## 目录约定

@@ -8,6 +8,7 @@ from abacus_forge.perturbation import perturb_structure
 from abacus_forge.result import CollectionResult, RunResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
+from abacus_forge.tasks import run_band, run_dos, run_relax, run_scf, run_task
 from abacus_forge.workspace import Workspace
 
 __all__ = [
@@ -27,6 +28,11 @@ __all__ = [
     "perturb_structure",
     "prepare",
     "run",
+    "run_band",
+    "run_dos",
+    "run_relax",
+    "run_scf",
+    "run_task",
 ]
 
 __version__ = "0.1.0"

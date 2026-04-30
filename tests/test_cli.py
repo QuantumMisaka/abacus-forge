@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -293,3 +294,122 @@ def test_cli_modify_kpt_supports_mesh_and_line_modes(tmp_path: Path, capsys) -> 
             {"coords": [0.5, 0.5, 0.0], "label": "M"},
         ],
     }
+
+
+def test_cli_scf_task_runs_end_to_end(tmp_path: Path, capsys) -> None:
+    executable = _write_fake_abacus(
+        tmp_path / "fake-scf",
+        stdout_lines=[
+            "TOTAL ENERGY = -6.8",
+            "FERMI ENERGY = 1.5",
+            "SCF CONVERGED",
+        ],
+    )
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]])
+    structure_path = tmp_path / "Si.xyz"
+    ase_write(structure_path, structure)
+
+    assert (
+        main(
+            [
+                "scf",
+                str(tmp_path / "scf-task"),
+                "--structure",
+                str(structure_path),
+                "--structure-format",
+                "xyz",
+                "--ensure-pbc",
+                "--executable",
+                str(executable),
+                "--json",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+    assert payload["metrics"]["total_energy"] == -6.8
+    assert payload["diagnostics"]["task"] == "scf"
+
+
+def test_cli_band_task_requires_explicit_points(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit, match="explicit line-mode KPT points"):
+        main(["band", str(tmp_path / "band-task")])
+
+
+def test_cli_dos_task_enables_pdos_outputs_and_export(tmp_path: Path, capsys) -> None:
+    executable = _write_fake_abacus(
+        tmp_path / "fake-dos",
+        stdout_lines=[
+            "TOTAL ENERGY = -7.2",
+            "SCF CONVERGED",
+        ],
+        extra_writes={
+            "outputs/DOS1_smearing.dat": "-5.0 0.1\n0.0 1.3\n",
+            "outputs/PDOS": "# species projected DOS\nFe 0.7\nO 0.3\n",
+            "outputs/TDOS": "# total DOS\n-1.0 0.2\n0.0 1.0\n",
+        },
+    )
+    structure = Atoms(
+        symbols=["Fe", "O"],
+        positions=[[0.0, 0.0, 0.0], [1.5, 1.5, 1.5]],
+        cell=[[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]],
+        pbc=[True, True, True],
+    )
+    structure_path = tmp_path / "FeO.cif"
+    ase_write(structure_path, structure)
+    export_path = tmp_path / "dos-task.json"
+
+    assert (
+        main(
+            [
+                "dos",
+                str(tmp_path / "dos-task"),
+                "--structure",
+                str(structure_path),
+                "--executable",
+                str(executable),
+                "--output",
+                str(export_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+    assert payload["inputs_snapshot"]["INPUT"]["out_dos"] == "1"
+    assert payload["inputs_snapshot"]["INPUT"]["out_pdos"] == "1"
+    assert payload["metrics"]["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert json.loads(export_path.read_text(encoding="utf-8"))["metrics"]["dos_summary"]["points"] == 2
+
+
+def _write_fake_abacus(
+    path: Path,
+    *,
+    stdout_lines: list[str],
+    extra_writes: dict[str, str] | None = None,
+) -> Path:
+    extra_writes = extra_writes or {}
+    body = [
+        "#!/usr/bin/env python3",
+        "from pathlib import Path",
+        "import sys",
+        "args = sys.argv[1:]",
+        "input_dir = Path('.')",
+        "if '--input-dir' in args:",
+        "    input_dir = Path(args[args.index('--input-dir') + 1])",
+        "workspace = input_dir.parent",
+    ]
+    for relative_path, content in extra_writes.items():
+        body.extend(
+            [
+                f"path = workspace / {relative_path!r}",
+                "path.parent.mkdir(parents=True, exist_ok=True)",
+                f"path.write_text({content!r}, encoding='utf-8')",
+            ]
+        )
+    body.extend([f"print({line!r})" for line in stdout_lines])
+    path.write_text("\n".join(body) + "\n", encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path

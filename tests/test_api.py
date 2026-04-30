@@ -48,6 +48,7 @@ def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> Non
     input_text = (workspace.inputs_dir / "INPUT").read_text(encoding="utf-8")
     assert "calculation nscf" in input_text
     assert "out_dos 1" in input_text
+    assert "out_pdos 1" in input_text
     assert "dip_cor_flag 1" in input_text
     assert (workspace.inputs_dir / "Si_ONCV.upf").exists()
     assert (workspace.inputs_dir / "Si_gga.orb").exists()
@@ -109,6 +110,8 @@ def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
     assert collected.metrics["pdos_artifacts"][0].endswith("PDOS")
     assert collected.metrics["relax_metrics"]["final_structure_available"] is True
+    assert collected.metrics["relax_summary"]["final_structure_available"] is True
+    assert collected.metrics["relax_summary"]["final_structure_path"].endswith("STRU_ION_D")
     assert collected.inputs_snapshot["INPUT"]["calculation"] == "nscf"
     assert collected.inputs_snapshot["KPT_PARSED"] == {"mode": "mesh", "mesh": [2, 2, 2], "shifts": [0, 0, 0]}
     assert collected.structure_snapshot is not None
@@ -116,6 +119,9 @@ def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     assert collected.final_structure_snapshot is not None
     assert collected.final_structure_snapshot["source"].endswith("STRU_ION_D")
     assert collected.diagnostics["report_json_files"]
+    assert collected.diagnostics["final_structure_path"].endswith("STRU_ION_D")
+    assert collected.diagnostics["band_canonical_artifact"].endswith("BANDS_1.dat")
+    assert collected.diagnostics["dos_canonical_artifact"].endswith("DOS1_smearing.dat")
     assert "scf_converged" in collected.diagnostics["matched_converged_markers"]
     assert collected.diagnostics["matched_nonconverged_markers"] == []
     assert collected.diagnostics["time_json_absent"] is False
@@ -202,8 +208,8 @@ def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> No
 
     assert collected.status == "completed"
     assert collected.metrics["total_time"] == 9.8
-    assert collected.metrics["band_summary"]["num_points"] == 12
-    assert collected.metrics["dos_summary"]["points"] == 16
+    assert collected.metrics["band_summary"]["num_points"] == 6
+    assert collected.metrics["dos_summary"]["points"] == 8
     assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
     assert collected.metrics["relax_metrics"]["final_structure_available"] is True
     assert collected.final_structure_snapshot is not None

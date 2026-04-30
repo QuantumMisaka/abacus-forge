@@ -148,7 +148,7 @@ def collect(
     output_log_text = _read_text_if_exists(output_log_path)
     stderr_path = ws.outputs_dir / "stderr.log"
     structure_snapshot = _structure_snapshot(ws.inputs_dir / "STRU")
-    final_structure_snapshot = _final_structure_snapshot(artifacts)
+    final_structure_snapshot, final_structure_diagnostics = _final_structure_snapshot(artifacts)
     metrics, diagnostics = collect_abacus_metrics(
         main_log_text=main_log_text,
         output_log_text=output_log_text,
@@ -157,6 +157,7 @@ def collect(
         structure_volume=_snapshot_volume(final_structure_snapshot) or _snapshot_volume(structure_snapshot),
     )
     diagnostics.update(log_selection["diagnostics"])
+    diagnostics.update(final_structure_diagnostics)
     diagnostics["log_paths"] = [
         str(path)
         for path in (main_log_path, output_log_path)
@@ -167,6 +168,15 @@ def collect(
     )
     if log_selection["warning"] is not None:
         diagnostics.setdefault("warnings", []).append(log_selection["warning"])
+    relax_metrics = metrics.get("relax_metrics")
+    if isinstance(relax_metrics, dict):
+        relax_summary = dict(metrics.get("relax_summary", {}))
+        relax_summary.setdefault("converged", bool(relax_metrics.get("converged", metrics.get("converged", False))))
+        relax_summary["final_structure_available"] = final_structure_snapshot is not None or bool(
+            relax_metrics.get("final_structure_available", False)
+        )
+        relax_summary["final_structure_path"] = diagnostics.get("final_structure_path")
+        metrics["relax_summary"] = relax_summary
     status = _determine_status(
         metrics,
         stderr_path=stderr_path,
@@ -458,29 +468,43 @@ def _structure_snapshot(path: Path) -> dict[str, Any] | None:
         }
 
 
-def _final_structure_snapshot(artifacts: dict[str, str]) -> dict[str, Any] | None:
-    candidates = (
+def _final_structure_snapshot(artifacts: dict[str, str]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    candidate_suffixes = (
         "STRU_ION_D",
         "STRU_NOW.cif",
         "STRU.cif",
         "STRU",
     )
-    for candidate in candidates:
-        path = _artifact_from_suffix(artifacts, candidate)
+    candidates: list[tuple[str, Path]] = []
+    for suffix in candidate_suffixes:
+        path = _artifact_from_suffix(artifacts, suffix)
         if path is None or not path.exists():
             continue
-        try:
-            fmt = "stru" if candidate.endswith("STRU") or candidate == "STRU_ION_D" else None
-            structure = AbacusStructure.from_input(path, structure_format=fmt)
-            payload = structure.metadata().to_dict()
-            payload["source"] = str(path)
-            return payload
-        except Exception as exc:
-            return {
-                "source": str(path),
-                "parse_error": str(exc),
-            }
-    return None
+        candidates.append((suffix, path))
+
+    diagnostics: dict[str, Any] = {
+        "final_structure_candidates": [str(path) for _, path in candidates],
+        "final_structure_selection_ambiguous": len(candidates) > 1,
+    }
+    if not candidates:
+        diagnostics["final_structure_path"] = None
+        return None, diagnostics
+
+    selected_suffix, selected_path = candidates[0]
+    diagnostics["final_structure_path"] = str(selected_path)
+    diagnostics["final_structure_selected_suffix"] = selected_suffix
+    try:
+        fmt = "stru" if selected_suffix.endswith("STRU") or selected_suffix == "STRU_ION_D" else None
+        structure = AbacusStructure.from_input(selected_path, structure_format=fmt)
+        payload = structure.metadata().to_dict()
+        payload["source"] = str(selected_path)
+        return payload, diagnostics
+    except Exception as exc:
+        diagnostics["final_structure_parse_error"] = str(exc)
+        return {
+            "source": str(selected_path),
+            "parse_error": str(exc),
+        }, diagnostics
 
 
 def _artifact_from_suffix(artifacts: dict[str, str], suffix: str) -> Path | None:

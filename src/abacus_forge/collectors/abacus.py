@@ -102,26 +102,38 @@ def collect_abacus_metrics(
         diagnostics["warnings"].append("time.json is absent.")
 
     band_files = _artifact_paths_matching(artifacts, "BANDS_", ".dat")
+    diagnostics["band_artifact_candidates"] = [str(path) for path in band_files]
+    diagnostics["band_artifact_selection_ambiguous"] = len(band_files) > 1
     if band_files:
         metrics["band_summary"] = BandData.from_paths(band_files).summary()
         metrics["band_artifacts"] = [str(path) for path in band_files]
+        diagnostics["band_canonical_artifact"] = str(band_files[0])
     band_metrics = _load_json_artifact(artifacts, "metrics_band.json", diagnostics=diagnostics)
     if band_metrics is not None:
         metrics["band_metrics"] = band_metrics
 
     dos_files = _artifact_paths_matching(artifacts, "DOS", "_smearing.dat")
+    diagnostics["dos_artifact_candidates"] = [str(path) for path in dos_files]
+    diagnostics["dos_artifact_selection_ambiguous"] = len(dos_files) > 1
     if dos_files:
         metrics["dos_summary"] = DOSData.from_paths(dos_files).summary()
         metrics["dos_artifacts"] = [str(path) for path in dos_files]
+        diagnostics["dos_canonical_artifact"] = str(dos_files[0])
     dos_metrics = _load_json_artifact(artifacts, "metrics_dos.json", diagnostics=diagnostics)
     if dos_metrics is not None:
         metrics["dos_metrics"] = dos_metrics
 
     pdos_file = _artifact_path(artifacts, "PDOS")
     tdos_file = _artifact_path(artifacts, "TDOS")
+    diagnostics["pdos_artifact_candidates"] = [
+        str(path)
+        for path in (pdos_file, tdos_file)
+        if path is not None
+    ]
     if pdos_file or tdos_file:
         metrics["pdos_summary"] = PDOSData(pdos_path=pdos_file, tdos_path=tdos_file).summary()
         metrics["pdos_artifacts"] = [str(path) for path in (pdos_file, tdos_file) if path is not None]
+        diagnostics["pdos_canonical_artifact"] = str(pdos_file or tdos_file)
     pdos_metrics = _load_json_artifact(artifacts, "metrics_pdos.json", diagnostics=diagnostics)
     if pdos_metrics is not None:
         metrics["pdos_metrics"] = pdos_metrics
@@ -129,6 +141,18 @@ def collect_abacus_metrics(
     relax_metrics = _load_json_artifact(artifacts, "metrics_relax.json", diagnostics=diagnostics)
     if relax_metrics is not None:
         metrics["relax_metrics"] = relax_metrics
+        metrics["relax_summary"] = {
+            "converged": bool(relax_metrics.get("converged", metrics.get("converged", False))),
+            "final_structure_available": bool(relax_metrics.get("final_structure_available", False)),
+            "report_path": next(
+                (
+                    path
+                    for path in diagnostics.get("report_json_files", [])
+                    if path.endswith("metrics_relax.json")
+                ),
+                None,
+            ),
+        }
 
     workflow_goal = _workflow_goal(metrics)
     if workflow_goal is not None:
@@ -321,21 +345,30 @@ def _parse_stress_block(lines: list[str], *, start: int) -> list[float]:
 
 
 def _artifact_path(artifacts: dict[str, str], suffix: str) -> Path | None:
+    candidates: list[tuple[str, Path]] = []
     for relative, path in artifacts.items():
         if relative.endswith(suffix):
-            return Path(path)
-    return None
+            candidates.append((relative, Path(path)))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0].count("/"), item[0]))
+    return candidates[0][1]
 
 
 def _artifact_paths_matching(artifacts: dict[str, str], contains: str, suffix: str) -> list[Path]:
-    matches: list[Path] = []
+    matches: list[tuple[str, Path]] = []
     for relative, path in artifacts.items():
         normalized = relative.replace("\\", "/")
         if "/aiida/" in normalized:
             continue
         if contains in Path(relative).name and relative.endswith(suffix):
-            matches.append(Path(path))
-    return sorted(matches)
+            matches.append((relative, Path(path)))
+
+    selected: dict[str, tuple[str, Path]] = {}
+    for relative, path in sorted(matches, key=lambda item: (Path(item[0]).name, item[0].count("/"), item[0])):
+        basename = Path(relative).name
+        selected.setdefault(basename, (relative, path))
+    return [path for _, path in sorted(selected.values(), key=lambda item: item[0])]
 
 
 def _load_json_artifact(

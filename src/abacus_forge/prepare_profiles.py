@@ -11,7 +11,7 @@ TASK_DEFAULTS: dict[str, dict[str, Any]] = {
     "relax": {"calculation": "relax", "cal_force": 1, "cal_stress": 1},
     "cell-relax": {"calculation": "cell-relax", "cal_force": 1, "cal_stress": 1},
     "band": {"calculation": "nscf", "out_band": 1},
-    "dos": {"calculation": "nscf", "out_dos": 1},
+    "dos": {"calculation": "nscf", "out_dos": 1, "out_pdos": 1},
     "pdos": {"calculation": "nscf", "out_dos": 1, "out_pdos": 1},
 }
 

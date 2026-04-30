@@ -1,4 +1,4 @@
-"""Command-line entrypoints for Forge's thin prepare/modify/run/collect primitives."""
+"""Command-line entrypoints for Forge's thin primitives and task-oriented workflows."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from abacus_forge.api import collect, export, prepare, run
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
+from abacus_forge.tasks import run_band, run_dos, run_relax, run_scf
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +74,10 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser = subparsers.add_parser("export", help="collect and export JSON to file")
     export_parser.add_argument("workspace")
     export_parser.add_argument("--output", required=True)
+
+    for task_name in ("scf", "relax", "band", "dos"):
+        task_parser = subparsers.add_parser(task_name, help=f"run one {task_name} task end-to-end")
+        _add_task_arguments(task_parser, task_name=task_name)
 
     return parser
 
@@ -169,6 +174,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(args.output)
         return 0
 
+    if args.command in {"scf", "relax", "band", "dos"}:
+        parameters = _parse_parameters(args.parameter)
+        magmom_by_element = _parse_numeric_mapping(args.magmom)
+        line_kpoints = _parse_kpt_points(getattr(args, "point", []))
+        task_runner = {
+            "scf": run_scf,
+            "relax": run_relax,
+            "band": run_band,
+            "dos": run_dos,
+        }[args.command]
+        kwargs: dict[str, Any] = {
+            "structure": args.structure,
+            "structure_format": args.structure_format,
+            "parameters": parameters,
+            "pseudo_path": args.pseudo_path,
+            "orbital_path": args.orbital_path,
+            "asset_mode": args.asset_mode,
+            "ensure_pbc": args.ensure_pbc,
+            "magmom_by_element": magmom_by_element or None,
+            "executable": args.executable,
+            "mpi": args.mpi,
+            "omp": args.omp,
+            "export_destination": args.output,
+        }
+        if args.command == "band":
+            if not line_kpoints:
+                raise SystemExit("band task requires explicit line-mode KPT points via --point")
+            result = task_runner(
+                args.workspace,
+                line_kpoints=line_kpoints,
+                line_segments=args.segments,
+                **kwargs,
+            )
+        else:
+            result = task_runner(args.workspace, **kwargs)
+        if args.json:
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(result.status)
+        return 0
+
     parser.error(f"unsupported command: {args.command}")
     return 2
 
@@ -249,6 +295,26 @@ def _validate_kpt_arguments(
             raise SystemExit("line mode requires --segments and/or --point")
         return
     raise SystemExit(f"unsupported KPT mode: {mode}")
+
+
+def _add_task_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> None:
+    parser.add_argument("workspace")
+    parser.add_argument("--structure")
+    parser.add_argument("--structure-format")
+    parser.add_argument("--parameter", action="append", default=[], help="KEY=VALUE")
+    parser.add_argument("--magmom", action="append", default=[], help="ELEMENT=VALUE")
+    parser.add_argument("--pseudo-path")
+    parser.add_argument("--orbital-path")
+    parser.add_argument("--asset-mode", choices=["copy", "link"], default="link")
+    parser.add_argument("--ensure-pbc", action="store_true")
+    parser.add_argument("--executable", default="abacus")
+    parser.add_argument("--mpi", type=int, default=1)
+    parser.add_argument("--omp", type=int, default=1)
+    parser.add_argument("--json", action="store_true", help="print JSON to stdout")
+    parser.add_argument("--output", help="optional export path for collected JSON")
+    if task_name == "band":
+        parser.add_argument("--segments", type=int, default=20)
+        parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
 
 
 if __name__ == "__main__":
