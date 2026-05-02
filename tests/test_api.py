@@ -11,7 +11,7 @@ from ase.io import write as ase_write
 
 from abacus_forge import AbacusStructure, LocalRunner, Workspace, collect, export, perturb_structure, prepare, run
 from abacus_forge.band_data import BandData, write_sample_band_artifacts
-from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_pdos_artifacts
+from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_dos_family_artifacts
 from abacus_forge.sample_outputs import write_sample_analysis_outputs
 from abacus_forge.structure_recognition import detect_structure_format
 
@@ -48,7 +48,7 @@ def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> Non
     input_text = (workspace.inputs_dir / "INPUT").read_text(encoding="utf-8")
     assert "calculation nscf" in input_text
     assert "out_dos 1" in input_text
-    assert "out_pdos 1" in input_text
+    assert "out_pdos" not in input_text
     assert "dip_cor_flag 1" in input_text
     assert (workspace.inputs_dir / "Si_ONCV.upf").exists()
     assert (workspace.inputs_dir / "Si_gga.orb").exists()
@@ -107,8 +107,8 @@ def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     assert collected.metrics["band_artifacts"][0].endswith("BANDS_1.dat")
     assert collected.metrics["dos_summary"]["points"] == 2
     assert collected.metrics["dos_artifacts"][0].endswith("DOS1_smearing.dat")
-    assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
-    assert collected.metrics["pdos_artifacts"][0].endswith("PDOS")
+    assert collected.metrics["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
+    assert any(path.endswith("PDOS") for path in collected.metrics["dos_family_artifacts"])
     assert collected.metrics["relax_metrics"]["final_structure_available"] is True
     assert collected.metrics["relax_summary"]["final_structure_available"] is True
     assert collected.metrics["relax_summary"]["final_structure_path"].endswith("STRU_ION_D")
@@ -152,11 +152,11 @@ def test_sample_artifact_writers_roundtrip_through_data_helpers(tmp_path: Path) 
 
     band_written = write_sample_band_artifacts(out_dir, duplicate_dir=dup_dir)
     dos_written = write_sample_dos_artifacts(out_dir, duplicate_dir=dup_dir)
-    pdos_written = write_sample_pdos_artifacts(out_dir, duplicate_dir=dup_dir)
+    dos_family_written = write_sample_dos_family_artifacts(out_dir, duplicate_dir=dup_dir)
 
     band = BandData.from_paths([out_dir / "BANDS_1.dat", out_dir / "BANDS_2.dat"])
     dos = DOSData.from_paths([out_dir / "DOS1_smearing.dat", out_dir / "DOS2_smearing.dat"])
-    pdos = PDOSData(pdos_path=out_dir / "PDOS", tdos_path=out_dir / "TDOS")
+    pdos = PDOSData.from_path(out_dir / "PDOS", tdos_path=out_dir / "TDOS")
 
     assert band.summary()["num_points"] == 6
     assert dos.summary()["points"] == 8
@@ -164,7 +164,7 @@ def test_sample_artifact_writers_roundtrip_through_data_helpers(tmp_path: Path) 
     assert "band.png" in band_written
     assert "OUT.ABACUS/BANDS_1.dat" in band_written
     assert "OUT.ABACUS/DOS1_smearing.dat" in dos_written
-    assert "OUT.ABACUS/PDOS" in pdos_written
+    assert "OUT.ABACUS/PDOS" in dos_family_written
 
 
 def test_local_runner_raises_clear_error_for_missing_executable(tmp_path: Path) -> None:
@@ -183,7 +183,7 @@ def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> No
         cell=[[4.2, 0.0, 0.0], [0.0, 4.2, 0.0], [0.0, 0.0, 4.2]],
         pbc=[True, True, True],
     )
-    prepare(workspace, task="pdos", structure=structure)
+    prepare(workspace, task="dos", structure=structure, parameters={"basis_type": "lcao"})
     workspace.write_text(
         "outputs/stdout.log",
         "TOTAL ENERGY = -11.1\nFERMI ENERGY = 3.2\nBAND GAP = 0.8\nSCF CONVERGED\n",
@@ -194,14 +194,14 @@ def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> No
         workspace,
         run_bands=True,
         run_dos=True,
-        run_pdos=True,
+        include_pdos=True,
         relax_requested=True,
         relax_workflow_goal="relax",
         band_workflow_goal="relax-band-dos",
         dos_workflow_goal="relax-band-dos",
-        pdos_workflow_goal="relax-band-dos-pdos",
+        dos_family_workflow_goal="relax-band-dos",
         band_gap=0.8,
-        pdos_species=["Ni", "O"],
+        projected_species=["Ni", "O"],
     )
 
     collected = collect(workspace)
@@ -210,7 +210,7 @@ def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> No
     assert collected.metrics["total_time"] == 9.8
     assert collected.metrics["band_summary"]["num_points"] == 6
     assert collected.metrics["dos_summary"]["points"] == 8
-    assert collected.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert collected.metrics["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
     assert collected.metrics["relax_metrics"]["final_structure_available"] is True
     assert collected.final_structure_snapshot is not None
     assert collected.final_structure_snapshot["source"].endswith("STRU_ION_D")

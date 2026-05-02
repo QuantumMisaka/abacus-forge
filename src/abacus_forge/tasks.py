@@ -77,6 +77,8 @@ def run_task(
 
     runner = LocalRunner(executable=executable, mpi_ranks=mpi, omp_threads=omp)
     run_result = run(ws, runner=runner)
+    if normalized_task == "dos":
+        _postprocess_dos_outputs(ws)
     collected = collect(ws, output_log=output_log)
     collected.diagnostics.setdefault("task", normalized_task)
     collected.diagnostics.setdefault("task_runner", {})
@@ -125,10 +127,69 @@ def run_band(
     )
 
 
-def run_dos(workspace: str | Path | Workspace, **kwargs: Any) -> CollectionResult:
-    """Run one DOS task that also enables PDOS outputs."""
+def run_dos(
+    workspace: str | Path | Workspace,
+    *,
+    include_tdos: bool = True,
+    include_pdos: bool = True,
+    include_ldos: bool = False,
+    pdos_mode: str = "species",
+    pdos_atom_indices: Sequence[int] | None = None,
+    plot_emin: float = -10.0,
+    plot_emax: float = 10.0,
+    save_data: bool = True,
+    save_plot: bool = True,
+    suffix: str | None = None,
+    dos_edelta_ev: float | None = None,
+    dos_sigma: float | None = None,
+    dos_emin_ev: float | None = None,
+    dos_emax_ev: float | None = None,
+    **kwargs: Any,
+) -> CollectionResult:
+    """Run one unified DOS-family task."""
 
-    return run_task(workspace, task="dos", **kwargs)
+    parameters = dict(kwargs.pop("parameters", {}) or {})
+    for forbidden in ("dos_scale", "dos_nche"):
+        if forbidden in parameters:
+            raise ValueError(f"unsupported DOS parameter: {forbidden}")
+    parameters.update(
+        {
+            "include_tdos": include_tdos,
+            "include_pdos": include_pdos,
+            "include_ldos": include_ldos,
+            "pdos_mode": pdos_mode,
+            "plot_emin": plot_emin,
+            "plot_emax": plot_emax,
+            "save_data": save_data,
+            "save_plot": save_plot,
+        }
+    )
+    if pdos_atom_indices is not None:
+        parameters["pdos_atom_indices"] = list(pdos_atom_indices)
+    if suffix is not None:
+        parameters["suffix"] = suffix
+    for key, value in {
+        "dos_edelta_ev": dos_edelta_ev,
+        "dos_sigma": dos_sigma,
+        "dos_emin_ev": dos_emin_ev,
+        "dos_emax_ev": dos_emax_ev,
+    }.items():
+        if value is not None:
+            parameters[key] = value
+    metadata = dict(kwargs.pop("metadata", {}) or {})
+    metadata["dos_family_controls"] = {
+        "include_tdos": include_tdos,
+        "include_pdos": include_pdos,
+        "include_ldos": include_ldos,
+        "pdos_mode": pdos_mode,
+        "pdos_atom_indices": list(pdos_atom_indices or []),
+        "plot_emin": plot_emin,
+        "plot_emax": plot_emax,
+        "save_data": save_data,
+        "save_plot": save_plot,
+        "suffix": suffix,
+    }
+    return run_task(workspace, task="dos", parameters=parameters, metadata=metadata, **kwargs)
 
 
 def _normalize_line_kpoints(
@@ -157,3 +218,36 @@ def _read_workspace_metadata(workspace: Workspace) -> dict[str, Any]:
 
     payload = json.loads(workspace.meta_path.read_text(encoding="utf-8"))
     return payload if isinstance(payload, dict) else {}
+
+
+def _postprocess_dos_outputs(workspace: Workspace) -> None:
+    try:
+        from abacus_forge.dos_data import DOSData, PDOSData
+        from abacus_forge.dos_postprocess import postprocess_dos_family
+
+        metadata = _read_workspace_metadata(workspace).get("metadata", {})
+        controls = dict(metadata.get("dos_family_controls", {})) if isinstance(metadata, dict) else {}
+        dos_files = sorted(workspace.outputs_dir.glob("DOS*_smearing.dat"))
+        total_dos = DOSData.from_paths(dos_files) if dos_files and controls.get("include_tdos", True) else None
+        pdos_path = workspace.outputs_dir / "PDOS"
+        projected_dos = (
+            PDOSData.from_path(pdos_path, tdos_path=workspace.outputs_dir / "TDOS")
+            if pdos_path.exists() and controls.get("include_pdos", True)
+            else None
+        )
+        if total_dos is None and (projected_dos is None or not projected_dos.projected_dos):
+            return
+        postprocess_dos_family(
+            output_dir=workspace.outputs_dir,
+            total_dos=total_dos,
+            projected_dos=projected_dos if projected_dos and projected_dos.projected_dos else None,
+            pdos_mode=controls.get("pdos_mode", "species"),
+            pdos_atom_indices=controls.get("pdos_atom_indices") or None,
+            plot_emin=float(controls.get("plot_emin", -10.0)),
+            plot_emax=float(controls.get("plot_emax", 10.0)),
+            save_data=bool(controls.get("save_data", True)),
+            save_plot=bool(controls.get("save_plot", True)),
+            suffix=controls.get("suffix"),
+        )
+    except Exception:
+        return

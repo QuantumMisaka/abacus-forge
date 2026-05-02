@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 from abacus_forge.band_data import write_sample_band_artifacts
-from abacus_forge.dos_data import write_sample_dos_artifacts, write_sample_pdos_artifacts
+from abacus_forge.dos_data import write_sample_dos_artifacts, write_sample_dos_family_artifacts
 from abacus_forge.workspace import Workspace
 
 
@@ -15,14 +15,14 @@ def write_sample_analysis_outputs(
     *,
     run_bands: bool = False,
     run_dos: bool = False,
-    run_pdos: bool = False,
+    include_pdos: bool = False,
     relax_requested: bool = False,
     relax_workflow_goal: str = "relax",
     band_workflow_goal: str = "band",
     dos_workflow_goal: str = "dos",
-    pdos_workflow_goal: str = "pdos",
+    dos_family_workflow_goal: str = "dos",
     band_gap: float = 1.2,
-    pdos_species: list[str] | None = None,
+    projected_species: list[str] | None = None,
     energy_window: tuple[float, float] = (-10.0, 10.0),
     fermi_energy: float = 3.2,
     relaxed_structure_placeholder: str = "Relaxed structure placeholder\n",
@@ -46,7 +46,10 @@ def write_sample_analysis_outputs(
             },
         )
     if run_dos:
-        write_sample_dos_artifacts(workspace.outputs_dir, duplicate_dir=duplicate_dir)
+        if include_pdos:
+            write_sample_dos_family_artifacts(workspace.outputs_dir, duplicate_dir=duplicate_dir)
+        else:
+            write_sample_dos_artifacts(workspace.outputs_dir, duplicate_dir=duplicate_dir)
         workspace.write_json(
             "reports/metrics_dos.json",
             {
@@ -55,14 +58,13 @@ def write_sample_analysis_outputs(
                 "workflow_goal": dos_workflow_goal,
             },
         )
-    if run_pdos:
-        write_sample_pdos_artifacts(workspace.outputs_dir, duplicate_dir=duplicate_dir)
+    if include_pdos:
         workspace.write_json(
-            "reports/metrics_pdos.json",
+            "reports/metrics_dos_family.json",
             {
                 "projection_mode": "species",
-                "species": list(pdos_species or []),
-                "workflow_goal": pdos_workflow_goal,
+                "species": list(projected_species or []),
+                "workflow_goal": dos_family_workflow_goal,
             },
         )
 

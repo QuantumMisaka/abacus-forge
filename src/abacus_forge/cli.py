@@ -207,6 +207,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                 line_segments=args.segments,
                 **kwargs,
             )
+        elif args.command == "dos":
+            result = task_runner(
+                args.workspace,
+                include_tdos=args.include_tdos,
+                include_pdos=args.include_pdos,
+                include_ldos=args.include_ldos,
+                pdos_mode=args.pdos_mode,
+                pdos_atom_indices=args.pdos_atom_indices,
+                plot_emin=args.plot_emin,
+                plot_emax=args.plot_emax,
+                save_data=args.save_data,
+                save_plot=args.save_plot,
+                suffix=args.suffix,
+                dos_edelta_ev=args.dos_edelta_ev,
+                dos_sigma=args.dos_sigma,
+                dos_emin_ev=args.dos_emin_ev,
+                dos_emax_ev=args.dos_emax_ev,
+                **kwargs,
+            )
         else:
             result = task_runner(args.workspace, **kwargs)
         if args.json:
@@ -315,6 +334,24 @@ def _add_task_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> N
     if task_name == "band":
         parser.add_argument("--segments", type=int, default=20)
         parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
+    if task_name == "dos":
+        parser.set_defaults(include_tdos=True, include_pdos=True, save_data=True, save_plot=True)
+        parser.add_argument("--include-tdos", dest="include_tdos", action="store_true")
+        parser.add_argument("--no-include-tdos", dest="include_tdos", action="store_false")
+        parser.add_argument("--include-pdos", dest="include_pdos", action="store_true")
+        parser.add_argument("--no-include-pdos", dest="include_pdos", action="store_false")
+        parser.add_argument("--include-ldos", action="store_true")
+        parser.add_argument("--pdos-mode", choices=["species", "species+shell", "species+orbital", "atom"], default="species")
+        parser.add_argument("--pdos-atom-indices", nargs="+", type=int)
+        parser.add_argument("--plot-emin", type=float, default=-10.0)
+        parser.add_argument("--plot-emax", type=float, default=10.0)
+        parser.add_argument("--no-save-data", dest="save_data", action="store_false")
+        parser.add_argument("--no-save-plot", dest="save_plot", action="store_false")
+        parser.add_argument("--suffix")
+        parser.add_argument("--dos-edelta-ev", type=float)
+        parser.add_argument("--dos-sigma", type=float)
+        parser.add_argument("--dos-emin-ev", type=float)
+        parser.add_argument("--dos-emax-ev", type=float)
 
 
 if __name__ == "__main__":

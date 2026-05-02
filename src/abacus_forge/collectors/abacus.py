@@ -9,7 +9,7 @@ from typing import Any
 
 from abacus_forge.band_data import BandData
 from abacus_forge.collectors.registry import MetricRegistry
-from abacus_forge.dos_data import DOSData, PDOSData
+from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 
 _REGISTRY = MetricRegistry()
 _KBAR_TO_EV_PER_ANGSTROM3 = 3.398927420868445e-6 * 27.211396132 / 0.52917721092**3
@@ -115,8 +115,9 @@ def collect_abacus_metrics(
     dos_files = _artifact_paths_matching(artifacts, "DOS", "_smearing.dat")
     diagnostics["dos_artifact_candidates"] = [str(path) for path in dos_files]
     diagnostics["dos_artifact_selection_ambiguous"] = len(dos_files) > 1
+    total_dos = DOSData.from_paths(dos_files) if dos_files else None
     if dos_files:
-        metrics["dos_summary"] = DOSData.from_paths(dos_files).summary()
+        metrics["dos_summary"] = total_dos.summary() if total_dos is not None else {}
         metrics["dos_artifacts"] = [str(path) for path in dos_files]
         diagnostics["dos_canonical_artifact"] = str(dos_files[0])
     dos_metrics = _load_json_artifact(artifacts, "metrics_dos.json", diagnostics=diagnostics)
@@ -125,18 +126,28 @@ def collect_abacus_metrics(
 
     pdos_file = _artifact_path(artifacts, "PDOS")
     tdos_file = _artifact_path(artifacts, "TDOS")
-    diagnostics["pdos_artifact_candidates"] = [
+    diagnostics["dos_family_projected_artifact_candidates"] = [
         str(path)
         for path in (pdos_file, tdos_file)
         if path is not None
     ]
+    projected_dos = PDOSData.from_path(pdos_file, tdos_path=tdos_file) if pdos_file else None
+    dos_family_artifacts = [str(path) for path in [*dos_files, pdos_file, tdos_file] if path is not None]
+    if total_dos is not None or projected_dos is not None:
+        dos_family = DOSFamilyData(
+            total_dos=total_dos,
+            projected_dos=projected_dos,
+            local_dos=LocalDOSData(),
+            metadata={},
+        )
+        metrics["dos_family_summary"] = dos_family.summary()
+        metrics["dos_family_artifacts"] = dos_family_artifacts
+        diagnostics["dos_family_canonical_artifact"] = str(dos_files[0] if dos_files else (pdos_file or tdos_file))
     if pdos_file or tdos_file:
-        metrics["pdos_summary"] = PDOSData(pdos_path=pdos_file, tdos_path=tdos_file).summary()
-        metrics["pdos_artifacts"] = [str(path) for path in (pdos_file, tdos_file) if path is not None]
-        diagnostics["pdos_canonical_artifact"] = str(pdos_file or tdos_file)
-    pdos_metrics = _load_json_artifact(artifacts, "metrics_pdos.json", diagnostics=diagnostics)
-    if pdos_metrics is not None:
-        metrics["pdos_metrics"] = pdos_metrics
+        diagnostics["dos_family_projected_canonical_artifact"] = str(pdos_file or tdos_file)
+    dos_family_metrics = _load_json_artifact(artifacts, "metrics_dos_family.json", diagnostics=diagnostics)
+    if dos_family_metrics is not None:
+        metrics["dos_family_metrics"] = dos_family_metrics
 
     relax_metrics = _load_json_artifact(artifacts, "metrics_relax.json", diagnostics=diagnostics)
     if relax_metrics is not None:
@@ -405,7 +416,7 @@ def _collect_convergence_matches(content: str) -> tuple[list[str], list[str]]:
 
 
 def _workflow_goal(metrics: dict[str, Any]) -> str | None:
-    for key in ("band_metrics", "dos_metrics", "pdos_metrics", "relax_metrics"):
+    for key in ("band_metrics", "dos_metrics", "dos_family_metrics", "relax_metrics"):
         payload = metrics.get(key)
         if isinstance(payload, dict) and payload.get("workflow_goal"):
             return str(payload["workflow_goal"])

@@ -110,9 +110,9 @@ def test_run_dos_enables_pdos_outputs_in_same_task(tmp_path: Path) -> None:
 
     assert result.status == "completed"
     assert result.inputs_snapshot["INPUT"]["out_dos"] == "1"
-    assert result.inputs_snapshot["INPUT"]["out_pdos"] == "1"
+    assert "out_pdos" not in result.inputs_snapshot["INPUT"]
     assert result.metrics["dos_summary"]["points"] == 2
-    assert result.metrics["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert result.metrics["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
 
 
 def _write_fake_abacus(

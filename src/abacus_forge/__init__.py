@@ -2,7 +2,7 @@
 
 from abacus_forge.api import collect, export, prepare, run
 from abacus_forge.band_data import BandData
-from abacus_forge.dos_data import DOSData, PDOSData
+from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.perturbation import perturb_structure
 from abacus_forge.result import CollectionResult, RunResult
@@ -16,6 +16,8 @@ __all__ = [
     "BandData",
     "CollectionResult",
     "DOSData",
+    "DOSFamilyData",
+    "LocalDOSData",
     "LocalRunner",
     "PDOSData",
     "RunResult",

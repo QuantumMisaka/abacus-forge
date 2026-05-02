@@ -379,8 +379,8 @@ def test_cli_dos_task_enables_pdos_outputs_and_export(tmp_path: Path, capsys) ->
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "completed"
     assert payload["inputs_snapshot"]["INPUT"]["out_dos"] == "1"
-    assert payload["inputs_snapshot"]["INPUT"]["out_pdos"] == "1"
-    assert payload["metrics"]["pdos_summary"]["pdos_file"].endswith("PDOS")
+    assert "out_pdos" not in payload["inputs_snapshot"]["INPUT"]
+    assert payload["metrics"]["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
     assert json.loads(export_path.read_text(encoding="utf-8"))["metrics"]["dos_summary"]["points"] == 2
 
 
