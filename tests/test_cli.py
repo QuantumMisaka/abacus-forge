@@ -63,6 +63,50 @@ def test_cli_prepare_collect_and_export(tmp_path: Path, capsys) -> None:
     assert json.loads(export_path.read_text(encoding="utf-8"))["metrics"]["total_energy"] == -6.4
 
 
+def test_cli_new_tasks_help_and_dry_run(tmp_path: Path, capsys) -> None:
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4, 4, 4], pbc=True)
+    structure_path = tmp_path / "Si.xyz"
+    ase_write(structure_path, structure)
+
+    with pytest.raises(SystemExit) as help_exit:
+        main(["cell-relax", "--help"])
+    assert help_exit.value.code == 0
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "md",
+                str(tmp_path / "md-dry-run"),
+                "--structure",
+                str(structure_path),
+                "--structure-format",
+                "xyz",
+                "--dry-run",
+                "--json",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "dry-run"
+    assert payload["inputs_snapshot"]["INPUT"]["calculation"] == "md"
+
+
+def test_cli_composite_eos_prepare(tmp_path: Path, capsys) -> None:
+    structure = Atoms(symbols=["Al"], positions=[[0.0, 0.0, 0.0]], cell=[4, 4, 4], pbc=True)
+    structure_path = tmp_path / "Al.xyz"
+    ase_write(structure_path, structure)
+    workspace = tmp_path / "eos-cli"
+
+    assert main(["prepare", str(workspace), "--structure", str(structure_path), "--structure-format", "xyz"]) == 0
+    capsys.readouterr()
+    assert main(["eos", "prepare", str(workspace), "--start", "0.975", "--end", "1.025", "--step", "0.025", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "prepared"
+    assert payload["summary"]["count"] == 3
+
+
 def test_cli_and_workflow_collection_payloads_are_mappable(tmp_path: Path, capsys) -> None:
     workspace = Workspace(tmp_path / "shared-case")
     workspace.ensure_layout()

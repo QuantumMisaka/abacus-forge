@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 from ase import Atoms
 
-from abacus_forge.tasks import run_band, run_dos, run_scf, run_task
+from abacus_forge.runner import LocalRunner
+from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_scf, run_task
+from abacus_forge.workspace import Workspace
 
 
 def test_run_scf_executes_prepare_run_collect_and_export(tmp_path: Path) -> None:
@@ -113,6 +115,50 @@ def test_run_dos_enables_pdos_outputs_in_same_task(tmp_path: Path) -> None:
     assert "out_pdos" not in result.inputs_snapshot["INPUT"]
     assert result.metrics["dos_summary"]["points"] == 2
     assert result.metrics["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
+
+
+def test_run_cell_relax_and_md_profiles_are_available(tmp_path: Path) -> None:
+    executable = _write_fake_abacus(
+        tmp_path / "fake-abacus",
+        stdout_lines=[
+            "TOTAL ENERGY = -8.4",
+            "SCF CONVERGED",
+        ],
+        extra_writes={"outputs/MD_dump": "STEP 1 TEMP 300 ETOT -8.4\n"},
+    )
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4, 4, 4], pbc=True)
+
+    cell_result = run_cell_relax(tmp_path / "cell-relax-case", structure=structure, executable=str(executable))
+    md_result = run_md(tmp_path / "md-case", structure=structure, executable=str(executable), md_nstep=5)
+
+    assert cell_result.inputs_snapshot["INPUT"]["calculation"] == "cell-relax"
+    assert md_result.inputs_snapshot["INPUT"]["calculation"] == "md"
+    assert md_result.inputs_snapshot["INPUT"]["md_nstep"] == "5"
+    assert md_result.metrics["md_steps"] == 1
+
+
+def test_run_task_dry_run_prepares_workspace_without_executing(tmp_path: Path) -> None:
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4, 4, 4], pbc=True)
+
+    result = run_task(
+        tmp_path / "dry-run-case",
+        task="scf",
+        structure=structure,
+        executable="definitely-missing-abacus",
+        dry_run=True,
+    )
+
+    assert result.status == "dry-run"
+    assert result.inputs_snapshot["INPUT"]["calculation"] == "scf"
+    assert result.diagnostics["command_preview"]["command"][-2:] == ["--input-dir", str(tmp_path / "dry-run-case" / "inputs")]
+
+
+def test_local_runner_classifies_missing_executable(tmp_path: Path) -> None:
+    workspace = tmp_path / "runner-case"
+    result = LocalRunner(executable="definitely-missing-abacus").run(Workspace(workspace))
+
+    assert result.returncode == 127
+    assert result.diagnostics["failure_class"] == "missing_executable"
 
 
 def _write_fake_abacus(

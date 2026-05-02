@@ -167,12 +167,16 @@ def test_sample_artifact_writers_roundtrip_through_data_helpers(tmp_path: Path) 
     assert "OUT.ABACUS/PDOS" in dos_family_written
 
 
-def test_local_runner_raises_clear_error_for_missing_executable(tmp_path: Path) -> None:
+def test_local_runner_reports_clear_error_for_missing_executable(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "missing-exec")
     prepare(workspace, task="scf")
 
-    with pytest.raises(FileNotFoundError, match="definitely-missing-abacus"):
-        run(workspace, runner=LocalRunner(executable="definitely-missing-abacus"))
+    result = run(workspace, runner=LocalRunner(executable="definitely-missing-abacus"))
+
+    assert result.status == "failed"
+    assert result.returncode == 127
+    assert result.diagnostics["failure_class"] == "missing_executable"
+    assert "definitely-missing-abacus" in result.diagnostics["stderr_tail"]
 
 
 def test_sample_analysis_outputs_roundtrip_through_collect(tmp_path: Path) -> None:

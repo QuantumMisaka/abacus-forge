@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from abacus_forge.api import collect, export, prepare, run
+from abacus_forge.composite import post_elastic, post_eos, post_phonon, post_vibration, prepare_elastic, prepare_eos, prepare_phonon, prepare_vibration, run_elastic, run_eos, run_phonon, run_vibration
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
-from abacus_forge.tasks import run_band, run_dos, run_relax, run_scf
+from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_relax, run_scf
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,9 +76,26 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("workspace")
     export_parser.add_argument("--output", required=True)
 
-    for task_name in ("scf", "relax", "band", "dos"):
+    for task_name in ("scf", "relax", "cell-relax", "md", "band", "dos"):
         task_parser = subparsers.add_parser(task_name, help=f"run one {task_name} task end-to-end")
         _add_task_arguments(task_parser, task_name=task_name)
+
+    for task_name in ("eos", "elastic", "vibration", "phonon"):
+        task_parser = subparsers.add_parser(task_name, help=f"run local {task_name} composite task pack")
+        task_subparsers = task_parser.add_subparsers(dest="composite_command", required=True)
+        prepare_subparser = task_subparsers.add_parser("prepare", help=f"prepare {task_name} subdirectories")
+        prepare_subparser.add_argument("workspace")
+        _add_composite_prepare_arguments(prepare_subparser, task_name=task_name)
+        run_subparser = task_subparsers.add_parser("run", help=f"run {task_name} subdirectories locally")
+        run_subparser.add_argument("workspace")
+        _add_composite_run_arguments(run_subparser)
+        post_subparser = task_subparsers.add_parser("post", help=f"postprocess {task_name} subdirectories")
+        post_subparser.add_argument("workspace")
+        if task_name == "phonon":
+            post_subparser.add_argument("--phonopy", default="phonopy")
+            post_subparser.add_argument("--setting-file", default="setting.conf")
+            post_subparser.add_argument("--only-plot", action="store_true")
+        post_subparser.add_argument("--json", action="store_true")
 
     return parser
 
@@ -174,13 +192,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(args.output)
         return 0
 
-    if args.command in {"scf", "relax", "band", "dos"}:
+    if args.command in {"scf", "relax", "cell-relax", "md", "band", "dos"}:
         parameters = _parse_parameters(args.parameter)
         magmom_by_element = _parse_numeric_mapping(args.magmom)
         line_kpoints = _parse_kpt_points(getattr(args, "point", []))
         task_runner = {
             "scf": run_scf,
             "relax": run_relax,
+            "cell-relax": run_cell_relax,
+            "md": run_md,
             "band": run_band,
             "dos": run_dos,
         }[args.command]
@@ -196,6 +216,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "executable": args.executable,
             "mpi": args.mpi,
             "omp": args.omp,
+            "timeout_seconds": args.timeout,
+            "dry_run": args.dry_run,
             "export_destination": args.output,
         }
         if args.command == "band":
@@ -226,9 +248,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                 dos_emax_ev=args.dos_emax_ev,
                 **kwargs,
             )
+        elif args.command == "md":
+            result = task_runner(
+                args.workspace,
+                md_type=args.md_type,
+                md_nstep=args.md_nstep,
+                md_dt=args.md_dt,
+                md_tfirst=args.md_tfirst,
+                md_tlast=args.md_tlast,
+                md_dumpfreq=args.md_dumpfreq,
+                **kwargs,
+            )
         else:
             result = task_runner(args.workspace, **kwargs)
         if args.json:
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(result.status)
+        return 0
+
+    if args.command in {"eos", "elastic", "vibration", "phonon"}:
+        result = _dispatch_composite(args)
+        if getattr(args, "json", False):
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:
             print(result.status)
@@ -329,8 +370,17 @@ def _add_task_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> N
     parser.add_argument("--executable", default="abacus")
     parser.add_argument("--mpi", type=int, default=1)
     parser.add_argument("--omp", type=int, default=1)
+    parser.add_argument("--timeout", type=float)
+    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true", help="print JSON to stdout")
     parser.add_argument("--output", help="optional export path for collected JSON")
+    if task_name == "md":
+        parser.add_argument("--md-type")
+        parser.add_argument("--md-nstep", type=int)
+        parser.add_argument("--md-dt", type=float)
+        parser.add_argument("--md-tfirst", type=float)
+        parser.add_argument("--md-tlast", type=float)
+        parser.add_argument("--md-dumpfreq", type=int)
     if task_name == "band":
         parser.add_argument("--segments", type=int, default=20)
         parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
@@ -352,6 +402,66 @@ def _add_task_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> N
         parser.add_argument("--dos-sigma", type=float)
         parser.add_argument("--dos-emin-ev", type=float)
         parser.add_argument("--dos-emax-ev", type=float)
+
+
+def _add_composite_prepare_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> None:
+    parser.add_argument("--json", action="store_true")
+    if task_name == "eos":
+        parser.add_argument("--start", type=float, default=0.9)
+        parser.add_argument("--end", type=float, default=1.1)
+        parser.add_argument("--step", type=float, default=0.025)
+        parser.add_argument("--calculation")
+    elif task_name == "elastic":
+        parser.add_argument("--normal-strain", type=float, default=0.01)
+        parser.add_argument("--shear-strain", type=float, default=0.01)
+        parser.add_argument("--no-relax-atoms", dest="relax_atoms", action="store_false")
+        parser.set_defaults(relax_atoms=True)
+    elif task_name == "vibration":
+        parser.add_argument("--stepsize", type=float, default=0.01)
+        parser.add_argument("--atom-indices", nargs="+", type=int)
+    elif task_name == "phonon":
+        parser.add_argument("--phonopy", default="phonopy")
+        parser.add_argument("--setting-file", default="setting.conf")
+
+
+def _add_composite_run_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--executable", default="abacus")
+    parser.add_argument("--mpi", type=int, default=1)
+    parser.add_argument("--omp", type=int, default=1)
+    parser.add_argument("--timeout", type=float)
+    parser.add_argument("--max-workers", type=int, default=1)
+    parser.add_argument("--skip-completed", dest="skip_completed", action="store_true")
+    parser.add_argument("--no-skip-completed", dest="skip_completed", action="store_false")
+    parser.set_defaults(skip_completed=True)
+    parser.add_argument("--json", action="store_true")
+
+
+def _dispatch_composite(args: argparse.Namespace):
+    if args.command == "eos":
+        if args.composite_command == "prepare":
+            return prepare_eos(args.workspace, start=args.start, end=args.end, step=args.step, calculation=args.calculation)
+        if args.composite_command == "run":
+            return run_eos(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_eos(args.workspace)
+    if args.command == "elastic":
+        if args.composite_command == "prepare":
+            return prepare_elastic(args.workspace, normal_strain=args.normal_strain, shear_strain=args.shear_strain, relax_atoms=args.relax_atoms)
+        if args.composite_command == "run":
+            return run_elastic(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_elastic(args.workspace)
+    if args.command == "vibration":
+        if args.composite_command == "prepare":
+            return prepare_vibration(args.workspace, stepsize=args.stepsize, atom_indices=args.atom_indices)
+        if args.composite_command == "run":
+            return run_vibration(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_vibration(args.workspace)
+    if args.command == "phonon":
+        if args.composite_command == "prepare":
+            return prepare_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file)
+        if args.composite_command == "run":
+            return run_phonon(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file, only_plot=args.only_plot)
+    raise SystemExit(f"unsupported composite command: {args.command}")
 
 
 if __name__ == "__main__":

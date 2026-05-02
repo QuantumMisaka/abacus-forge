@@ -14,13 +14,22 @@ from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 _REGISTRY = MetricRegistry()
 _KBAR_TO_EV_PER_ANGSTROM3 = 3.398927420868445e-6 * 27.211396132 / 0.52917721092**3
 _KS_SOLVER_LIST = {"DA", "DS", "GE", "GV", "BP", "CG", "CU", "PE", "LA"}
+_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 
 _METRIC_PATTERNS = {
-    "total_energy": re.compile(r"TOTAL\s+ENERGY\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-    "fermi_energy": re.compile(r"FERMI\s+ENERGY\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-    "band_gap": re.compile(r"BAND\s+GAP\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
-    "pressure": re.compile(r"PRESSURE\s*=\s*([-+]?\d+(?:\.\d+)?)", re.IGNORECASE),
+    "total_energy": re.compile(rf"TOTAL\s+ENERGY\s*=\s*({_NUMBER})", re.IGNORECASE),
+    "fermi_energy": re.compile(rf"FERMI\s+ENERGY\s*=\s*({_NUMBER})", re.IGNORECASE),
+    "band_gap": re.compile(rf"BAND\s+GAP\s*=\s*({_NUMBER})", re.IGNORECASE),
+    "pressure": re.compile(rf"PRESSURE\s*=\s*({_NUMBER})", re.IGNORECASE),
     "scf_steps": re.compile(r"SCF\s+STEPS?\s*=\s*(\d+)", re.IGNORECASE),
+    "version": re.compile(r"(?:ABACUS\s+)?VERSION\s*[:=]\s*([^\s]+)", re.IGNORECASE),
+    "natom": re.compile(r"(?:NATOM|TOTAL\s+ATOM\s+NUMBER)\s*[:=]\s*(\d+)", re.IGNORECASE),
+    "nelec": re.compile(rf"(?:NELEC|electron\s+number)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
+    "volume": re.compile(rf"(?:VOLUME|cell\s+volume)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
+    "energy_per_atom": re.compile(rf"(?:ENERGY\s+PER\s+ATOM|E_PER_ATOM)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
+    "relax_steps": re.compile(r"(?:RELAX\s+STEPS?|ION\s+STEPS?)\s*[:=]\s*(\d+)", re.IGNORECASE),
+    "largest_gradient": re.compile(rf"(?:LARGEST\s+GRADIENT|largest\s+force)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
+    "drho_last": re.compile(rf"(?:DRHO_LAST|final\s+drho|drho)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
 }
 
 _POSITIVE_CONVERGENCE_PATTERNS = {
@@ -41,9 +50,16 @@ def _regex_metrics(content: str) -> dict[str, Any]:
         if not match:
             continue
         value = match.group(1)
-        metrics[key] = int(value) if key == "scf_steps" else float(value)
+        if key == "version":
+            metrics[key] = value
+        elif key in {"scf_steps", "natom", "relax_steps"}:
+            metrics[key] = int(value)
+        else:
+            metrics[key] = float(value)
     positive_matches, negative_matches = _collect_convergence_matches(content)
     metrics["converged"] = bool(positive_matches) and not negative_matches
+    metrics["converge"] = metrics["converged"]
+    metrics["normal_end"] = bool(re.search(r"\b(?:NORMAL\s+END|TOTAL\s+TIME)\b", content, re.IGNORECASE))
     return metrics
 
 
@@ -86,6 +102,11 @@ def collect_abacus_metrics(
         diagnostics["warnings"].append("Detected non-converged marker in logs.")
     if output_log_text is None:
         diagnostics["warnings"].append("No stdout-like output log selected.")
+    if "energy_per_atom" not in metrics and metrics.get("total_energy") is not None and metrics.get("natom"):
+        try:
+            metrics["energy_per_atom"] = float(metrics["total_energy"]) / int(metrics["natom"])
+        except Exception:
+            diagnostics["warnings"].append("Failed to derive energy_per_atom from total_energy/natom.")
 
     time_path = _artifact_path(artifacts, "time.json")
     if time_path and time_path.exists():
@@ -164,6 +185,20 @@ def collect_abacus_metrics(
                 None,
             ),
         }
+
+    md_dump = _artifact_path(artifacts, "MD_dump")
+    if md_dump is not None and md_dump.exists():
+        try:
+            metrics["md_dump_summary"] = _md_dump_summary(md_dump)
+            metrics["md_steps"] = metrics["md_dump_summary"]["steps"]
+            if metrics["md_dump_summary"].get("last_temperature") is not None:
+                metrics["md_last_temperature"] = metrics["md_dump_summary"]["last_temperature"]
+            if metrics["md_dump_summary"].get("last_total_energy") is not None:
+                metrics["md_last_total_energy"] = metrics["md_dump_summary"]["last_total_energy"]
+            diagnostics["md_dump"] = str(md_dump)
+        except Exception:
+            diagnostics["warnings"].append("Failed to parse MD_dump.")
+            diagnostics["md_dump_error"] = str(md_dump)
 
     workflow_goal = _workflow_goal(metrics)
     if workflow_goal is not None:
@@ -399,6 +434,31 @@ def _load_json_artifact(
         return None
     diagnostics.setdefault("report_json_files", []).append(str(path))
     return payload if isinstance(payload, dict) else {"value": payload}
+
+
+def _md_dump_summary(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    steps: list[int] = []
+    temperatures: list[float] = []
+    energies: list[float] = []
+    for line in text.splitlines():
+        step_match = re.search(r"(?:STEP|MDSTEP|istep)\s*[:=]?\s*(\d+)", line, re.IGNORECASE)
+        if step_match:
+            steps.append(int(step_match.group(1)))
+        temp_match = re.search(rf"(?:TEMP|temperature)\s*[:=]?\s*({_NUMBER})", line, re.IGNORECASE)
+        if temp_match:
+            temperatures.append(float(temp_match.group(1)))
+        energy_match = re.search(rf"(?:ETOT|TOTAL\s+ENERGY|energy)\s*[:=]?\s*({_NUMBER})", line, re.IGNORECASE)
+        if energy_match:
+            energies.append(float(energy_match.group(1)))
+    inferred_steps = len(steps) if steps else len([line for line in text.splitlines() if line.strip()])
+    return {
+        "steps": inferred_steps,
+        "last_step": steps[-1] if steps else None,
+        "last_temperature": temperatures[-1] if temperatures else None,
+        "last_total_energy": energies[-1] if energies else None,
+        "path": str(path),
+    }
 
 
 def _collect_convergence_matches(content: str) -> tuple[list[str], list[str]]:

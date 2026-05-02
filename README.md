@@ -2,7 +2,7 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，以及 `scf / relax / band / dos` 单任务 CLI 闭环，可作为 Python 库或 CLI 使用。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，以及 `eos / elastic / vibration / phonon` 本地 composite task pack，可作为 Python 库或 CLI 使用。
 
 ## 当前定位
 - 面向单个工作目录的输入准备、输入编辑、程序拉起与结果收集。
@@ -34,8 +34,19 @@
 - `run_relax(...)` / `abacus-forge relax`
 - `run_band(...)` / `abacus-forge band`
 - `run_dos(...)` / `abacus-forge dos`
+- `run_cell_relax(...)` / `abacus-forge cell-relax`
+- `run_md(...)` / `abacus-forge md`
 - `dos` task 会在同一个任务中同时启用 DOS 与 PDOS 输出
 - `band` task 需要显式提供 line-mode K 点路径，不隐式生成高对称路径
+- 所有单任务支持 `--dry-run`，只准备 workspace 并返回命令预览
+
+### 本地 composite task pack
+- `abacus-forge eos prepare|run|post`
+- `abacus-forge elastic prepare|run|post`
+- `abacus-forge vibration prepare|run|post`
+- `abacus-forge phonon prepare|run|post`
+- composite pack 只管理本地子目录和本地 runner；不生成 Slurm/Bohrium/DPDispatcher 配置
+- `phonon` 的 phonopy 能力是可选依赖：`pip install "abacus-forge[phonon]"`
 
 ## 安装与运行方式
 
@@ -153,7 +164,7 @@ print(result.status)
 
 task_result = run_scf("runs/Si_task", structure="Si.cif", executable="abacus")
 dos_result = run_dos("runs/FeO_dos", structure="FeO.cif", executable="abacus")
-print(task_result.status, dos_result.metrics.get("pdos_summary"))
+print(task_result.status, dos_result.metrics.get("dos_family_summary"))
 ```
 
 ## 目录约定

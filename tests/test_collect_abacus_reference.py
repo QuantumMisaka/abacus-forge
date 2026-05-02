@@ -76,3 +76,44 @@ Si
     assert len(result.metrics["virials"]) == 1
     assert result.metrics["virials"][0] == pytest.approx(expected_virial)
     assert result.metrics["total_time"] == pytest.approx(932.927)
+
+
+def test_collect_extracts_native_abacus_and_md_metrics(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "native-metrics").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    workspace.write_text("inputs/KPT", "K_POINTS\n0\nGamma\n1 1 1 0 0 0\n")
+    workspace.write_text(
+        "outputs/stdout.log",
+        "\n".join(
+            [
+                "ABACUS VERSION: 3.8.0",
+                "TOTAL ENERGY = -6.0",
+                "NATOM = 2",
+                "NELEC = 8",
+                "VOLUME = 20.0",
+                "RELAX STEPS = 4",
+                "LARGEST GRADIENT = 0.001",
+                "DRHO_LAST = 1e-8",
+                "SCF CONVERGED",
+                "NORMAL END",
+            ]
+        )
+        + "\n",
+    )
+    workspace.write_text("outputs/stderr.log", "")
+    workspace.write_text("outputs/MD_dump", "STEP 1 TEMP 300 ETOT -5.9\nSTEP 2 TEMP 305 ETOT -6.0\n")
+
+    result = collect(workspace)
+
+    assert result.metrics["version"] == "3.8.0"
+    assert result.metrics["natom"] == 2
+    assert result.metrics["nelec"] == 8
+    assert result.metrics["volume"] == 20.0
+    assert result.metrics["energy_per_atom"] == -3.0
+    assert result.metrics["relax_steps"] == 4
+    assert result.metrics["largest_gradient"] == pytest.approx(0.001)
+    assert result.metrics["drho_last"] == pytest.approx(1e-8)
+    assert result.metrics["normal_end"] is True
+    assert result.metrics["converge"] is True
+    assert result.metrics["md_steps"] == 2
+    assert result.metrics["md_last_temperature"] == 305

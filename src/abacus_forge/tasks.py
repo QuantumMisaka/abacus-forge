@@ -36,6 +36,9 @@ def run_task(
     executable: str = "abacus",
     mpi: int = 1,
     omp: int = 1,
+    timeout_seconds: float | None = None,
+    env_overrides: Mapping[str, str] | None = None,
+    dry_run: bool = False,
     output_log: str | Path | None = None,
     export_destination: str | Path | None = None,
 ) -> CollectionResult:
@@ -75,7 +78,25 @@ def run_task(
 
         write_kpt_line_mode(ws.inputs_dir / "KPT", normalized_line_kpoints, segments=int(line_segments))
 
-    runner = LocalRunner(executable=executable, mpi_ranks=mpi, omp_threads=omp)
+    runner = LocalRunner(
+        executable=executable,
+        mpi_ranks=mpi,
+        omp_threads=omp,
+        timeout_seconds=timeout_seconds,
+        env_overrides=dict(env_overrides or {}),
+    )
+    if dry_run:
+        collected = collect(ws, output_log=output_log)
+        collected.status = "dry-run"
+        collected.diagnostics.setdefault("task", normalized_task)
+        collected.diagnostics["dry_run"] = True
+        collected.diagnostics["command_preview"] = runner.preview(ws)
+        collected.diagnostics["expected_artifacts"] = _expected_artifacts(normalized_task)
+        if export_destination is not None:
+            export(collected, destination=Path(export_destination))
+            collected.diagnostics["export_destination"] = str(Path(export_destination))
+        return collected
+
     run_result = run(ws, runner=runner)
     if normalized_task == "dos":
         _postprocess_dos_outputs(ws)
@@ -107,6 +128,39 @@ def run_relax(workspace: str | Path | Workspace, **kwargs: Any) -> CollectionRes
     """Run one relax task end-to-end."""
 
     return run_task(workspace, task="relax", **kwargs)
+
+
+def run_cell_relax(workspace: str | Path | Workspace, **kwargs: Any) -> CollectionResult:
+    """Run one cell-relax task end-to-end."""
+
+    return run_task(workspace, task="cell-relax", **kwargs)
+
+
+def run_md(
+    workspace: str | Path | Workspace,
+    *,
+    md_type: str | None = None,
+    md_nstep: int | None = None,
+    md_dt: float | None = None,
+    md_tfirst: float | None = None,
+    md_tlast: float | None = None,
+    md_dumpfreq: int | None = None,
+    **kwargs: Any,
+) -> CollectionResult:
+    """Run one molecular dynamics task end-to-end."""
+
+    parameters = dict(kwargs.pop("parameters", {}) or {})
+    for key, value in {
+        "md_type": md_type,
+        "md_nstep": md_nstep,
+        "md_dt": md_dt,
+        "md_tfirst": md_tfirst,
+        "md_tlast": md_tlast,
+        "md_dumpfreq": md_dumpfreq,
+    }.items():
+        if value is not None:
+            parameters[key] = value
+    return run_task(workspace, task="md", parameters=parameters, **kwargs)
 
 
 def run_band(
@@ -251,3 +305,16 @@ def _postprocess_dos_outputs(workspace: Workspace) -> None:
         )
     except Exception:
         return
+
+
+def _expected_artifacts(task: str) -> list[str]:
+    common = ["outputs/stdout.log", "outputs/stderr.log", "reports/metrics.json"]
+    if task == "band":
+        return [*common, "outputs/BANDS_1.dat", "outputs/band.png"]
+    if task == "dos":
+        return [*common, "outputs/DOS1_smearing.dat", "outputs/PDOS", "outputs/TDOS"]
+    if task in {"relax", "cell-relax"}:
+        return [*common, "outputs/OUT.ABACUS/STRU_ION_D"]
+    if task == "md":
+        return [*common, "outputs/MD_dump"]
+    return common

@@ -13,7 +13,7 @@ from abacus_forge.assets import collect_assets, stage_assets
 from abacus_forge.collectors.abacus import collect_abacus_metrics
 from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt_line_mode, write_kpt_mesh
 from abacus_forge.prepare_profiles import build_task_parameters
-from abacus_forge.result import CollectionResult, RunResult
+from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
@@ -194,7 +194,7 @@ def collect(
     )
 
 
-def export(result: RunResult | CollectionResult, destination: str | Path | None = None, *, pretty: bool = True) -> str:
+def export(result: RunResult | CollectionResult | TaskResult, destination: str | Path | None = None, *, pretty: bool = True) -> str:
     """Serialize a structured result as JSON and optionally write it to disk."""
 
     payload = result.to_dict()

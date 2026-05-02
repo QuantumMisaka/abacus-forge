@@ -10,6 +10,16 @@ TASK_DEFAULTS: dict[str, dict[str, Any]] = {
     "scf": {"calculation": "scf"},
     "relax": {"calculation": "relax", "cal_force": 1, "cal_stress": 1},
     "cell-relax": {"calculation": "cell-relax", "cal_force": 1, "cal_stress": 1},
+    "md": {
+        "calculation": "md",
+        "cal_force": 1,
+        "md_type": "nve",
+        "md_nstep": 10,
+        "md_dt": 1.0,
+        "md_tfirst": 300,
+        "md_tlast": 300,
+        "md_dumpfreq": 1,
+    },
     "band": {"calculation": "nscf", "out_band": 1},
     "dos": {"calculation": "nscf", "out_dos": 1},
 }

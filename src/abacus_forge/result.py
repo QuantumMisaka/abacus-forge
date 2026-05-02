@@ -31,6 +31,30 @@ class RunResult:
 
 
 @dataclass(slots=True)
+class TaskResult:
+    """Outcome of one local composite task pack operation."""
+
+    task: str
+    workspace: Path
+    status: str
+    subtasks: list[dict[str, Any]] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, str] = field(default_factory=dict)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task": self.task,
+            "workspace": str(self.workspace),
+            "status": self.status,
+            "subtasks": self.subtasks,
+            "summary": self.summary,
+            "artifacts": self.artifacts,
+            "diagnostics": self.diagnostics,
+        }
+
+
+@dataclass(slots=True)
 class CollectionResult:
     """Parsed metrics and file index from one workspace."""
 
