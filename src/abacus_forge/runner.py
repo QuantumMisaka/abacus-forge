@@ -34,7 +34,6 @@ class LocalRunner:
             command.extend(["mpirun", "-np", str(self.mpi_ranks)])
         command.append(self.executable)
         command.extend(self.extra_args)
-        command.extend(["--input-dir", str(workspace.inputs_dir)])
         return command
 
     def preview(self, workspace: Workspace) -> dict[str, object]:
@@ -101,7 +100,7 @@ class LocalRunner:
         try:
             completed = subprocess.run(
                 command,
-                cwd=workspace.root,
+                cwd=workspace.inputs_dir,
                 check=False,
                 capture_output=True,
                 text=True,

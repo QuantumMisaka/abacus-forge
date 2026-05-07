@@ -20,8 +20,8 @@ TASK_DEFAULTS: dict[str, dict[str, Any]] = {
         "md_tlast": 300,
         "md_dumpfreq": 1,
     },
-    "band": {"calculation": "nscf", "out_band": 1},
-    "dos": {"calculation": "nscf", "out_dos": 1},
+    "band": {"calculation": "scf", "out_mat_r": 1, "out_mat_hs2": 1},
+    "dos": {"calculation": "scf", "out_dos": 1},
 }
 
 _FORBIDDEN_DOS_PARAMETERS = {"dos_scale", "dos_nche"}
