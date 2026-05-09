@@ -46,9 +46,7 @@ def _write_fake_abacus(path: Path) -> Path:
         [
             "#!/usr/bin/env python3",
             "from pathlib import Path",
-            "import sys",
-            "args = sys.argv[1:]",
-            "input_dir = Path(args[args.index('--input-dir') + 1])",
+            "input_dir = Path.cwd()",
             "workspace = input_dir.parent",
             "text = (input_dir / 'STRU').read_text()",
             "volume = 64.0",

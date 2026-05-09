@@ -9,7 +9,7 @@ from typing import Any
 from ase import Atoms
 
 from abacus_forge.api import collect, export, prepare, run
-from abacus_forge.result import CollectionResult
+from abacus_forge.result import CollectionResult, TaskResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
@@ -98,10 +98,13 @@ def run_task(
         return collected
 
     run_result = run(ws, runner=runner)
+    postprocess_diagnostics: dict[str, Any] = {}
     if normalized_task == "dos":
-        _postprocess_dos_outputs(ws)
+        postprocess_diagnostics = _postprocess_dos_outputs(ws)
     collected = collect(ws, output_log=output_log)
     collected.diagnostics.setdefault("task", normalized_task)
+    if postprocess_diagnostics:
+        collected.diagnostics["dos_postprocess"] = postprocess_diagnostics
     collected.diagnostics.setdefault("task_runner", {})
     collected.diagnostics["task_runner"].update(
         {
@@ -246,22 +249,57 @@ def run_dos(
     return run_task(workspace, task="dos", parameters=parameters, metadata=metadata, **kwargs)
 
 
+def run_band_sequence(
+    workspace: str | Path | Workspace,
+    *,
+    line_kpoints: Sequence[Mapping[str, Any] | tuple[Iterable[float], str | None]],
+    line_segments: int = 20,
+    **kwargs: Any,
+) -> TaskResult:
+    """Run a local SCF -> NSCF band sequence and return a pack-level result."""
+
+    return _run_scf_nscf_sequence(
+        workspace,
+        sequence_task="band_sequence",
+        nscf_task="band",
+        line_kpoints=line_kpoints,
+        line_segments=line_segments,
+        **kwargs,
+    )
+
+
+def run_dos_sequence(workspace: str | Path | Workspace, **kwargs: Any) -> TaskResult:
+    """Run a local SCF -> NSCF DOS sequence and return a pack-level result."""
+
+    return _run_scf_nscf_sequence(
+        workspace,
+        sequence_task="dos_sequence",
+        nscf_task="dos",
+        **kwargs,
+    )
+
+
 def _normalize_line_kpoints(
     points: Sequence[Mapping[str, Any] | tuple[Iterable[float], str | None]] | None,
-) -> list[tuple[list[float], str | None]] | None:
+) -> list[dict[str, Any]] | None:
     if not points:
         return None
-    normalized: list[tuple[list[float], str | None]] = []
+    normalized: list[dict[str, Any]] = []
     for point in points:
         if isinstance(point, Mapping):
             coords = [float(value) for value in point["coords"]]
             label = point.get("label")
+            npoints = point.get("npoints")
         else:
             coords, label = point
             coords = [float(value) for value in coords]
+            npoints = None
         if len(coords) != 3:
             raise ValueError(f"line-mode KPT point requires 3 coordinates, got {coords!r}")
-        normalized.append((coords, str(label) if label is not None else None))
+        payload = {"coords": coords, "label": str(label) if label is not None else None}
+        if npoints is not None:
+            payload["npoints"] = int(npoints)
+        normalized.append(payload)
     return normalized
 
 
@@ -274,24 +312,156 @@ def _read_workspace_metadata(workspace: Workspace) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
-def _postprocess_dos_outputs(workspace: Workspace) -> None:
+def _run_scf_nscf_sequence(
+    workspace: str | Path | Workspace,
+    *,
+    sequence_task: str,
+    nscf_task: str,
+    structure: str | Path | AbacusStructure | Atoms | Any | None = None,
+    structure_format: str | None = None,
+    parameters: Mapping[str, Any] | None = None,
+    scf_parameters: Mapping[str, Any] | None = None,
+    nscf_parameters: Mapping[str, Any] | None = None,
+    remove_parameters: Iterable[str] | None = None,
+    kpoints: Iterable[int] | None = None,
+    line_kpoints: Sequence[Mapping[str, Any] | tuple[Iterable[float], str | None]] | None = None,
+    line_segments: int = 20,
+    metadata: Mapping[str, Any] | None = None,
+    pseudo_path: str | Path | None = None,
+    orbital_path: str | Path | None = None,
+    asset_mode: str = "link",
+    ensure_pbc: bool = False,
+    structure_standardization: str | None = None,
+    magmom_by_element: Mapping[str, float] | None = None,
+    executable: str = "abacus",
+    mpi: int = 1,
+    omp: int = 1,
+    timeout_seconds: float | None = None,
+    env_overrides: Mapping[str, str] | None = None,
+    dry_run: bool = False,
+    export_destination: str | Path | None = None,
+) -> TaskResult:
+    root = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
+    root.ensure_layout()
+    base_parameters = dict(parameters or {})
+    scf_ws = Workspace(root.root / "scf")
+    nscf_ws = Workspace(root.root / "nscf")
+    common = {
+        "structure": structure,
+        "structure_format": structure_format,
+        "remove_parameters": remove_parameters,
+        "kpoints": kpoints,
+        "metadata": dict(metadata or {}),
+        "pseudo_path": pseudo_path,
+        "orbital_path": orbital_path,
+        "asset_mode": asset_mode,
+        "ensure_pbc": ensure_pbc,
+        "structure_standardization": structure_standardization,
+        "magmom_by_element": dict(magmom_by_element or {}) or None,
+    }
+    prepare(
+        scf_ws,
+        task="scf",
+        parameters={**base_parameters, **dict(scf_parameters or {})},
+        **common,
+    )
+    prepare(
+        nscf_ws,
+        task=nscf_task,
+        parameters={**base_parameters, **dict(nscf_parameters or {})},
+        kpt_mode="line" if nscf_task == "band" else "mesh",
+        line_kpoints=_normalize_line_kpoints(line_kpoints),
+        **common,
+    )
+    if nscf_task == "band":
+        if not line_kpoints:
+            raise ValueError("band sequence requires explicit line-mode KPT points")
+        from abacus_forge.input_io import write_kpt_line_mode
+
+        write_kpt_line_mode(nscf_ws.inputs_dir / "KPT", _normalize_line_kpoints(line_kpoints) or [], segments=line_segments)
+
+    runner = LocalRunner(
+        executable=executable,
+        mpi_ranks=mpi,
+        omp_threads=omp,
+        timeout_seconds=timeout_seconds,
+        env_overrides=dict(env_overrides or {}),
+    )
+    run_results = []
+    if dry_run:
+        scf_collected = collect(scf_ws)
+        nscf_collected = collect(nscf_ws)
+    else:
+        run_results = [run(scf_ws, runner=runner), run(nscf_ws, runner=runner)]
+        postprocess_diagnostics = _postprocess_dos_outputs(nscf_ws) if nscf_task == "dos" else {}
+        scf_collected = collect(scf_ws)
+        nscf_collected = collect(nscf_ws)
+        if postprocess_diagnostics:
+            nscf_collected.diagnostics["dos_postprocess"] = postprocess_diagnostics
+    subtasks = [
+        _collection_subtask_payload("scf", scf_collected),
+        _collection_subtask_payload(nscf_task, nscf_collected),
+    ]
+    if run_results:
+        for payload, run_result in zip(subtasks, run_results, strict=False):
+            payload["run"] = run_result.to_dict()
+    status = "completed" if all(item["status"] == "completed" for item in subtasks) else "failed"
+    if dry_run:
+        status = "dry-run"
+    result = TaskResult(
+        task=sequence_task,
+        workspace=root.root,
+        status=status,
+        subtasks=subtasks,
+        summary={
+            "scf_status": scf_collected.status,
+            "nscf_status": nscf_collected.status,
+            "nscf_metrics": nscf_collected.metrics,
+        },
+        artifacts={f"scf/{key}": value for key, value in scf_collected.artifacts.items()}
+        | {f"nscf/{key}": value for key, value in nscf_collected.artifacts.items()},
+        diagnostics={"runner": runner.preview(nscf_ws), "dry_run": dry_run},
+    )
+    if export_destination is not None:
+        export(result, destination=Path(export_destination))
+        result.diagnostics["export_destination"] = str(Path(export_destination))
+    return result
+
+
+def _collection_subtask_payload(task: str, result: CollectionResult) -> dict[str, Any]:
+    return {
+        "task": task,
+        "workspace": str(result.workspace),
+        "status": result.status,
+        "metrics": result.metrics,
+        "diagnostics": result.diagnostics,
+    }
+
+
+def _postprocess_dos_outputs(workspace: Workspace) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {"searched_dirs": [str(path) for path in _dos_output_dirs(workspace)]}
     try:
         from abacus_forge.dos_data import DOSData, PDOSData
         from abacus_forge.dos_postprocess import postprocess_dos_family
 
         metadata = _read_workspace_metadata(workspace).get("metadata", {})
         controls = dict(metadata.get("dos_family_controls", {})) if isinstance(metadata, dict) else {}
-        dos_files = sorted(workspace.outputs_dir.glob("DOS*_smearing.dat"))
+        dos_files = _find_dos_artifacts(workspace, "DOS*_smearing.dat")
+        diagnostics["dos_files"] = [str(path) for path in dos_files]
         total_dos = DOSData.from_paths(dos_files) if dos_files and controls.get("include_tdos", True) else None
-        pdos_path = workspace.outputs_dir / "PDOS"
+        pdos_path = _find_first_dos_artifact(workspace, "PDOS")
+        tdos_path = _find_first_dos_artifact(workspace, "TDOS")
+        diagnostics["pdos_path"] = str(pdos_path) if pdos_path is not None else None
+        diagnostics["tdos_path"] = str(tdos_path) if tdos_path is not None else None
         projected_dos = (
-            PDOSData.from_path(pdos_path, tdos_path=workspace.outputs_dir / "TDOS")
-            if pdos_path.exists() and controls.get("include_pdos", True)
+            PDOSData.from_path(pdos_path, tdos_path=tdos_path)
+            if pdos_path is not None and controls.get("include_pdos", True)
             else None
         )
         if total_dos is None and (projected_dos is None or not projected_dos.projected_dos):
-            return
-        postprocess_dos_family(
+            diagnostics["status"] = "skipped"
+            return diagnostics
+        artifacts = postprocess_dos_family(
             output_dir=workspace.outputs_dir,
             total_dos=total_dos,
             projected_dos=projected_dos if projected_dos and projected_dos.projected_dos else None,
@@ -303,8 +473,44 @@ def _postprocess_dos_outputs(workspace: Workspace) -> None:
             save_plot=bool(controls.get("save_plot", True)),
             suffix=controls.get("suffix"),
         )
-    except Exception:
-        return
+        diagnostics["status"] = "completed"
+        diagnostics["artifacts"] = artifacts
+        return diagnostics
+    except Exception as exc:
+        diagnostics["status"] = "failed"
+        diagnostics["error"] = str(exc)
+        workspace.write_json("reports/dos_postprocess_diagnostics.json", diagnostics)
+        return diagnostics
+
+
+def _dos_output_dirs(workspace: Workspace) -> list[Path]:
+    candidates: list[Path] = []
+    for base in (workspace.inputs_dir, workspace.outputs_dir):
+        if base.exists():
+            candidates.extend(path for path in sorted(base.glob("OUT.*")) if path.is_dir())
+    candidates.append(workspace.outputs_dir)
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in candidates:
+        if path not in seen:
+            unique.append(path)
+            seen.add(path)
+    return unique
+
+
+def _find_dos_artifacts(workspace: Workspace, pattern: str) -> list[Path]:
+    matches: list[Path] = []
+    for directory in _dos_output_dirs(workspace):
+        matches.extend(sorted(path for path in directory.glob(pattern) if path.is_file()))
+    return matches
+
+
+def _find_first_dos_artifact(workspace: Workspace, name: str) -> Path | None:
+    for directory in _dos_output_dirs(workspace):
+        candidate = directory / name
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
 
 
 def _expected_artifacts(task: str) -> list[str]:

@@ -7,11 +7,15 @@
 - 已形成 `prepare -> modify -> run -> collect -> export` 的最小执行闭环。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
+- `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
+- KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
+- 当前 Forge 测试基线：`PYTHONNOUSERSITE=1 conda run -n paimon python -m pytest deps/abacus-forge/tests -q` 为 `78 passed`。
 
 ## 近期方向
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
+- 在 SAI 计算节点或外层 Slurm allocation 中用真实 ABACUS LTS 对 NiO/Si 小案例执行 `scf`、`relax`、`dos_sequence`、`band_sequence` smoke；调度语义仍留在 Forge 外层。
 
 ## 中期方向
 - 进一步补齐更多 ABACUS 输出指标解析。
@@ -19,6 +23,6 @@
 - 在保持单工作目录原子语义的前提下优化本地执行体验。
 
 ## 明确延后项
-- `phonon` / `elastic` 等厚工作流不在 Forge 当前阶段直接实现。
+- `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
 - 不在 Forge 中引入平台化 UI 或任务管理逻辑。

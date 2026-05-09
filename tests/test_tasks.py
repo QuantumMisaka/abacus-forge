@@ -8,7 +8,7 @@ import pytest
 from ase import Atoms
 
 from abacus_forge.runner import LocalRunner
-from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_scf, run_task
+from abacus_forge.tasks import run_band, run_band_sequence, run_cell_relax, run_dos, run_dos_sequence, run_md, run_scf, run_task
 from abacus_forge.workspace import Workspace
 
 
@@ -81,6 +81,8 @@ def test_run_band_writes_line_mode_kpt_and_collects(tmp_path: Path) -> None:
     assert result.inputs_snapshot["INPUT"]["out_band"] == "1"
     assert result.inputs_snapshot["KPT_PARSED"]["mode"] == "line"
     assert result.inputs_snapshot["KPT_PARSED"]["segments"] == 24
+    assert result.inputs_snapshot["KPT_PARSED"]["points"][0]["npoints"] == 24
+    assert result.inputs_snapshot["KPT_PARSED"]["points"][1]["npoints"] == 1
     assert result.metrics["band_summary"]["num_points"] == 2
 
 
@@ -150,7 +152,53 @@ def test_run_task_dry_run_prepares_workspace_without_executing(tmp_path: Path) -
 
     assert result.status == "dry-run"
     assert result.inputs_snapshot["INPUT"]["calculation"] == "scf"
-    assert result.diagnostics["command_preview"]["command"][-2:] == ["--input-dir", str(tmp_path / "dry-run-case" / "inputs")]
+    assert result.diagnostics["command_preview"]["command"] == ["definitely-missing-abacus"]
+    assert result.diagnostics["command_preview"]["cwd"] == str(tmp_path / "dry-run-case" / "inputs")
+
+
+def test_run_band_sequence_runs_scf_then_nscf(tmp_path: Path) -> None:
+    executable = _write_fake_abacus(
+        tmp_path / "fake-band-sequence",
+        stdout_lines=["TOTAL ENERGY = -9.2", "BAND GAP = 1.3", "SCF CONVERGED"],
+        extra_writes={"outputs/BANDS_1.dat": "0.0 -1.0 0.5\n1.0 -0.9 0.8\n"},
+    )
+    structure = Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4, 4, 4], pbc=True)
+
+    result = run_band_sequence(
+        tmp_path / "band-sequence",
+        structure=structure,
+        executable=str(executable),
+        line_segments=12,
+        line_kpoints=[
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ],
+    )
+
+    assert result.status == "completed"
+    assert [item["task"] for item in result.subtasks] == ["scf", "band"]
+    assert result.summary["nscf_metrics"]["band_summary"]["num_points"] == 2
+    assert "nscf/outputs/BANDS_1.dat" in result.artifacts
+
+
+def test_run_dos_sequence_postprocesses_outputs_from_out_dir(tmp_path: Path) -> None:
+    executable = _write_fake_abacus(
+        tmp_path / "fake-dos-sequence",
+        stdout_lines=["TOTAL ENERGY = -7.8", "SCF CONVERGED"],
+        extra_writes={
+            "inputs/OUT.ABACUS/DOS1_smearing.dat": "-5.0 0.1\n0.0 1.2\n",
+            "inputs/OUT.ABACUS/PDOS": "# species projected DOS\nFe 0.6\nO 0.4\n",
+            "inputs/OUT.ABACUS/TDOS": "# total DOS\n-1.0 0.1\n0.0 1.0\n",
+        },
+    )
+    structure = Atoms(symbols=["Fe", "O"], positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True)
+
+    result = run_dos_sequence(tmp_path / "dos-sequence", structure=structure, executable=str(executable))
+
+    assert result.status == "completed"
+    assert [item["task"] for item in result.subtasks] == ["scf", "dos"]
+    assert result.summary["nscf_metrics"]["dos_summary"]["points"] == 2
+    assert result.subtasks[1]["diagnostics"]["dos_postprocess"]["status"] in {"completed", "skipped"}
 
 
 def test_local_runner_classifies_missing_executable(tmp_path: Path) -> None:
@@ -173,10 +221,7 @@ def _write_fake_abacus(
         "from pathlib import Path",
         "import sys",
         "args = sys.argv[1:]",
-        "input_dir = Path('.')",
-        "if '--input-dir' in args:",
-        "    input_dir = Path(args[args.index('--input-dir') + 1])",
-        "workspace = input_dir.parent",
+        "workspace = Path.cwd().parent",
     ]
     for relative_path, content in extra_writes.items():
         literal_path = repr(relative_path)

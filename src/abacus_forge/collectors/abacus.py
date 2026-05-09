@@ -397,7 +397,7 @@ def _artifact_path(artifacts: dict[str, str], suffix: str) -> Path | None:
             candidates.append((relative, Path(path)))
     if not candidates:
         return None
-    candidates.sort(key=lambda item: (item[0].count("/"), item[0]))
+    candidates.sort(key=lambda item: (_artifact_priority(item[0]), item[0].count("/"), item[0]))
     return candidates[0][1]
 
 
@@ -411,10 +411,21 @@ def _artifact_paths_matching(artifacts: dict[str, str], contains: str, suffix: s
             matches.append((relative, Path(path)))
 
     selected: dict[str, tuple[str, Path]] = {}
-    for relative, path in sorted(matches, key=lambda item: (Path(item[0]).name, item[0].count("/"), item[0])):
+    for relative, path in sorted(matches, key=lambda item: (Path(item[0]).name, _artifact_priority(item[0]), item[0].count("/"), item[0])):
         basename = Path(relative).name
         selected.setdefault(basename, (relative, path))
     return [path for _, path in sorted(selected.values(), key=lambda item: item[0])]
+
+
+def _artifact_priority(relative: str) -> int:
+    normalized = relative.replace("\\", "/")
+    if normalized.startswith("inputs/OUT."):
+        return 0
+    if normalized.startswith("outputs/OUT."):
+        return 1
+    if normalized.startswith("outputs/"):
+        return 2
+    return 3
 
 
 def _load_json_artifact(

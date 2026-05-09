@@ -43,7 +43,14 @@
 - `run_md(...)` / `abacus-forge md`
 - `dos` task 会在同一个任务中同时启用 DOS 与 PDOS 输出
 - `band` task 需要显式提供 line-mode K 点路径，不隐式生成高对称路径
+- `band` / `dos` 的单任务 `prepare` 生成 ABACUS NSCF 输入；完整电子结构流程请使用 sequence API 组合 SCF 与 NSCF
 - 所有单任务支持 `--dry-run`，只准备 workspace 并返回命令预览
+
+### 本地 sequence API
+
+- `run_band_sequence(...)`：本地组合 `SCF -> NSCF band -> collect`
+- `run_dos_sequence(...)`：本地组合 `SCF -> NSCF DOS/PDOS -> collect/postprocess`
+- sequence API 只管理本地子目录，不引入 Slurm、AiiDA、MCP/ATP 或前端语义
 
 ### 本地 composite task pack
 
@@ -145,6 +152,8 @@ PYTHONPATH=src python -m abacus_forge.cli modify-kpt KPT.line \
   --point 0.5,0,0:X
 ```
 
+Forge 写出的 line-mode `KPT` 使用 ABACUS 原生格式：第二行为高对称点数量，每个点行为 `kx ky kz npoints [#label]`。旧的 `segments` payload 仍兼容；未显式提供 `npoints` 时，除最后一点外使用 `segments`，最后一点使用 `1`。
+
 ### 8. 运行与收集
 
 ```bash
@@ -162,7 +171,7 @@ PYTHONPATH=src python -m abacus_forge.cli export runs/Si_scf --output result.jso
 from abacus_forge.api import collect, prepare
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.runner import LocalRunner
-from abacus_forge.tasks import run_dos, run_scf
+from abacus_forge.tasks import run_band_sequence, run_dos, run_dos_sequence, run_scf
 
 workspace = prepare(
     "runs/Si_scf",
@@ -182,7 +191,20 @@ print(result.status)
 task_result = run_scf("runs/Si_task", structure="Si.cif", executable="abacus")
 dos_result = run_dos("runs/FeO_dos", structure="FeO.cif", executable="abacus")
 print(task_result.status, dos_result.metrics.get("dos_family_summary"))
+
+band_sequence = run_band_sequence(
+    "runs/Si_band_sequence",
+    structure="Si.cif",
+    executable="abacus",
+    line_kpoints=[
+        {"coords": [0, 0, 0], "npoints": 20, "label": "Gamma"},
+        {"coords": [0.5, 0, 0], "npoints": 1, "label": "X"},
+    ],
+)
+dos_sequence = run_dos_sequence("runs/FeO_dos_sequence", structure="FeO.cif", executable="abacus")
 ```
+
+`LocalRunner` 在 `inputs/` 目录下直接执行 ABACUS 可执行文件，不默认注入 `--input-dir` 等非 ABACUS 参数。
 
 ## 目录约定
 
@@ -206,4 +228,3 @@ runs/<run_id>/
 - 小步提交，保持边界清晰
 - 为解析器和 CLI 补充可复现测试
 - 开发前先阅读 [AGENTS.md](./AGENTS.md)
-

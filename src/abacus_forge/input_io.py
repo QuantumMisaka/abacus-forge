@@ -50,15 +50,19 @@ def write_kpt_mesh(path: str | Path, mesh: Iterable[int], shifts: Iterable[int] 
 
 def write_kpt_line_mode(
     path: str | Path,
-    points: Iterable[tuple[Iterable[float], str | None]],
+    points: Iterable[Mapping[str, Any] | tuple[Iterable[float], str | None]],
     *,
     segments: int = 20,
 ) -> Path:
     """Write a line-mode ABACUS ``KPT`` file from points and optional labels."""
-    rows = ["K_POINTS", str(segments), "Line"]
-    for coords, label in points:
+    normalized = _normalize_line_points(points, segments=segments)
+    rows = ["K_POINTS", str(len(normalized)), "Line"]
+    for point in normalized:
+        coords = point["coords"]
+        label = point.get("label")
+        npoints = int(point["npoints"])
         suffix = f" #{label}" if label else ""
-        rows.append(f"{' '.join(f'{float(value):.8f}' for value in coords)}{suffix}")
+        rows.append(f"{' '.join(f'{float(value):.8f}' for value in coords)} {npoints}{suffix}")
     target = Path(path)
     target.write_text("\n".join(rows) + "\n", encoding="utf-8")
     return target
@@ -84,14 +88,20 @@ def read_kpt(path: str | Path) -> dict[str, Any]:
         points: list[dict[str, Any]] = []
         for line in lines[3:]:
             coords_text, _, label_text = line.partition("#")
-            coords = [float(value) for value in coords_text.split()]
-            if len(coords) != 3:
-                raise ValueError(f"{path} line-mode KPT point must have 3 coordinates, got {len(coords)}")
+            parts = coords_text.split()
+            if len(parts) == 3:
+                coords = [float(value) for value in parts]
+                npoints = int(lines[1])
+            elif len(parts) == 4:
+                coords = [float(value) for value in parts[:3]]
+                npoints = int(parts[3])
+            else:
+                raise ValueError(f"{path} line-mode KPT point must have 3 coordinates plus optional npoints, got {len(parts)}")
             label = label_text.strip() or None
-            points.append({"coords": coords, "label": label})
+            points.append({"coords": coords, "npoints": npoints, "label": label})
         return {
             "mode": "line",
-            "segments": int(lines[1]),
+            "segments": points[0]["npoints"] if points else int(lines[1]),
             "points": points,
         }
     raise ValueError(f"{path} unsupported KPT mode {lines[2]!r}")
@@ -103,9 +113,28 @@ def write_kpt(path: str | Path, payload: Mapping[str, Any]) -> Path:
     if mode == "mesh":
         return write_kpt_mesh(path, payload["mesh"], payload.get("shifts"))
     if mode == "line":
-        points = [
-            (point["coords"], point.get("label"))
-            for point in payload.get("points", [])
-        ]
-        return write_kpt_line_mode(path, points, segments=int(payload.get("segments", 20)))
+        return write_kpt_line_mode(path, payload.get("points", []), segments=int(payload.get("segments", 20)))
     raise ValueError(f"Unsupported KPT payload mode: {payload.get('mode')!r}")
+
+
+def _normalize_line_points(
+    points: Iterable[Mapping[str, Any] | tuple[Iterable[float], str | None]],
+    *,
+    segments: int,
+) -> list[dict[str, Any]]:
+    raw_points = list(points)
+    normalized: list[dict[str, Any]] = []
+    last_index = len(raw_points) - 1
+    for index, point in enumerate(raw_points):
+        if isinstance(point, Mapping):
+            coords = [float(value) for value in point["coords"]]
+            label = point.get("label")
+            npoints = int(point.get("npoints", 1 if index == last_index else segments))
+        else:
+            coords_raw, label = point
+            coords = [float(value) for value in coords_raw]
+            npoints = 1 if index == last_index else int(segments)
+        if len(coords) != 3:
+            raise ValueError(f"line-mode KPT point requires 3 coordinates, got {coords!r}")
+        normalized.append({"coords": coords, "npoints": npoints, "label": str(label) if label is not None else None})
+    return normalized

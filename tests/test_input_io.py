@@ -25,18 +25,22 @@ def test_kpt_mesh_write(tmp_path: Path) -> None:
 
 def test_kpt_line_mode_write(tmp_path: Path) -> None:
     path = tmp_path / "KPT_LINE"
-    points = [([0.0, 0.0, 0.0], "Gamma"), ([0.5, 0.5, 0.5], "L")]
+    points = [
+        {"coords": [0.0, 0.0, 0.0], "npoints": 10, "label": "Gamma"},
+        {"coords": [0.5, 0.5, 0.5], "npoints": 1, "label": "L"},
+    ]
     write_kpt_line_mode(path, points, segments=10)
     text = path.read_text()
     assert "Line" in text
-    assert "10" in text
+    assert text.splitlines()[1] == "2"
+    assert "0.00000000 0.00000000 0.00000000 10 #Gamma" in text
     assert "Gamma" in text
     assert "L" in text
     payload = read_kpt(path)
     assert payload["mode"] == "line"
     assert payload["segments"] == 10
-    assert payload["points"][0] == {"coords": [0.0, 0.0, 0.0], "label": "Gamma"}
-    assert payload["points"][1] == {"coords": [0.5, 0.5, 0.5], "label": "L"}
+    assert payload["points"][0] == {"coords": [0.0, 0.0, 0.0], "npoints": 10, "label": "Gamma"}
+    assert payload["points"][1] == {"coords": [0.5, 0.5, 0.5], "npoints": 1, "label": "L"}
 
 
 def test_write_kpt_from_payload_and_modify_mesh(tmp_path: Path) -> None:
@@ -69,7 +73,7 @@ def test_modify_kpt_line_mode_from_mapping(tmp_path: Path) -> None:
 
     assert modified["mode"] == "line"
     assert modified["segments"] == 20
-    assert modified["points"][1] == {"coords": [0.5, 0.5, 0.0], "label": "M"}
+    assert modified["points"][1] == {"coords": [0.5, 0.5, 0.0], "npoints": 1, "label": "M"}
     assert read_kpt(tmp_path / "KPT.line") == modified
 
 def test_validation(tmp_path: Path) -> None:

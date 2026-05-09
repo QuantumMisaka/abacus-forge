@@ -112,7 +112,15 @@ metrics["pdos_artifacts"] = [...]
 
 ### 2.3 当前测试覆盖了什么、没有覆盖什么
 
-运行 `pytest deps/abacus-forge/tests -q`：**53 passed in 0.95s**
+历史审查时运行 `pytest deps/abacus-forge/tests -q`：**53 passed in 0.95s**。
+
+2026-05-08 补强后，在 `paimon` conda 环境运行：
+
+```bash
+PYTHONNOUSERSITE=1 conda run -n paimon python -m pytest deps/abacus-forge/tests -q
+```
+
+结果为：**78 passed**。新增覆盖包括 ABACUS line-mode KPT `npoints` 格式、`band`/`dos` NSCF prepare 语义、LocalRunner cwd 语义、DOS/PDOS `OUT.*` 产物发现，以及 `run_band_sequence` / `run_dos_sequence` 本地 `SCF -> NSCF` 组合。
 
 测试覆盖了：
 - INPUT/KPT/STRU 三件套的读写

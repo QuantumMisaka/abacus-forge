@@ -334,8 +334,8 @@ def test_cli_modify_kpt_supports_mesh_and_line_modes(tmp_path: Path, capsys) -> 
         "mode": "line",
         "segments": 20,
         "points": [
-            {"coords": [0.0, 0.0, 0.0], "label": "Gamma"},
-            {"coords": [0.5, 0.5, 0.0], "label": "M"},
+            {"coords": [0.0, 0.0, 0.0], "npoints": 20, "label": "Gamma"},
+            {"coords": [0.5, 0.5, 0.0], "npoints": 1, "label": "M"},
         ],
     }
 
@@ -440,10 +440,7 @@ def _write_fake_abacus(
         "from pathlib import Path",
         "import sys",
         "args = sys.argv[1:]",
-        "input_dir = Path('.')",
-        "if '--input-dir' in args:",
-        "    input_dir = Path(args[args.index('--input-dir') + 1])",
-        "workspace = input_dir.parent",
+        "workspace = Path.cwd().parent",
     ]
     for relative_path, content in extra_writes.items():
         body.extend(

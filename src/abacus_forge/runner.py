@@ -41,7 +41,7 @@ class LocalRunner:
 
         return {
             "command": self.build_command(workspace),
-            "cwd": str(workspace.root),
+            "cwd": str(workspace.inputs_dir),
             "env": self._run_environment(),
             "timeout_seconds": self.timeout_seconds,
         }

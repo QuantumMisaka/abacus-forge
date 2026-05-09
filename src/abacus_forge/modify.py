@@ -107,13 +107,16 @@ def modify_kpt(
     if shifts is not None:
         payload["shifts"] = [int(value) for value in shifts]
     if points is not None:
-        payload["points"] = [
-            {
+        normalized_points = []
+        for point in points:
+            normalized = {
                 "coords": [float(value) for value in point["coords"]],
                 "label": point.get("label"),
             }
-            for point in points
-        ]
+            if "npoints" in point:
+                normalized["npoints"] = int(point["npoints"])
+            normalized_points.append(normalized)
+        payload["points"] = normalized_points
     if segments is not None:
         payload["segments"] = int(segments)
 
@@ -202,16 +205,24 @@ def _normalize_kpt_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         return {"mode": "mesh", "mesh": mesh, "shifts": shifts}
     if mode == "line":
         points = []
-        for point in payload.get("points", []):
+        raw_points = list(payload.get("points", []))
+        last_index = len(raw_points) - 1
+        segments = int(payload.get("segments", 20))
+        for index, point in enumerate(raw_points):
             coords = [float(value) for value in point["coords"]]
             if len(coords) != 3:
                 raise ValueError("line-mode KPT point requires 3 coordinates")
-            points.append({"coords": coords, "label": point.get("label")})
+            normalized = {
+                "coords": coords,
+                "npoints": int(point.get("npoints", 1 if index == last_index else segments)),
+                "label": point.get("label"),
+            }
+            points.append(normalized)
         if not points:
             raise ValueError("line-mode KPT requires at least one point")
         return {
             "mode": "line",
-            "segments": int(payload.get("segments", 20)),
+            "segments": segments,
             "points": points,
         }
     raise ValueError(f"Unsupported KPT payload mode: {payload.get('mode')!r}")
