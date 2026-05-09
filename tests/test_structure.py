@@ -66,6 +66,24 @@ def test_structure_from_mapping_and_to_stru_roundtrip(tmp_path: Path) -> None:
     assert roundtrip.atoms.info["abacus_move_flags"] == [[1, 1, 1], [1, 1, 1]]
 
 
+def test_to_stru_writes_orbital_map_for_lcao_inputs() -> None:
+    structure = AbacusStructure.from_input(Atoms(symbols=["Ni", "O"], positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True))
+
+    text = structure.to_stru(pp_map={"Ni": "Ni.upf", "O": "O.upf"}, orb_map={"Ni": "Ni.orb", "O": "O.orb"})
+
+    assert "NUMERICAL_ORBITAL" in text
+    assert "Ni.orb" in text
+    assert "O.orb" in text
+
+
+def test_read_stru_accepts_species_labels_with_inline_comments(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[1] / "examples" / "NiO_inputs" / "STRU"
+
+    atoms = _read_stru(source)
+
+    assert atoms.get_chemical_symbols() == ["Ni", "Ni", "O", "O"]
+
+
 def test_to_stru_preserves_existing_move_flags(tmp_path: Path) -> None:
     atoms = Atoms(
         symbols=["Si", "O"],

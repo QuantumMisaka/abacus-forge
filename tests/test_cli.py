@@ -8,6 +8,7 @@ import pytest
 from ase import Atoms
 from ase.io import write as ase_write
 
+from abacus_forge.api import prepare
 from abacus_forge.cli import main
 from abacus_forge.input_io import read_input, read_kpt
 from abacus_forge.structure import AbacusStructure
@@ -138,6 +139,93 @@ def test_cli_collect_supports_explicit_output_log_override(tmp_path: Path, capsy
 
     assert payload["metrics"]["total_time"] == 7.0
     assert payload["diagnostics"]["output_log_reason"] == "override"
+
+
+def test_cli_prepare_pyatb_band_from_scf_workspace(tmp_path: Path, capsys) -> None:
+    scf = _write_fake_lcao_scf_workspace(tmp_path / "scf")
+    workspace = tmp_path / "pyatb-prepare"
+
+    assert (
+        main(
+            [
+                "prepare",
+                str(workspace),
+                "--pyatb",
+                "--scf-workspace",
+                str(scf.root),
+                "--segments",
+                "12",
+                "--point",
+                "0,0,0:G",
+                "--point",
+                "0.5,0,0:X",
+                "--efermi",
+                "4.4",
+                "--copy-outputs",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    pyatb_input = (workspace / "inputs" / "Input").read_text(encoding="utf-8")
+    assert "fermi_energy  4.4" in pyatb_input
+    assert "kpoint_label  G, X" in pyatb_input
+    assert "0.0 0.0 0.0 12" in pyatb_input
+    assert (workspace / "inputs" / "KPT_band").exists()
+    assert (workspace / "inputs" / "OUT.ABACUS" / "data-HR-sparse_SPIN0.csr").read_text(encoding="utf-8") == "hr"
+    metadata = json.loads((workspace / "meta.json").read_text(encoding="utf-8"))
+    assert metadata["kind"] == "abacus-forge.pyatb-band"
+
+
+def test_cli_run_pyatb_uses_pyatb_runner(tmp_path: Path, capsys) -> None:
+    workspace = Workspace(tmp_path / "pyatb-run").ensure_layout()
+    workspace.write_text("inputs/Input", "INPUT_PARAMETERS\n{}\n")
+    executable = _write_fake_pyatb(tmp_path / "fake-pyatb")
+
+    assert main(["run", str(workspace.root), "--pyatb", "--executable", str(executable), "--omp", "2", "--timeout", "5"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "completed"
+    assert payload["returncode"] == 0
+    assert payload["omp_threads"] == 2
+    assert payload["command"] == [str(executable)]
+    assert (workspace.inputs_dir / "Out" / "Band_Structure" / "band_info.dat").exists()
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "pyatb done"
+
+
+def test_cli_collect_and_export_pyatb_json(tmp_path: Path, capsys) -> None:
+    workspace = Workspace(tmp_path / "pyatb-collect").ensure_layout()
+    workspace.write_text("inputs/Input", "INPUT_PARAMETERS\n{}\n")
+    workspace.write_text("inputs/Out/Band_Structure/band_info.dat", "Band gap is 1.23\n")
+    workspace.write_text("inputs/Out/Band_Structure/band.png", "fake")
+    workspace.write_text("outputs/stderr.log", "")
+
+    assert main(["collect", str(workspace.root), "--pyatb", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+    assert payload["metrics"]["band_gap"] == 1.23
+    assert payload["metrics"]["band_picture"].endswith("band.png")
+
+    export_path = tmp_path / "pyatb-result.json"
+    assert main(["export", str(workspace.root), "--pyatb", "--output", str(export_path)]) == 0
+    capsys.readouterr()
+    exported = json.loads(export_path.read_text(encoding="utf-8"))
+    assert exported["metrics"]["band_gap"] == 1.23
+
+
+def test_cli_pyatb_rejects_invalid_primitive_arguments(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit, match="requires --scf-workspace"):
+        main(["prepare", str(tmp_path / "pyatb"), "--pyatb", "--point", "0,0,0:G"])
+
+    with pytest.raises(SystemExit, match="requires at least one --point"):
+        main(["prepare", str(tmp_path / "pyatb"), "--pyatb", "--scf-workspace", str(tmp_path / "scf")])
+
+    with pytest.raises(SystemExit, match="does not accept --mpi"):
+        main(["run", str(tmp_path / "pyatb"), "--pyatb", "--mpi", "2"])
+
+    with pytest.raises(SystemExit, match="does not accept --output-log"):
+        main(["collect", str(tmp_path / "pyatb"), "--pyatb", "--output-log", "outputs/stdout.log"])
 
 
 def test_cli_prepare_supports_element_level_magmoms(tmp_path: Path, capsys) -> None:
@@ -451,6 +539,35 @@ def _write_fake_abacus(
             ]
         )
     body.extend([f"print({line!r})" for line in stdout_lines])
+    path.write_text("\n".join(body) + "\n", encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
+def _write_fake_lcao_scf_workspace(path: Path) -> Workspace:
+    workspace = prepare(
+        path,
+        task="scf",
+        structure=Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 1},
+    )
+    workspace.write_text("outputs/stdout.log", "FERMI ENERGY = 3.2\nSCF CONVERGED\n")
+    workspace.write_text("inputs/OUT.ABACUS/data-HR-sparse_SPIN0.csr", "hr")
+    workspace.write_text("inputs/OUT.ABACUS/data-SR-sparse_SPIN0.csr", "sr")
+    workspace.write_text("inputs/OUT.ABACUS/data-rR-sparse.csr", "rr")
+    return workspace
+
+
+def _write_fake_pyatb(path: Path) -> Path:
+    body = [
+        "#!/usr/bin/env python3",
+        "from pathlib import Path",
+        "out = Path.cwd() / 'Out' / 'Band_Structure'",
+        "out.mkdir(parents=True, exist_ok=True)",
+        "(out / 'band_info.dat').write_text('Band gap is 2.5\\n', encoding='utf-8')",
+        "(out / 'band.png').write_text('fake image', encoding='utf-8')",
+        "print('pyatb done')",
+    ]
     path.write_text("\n".join(body) + "\n", encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
     return path

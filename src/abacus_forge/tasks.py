@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -9,6 +11,7 @@ from typing import Any
 from ase import Atoms
 
 from abacus_forge.api import collect, export, prepare, run
+from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.result import CollectionResult, TaskResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
@@ -254,9 +257,28 @@ def run_band_sequence(
     *,
     line_kpoints: Sequence[Mapping[str, Any] | tuple[Iterable[float], str | None]],
     line_segments: int = 20,
+    backend: str = "nscf",
+    pyatb_executable: str = "pyatb",
+    pyatb_omp: int = 1,
     **kwargs: Any,
 ) -> TaskResult:
-    """Run a local SCF -> NSCF band sequence and return a pack-level result."""
+    """Run a local SCF -> band sequence and return a pack-level result."""
+
+    normalized_backend = str(backend).strip().lower()
+    if normalized_backend == "auto":
+        parameters = dict(kwargs.get("parameters", {}) or {})
+        normalized_backend = "pyatb" if str(parameters.get("basis_type", "pw")).lower() == "lcao" else "nscf"
+    if normalized_backend == "pyatb":
+        return _run_scf_pyatb_band_sequence(
+            workspace,
+            line_kpoints=line_kpoints,
+            line_segments=line_segments,
+            pyatb_executable=pyatb_executable,
+            pyatb_omp=pyatb_omp,
+            **kwargs,
+        )
+    if normalized_backend != "nscf":
+        raise ValueError(f"unsupported band backend: {backend!r}")
 
     return _run_scf_nscf_sequence(
         workspace,
@@ -344,6 +366,7 @@ def _run_scf_nscf_sequence(
     root = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
     root.ensure_layout()
     base_parameters = dict(parameters or {})
+    default_scf_parameters = {"out_chg": 1}
     scf_ws = Workspace(root.root / "scf")
     nscf_ws = Workspace(root.root / "nscf")
     common = {
@@ -362,7 +385,7 @@ def _run_scf_nscf_sequence(
     prepare(
         scf_ws,
         task="scf",
-        parameters={**base_parameters, **dict(scf_parameters or {})},
+        parameters={**base_parameters, **default_scf_parameters, **dict(scf_parameters or {})},
         **common,
     )
     prepare(
@@ -388,11 +411,15 @@ def _run_scf_nscf_sequence(
         env_overrides=dict(env_overrides or {}),
     )
     run_results = []
+    staged_out_dirs: list[str] = []
     if dry_run:
         scf_collected = collect(scf_ws)
         nscf_collected = collect(nscf_ws)
     else:
-        run_results = [run(scf_ws, runner=runner), run(nscf_ws, runner=runner)]
+        scf_run = run(scf_ws, runner=runner)
+        staged_out_dirs = _stage_abacus_out_dirs(scf_ws, nscf_ws)
+        nscf_run = run(nscf_ws, runner=runner)
+        run_results = [scf_run, nscf_run]
         postprocess_diagnostics = _postprocess_dos_outputs(nscf_ws) if nscf_task == "dos" else {}
         scf_collected = collect(scf_ws)
         nscf_collected = collect(nscf_ws)
@@ -420,7 +447,134 @@ def _run_scf_nscf_sequence(
         },
         artifacts={f"scf/{key}": value for key, value in scf_collected.artifacts.items()}
         | {f"nscf/{key}": value for key, value in nscf_collected.artifacts.items()},
-        diagnostics={"runner": runner.preview(nscf_ws), "dry_run": dry_run},
+        diagnostics={"runner": runner.preview(nscf_ws), "dry_run": dry_run, "staged_out_dirs": staged_out_dirs},
+    )
+    if export_destination is not None:
+        export(result, destination=Path(export_destination))
+        result.diagnostics["export_destination"] = str(Path(export_destination))
+    return result
+
+
+def _run_scf_pyatb_band_sequence(
+    workspace: str | Path | Workspace,
+    *,
+    structure: str | Path | AbacusStructure | Atoms | Any | None = None,
+    structure_format: str | None = None,
+    parameters: Mapping[str, Any] | None = None,
+    scf_parameters: Mapping[str, Any] | None = None,
+    remove_parameters: Iterable[str] | None = None,
+    kpoints: Iterable[int] | None = None,
+    line_kpoints: Sequence[Mapping[str, Any] | tuple[Iterable[float], str | None]] | None = None,
+    line_segments: int = 20,
+    metadata: Mapping[str, Any] | None = None,
+    pseudo_path: str | Path | None = None,
+    orbital_path: str | Path | None = None,
+    asset_mode: str = "link",
+    ensure_pbc: bool = False,
+    structure_standardization: str | None = None,
+    magmom_by_element: Mapping[str, float] | None = None,
+    executable: str = "abacus",
+    mpi: int = 1,
+    omp: int = 1,
+    timeout_seconds: float | None = None,
+    env_overrides: Mapping[str, str] | None = None,
+    pyatb_executable: str = "pyatb",
+    pyatb_omp: int = 1,
+    dry_run: bool = False,
+    export_destination: str | Path | None = None,
+) -> TaskResult:
+    if not line_kpoints:
+        raise ValueError("band sequence requires explicit line-mode KPT points")
+
+    root = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
+    root.ensure_layout()
+    scf_ws = Workspace(root.root / "scf")
+    pyatb_ws = Workspace(root.root / "pyatb")
+    base_parameters = dict(parameters or {})
+    pyatb_scf_parameters = {"out_mat_r": 1, "out_mat_hs2": 1}
+    prepare(
+        scf_ws,
+        task="scf",
+        structure=structure,
+        structure_format=structure_format,
+        parameters={**base_parameters, **pyatb_scf_parameters, **dict(scf_parameters or {})},
+        remove_parameters=remove_parameters,
+        kpoints=kpoints,
+        metadata=dict(metadata or {}),
+        pseudo_path=pseudo_path,
+        orbital_path=orbital_path,
+        asset_mode=asset_mode,
+        ensure_pbc=ensure_pbc,
+        structure_standardization=structure_standardization,
+        magmom_by_element=dict(magmom_by_element or {}) or None,
+    )
+    abacus_runner = LocalRunner(
+        executable=executable,
+        mpi_ranks=mpi,
+        omp_threads=omp,
+        timeout_seconds=timeout_seconds,
+        env_overrides=dict(env_overrides or {}),
+    )
+    if dry_run:
+        scf_collected = collect(scf_ws)
+        pyatb_collected = collect_pyatb(pyatb_ws)
+        pyatb_collected.status = "dry-run"
+        run_results = []
+    else:
+        scf_run = run(scf_ws, runner=abacus_runner)
+        scf_collected = collect(scf_ws)
+        try:
+            prepare_pyatb_band(
+                pyatb_ws,
+                scf_workspace=scf_ws,
+                line_kpoints=_normalize_line_kpoints(line_kpoints) or [],
+                line_segments=line_segments,
+                efermi=scf_collected.metrics.get("fermi_energy"),
+            )
+            pyatb_run = run_pyatb(pyatb_ws, executable=pyatb_executable, omp=pyatb_omp, timeout_seconds=timeout_seconds)
+            pyatb_collected = collect_pyatb(pyatb_ws)
+        except Exception as exc:
+            pyatb_ws.ensure_layout()
+            pyatb_ws.write_json("reports/pyatb_prepare_error.json", {"error": str(exc)})
+            pyatb_collected = collect_pyatb(pyatb_ws)
+            pyatb_collected.status = "failed"
+            pyatb_collected.diagnostics["error"] = str(exc)
+            pyatb_run = None
+        run_results = [scf_run, pyatb_run]
+
+    subtasks = [
+        _collection_subtask_payload("scf", scf_collected),
+        _collection_subtask_payload("pyatb-band", pyatb_collected),
+    ]
+    for payload, run_result in zip(subtasks, run_results, strict=False):
+        if run_result is not None:
+            payload["run"] = run_result.to_dict()
+    status = "completed" if all(item["status"] == "completed" for item in subtasks) else "failed"
+    if dry_run:
+        status = "dry-run"
+    result = TaskResult(
+        task="band_sequence",
+        workspace=root.root,
+        status=status,
+        subtasks=subtasks,
+        summary={
+            "backend": "pyatb",
+            "scf_status": scf_collected.status,
+            "band_status": pyatb_collected.status,
+            "band_metrics": pyatb_collected.metrics,
+        },
+        artifacts={f"scf/{key}": value for key, value in scf_collected.artifacts.items()}
+        | {f"pyatb/{key}": value for key, value in pyatb_collected.artifacts.items()},
+        diagnostics={
+            "backend": "pyatb",
+            "abacus_runner": abacus_runner.preview(scf_ws),
+            "pyatb_runner": {
+                "command": [pyatb_executable],
+                "cwd": str(pyatb_ws.inputs_dir),
+                "omp_threads": pyatb_omp,
+            },
+            "dry_run": dry_run,
+        },
     )
     if export_destination is not None:
         export(result, destination=Path(export_destination))
@@ -436,6 +590,27 @@ def _collection_subtask_payload(task: str, result: CollectionResult) -> dict[str
         "metrics": result.metrics,
         "diagnostics": result.diagnostics,
     }
+
+
+def _stage_abacus_out_dirs(source: Workspace, destination: Workspace, *, link: bool = False) -> list[str]:
+    destination.ensure_layout()
+    staged: list[str] = []
+    for base in (source.inputs_dir, source.outputs_dir):
+        if not base.exists():
+            continue
+        for out_dir in sorted(path for path in base.glob("OUT.*") if path.is_dir()):
+            target = destination.inputs_dir / out_dir.name
+            if target.exists() or target.is_symlink():
+                if target.is_dir() and not target.is_symlink():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            if link:
+                os.symlink(out_dir.resolve(), target)
+            else:
+                shutil.copytree(out_dir, target)
+            staged.append(str(target))
+    return staged
 
 
 def _postprocess_dos_outputs(workspace: Workspace) -> dict[str, Any]:

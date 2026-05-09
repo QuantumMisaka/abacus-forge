@@ -199,6 +199,7 @@ def test_run_dos_sequence_postprocesses_outputs_from_out_dir(tmp_path: Path) -> 
     assert [item["task"] for item in result.subtasks] == ["scf", "dos"]
     assert result.summary["nscf_metrics"]["dos_summary"]["points"] == 2
     assert result.subtasks[1]["diagnostics"]["dos_postprocess"]["status"] in {"completed", "skipped"}
+    assert any(path.endswith("nscf/inputs/OUT.ABACUS") for path in result.diagnostics["staged_out_dirs"])
 
 
 def test_local_runner_classifies_missing_executable(tmp_path: Path) -> None:

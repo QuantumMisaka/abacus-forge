@@ -8,14 +8,19 @@
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
+- `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
-- 当前 Forge 测试基线：`PYTHONNOUSERSITE=1 conda run -n paimon python -m pytest deps/abacus-forge/tests -q` 为 `78 passed`。
+- 当前 Forge 测试基线：`PYTHONNOUSERSITE=1 conda run -n paimon python -m pytest deps/abacus-forge/tests -q`。
+- SAI NiO trace smoke 已落在 `test/sai-nio-forge/20260509133012`：ABACUS LTS 单 GPU 完成 `cell-relax -> DOS(SCF/NSCF)` 与 Band SCF，PyATB CPU 后处理完成并收集 `band_info.dat` / `band_up.dat` / `band_dn.dat` / `band.pdf`。
 
 ## 近期方向
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
-- 在 SAI 计算节点或外层 Slurm allocation 中用真实 ABACUS LTS 对 NiO/Si 小案例执行 `scf`、`relax`、`dos_sequence`、`band_sequence` smoke；调度语义仍留在 Forge 外层。
+- 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
+- 优先补齐 relax/cell-relax 完成态语义：`normal_end=true` 但未达到收敛阈值时应在 metrics 中区分 `abacus_normal_end`、`converged` 与 `status`。
+- 固化 SCF->NSCF artifact handoff 规则：电荷、矩阵、最终结构、DOS/PyATB 后处理所需文件要有明确 manifest，而不是只依赖目录名约定。
+- 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 
 ## 中期方向
 - 进一步补齐更多 ABACUS 输出指标解析。

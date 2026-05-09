@@ -152,6 +152,12 @@ class AbacusStructure:
         ]
         for symbol in species:
             lines.append(f"{symbol} {masses[symbol]:.6f} {pp_map.get(symbol, '') if pp_map else ''}".rstrip())
+        if orb_map:
+            lines.extend(["", "NUMERICAL_ORBITAL"])
+            for symbol in species:
+                orbital = orb_map.get(symbol)
+                if orbital:
+                    lines.append(str(orbital))
 
         lines.extend(
             [
@@ -262,7 +268,7 @@ def _read_stru(path: Path) -> Atoms:
             coordinate_mode = lines[index + 1].strip().lower()
             index += 2
             while index < len(lines):
-                symbol = lines[index].strip()
+                symbol = lines[index].split("#", 1)[0].strip()
                 if not symbol:
                     index += 1
                     continue

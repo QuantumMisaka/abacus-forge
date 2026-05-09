@@ -7,9 +7,10 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from abacus_forge.api import collect, export, prepare, run
+from abacus_forge.api import collect, export as export_result, prepare, run
 from abacus_forge.composite import post_elastic, post_eos, post_phonon, post_vibration, prepare_elastic, prepare_eos, prepare_phonon, prepare_vibration, run_elastic, run_eos, run_phonon, run_vibration
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
+from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_relax, run_scf
@@ -33,6 +34,13 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--orbital-path")
     prepare_parser.add_argument("--asset-mode", choices=["copy", "link"], default="link")
     prepare_parser.add_argument("--ensure-pbc", action="store_true")
+    prepare_parser.add_argument("--pyatb", action="store_true", help="prepare a PyATB band workspace from an ABACUS LCAO SCF workspace")
+    prepare_parser.add_argument("--scf-workspace", help="source ABACUS LCAO SCF workspace for --pyatb")
+    prepare_parser.add_argument("--segments", type=int, default=20, help="line-mode KPT segment count for --pyatb")
+    prepare_parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL] for --pyatb")
+    prepare_parser.add_argument("--efermi", type=float, help="Fermi energy override for --pyatb")
+    prepare_parser.add_argument("--copy-outputs", action="store_true", help="copy ABACUS OUT.* files instead of linking them for --pyatb")
+    prepare_parser.add_argument("--max-kpoint-num", type=int, help="PyATB max_kpoint_num input value")
 
     modify_input_parser = subparsers.add_parser("modify-input", help="modify one INPUT file")
     modify_input_parser.add_argument("source")
@@ -63,18 +71,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser("run", help="run a prepared workspace")
     run_parser.add_argument("workspace")
-    run_parser.add_argument("--executable", default="abacus")
+    run_parser.add_argument("--executable")
     run_parser.add_argument("--mpi", type=int, default=1)
     run_parser.add_argument("--omp", type=int, default=1)
+    run_parser.add_argument("--timeout", type=float)
+    run_parser.add_argument("--pyatb", action="store_true", help="run PyATB in a prepared workspace")
 
     collect_parser = subparsers.add_parser("collect", help="collect metrics from a workspace")
     collect_parser.add_argument("workspace")
     collect_parser.add_argument("--json", action="store_true", help="print JSON to stdout")
     collect_parser.add_argument("--output-log", help="explicit stdout-like output log path")
+    collect_parser.add_argument("--pyatb", action="store_true", help="collect PyATB band artifacts")
 
     export_parser = subparsers.add_parser("export", help="collect and export JSON to file")
     export_parser.add_argument("workspace")
     export_parser.add_argument("--output", required=True)
+    export_parser.add_argument("--pyatb", action="store_true", help="export PyATB collection JSON")
 
     for task_name in ("scf", "relax", "cell-relax", "md", "band", "dos"):
         task_parser = subparsers.add_parser(task_name, help=f"run one {task_name} task end-to-end")
@@ -106,6 +118,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "prepare":
+        if args.pyatb:
+            if not args.scf_workspace:
+                raise SystemExit("prepare --pyatb requires --scf-workspace")
+            line_kpoints = _parse_kpt_points(args.point)
+            if not line_kpoints:
+                raise SystemExit("prepare --pyatb requires at least one --point")
+            kwargs: dict[str, Any] = {
+                "scf_workspace": args.scf_workspace,
+                "line_kpoints": line_kpoints,
+                "line_segments": args.segments,
+                "efermi": args.efermi,
+                "link_outputs": not args.copy_outputs,
+            }
+            if args.max_kpoint_num is not None:
+                kwargs["max_kpoint_num"] = args.max_kpoint_num
+            workspace = prepare_pyatb_band(args.workspace, **kwargs)
+            print(workspace.root)
+            return 0
         parameters = _parse_parameters(args.parameter)
         magmom_by_element = _parse_numeric_mapping(args.magmom)
         kpoints = args.kpoint if args.kpoint else None
@@ -173,13 +203,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "run":
-        runner = LocalRunner(executable=args.executable, mpi_ranks=args.mpi, omp_threads=args.omp)
-        result = run(args.workspace, runner=runner)
+        if args.pyatb:
+            if args.mpi != 1:
+                raise SystemExit("run --pyatb does not accept --mpi values other than 1")
+            result = run_pyatb(
+                args.workspace,
+                executable=args.executable or "pyatb",
+                omp=args.omp,
+                timeout_seconds=args.timeout,
+            )
+        else:
+            runner = LocalRunner(
+                executable=args.executable or "abacus",
+                mpi_ranks=args.mpi,
+                omp_threads=args.omp,
+                timeout_seconds=args.timeout,
+            )
+            result = run(args.workspace, runner=runner)
         print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         return 0 if result.returncode == 0 else result.returncode
 
     if args.command == "collect":
-        result = collect(args.workspace, output_log=args.output_log)
+        if args.pyatb:
+            if args.output_log:
+                raise SystemExit("collect --pyatb does not accept --output-log")
+            result = collect_pyatb(args.workspace)
+        else:
+            result = collect(args.workspace, output_log=args.output_log)
         if args.json:
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:
@@ -187,8 +237,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "export":
-        result = collect(args.workspace)
-        export(result, destination=Path(args.output))
+        result = collect_pyatb(args.workspace) if args.pyatb else collect(args.workspace)
+        export_result(result, destination=Path(args.output))
         print(args.output)
         return 0
 

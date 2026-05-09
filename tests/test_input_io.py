@@ -15,6 +15,13 @@ def test_input_read_write(tmp_path: Path) -> None:
     assert read_params["ecutwfc"] == "80"
     assert read_params["calculation"] == "scf"
 
+
+def test_read_input_ignores_extended_header_and_inline_comments(tmp_path: Path) -> None:
+    path = tmp_path / "INPUT"
+    path.write_text("INPUT_PARAMETERS RUNNING ABACUS-DFT\nsuffix ABACUS # output suffix\nnspin 2\n", encoding="utf-8")
+
+    assert read_input(path) == {"suffix": "ABACUS", "nspin": "2"}
+
 def test_kpt_mesh_write(tmp_path: Path) -> None:
     path = tmp_path / "KPT"
     write_kpt_mesh(path, [2, 2, 2], [1, 1, 1])

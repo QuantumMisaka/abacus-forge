@@ -49,7 +49,9 @@
 ### 本地 sequence API
 
 - `run_band_sequence(...)`：本地组合 `SCF -> NSCF band -> collect`
+- `run_band_sequence(..., backend="pyatb")`：本地组合 `SCF(out_mat_r/out_mat_hs2) -> PyATB Input -> pyatb -> collect_pyatb`
 - `run_dos_sequence(...)`：本地组合 `SCF -> NSCF DOS/PDOS -> collect/postprocess`
+- `prepare_pyatb_band(...)` / `run_pyatb(...)` / `collect_pyatb(...)` 可作为独立 PyATB 原语使用
 - sequence API 只管理本地子目录，不引入 Slurm、AiiDA、MCP/ATP 或前端语义
 
 ### 本地 composite task pack
@@ -196,6 +198,19 @@ band_sequence = run_band_sequence(
     "runs/Si_band_sequence",
     structure="Si.cif",
     executable="abacus",
+    backend="nscf",
+    line_kpoints=[
+        {"coords": [0, 0, 0], "npoints": 20, "label": "Gamma"},
+        {"coords": [0.5, 0, 0], "npoints": 1, "label": "X"},
+    ],
+)
+pyatb_band_sequence = run_band_sequence(
+    "runs/NiO_band_pyatb",
+    structure="NiO.STRU",
+    executable="abacus",
+    pyatb_executable="pyatb",
+    backend="pyatb",
+    parameters={"basis_type": "lcao"},
     line_kpoints=[
         {"coords": [0, 0, 0], "npoints": 20, "label": "Gamma"},
         {"coords": [0.5, 0, 0], "npoints": 1, "label": "X"},
@@ -205,6 +220,7 @@ dos_sequence = run_dos_sequence("runs/FeO_dos_sequence", structure="FeO.cif", ex
 ```
 
 `LocalRunner` 在 `inputs/` 目录下直接执行 ABACUS 可执行文件，不默认注入 `--input-dir` 等非 ABACUS 参数。
+PyATB 不是必装依赖；缺少 `pyatb` 可执行文件或 ABACUS LCAO matrix files 时，PyATB collect/sequence 会返回明确 diagnostics。
 
 ## 目录约定
 

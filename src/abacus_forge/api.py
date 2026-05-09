@@ -312,13 +312,27 @@ def _select_log_sources(
 
 
 def _determine_status(metrics: dict[str, Any], *, stderr_path: Path, text_blobs: list[str]) -> str:
-    if stderr_path.exists() and stderr_path.read_text(encoding="utf-8", errors="ignore").strip():
+    stderr_text = stderr_path.read_text(encoding="utf-8", errors="ignore").strip() if stderr_path.exists() else ""
+    if stderr_text and not metrics.get("normal_end", False) and _stderr_looks_fatal(stderr_text):
         return "failed"
     if not any(blob.strip() for blob in text_blobs):
         return "missing-output"
     if not metrics.get("converged", False):
         return "unfinished"
     return "completed"
+
+
+def _stderr_looks_fatal(text: str) -> bool:
+    fatal_patterns = (
+        "error:",
+        "fatal",
+        "traceback",
+        "segmentation fault",
+        "command timed out",
+        "executable not found",
+    )
+    lowered = text.lower()
+    return any(pattern in lowered for pattern in fatal_patterns)
 
 
 def _natural_sort_key(value: str) -> list[Any]:

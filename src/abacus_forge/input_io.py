@@ -12,7 +12,10 @@ def read_input(path: str | Path) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.upper() == "INPUT_PARAMETERS":
+        if not stripped or stripped.startswith("#") or stripped.upper().startswith("INPUT_PARAMETERS"):
+            continue
+        stripped = stripped.split("#", 1)[0].strip()
+        if not stripped:
             continue
         parts = stripped.split(None, 1)
         if len(parts) == 2:
