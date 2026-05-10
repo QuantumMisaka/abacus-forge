@@ -253,7 +253,7 @@ def _stage_output_dir(source: Path, destination: Path, *, link: bool) -> None:
         else:
             destination.unlink()
     if link:
-        os.symlink(source, destination)
+        os.symlink(source.resolve(), destination)
     else:
         shutil.copytree(source, destination)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import stat
 from pathlib import Path
 
@@ -39,6 +40,34 @@ def test_prepare_pyatb_band_writes_input_from_scf_outputs(tmp_path: Path) -> Non
     assert "HR_route  OUT.ABACUS/data-HR-sparse_SPIN0.csr" in text
     assert "kpoint_label  G, X" in text
     assert "0.0 0.0 0.0 16" in text
+
+
+def test_prepare_pyatb_band_links_outputs_from_relative_workspaces(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    scf = prepare(
+        Path("scf"),
+        task="scf",
+        structure=Atoms(symbols=["Si"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 1},
+    )
+    scf.write_text("outputs/stdout.log", "FERMI ENERGY = 3.2\nSCF CONVERGED\n")
+    scf.write_text("inputs/OUT.ABACUS/data-HR-sparse_SPIN0.csr", "hr")
+    scf.write_text("inputs/OUT.ABACUS/data-SR-sparse_SPIN0.csr", "sr")
+    scf.write_text("inputs/OUT.ABACUS/data-rR-sparse.csr", "rr")
+
+    pyatb = prepare_pyatb_band(
+        Path("pyatb"),
+        scf_workspace=Path("scf"),
+        line_kpoints=[
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ],
+    )
+
+    out_dir = pyatb.inputs_dir / "OUT.ABACUS"
+    assert out_dir.is_symlink()
+    assert Path(os.readlink(out_dir)).is_absolute()
+    assert (out_dir / "data-HR-sparse_SPIN0.csr").read_text(encoding="utf-8") == "hr"
 
 
 def test_collect_pyatb_reads_band_info_and_artifacts(tmp_path: Path) -> None:
