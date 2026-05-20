@@ -39,6 +39,7 @@ def modify_stru(
     displacements: list[list[float]] | np.ndarray | None = None,
     swap_axes: tuple[int, int] | None = None,
     supercell: tuple[int, int, int] | list[int] | None = None,
+    vacancy_indices: Iterable[int] | None = None,
     ensure_pbc: bool = False,
     vacuum: float = 10.0,
     standardization: str | None = None,
@@ -63,6 +64,8 @@ def modify_stru(
         payload = payload.swap_axes(*swap_axes)
     if supercell is not None:
         payload = payload.make_supercell(supercell)
+    if vacancy_indices is not None:
+        payload = _remove_1based_indices(payload, vacancy_indices)
     if displacements is not None:
         payload = perturb_structure(payload, displacements=displacements)
 
@@ -86,6 +89,18 @@ def modify_stru(
     if destination is not None:
         Path(destination).write_text(modified.to_stru(pp_map=pp_map, orb_map=orb_map), encoding="utf-8")
     return modified
+
+
+def _remove_1based_indices(structure: AbacusStructure, indices: Iterable[int]) -> AbacusStructure:
+    atoms = structure.atoms.copy()
+    normalized = sorted({int(index) for index in indices}, reverse=True)
+    if not normalized:
+        return AbacusStructure(atoms, source_format=structure.source_format)
+    for index in normalized:
+        if index < 1 or index > len(atoms):
+            raise ValueError(f"vacancy index {index} is out of range for {len(atoms)} atoms")
+        del atoms[index - 1]
+    return AbacusStructure(atoms, source_format=structure.source_format)
 
 
 def modify_kpt(

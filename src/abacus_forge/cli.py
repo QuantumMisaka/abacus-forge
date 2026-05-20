@@ -8,7 +8,47 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from abacus_forge.api import collect, export as export_result, prepare, run
-from abacus_forge.composite import post_elastic, post_eos, post_phonon, post_vibration, prepare_elastic, prepare_eos, prepare_phonon, prepare_vibration, run_elastic, run_eos, run_phonon, run_vibration
+from abacus_forge.composite import (
+    post_bader,
+    post_bec,
+    post_charge_density,
+    post_charge_diff,
+    post_convergence,
+    post_elastic,
+    post_elf,
+    post_eos,
+    post_phonon,
+    post_spin_density,
+    post_vacancy,
+    post_vibration,
+    post_workfunc,
+    prepare_bader,
+    prepare_bec,
+    prepare_charge_density,
+    prepare_charge_diff,
+    prepare_convergence,
+    prepare_elastic,
+    prepare_elf,
+    prepare_eos,
+    prepare_phonon,
+    prepare_spin_density,
+    prepare_vacancy,
+    prepare_vibration,
+    prepare_workfunc,
+    run_bader,
+    run_bec,
+    run_charge_density,
+    run_charge_diff,
+    run_convergence,
+    run_elastic,
+    run_elf,
+    run_eos,
+    run_phonon,
+    run_spin_density,
+    run_vacancy,
+    run_vibration,
+    run_workfunc,
+)
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.runner import LocalRunner
@@ -56,6 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
     modify_stru_parser.add_argument("--afm", action="store_true")
     modify_stru_parser.add_argument("--afm-element", action="append", default=[])
     modify_stru_parser.add_argument("--site-magmoms", help="Comma-separated per-atom collinear magmoms")
+    modify_stru_parser.add_argument("--supercell", nargs=3, type=int, metavar=("NA", "NB", "NC"))
+    modify_stru_parser.add_argument("--vacancy-index", action="append", type=int, default=[], help="1-based atom index to remove")
     modify_stru_parser.add_argument("--ensure-pbc", action="store_true")
     modify_stru_parser.add_argument("--vacuum", type=float, default=10.0)
     modify_stru_parser.add_argument("--structure-format")
@@ -107,6 +149,20 @@ def build_parser() -> argparse.ArgumentParser:
             post_subparser.add_argument("--phonopy", default="phonopy")
             post_subparser.add_argument("--setting-file", default="setting.conf")
             post_subparser.add_argument("--only-plot", action="store_true")
+        post_subparser.add_argument("--json", action="store_true")
+
+    for task_name in ("convergence", "charge-density", "spin-density", "charge-diff", "elf", "bader", "workfunc", "vacancy", "bec"):
+        task_parser = subparsers.add_parser(task_name, help=f"run local {task_name} property pack")
+        task_subparsers = task_parser.add_subparsers(dest="property_command", required=True)
+        prepare_subparser = task_subparsers.add_parser("prepare", help=f"prepare {task_name} subdirectories")
+        prepare_subparser.add_argument("workspace")
+        _add_property_prepare_arguments(prepare_subparser, task_name=task_name)
+        run_subparser = task_subparsers.add_parser("run", help=f"run {task_name} subdirectories locally")
+        run_subparser.add_argument("workspace")
+        _add_composite_run_arguments(run_subparser)
+        post_subparser = task_subparsers.add_parser("post", help=f"postprocess {task_name} results")
+        post_subparser.add_argument("workspace")
+        _add_property_post_arguments(post_subparser, task_name=task_name)
         post_subparser.add_argument("--json", action="store_true")
 
     return parser
@@ -182,9 +238,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             magmoms=magmoms,
             afm=args.afm,
             afm_elements=args.afm_element or None,
+            supercell=args.supercell,
+            vacancy_indices=args.vacancy_index or None,
             destination=args.output,
         )
-        print(json.dumps({"source_format": modified.source_format, "output": str(Path(args.output))}, sort_keys=True))
+        print(json.dumps({"source_format": modified.source_format, "output": str(Path(args.output)), "natoms": len(modified.atoms)}, sort_keys=True))
         return 0
 
     if args.command == "modify-kpt":
@@ -319,6 +377,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in {"eos", "elastic", "vibration", "phonon"}:
         result = _dispatch_composite(args)
+        if getattr(args, "json", False):
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(result.status)
+        return 0
+
+    if args.command in {"convergence", "charge-density", "spin-density", "charge-diff", "elf", "bader", "workfunc", "vacancy", "bec"}:
+        result = _dispatch_property(args)
         if getattr(args, "json", False):
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:
@@ -486,6 +552,34 @@ def _add_composite_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true")
 
 
+def _add_property_prepare_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> None:
+    parser.add_argument("--json", action="store_true")
+    if task_name == "convergence":
+        parser.add_argument("--key", required=True)
+        parser.add_argument("--value", action="append", required=True)
+    elif task_name == "workfunc":
+        parser.add_argument("--vacuum-axis", default="auto", choices=["auto", "a", "b", "c", "x", "y", "z"])
+        parser.add_argument("--dipole-correction", action="store_true")
+    elif task_name == "vacancy":
+        parser.add_argument("--vacancy-index", action="append", type=int, required=True)
+        parser.add_argument("--supercell", nargs=3, type=int, default=[1, 1, 1])
+    elif task_name == "bec":
+        parser.add_argument("--atom-index", action="append", type=int, required=True)
+        parser.add_argument("--displacement", type=float, default=0.01)
+        parser.add_argument("--direction", action="append", choices=["x", "y", "z", "a", "b", "c"], default=[])
+
+
+def _add_property_post_arguments(parser: argparse.ArgumentParser, *, task_name: str) -> None:
+    if task_name == "convergence":
+        parser.add_argument("--key")
+    elif task_name == "workfunc":
+        parser.add_argument("--vacuum-axis", default="auto", choices=["auto", "a", "b", "c", "x", "y", "z"])
+    elif task_name == "vacancy":
+        parser.add_argument("--ref-file")
+    elif task_name == "bader":
+        parser.add_argument("--executable", default="bader")
+
+
 def _dispatch_composite(args: argparse.Namespace):
     if args.command == "eos":
         if args.composite_command == "prepare":
@@ -512,6 +606,64 @@ def _dispatch_composite(args: argparse.Namespace):
             return run_phonon(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
         return post_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file, only_plot=args.only_plot)
     raise SystemExit(f"unsupported composite command: {args.command}")
+
+
+def _dispatch_property(args: argparse.Namespace):
+    if args.command == "convergence":
+        if args.property_command == "prepare":
+            return prepare_convergence(args.workspace, key=args.key, values=args.value)
+        if args.property_command == "run":
+            return run_convergence(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_convergence(args.workspace, key=args.key)
+    if args.command == "charge-density":
+        if args.property_command == "prepare":
+            return prepare_charge_density(args.workspace)
+        if args.property_command == "run":
+            return run_charge_density(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_charge_density(args.workspace)
+    if args.command == "spin-density":
+        if args.property_command == "prepare":
+            return prepare_spin_density(args.workspace)
+        if args.property_command == "run":
+            return run_spin_density(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_spin_density(args.workspace)
+    if args.command == "charge-diff":
+        if args.property_command == "prepare":
+            return prepare_charge_diff(args.workspace)
+        if args.property_command == "run":
+            return run_charge_diff(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_charge_diff(args.workspace)
+    if args.command == "elf":
+        if args.property_command == "prepare":
+            return prepare_elf(args.workspace)
+        if args.property_command == "run":
+            return run_elf(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_elf(args.workspace)
+    if args.command == "bader":
+        if args.property_command == "prepare":
+            return prepare_bader(args.workspace)
+        if args.property_command == "run":
+            return run_bader(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_bader(args.workspace, executable=args.executable)
+    if args.command == "workfunc":
+        if args.property_command == "prepare":
+            return prepare_workfunc(args.workspace, vacuum_axis=args.vacuum_axis, dipole_correction=args.dipole_correction)
+        if args.property_command == "run":
+            return run_workfunc(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_workfunc(args.workspace, vacuum_axis=args.vacuum_axis)
+    if args.command == "vacancy":
+        if args.property_command == "prepare":
+            return prepare_vacancy(args.workspace, vacancy_indices=args.vacancy_index, supercell=args.supercell)
+        if args.property_command == "run":
+            return run_vacancy(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_vacancy(args.workspace, ref_file=args.ref_file)
+    if args.command == "bec":
+        if args.property_command == "prepare":
+            return prepare_bec(args.workspace, atom_indices=args.atom_index, displacement=args.displacement, directions=args.direction or ["x", "y", "z"])
+        if args.property_command == "run":
+            return run_bec(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
+        return post_bec(args.workspace)
+    raise SystemExit(f"unsupported property command: {args.command}")
 
 
 if __name__ == "__main__":

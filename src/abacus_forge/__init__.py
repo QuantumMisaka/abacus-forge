@@ -2,6 +2,7 @@
 
 from abacus_forge.api import collect, export, prepare, run
 from abacus_forge.band_data import BandData
+from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.perturbation import perturb_structure
@@ -16,6 +17,7 @@ __all__ = [
     "AbacusStructure",
     "BandData",
     "CollectionResult",
+    "CubeData",
     "DOSData",
     "DOSFamilyData",
     "LocalDOSData",
@@ -24,12 +26,14 @@ __all__ = [
     "RunResult",
     "TaskResult",
     "Workspace",
+    "add_cubes",
     "collect",
     "collect_pyatb",
     "export",
     "modify_input",
     "modify_kpt",
     "modify_stru",
+    "planar_average",
     "perturb_structure",
     "prepare",
     "prepare_pyatb_band",
@@ -44,6 +48,7 @@ __all__ = [
     "run_relax",
     "run_scf",
     "run_task",
+    "subtract_cubes",
 ]
 
 __version__ = "0.1.0"
