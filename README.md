@@ -2,7 +2,7 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，以及 `eos / elastic / vibration / phonon` 本地 composite task pack，可作为 Python 库或 CLI 使用。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。
 
 ## 当前定位
 
@@ -62,6 +62,20 @@
 - `abacus-forge phonon prepare|run|post`
 - composite pack 只管理本地子目录和本地 runner；不生成 Slurm/Bohrium/DPDispatcher 配置
 - `phonon` 的 phonopy 能力是可选依赖：`pip install "abacus-forge[phonon]"`
+
+### 本地 property pack
+
+- `abacus-forge convergence prepare|run|post`
+- `abacus-forge charge-density prepare|run|post`
+- `abacus-forge spin-density prepare|run|post`
+- `abacus-forge charge-diff prepare|run|post`
+- `abacus-forge elf prepare|run|post`
+- `abacus-forge bader prepare|run|post`
+- `abacus-forge workfunc prepare|run|post`
+- `abacus-forge vacancy prepare|run|post`
+- `abacus-forge bec prepare|run|post`
+- property pack 从 `abacus-test CLI` 与 `ABACUS-agent-tools` 的底层能力拆解而来，只承接输入生成、本地子目录执行、cube/文本后处理和 JSON 结果汇总；不承接 Bohrium/dflow/Slurm 编排。
+- `bader post` 只调用本机已有 `bader` 可执行文件；缺失时返回 diagnostics，不自动安装外部程序。
 
 ## 安装与运行方式
 
@@ -133,6 +147,16 @@ PYTHONPATH=src python -m abacus_forge.cli modify-stru FeO.cif \
   --afm
 ```
 
+也可以做结构级轻量变换：
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli modify-stru STRU \
+  --output STRU.super \
+  --structure-format stru \
+  --supercell 2 2 1 \
+  --vacancy-index 3
+```
+
 ### 6. 对 KPT 做 mesh 编辑
 
 ```bash
@@ -167,10 +191,27 @@ PYTHONPATH=src python -m abacus_forge.cli export runs/Si_scf --output result.jso
 
 `collect` 默认会自动发现 stdout 类输出文件；如果 stdout 被重定向到非标准文件名，也可以通过 `--output-log` 或 `collect(..., output_log=...)` 显式指定。
 
+### 9. Property pack 示例
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli convergence prepare runs/Si_scf \
+  --key ecutwfc --value 60 --value 80 --json
+PYTHONPATH=src python -m abacus_forge.cli convergence run runs/Si_scf --executable abacus --json
+PYTHONPATH=src python -m abacus_forge.cli convergence post runs/Si_scf --key ecutwfc --json
+
+PYTHONPATH=src python -m abacus_forge.cli spin-density prepare runs/Fe_scf --json
+PYTHONPATH=src python -m abacus_forge.cli spin-density post runs/Fe_scf --json
+
+PYTHONPATH=src python -m abacus_forge.cli workfunc prepare runs/slab --vacuum-axis c --dipole-correction --json
+PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis c --json
+```
+
 ## 作为 Python 库使用
 
 ```python
 from abacus_forge.api import collect, prepare
+from abacus_forge.composite import prepare_convergence, post_convergence, prepare_workfunc, post_workfunc
+from abacus_forge.cube import CubeData, subtract_cubes
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.runner import LocalRunner
 from abacus_forge.tasks import run_band_sequence, run_dos, run_dos_sequence, run_scf
@@ -217,6 +258,11 @@ pyatb_band_sequence = run_band_sequence(
     ],
 )
 dos_sequence = run_dos_sequence("runs/FeO_dos_sequence", structure="FeO.cif", executable="abacus")
+
+conv_plan = prepare_convergence("runs/Si_scf", key="ecutwfc", values=["60", "80"])
+conv_result = post_convergence("runs/Si_scf", key="ecutwfc")
+workfunc_plan = prepare_workfunc("runs/slab", vacuum_axis="c", dipole_correction=True)
+workfunc_result = post_workfunc("runs/slab", vacuum_axis="c")
 ```
 
 `LocalRunner` 在 `inputs/` 目录下直接执行 ABACUS 可执行文件，不默认注入 `--input-dir` 等非 ABACUS 参数。
