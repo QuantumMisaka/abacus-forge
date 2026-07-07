@@ -48,12 +48,14 @@ def test_dos_family_summary_includes_reserved_ldos(tmp_path: Path) -> None:
     assert summary["metadata"]["efermi"] == 3.2
 
 
-def test_prepare_rejects_independent_pdos_task_and_drifted_dos_parameters(tmp_path: Path) -> None:
+def test_prepare_rejects_independent_pdos_task_and_preserves_abacus_dos_parameters(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="unsupported task: pdos"):
         prepare(tmp_path / "pdos-case", task="pdos")
 
-    with pytest.raises(ValueError, match="dos_scale"):
-        prepare(tmp_path / "dos-case", task="dos", parameters={"dos_scale": 1.2})
+    workspace = prepare(tmp_path / "dos-case", task="dos", parameters={"dos_scale": 0.01, "dos_nche": 1000})
+    input_text = (workspace.inputs_dir / "INPUT").read_text(encoding="utf-8")
+    assert "dos_scale 0.01" in input_text
+    assert "dos_nche 1000" in input_text
 
 
 def test_prepare_lcao_dos_uses_abacus_out_dos_two(tmp_path: Path) -> None:

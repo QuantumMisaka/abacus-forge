@@ -132,6 +132,14 @@ def collect_abacus_metrics(
     band_metrics = _load_json_artifact(artifacts, "metrics_band.json", diagnostics=diagnostics)
     if band_metrics is not None:
         metrics["band_metrics"] = band_metrics
+    pyatb_band_files = _artifact_paths_in_band_structure(artifacts)
+    diagnostics["pyatb_band_artifact_candidates"] = [str(path) for path in pyatb_band_files]
+    if pyatb_band_files:
+        metrics["pyatb_band_artifacts"] = [str(path) for path in pyatb_band_files]
+    pyatb_band_info = _artifact_path(artifacts, "band_info.dat")
+    if pyatb_band_info is not None and pyatb_band_info.exists():
+        metrics["pyatb_band_metrics"] = _parse_pyatb_band_info(pyatb_band_info)
+        diagnostics["pyatb_band_info"] = str(pyatb_band_info)
 
     dos_files = _artifact_paths_matching(artifacts, "DOS", "_smearing.dat")
     diagnostics["dos_artifact_candidates"] = [str(path) for path in dos_files]
@@ -415,6 +423,26 @@ def _artifact_paths_matching(artifacts: dict[str, str], contains: str, suffix: s
         basename = Path(relative).name
         selected.setdefault(basename, (relative, path))
     return [path for _, path in sorted(selected.values(), key=lambda item: item[0])]
+
+
+def _artifact_paths_in_band_structure(artifacts: dict[str, str]) -> list[Path]:
+    matches: list[tuple[str, Path]] = []
+    for relative, path in artifacts.items():
+        normalized = relative.replace("\\", "/")
+        if "/Band_Structure/" not in f"/{normalized}":
+            continue
+        if Path(relative).name in {"band_info.dat", "band_up.dat", "band_dn.dat", "band.pdf", "band.png"}:
+            matches.append((relative, Path(path)))
+    return [path for _, path in sorted(matches, key=lambda item: item[0])]
+
+
+def _parse_pyatb_band_info(path: Path) -> dict[str, Any]:
+    metrics: dict[str, Any] = {"band_info": str(path)}
+    content = path.read_text(encoding="utf-8", errors="ignore")
+    matches = re.findall(rf"band\s+gap(?:\s*\([^)]*\))?(?:\s+is)?\s*[:=]?\s*({_NUMBER})", content, re.IGNORECASE)
+    if matches:
+        metrics["band_gap"] = float(matches[-1])
+    return metrics
 
 
 def _artifact_priority(relative: str) -> int:

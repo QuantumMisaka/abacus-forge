@@ -1,6 +1,6 @@
 """ABACUS-Forge minimal execution substrate."""
 
-from abacus_forge.api import collect, export, prepare, run
+from abacus_forge.api import UnitModifyResult, UnitModifySpec, UnitPrepareResult, UnitSpec, collect, collect_unit, execute, execute_unit, export, modify_unit, prepare, prepare_unit, run
 from abacus_forge.band_data import BandData
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
@@ -25,18 +25,27 @@ __all__ = [
     "PDOSData",
     "RunResult",
     "TaskResult",
+    "UnitModifyResult",
+    "UnitModifySpec",
+    "UnitPrepareResult",
+    "UnitSpec",
     "Workspace",
     "add_cubes",
     "collect",
     "collect_pyatb",
+    "collect_unit",
+    "execute",
+    "execute_unit",
     "export",
     "modify_input",
     "modify_kpt",
     "modify_stru",
+    "modify_unit",
     "planar_average",
     "perturb_structure",
     "prepare",
     "prepare_pyatb_band",
+    "prepare_unit",
     "run",
     "run_band",
     "run_band_sequence",

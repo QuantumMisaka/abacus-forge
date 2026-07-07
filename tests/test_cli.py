@@ -428,6 +428,68 @@ def test_cli_modify_kpt_supports_mesh_and_line_modes(tmp_path: Path, capsys) -> 
     }
 
 
+def test_cli_modify_unit_edits_workspace_inputs(tmp_path: Path, capsys) -> None:
+    structure = Atoms(symbols=["Fe", "Fe"], positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True)
+    structure_path = tmp_path / "Fe2.cif"
+    ase_write(structure_path, structure)
+    workspace = tmp_path / "modify-unit"
+
+    assert (
+        main(
+            [
+                "prepare",
+                str(workspace),
+                "--structure",
+                str(structure_path),
+                "--task",
+                "cell-relax",
+                "--parameter",
+                "smearing_sigma=0.02",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "modify",
+                str(workspace),
+                "--task",
+                "cell-relax",
+                "--set",
+                "force_thr=1e-4",
+                "--remove",
+                "smearing_sigma",
+                "--kpt-mode",
+                "mesh",
+                "--mesh",
+                "5",
+                "5",
+                "1",
+                "--shifts",
+                "1",
+                "1",
+                "0",
+                "--magmom",
+                "Fe=3.0",
+                "--afm",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+    assert payload["modified_files"] == ["INPUT", "KPT", "STRU"]
+    assert read_input(workspace / "inputs" / "INPUT")["force_thr"] == "1e-4"
+    assert "smearing_sigma" not in read_input(workspace / "inputs" / "INPUT")
+    assert read_kpt(workspace / "inputs" / "KPT")["mesh"] == [5, 5, 1]
+    assert json.loads((workspace / "forge-result.json").read_text(encoding="utf-8"))["step"] == "modify"
+
+
 def test_cli_scf_task_runs_end_to_end(tmp_path: Path, capsys) -> None:
     executable = _write_fake_abacus(
         tmp_path / "fake-scf",
@@ -514,6 +576,84 @@ def test_cli_dos_task_enables_pdos_outputs_and_export(tmp_path: Path, capsys) ->
     assert "out_pdos" not in payload["inputs_snapshot"]["INPUT"]
     assert payload["metrics"]["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
     assert json.loads(export_path.read_text(encoding="utf-8"))["metrics"]["dos_summary"]["points"] == 2
+
+
+def test_cli_collect_accepts_flat_layout(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "flat"
+    out = workspace / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (workspace / "INPUT").write_text("INPUT_PARAMETERS\ncalculation scf\n", encoding="utf-8")
+    (out / "running_scf.log").write_text("TOTAL ENERGY = -5.0\nSCF CONVERGED\n", encoding="utf-8")
+    (workspace / "abacus.log").write_text("Atomic-orbital Based Ab-initio\ntotal 2.0\n", encoding="utf-8")
+
+    assert main(["collect", str(workspace), "--layout", "flat", "--json"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+    assert payload["metrics"]["total_energy"] == -5.0
+    assert payload["diagnostics"]["layout"] == "flat"
+
+
+def test_cli_collect_unit_runs_band_postprocess_controls(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "band-unit"
+    (workspace / "inputs").mkdir(parents=True)
+    (workspace / "outputs" / "OUT.ABACUS").mkdir(parents=True)
+    (workspace / "outputs" / "stdout.log").write_text("BAND GAP = 0.9\nSCF CONVERGED\n", encoding="utf-8")
+    (workspace / "outputs" / "stderr.log").write_text("", encoding="utf-8")
+    (workspace / "outputs" / "OUT.ABACUS" / "BANDS_1.dat").write_text("1 0.0 -1.0 0.5\n2 0.5 -0.8 0.7\n", encoding="utf-8")
+
+    assert main(["collect", str(workspace), "--task", "band", "--unit", "nscf", "--plot-emin", "-2", "--plot-emax", "2", "--json"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["diagnostics"]["unit_postprocess"]["status"] == "completed"
+    assert payload["metrics"]["band_metrics"]["band_picture"].endswith("band.png")
+    assert (workspace / "outputs" / "band.png").exists()
+
+
+def test_cli_collect_unit_can_skip_postprocess(tmp_path: Path, capsys) -> None:
+    workspace = tmp_path / "band-unit-skip"
+    (workspace / "outputs" / "OUT.ABACUS").mkdir(parents=True)
+    (workspace / "outputs" / "stdout.log").write_text("SCF CONVERGED\n", encoding="utf-8")
+    (workspace / "outputs" / "stderr.log").write_text("", encoding="utf-8")
+    (workspace / "outputs" / "OUT.ABACUS" / "BANDS_1.dat").write_text("1 0.0 -1.0 0.5\n", encoding="utf-8")
+
+    assert main(["collect", str(workspace), "--task", "band", "--unit", "nscf", "--no-postprocess", "--json"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["diagnostics"]["unit_postprocess"]["reason"] == "postprocess-disabled"
+    assert not (workspace / "outputs" / "band.png").exists()
+
+
+def test_cli_exposes_execute_alias_and_hides_relax_band_dos(tmp_path: Path, capsys) -> None:
+    structure = Atoms(symbols=["Ni", "O"], positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True)
+    structure_path = tmp_path / "NiO.cif"
+    ase_write(structure_path, structure)
+    workspace = tmp_path / "cell-relax"
+    executable = _write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["TOTAL ENERGY = -4.4", "SCF CONVERGED"])
+
+    assert (
+        main(
+            [
+                "prepare",
+                str(workspace),
+                "--structure",
+                str(structure_path),
+                "--task",
+                "cell-relax",
+                "--parameter",
+                "basis_type=lcao",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    assert main(["execute", str(workspace), "--executable", str(executable)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "completed"
+
+    with pytest.raises(SystemExit):
+        main(["relax-band-dos", "--help"])
 
 
 def _write_fake_abacus(

@@ -24,7 +24,7 @@ TASK_DEFAULTS: dict[str, dict[str, Any]] = {
     "dos": {"calculation": "nscf", "init_chg": "file", "out_dos": 1},
 }
 
-_FORBIDDEN_DOS_PARAMETERS = {"dos_scale", "dos_nche"}
+_FORBIDDEN_DOS_PARAMETERS: set[str] = set()
 _DOS_CONTROL_PARAMETERS = {
     "include_tdos",
     "include_pdos",

@@ -1,4 +1,4 @@
-"""Command-line entrypoints for Forge's thin primitives and task-oriented workflows."""
+"""Command-line entrypoints for Forge's thin primitives and task helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from abacus_forge.api import collect, export as export_result, prepare, run
+from abacus_forge.api import UnitModifySpec, UnitSpec, collect, collect_unit, execute_unit, export as export_result, modify_unit, prepare, prepare_unit, run
 from abacus_forge.composite import (
     post_bader,
     post_bec,
@@ -65,7 +65,10 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("workspace")
     prepare_parser.add_argument("--structure")
     prepare_parser.add_argument("--structure-format")
+    prepare_parser.add_argument("--engine", choices=["abacus", "pyatb"], default="abacus")
     prepare_parser.add_argument("--task", default="scf")
+    prepare_parser.add_argument("--unit", default="default")
+    prepare_parser.add_argument("--source-workdir")
     prepare_parser.add_argument("--parameter", action="append", default=[], help="KEY=VALUE")
     prepare_parser.add_argument("--magmom", action="append", default=[], help="ELEMENT=VALUE")
     prepare_parser.add_argument("--remove-parameter", action="append", default=[])
@@ -76,8 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--ensure-pbc", action="store_true")
     prepare_parser.add_argument("--pyatb", action="store_true", help="prepare a PyATB band workspace from an ABACUS LCAO SCF workspace")
     prepare_parser.add_argument("--scf-workspace", help="source ABACUS LCAO SCF workspace for --pyatb")
-    prepare_parser.add_argument("--segments", type=int, default=20, help="line-mode KPT segment count for --pyatb")
-    prepare_parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL] for --pyatb")
+    prepare_parser.add_argument("--segments", type=int, default=20, help="line-mode KPT segment count")
+    prepare_parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
     prepare_parser.add_argument("--efermi", type=float, help="Fermi energy override for --pyatb")
     prepare_parser.add_argument("--copy-outputs", action="store_true", help="copy ABACUS OUT.* files instead of linking them for --pyatb")
     prepare_parser.add_argument("--max-kpoint-num", type=int, help="PyATB max_kpoint_num input value")
@@ -111,6 +114,29 @@ def build_parser() -> argparse.ArgumentParser:
     modify_kpt_parser.add_argument("--segments", type=int)
     modify_kpt_parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
 
+    modify_parser = subparsers.add_parser("modify", help="modify prepared workspace inputs for one unit")
+    modify_parser.add_argument("workspace")
+    modify_parser.add_argument("--engine", choices=["abacus"], default="abacus")
+    modify_parser.add_argument("--task", default="scf")
+    modify_parser.add_argument("--unit", default="default")
+    modify_parser.add_argument("--set", action="append", default=[], help="INPUT KEY=VALUE")
+    modify_parser.add_argument("--remove", action="append", default=[], help="INPUT key to remove")
+    modify_parser.add_argument("--kpt-mode", choices=["mesh", "line"])
+    modify_parser.add_argument("--mesh", nargs=3, type=int, metavar=("NX", "NY", "NZ"))
+    modify_parser.add_argument("--shifts", nargs=3, type=int, metavar=("SX", "SY", "SZ"))
+    modify_parser.add_argument("--segments", type=int)
+    modify_parser.add_argument("--point", action="append", default=[], help="kx,ky,kz[:LABEL]")
+    modify_parser.add_argument("--magmom", action="append", default=[], help="ELEMENT=VALUE")
+    modify_parser.add_argument("--afm", action="store_true")
+    modify_parser.add_argument("--afm-element", action="append", default=[])
+    modify_parser.add_argument("--site-magmoms", help="Comma-separated per-atom collinear magmoms")
+    modify_parser.add_argument("--supercell", nargs=3, type=int, metavar=("NA", "NB", "NC"))
+    modify_parser.add_argument("--vacancy-index", action="append", type=int, default=[], help="1-based atom index to remove")
+    modify_parser.add_argument("--ensure-pbc", action="store_true")
+    modify_parser.add_argument("--vacuum", type=float, default=10.0)
+    modify_parser.add_argument("--structure-standardization", choices=["primitive", "conventional"])
+    modify_parser.add_argument("--json", action="store_true", help="print JSON to stdout")
+
     run_parser = subparsers.add_parser("run", help="run a prepared workspace")
     run_parser.add_argument("workspace")
     run_parser.add_argument("--executable")
@@ -119,11 +145,38 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--timeout", type=float)
     run_parser.add_argument("--pyatb", action="store_true", help="run PyATB in a prepared workspace")
 
+    execute_parser = subparsers.add_parser("execute", help="execute a prepared unit workspace")
+    execute_parser.add_argument("workspace")
+    execute_parser.add_argument("--engine", choices=["abacus", "pyatb"], default="abacus")
+    execute_parser.add_argument("--task", default="scf")
+    execute_parser.add_argument("--unit", default="default")
+    execute_parser.add_argument("--executable")
+    execute_parser.add_argument("--mpi", type=int, default=1)
+    execute_parser.add_argument("--omp", type=int, default=1)
+    execute_parser.add_argument("--timeout", type=float)
+
     collect_parser = subparsers.add_parser("collect", help="collect metrics from a workspace")
     collect_parser.add_argument("workspace")
+    collect_parser.add_argument("--engine", choices=["abacus", "pyatb"], default="abacus")
+    collect_parser.add_argument("--task", default="scf")
+    collect_parser.add_argument("--unit", default="default")
     collect_parser.add_argument("--json", action="store_true", help="print JSON to stdout")
     collect_parser.add_argument("--output-log", help="explicit stdout-like output log path")
+    collect_parser.add_argument("--layout", choices=["forge", "flat", "auto"], default="forge", help="workspace layout to collect")
     collect_parser.add_argument("--pyatb", action="store_true", help="collect PyATB band artifacts")
+    collect_parser.set_defaults(postprocess=True, save_data=True, save_plot=True, include_tdos=True, include_pdos=True)
+    collect_parser.add_argument("--no-postprocess", dest="postprocess", action="store_false", help="skip unit-level postprocess before collection")
+    collect_parser.add_argument("--no-save-data", dest="save_data", action="store_false", help="do not write normalized postprocess data tables")
+    collect_parser.add_argument("--no-save-plot", dest="save_plot", action="store_false", help="do not write normalized postprocess plots")
+    collect_parser.add_argument("--include-tdos", dest="include_tdos", action="store_true")
+    collect_parser.add_argument("--no-include-tdos", dest="include_tdos", action="store_false")
+    collect_parser.add_argument("--include-pdos", dest="include_pdos", action="store_true")
+    collect_parser.add_argument("--no-include-pdos", dest="include_pdos", action="store_false")
+    collect_parser.add_argument("--pdos-mode", choices=["species", "species+shell", "species+orbital", "atom", "atoms"], default="species")
+    collect_parser.add_argument("--pdos-atom-indices", nargs="+", type=int)
+    collect_parser.add_argument("--plot-emin", type=float, default=-10.0)
+    collect_parser.add_argument("--plot-emax", type=float, default=10.0)
+    collect_parser.add_argument("--suffix")
 
     export_parser = subparsers.add_parser("export", help="collect and export JSON to file")
     export_parser.add_argument("workspace")
@@ -195,20 +248,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         parameters = _parse_parameters(args.parameter)
         magmom_by_element = _parse_numeric_mapping(args.magmom)
         kpoints = args.kpoint if args.kpoint else None
-        workspace = prepare(
-            args.workspace,
-            structure=args.structure,
-            structure_format=args.structure_format,
-            task=args.task,
-            parameters=parameters,
-            remove_parameters=args.remove_parameter,
-            kpoints=kpoints,
-            pseudo_path=args.pseudo_path,
-            orbital_path=args.orbital_path,
-            asset_mode=args.asset_mode,
-            ensure_pbc=args.ensure_pbc,
-            magmom_by_element=magmom_by_element or None,
-        )
+        if args.unit != "default" or args.source_workdir or args.engine != "abacus" or args.point:
+            workspace = prepare_unit(
+                UnitSpec(
+                    engine=args.engine,
+                    task=args.task,
+                    unit=args.unit,
+                    workdir=args.workspace,
+                    source_workdir=args.source_workdir,
+                    structure=args.structure,
+                    structure_format=args.structure_format,
+                    parameters=parameters,
+                    remove_parameters=args.remove_parameter,
+                    kpoints=kpoints,
+                    line_kpoints=_parse_kpt_points(args.point),
+                    line_segments=args.segments,
+                    pseudo_path=args.pseudo_path,
+                    orbital_path=args.orbital_path,
+                    asset_mode=args.asset_mode,
+                    ensure_pbc=args.ensure_pbc,
+                    magmom_by_element=magmom_by_element or None,
+                )
+            ).workspace
+        else:
+            workspace = prepare(
+                args.workspace,
+                structure=args.structure,
+                structure_format=args.structure_format,
+                task=args.task,
+                parameters=parameters,
+                remove_parameters=args.remove_parameter,
+                kpoints=kpoints,
+                pseudo_path=args.pseudo_path,
+                orbital_path=args.orbital_path,
+                asset_mode=args.asset_mode,
+                ensure_pbc=args.ensure_pbc,
+                magmom_by_element=magmom_by_element or None,
+            )
         print(workspace.root)
         return 0
 
@@ -260,6 +336,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"mode": modified["mode"], "output": str(Path(args.output))}, sort_keys=True))
         return 0
 
+    if args.command == "modify":
+        points = _parse_kpt_points(args.point)
+        if args.kpt_mode is not None:
+            _validate_kpt_arguments(args.kpt_mode, mesh=args.mesh, shifts=args.shifts, segments=args.segments, points=points)
+        result = modify_unit(
+            UnitModifySpec(
+                engine=args.engine,
+                task=args.task,
+                unit=args.unit,
+                workdir=args.workspace,
+                input_updates=_parse_parameters(args.set),
+                remove_parameters=args.remove,
+                kpt_mode=args.kpt_mode,
+                mesh=args.mesh,
+                shifts=args.shifts,
+                line_kpoints=points,
+                line_segments=args.segments,
+                magmom_by_element=_parse_numeric_mapping(args.magmom) or None,
+                magmoms=_parse_float_list(args.site_magmoms),
+                afm=args.afm,
+                afm_elements=args.afm_element or None,
+                supercell=args.supercell,
+                vacancy_indices=args.vacancy_index or None,
+                ensure_pbc=args.ensure_pbc,
+                vacuum=args.vacuum,
+                structure_standardization=args.structure_standardization,
+            )
+        )
+        if args.json:
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(result.status)
+        return 0
+
     if args.command == "run":
         if args.pyatb:
             if args.mpi != 1:
@@ -281,13 +391,60 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         return 0 if result.returncode == 0 else result.returncode
 
+    if args.command == "execute":
+        result = execute_unit(
+            UnitSpec(
+                engine=args.engine,
+                task=args.task,
+                unit=args.unit,
+                workdir=args.workspace,
+                executable=args.executable,
+                mpi=args.mpi,
+                omp=args.omp,
+                timeout_seconds=args.timeout,
+            )
+        )
+        print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        return 0 if result.returncode == 0 else result.returncode
+
     if args.command == "collect":
         if args.pyatb:
             if args.output_log:
                 raise SystemExit("collect --pyatb does not accept --output-log")
-            result = collect_pyatb(args.workspace)
+            result = collect_unit(
+                UnitSpec(
+                    engine="pyatb",
+                    task="band" if args.task == "scf" else args.task,
+                    unit="pyatb",
+                    workdir=args.workspace,
+                    postprocess=args.postprocess,
+                    save_plot=args.save_plot,
+                    save_data=args.save_data,
+                )
+            )
+        elif args.engine != "abacus" or args.unit != "default":
+            result = collect_unit(
+                UnitSpec(
+                    engine=args.engine,
+                    task=args.task,
+                    unit=args.unit,
+                    workdir=args.workspace,
+                    output_log=args.output_log,
+                    layout=args.layout,
+                    postprocess=args.postprocess,
+                    save_plot=args.save_plot,
+                    save_data=args.save_data,
+                    include_tdos=args.include_tdos,
+                    include_pdos=args.include_pdos,
+                    pdos_mode=args.pdos_mode,
+                    pdos_atom_indices=args.pdos_atom_indices,
+                    plot_emin=args.plot_emin,
+                    plot_emax=args.plot_emax,
+                    suffix=args.suffix,
+                )
+            )
         else:
-            result = collect(args.workspace, output_log=args.output_log)
+            result = collect(args.workspace, output_log=args.output_log, layout=args.layout)
         if args.json:
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:

@@ -2,7 +2,7 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> run -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。`run` 仍作为 `execute` 的兼容别名保留。
 
 ## 当前定位
 
@@ -28,10 +28,22 @@
 
 ### 运行与收集
 
-- `run(...)` / `abacus-forge run`
+- `execute(...)` / `abacus-forge execute`
+- `run(...)` / `abacus-forge run` 兼容别名
 - `collect(...)` / `abacus-forge collect`
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
+
+### 原子 unit API
+
+- `UnitSpec`
+- `prepare_unit(...)`
+- `modify_unit(...)`
+- `execute_unit(...)`
+- `collect_unit(...)`
+- CLI 入口为 `abacus-forge prepare|modify|execute|collect --task ... --unit ...`
+- `band` / `dos` 这类多阶段物理任务被拆成 `scf`、`nscf`、`pyatb` 或 `postprocess` 等可独立运行单元
+- 下游单元通过显式 `--source-workdir` 读取上游产物，不在 Forge 内部隐藏调度完整 workflow
 
 ### 单任务闭环
 
@@ -43,7 +55,7 @@
 - `run_md(...)` / `abacus-forge md`
 - `dos` task 会在同一个任务中同时启用 DOS 与 PDOS 输出
 - `band` task 需要显式提供 line-mode K 点路径，不隐式生成高对称路径
-- `band` / `dos` 的单任务 `prepare` 生成 ABACUS NSCF 输入；完整电子结构流程请使用 sequence API 组合 SCF 与 NSCF
+- `band` / `dos` 的单任务 `prepare` 生成 ABACUS NSCF 输入；推荐用 unit CLI 显式组合 SCF 与 NSCF
 - 所有单任务支持 `--dry-run`，只准备 workspace 并返回命令预览
 
 ### 本地 sequence API
@@ -52,7 +64,7 @@
 - `run_band_sequence(..., backend="pyatb")`：本地组合 `SCF(out_mat_r/out_mat_hs2) -> PyATB Input -> pyatb -> collect_pyatb`
 - `run_dos_sequence(...)`：本地组合 `SCF -> NSCF DOS/PDOS -> collect/postprocess`
 - `prepare_pyatb_band(...)` / `run_pyatb(...)` / `collect_pyatb(...)` 可作为独立 PyATB 原语使用
-- sequence API 只管理本地子目录，不引入 Slurm、AiiDA、MCP/ATP 或前端语义
+- sequence API 只作为兼容 helper 管理本地子目录；新的可组合入口是 `prepare_unit / execute_unit / collect_unit`
 
 ### 本地 composite task pack
 
@@ -180,9 +192,22 @@ PYTHONPATH=src python -m abacus_forge.cli modify-kpt KPT.line \
 
 Forge 写出的 line-mode `KPT` 使用 ABACUS 原生格式：第二行为高对称点数量，每个点行为 `kx ky kz npoints [#label]`。旧的 `segments` payload 仍兼容；未显式提供 `npoints` 时，除最后一点外使用 `segments`，最后一点使用 `1`。
 
-### 8. 运行与收集
+### 8. 对已准备 workspace 做 unit 输入编辑
 
 ```bash
+PYTHONPATH=src python -m abacus_forge.cli modify runs/Fe_cell_relax \
+  --task cell-relax \
+  --set force_thr=1e-4 \
+  --remove smearing_sigma \
+  --kpt-mode mesh --mesh 5 5 1 --shifts 1 1 0 \
+  --magmom Fe=3.0 --afm \
+  --json
+```
+
+### 9. 执行与收集
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli execute runs/Si_scf --executable abacus --mpi 32 --omp 1
 PYTHONPATH=src python -m abacus_forge.cli run runs/Si_scf --executable abacus --mpi 32 --omp 1
 PYTHONPATH=src python -m abacus_forge.cli collect runs/Si_scf --json
 PYTHONPATH=src python -m abacus_forge.cli collect runs/Si_scf --output-log outputs/abacus.log --json
@@ -191,7 +216,34 @@ PYTHONPATH=src python -m abacus_forge.cli export runs/Si_scf --output result.jso
 
 `collect` 默认会自动发现 stdout 类输出文件；如果 stdout 被重定向到非标准文件名，也可以通过 `--output-log` 或 `collect(..., output_log=...)` 显式指定。
 
-### 9. Property pack 示例
+### 10. 显式组合 cell-relax -> band -> dos
+
+Forge 不提供 `relax-band-dos` 一键 workflow。NiO 这类全流程应由上层 workflow 或 shell 显式串联原子 unit：
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli prepare runs/nio/cell-relax \
+  --task cell-relax --structure NiO.STRU --structure-format stru
+PYTHONPATH=src python -m abacus_forge.cli execute runs/nio/cell-relax --task cell-relax --executable abacus
+PYTHONPATH=src python -m abacus_forge.cli collect runs/nio/cell-relax --task cell-relax --json
+
+PYTHONPATH=src python -m abacus_forge.cli prepare runs/nio/band-scf \
+  --task band --unit scf --source-workdir runs/nio/cell-relax
+PYTHONPATH=src python -m abacus_forge.cli execute runs/nio/band-scf --task band --unit scf --executable abacus
+PYTHONPATH=src python -m abacus_forge.cli collect runs/nio/band-scf --task band --unit scf --json
+
+PYTHONPATH=src python -m abacus_forge.cli prepare runs/nio/band-nscf \
+  --task band --unit nscf --source-workdir runs/nio/band-scf \
+  --point 0,0,0:G --point 0.5,0,0:X --segments 20
+PYTHONPATH=src python -m abacus_forge.cli execute runs/nio/band-nscf --task band --unit nscf --executable abacus
+PYTHONPATH=src python -m abacus_forge.cli collect runs/nio/band-nscf --task band --unit nscf --json
+
+PYTHONPATH=src python -m abacus_forge.cli prepare runs/nio/dos-nscf \
+  --task dos --unit nscf --source-workdir runs/nio/band-scf
+PYTHONPATH=src python -m abacus_forge.cli execute runs/nio/dos-nscf --task dos --unit nscf --executable abacus
+PYTHONPATH=src python -m abacus_forge.cli collect runs/nio/dos-nscf --task dos --unit nscf --json
+```
+
+### 11. Property pack 示例
 
 ```bash
 PYTHONPATH=src python -m abacus_forge.cli convergence prepare runs/Si_scf \
@@ -209,7 +261,7 @@ PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis 
 ## 作为 Python 库使用
 
 ```python
-from abacus_forge.api import collect, prepare
+from abacus_forge.api import UnitModifySpec, UnitSpec, collect, collect_unit, execute_unit, modify_unit, prepare, prepare_unit
 from abacus_forge.composite import prepare_convergence, post_convergence, prepare_workfunc, post_workfunc
 from abacus_forge.cube import CubeData, subtract_cubes
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
@@ -230,6 +282,11 @@ modify_stru(workspace.inputs_dir / "STRU", destination=workspace.inputs_dir / "S
 
 result = collect(workspace, output_log="outputs/abacus.log")
 print(result.status)
+
+prepared = prepare_unit(UnitSpec(task="band", unit="scf", workdir="runs/NiO_band_scf", structure="NiO.STRU", structure_format="stru"))
+modified = modify_unit(UnitModifySpec(task="band", unit="scf", workdir=prepared.workspace.root, input_updates={"scf_thr": "1e-8"}))
+executed = execute_unit(UnitSpec(task="band", unit="scf", workdir=prepared.workspace.root, executable="abacus"))
+collected = collect_unit(UnitSpec(task="band", unit="scf", workdir=prepared.workspace.root))
 
 task_result = run_scf("runs/Si_task", structure="Si.cif", executable="abacus")
 dos_result = run_dos("runs/FeO_dos", structure="FeO.cif", executable="abacus")

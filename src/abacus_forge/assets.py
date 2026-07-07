@@ -7,7 +7,11 @@ import shutil
 from pathlib import Path
 
 
-def collect_assets(directory: str | Path | None) -> dict[str, Path]:
+_PSEUDO_SUFFIXES = {".upf"}
+_ORBITAL_SUFFIXES = {".orb"}
+
+
+def collect_assets(directory: str | Path | None, *, family: str | None = None) -> dict[str, Path]:
     if directory is None:
         return {}
     base = Path(directory)
@@ -17,10 +21,22 @@ def collect_assets(directory: str | Path | None) -> dict[str, Path]:
     for entry in sorted(base.iterdir()):
         if not entry.is_file():
             continue
+        if not _matches_family(entry, family=family):
+            continue
         element = _infer_element(entry.name)
         if element and element not in mapping:
             mapping[element] = entry
     return mapping
+
+
+def _matches_family(path: Path, *, family: str | None) -> bool:
+    if family is None:
+        return path.suffix.lower() in _PSEUDO_SUFFIXES | _ORBITAL_SUFFIXES
+    if family == "pseudo":
+        return path.suffix.lower() in _PSEUDO_SUFFIXES
+    if family == "orbital":
+        return path.suffix.lower() in _ORBITAL_SUFFIXES
+    raise ValueError(f"unsupported asset family: {family}")
 
 
 def stage_assets(

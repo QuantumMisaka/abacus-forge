@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -12,12 +14,128 @@ from ase import Atoms
 from abacus_forge.assets import collect_assets, stage_assets
 from abacus_forge.collectors.abacus import collect_abacus_metrics
 from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt_line_mode, write_kpt_mesh
+from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.prepare_profiles import build_task_parameters
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
 from abacus_forge.validation import validate_inputs
+
+
+@dataclass(slots=True)
+class UnitSpec:
+    """Description of one atomic ABACUS/PyATB unit operation."""
+
+    task: str
+    workdir: str | Path | Workspace
+    engine: str = "abacus"
+    unit: str = "default"
+    structure: str | Path | AbacusStructure | Atoms | Any | None = None
+    structure_format: str | None = None
+    parameters: dict[str, Any] = field(default_factory=dict)
+    input_overrides: dict[str, Any] = field(default_factory=dict)
+    remove_parameters: Iterable[str] | None = None
+    kpoints: Iterable[int] | None = None
+    line_kpoints: Iterable[dict[str, Any] | tuple[Iterable[float], str | None]] | None = None
+    line_segments: int = 20
+    metadata: dict[str, Any] = field(default_factory=dict)
+    pseudo_path: str | Path | None = None
+    orbital_path: str | Path | None = None
+    asset_mode: str = "link"
+    ensure_pbc: bool = False
+    structure_standardization: str | None = None
+    magmom_by_element: dict[str, float] | None = None
+    source_workdir: str | Path | Workspace | None = None
+    command: list[str] | None = None
+    executable: str | None = None
+    mpi: int = 1
+    omp: int = 1
+    timeout_seconds: float | None = None
+    env_overrides: dict[str, str] = field(default_factory=dict)
+    layout: str = "forge"
+    output_log: str | Path | None = None
+    postprocess: bool = True
+    save_plot: bool = True
+    save_data: bool = True
+    include_tdos: bool = True
+    include_pdos: bool = True
+    pdos_mode: str = "species"
+    pdos_atom_indices: list[int] | None = None
+    plot_emin: float = -10.0
+    plot_emax: float = 10.0
+    suffix: str | None = None
+
+
+@dataclass(slots=True)
+class UnitPrepareResult:
+    """Prepared workspace for one atomic unit."""
+
+    workspace: Workspace
+    task: str
+    unit: str
+    engine: str
+    manifest: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "workspace": str(self.workspace.root),
+            "task": self.task,
+            "unit": self.unit,
+            "engine": self.engine,
+            "manifest": self.manifest,
+        }
+
+
+@dataclass(slots=True)
+class UnitModifySpec:
+    """Workspace-aware input modification request for one atomic unit."""
+
+    task: str
+    workdir: str | Path | Workspace
+    engine: str = "abacus"
+    unit: str = "default"
+    layout: str = "forge"
+    input_updates: dict[str, Any] = field(default_factory=dict)
+    remove_parameters: Iterable[str] | None = None
+    kpt_mode: str | None = None
+    mesh: Iterable[int] | None = None
+    shifts: Iterable[int] | None = None
+    line_kpoints: Iterable[dict[str, Any] | tuple[Iterable[float], str | None]] | None = None
+    line_segments: int | None = None
+    magmom_by_element: dict[str, float] | None = None
+    magmoms: Iterable[float] | None = None
+    afm: bool = False
+    afm_elements: Iterable[str] | None = None
+    supercell: tuple[int, int, int] | list[int] | None = None
+    vacancy_indices: Iterable[int] | None = None
+    ensure_pbc: bool = False
+    vacuum: float = 10.0
+    structure_standardization: str | None = None
+
+
+@dataclass(slots=True)
+class UnitModifyResult:
+    """Outcome of one workspace-aware input modification."""
+
+    workspace: Path
+    task: str
+    unit: str
+    engine: str
+    status: str
+    modified_files: list[str] = field(default_factory=list)
+    changes: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "workspace": str(self.workspace),
+            "task": self.task,
+            "unit": self.unit,
+            "engine": self.engine,
+            "status": self.status,
+            "modified_files": self.modified_files,
+            "changes": self.changes,
+        }
 
 
 def prepare(
@@ -75,8 +193,8 @@ def prepare(
                 ]
                 atoms.set_initial_magnetic_moments(initial_magmoms)
                 structure_payload = AbacusStructure(atoms, source_format=structure_payload.source_format)
-            pseudo_map = collect_assets(pseudo_path)
-            orbital_map = collect_assets(orbital_path)
+            pseudo_map = collect_assets(pseudo_path, family="pseudo")
+            orbital_map = collect_assets(orbital_path, family="orbital")
             ws.write_text("inputs/STRU", structure_payload.to_stru(pp_map=_basename_map(pseudo_map), orb_map=_basename_map(orbital_map)))
             stage_assets(ws.inputs_dir, pseudo_map=pseudo_map, orbital_map=orbital_map, mode=asset_mode)
             structure_info = structure_payload.metadata().to_dict()
@@ -117,6 +235,289 @@ def run(workspace: str | Path | Workspace, *, runner: LocalRunner | None = None,
     return (runner or LocalRunner()).run(ws, check=check)
 
 
+def execute(workspace: str | Path | Workspace, *, runner: LocalRunner | None = None, check: bool = False) -> RunResult:
+    """Execute one prepared workspace.
+
+    ``execute`` is the canonical primitive name; ``run`` remains the
+    compatibility alias for existing callers.
+    """
+
+    return run(workspace, runner=runner, check=check)
+
+
+def prepare_unit(spec: UnitSpec) -> UnitPrepareResult:
+    """Prepare one explicit ABACUS/PyATB task unit."""
+
+    task = _normalize_task(spec.task)
+    unit = _normalize_unit(task, spec.unit)
+    engine = _normalize_engine(spec.engine, unit)
+    ws = spec.workdir if isinstance(spec.workdir, Workspace) else Workspace(Path(spec.workdir))
+    source_ws = _workspace_or_none(spec.source_workdir)
+
+    if engine == "pyatb" or unit == "pyatb":
+        if source_ws is None:
+            raise ValueError("pyatb unit requires source_workdir")
+        from abacus_forge.pyatb import prepare_pyatb_band
+
+        workspace = prepare_pyatb_band(
+            ws,
+            scf_workspace=source_ws,
+            line_kpoints=_normalize_line_kpoints_for_unit(spec.line_kpoints),
+            line_segments=spec.line_segments,
+            efermi=spec.parameters.get("efermi"),
+        )
+    else:
+        if unit == "nscf" and source_ws is None:
+            raise ValueError(f"{task}.{unit} prepare requires source_workdir")
+        calculation_task = _calculation_task_for_unit(task, unit)
+        structure = spec.structure
+        structure_format = spec.structure_format
+        if structure is None and source_ws is not None:
+            source_structure = _source_structure_path(source_ws)
+            if source_structure is not None:
+                structure = source_structure
+                structure_format = _structure_format_for_path(source_structure)
+        workspace = prepare(
+            ws,
+            structure=structure,
+            structure_format=structure_format,
+            task=calculation_task,
+            parameters=_unit_parameters(task, unit, spec.parameters),
+            input_overrides=spec.input_overrides,
+            remove_parameters=spec.remove_parameters,
+            kpoints=spec.kpoints,
+            kpt_mode="line" if task == "band" and unit == "nscf" else "mesh",
+            line_kpoints=_normalize_line_kpoints_for_unit(spec.line_kpoints),
+            metadata={"unit": unit, **dict(spec.metadata or {})},
+            pseudo_path=spec.pseudo_path,
+            orbital_path=spec.orbital_path,
+            asset_mode=spec.asset_mode,
+            ensure_pbc=spec.ensure_pbc,
+            structure_standardization=spec.structure_standardization,
+            magmom_by_element=spec.magmom_by_element,
+        )
+        if task == "band" and unit == "nscf":
+            if not spec.line_kpoints:
+                raise ValueError("band.nscf prepare requires line_kpoints")
+            write_kpt_line_mode(
+                workspace.inputs_dir / "KPT",
+                _normalize_line_kpoints_for_unit(spec.line_kpoints),
+                segments=int(spec.line_segments),
+            )
+        if source_ws is not None:
+            _stage_source_out_dirs(source_ws, workspace, link=spec.asset_mode == "link")
+
+    manifest = _unit_manifest(spec, task=task, unit=unit, engine=engine, prepared=True)
+    workspace.write_json("forge-unit.json", manifest)
+    return UnitPrepareResult(workspace=workspace, task=task, unit=unit, engine=engine, manifest=manifest)
+
+
+def execute_unit(spec: UnitSpec) -> RunResult:
+    """Execute one explicit ABACUS/PyATB task unit without collecting it."""
+
+    unit = _normalize_unit(_normalize_task(spec.task), spec.unit)
+    engine = _normalize_engine(spec.engine, unit)
+    if engine == "pyatb":
+        from abacus_forge.pyatb import run_pyatb
+
+        result = run_pyatb(
+            spec.workdir,
+            executable=spec.executable or (spec.command[0] if spec.command else "pyatb"),
+            omp=spec.omp,
+            timeout_seconds=spec.timeout_seconds,
+        )
+    else:
+        command = list(spec.command or [])
+        runner = LocalRunner(
+            executable=spec.executable or (command[0] if command else "abacus"),
+            extra_args=command[1:] if command else (),
+            mpi_ranks=spec.mpi,
+            omp_threads=spec.omp,
+            timeout_seconds=spec.timeout_seconds,
+            env_overrides=dict(spec.env_overrides or {}),
+        )
+        result = execute(spec.workdir, runner=runner)
+    _workspace(spec.workdir).write_json(
+        "forge-result.json",
+        {
+            "step": "execute",
+            "task": _normalize_task(spec.task),
+            "unit": unit,
+            "engine": engine,
+            "status": result.status,
+            "returncode": result.returncode,
+            "command": result.command,
+        },
+    )
+    return result
+
+
+def modify_unit(spec: UnitModifySpec) -> UnitModifyResult:
+    """Modify prepared workspace inputs for one explicit unit."""
+
+    task = _normalize_task(spec.task)
+    unit = _normalize_unit(task, spec.unit)
+    engine = _normalize_engine(spec.engine, unit)
+    if engine != "abacus":
+        raise ValueError("modify_unit currently supports ABACUS workspaces only")
+    if spec.layout != "forge":
+        raise ValueError("modify_unit currently supports forge layout only")
+
+    ws = _workspace(spec.workdir)
+    inputs_dir = ws.inputs_dir
+    modified_files: list[str] = []
+    changes: dict[str, Any] = {}
+
+    if _input_modification_requested(spec):
+        input_path = _require_input_file(inputs_dir / "INPUT", "INPUT")
+        modify_input(
+            input_path,
+            updates=spec.input_updates,
+            remove_keys=spec.remove_parameters,
+            destination=input_path,
+        )
+        modified_files.append("INPUT")
+        changes["INPUT"] = {
+            "updates": dict(spec.input_updates or {}),
+            "removed": [str(key) for key in spec.remove_parameters or ()],
+        }
+
+    if _kpt_modification_requested(spec):
+        kpt_path = _require_input_file(inputs_dir / "KPT", "KPT")
+        points = _normalize_line_kpoints_for_unit(spec.line_kpoints) if spec.line_kpoints is not None else None
+        modify_kpt(
+            kpt_path,
+            mode=spec.kpt_mode,
+            mesh=spec.mesh,
+            shifts=spec.shifts,
+            points=points,
+            segments=spec.line_segments,
+            destination=kpt_path,
+        )
+        modified_files.append("KPT")
+        changes["KPT"] = {
+            "mode": spec.kpt_mode,
+            "mesh": [int(value) for value in spec.mesh] if spec.mesh is not None else None,
+            "shifts": [int(value) for value in spec.shifts] if spec.shifts is not None else None,
+            "points": points,
+            "segments": spec.line_segments,
+        }
+
+    if _structure_modification_requested(spec):
+        stru_path = _require_input_file(inputs_dir / "STRU", "STRU")
+        modify_stru(
+            stru_path,
+            supercell=spec.supercell,
+            vacancy_indices=spec.vacancy_indices,
+            ensure_pbc=spec.ensure_pbc,
+            vacuum=spec.vacuum,
+            standardization=spec.structure_standardization,
+            magmoms=spec.magmoms,
+            magmom_by_element=spec.magmom_by_element,
+            afm=spec.afm,
+            afm_elements=spec.afm_elements,
+            destination=stru_path,
+        )
+        modified_files.append("STRU")
+        changes["STRU"] = {
+            "magmom_by_element": dict(spec.magmom_by_element or {}),
+            "magmoms": [float(value) for value in spec.magmoms] if spec.magmoms is not None else None,
+            "afm": bool(spec.afm),
+            "afm_elements": [str(value) for value in spec.afm_elements or ()],
+            "supercell": [int(value) for value in spec.supercell] if spec.supercell is not None else None,
+            "vacancy_indices": [int(value) for value in spec.vacancy_indices or ()],
+            "ensure_pbc": bool(spec.ensure_pbc),
+            "vacuum": float(spec.vacuum),
+            "structure_standardization": spec.structure_standardization,
+        }
+
+    result = UnitModifyResult(
+        workspace=ws.root,
+        task=task,
+        unit=unit,
+        engine=engine,
+        status="completed",
+        modified_files=modified_files,
+        changes=changes,
+    )
+    ws.write_json(
+        "forge-result.json",
+        {
+            "step": "modify",
+            **result.to_dict(),
+        },
+    )
+    return result
+
+
+def collect_unit(spec: UnitSpec) -> CollectionResult:
+    """Collect one explicit ABACUS/PyATB task unit without executing it."""
+
+    task = _normalize_task(spec.task)
+    unit = _normalize_unit(task, spec.unit)
+    engine = _normalize_engine(spec.engine, unit)
+    postprocess_diagnostics = _postprocess_unit_before_collect(spec, task=task, unit=unit, engine=engine)
+    if engine == "pyatb":
+        from abacus_forge.pyatb import collect_pyatb
+
+        result = collect_pyatb(spec.workdir)
+    else:
+        result = collect(spec.workdir, output_log=spec.output_log, layout=spec.layout)
+    if postprocess_diagnostics:
+        result.diagnostics["unit_postprocess"] = postprocess_diagnostics
+    _workspace(spec.workdir).write_json(
+        "forge-result.json",
+        {
+            "step": "collect",
+            "task": task,
+            "unit": unit,
+            "engine": engine,
+            "status": result.status,
+            "metrics": result.metrics,
+            "artifacts": result.artifacts,
+            "diagnostics": result.diagnostics,
+        },
+    )
+    return result
+
+
+def _postprocess_unit_before_collect(spec: UnitSpec, *, task: str, unit: str, engine: str) -> dict[str, Any]:
+    if not spec.postprocess:
+        return {"status": "skipped", "reason": "postprocess-disabled"}
+    if engine == "pyatb" and task == "band" and unit == "pyatb":
+        from abacus_forge.unit_postprocess import postprocess_pyatb_band
+
+        return postprocess_pyatb_band(spec.workdir, save_plot=spec.save_plot)
+    if engine != "abacus":
+        return {}
+    if task == "band" and unit == "nscf":
+        from abacus_forge.unit_postprocess import postprocess_abacus_band
+
+        return postprocess_abacus_band(
+            spec.workdir,
+            plot_emin=float(spec.plot_emin),
+            plot_emax=float(spec.plot_emax),
+            save_plot=bool(spec.save_plot),
+            save_data=bool(spec.save_data),
+        )
+    if task == "dos" and unit in {"nscf", "postprocess"}:
+        from abacus_forge.unit_postprocess import postprocess_abacus_dos
+
+        return postprocess_abacus_dos(
+            spec.workdir,
+            include_tdos=bool(spec.include_tdos),
+            include_pdos=bool(spec.include_pdos),
+            pdos_mode=spec.pdos_mode,  # type: ignore[arg-type]
+            pdos_atom_indices=spec.pdos_atom_indices,
+            plot_emin=float(spec.plot_emin),
+            plot_emax=float(spec.plot_emax),
+            save_plot=bool(spec.save_plot),
+            save_data=bool(spec.save_data),
+            suffix=spec.suffix,
+        )
+    return {}
+
+
 _OUTPUT_BANNER_MARKERS = (
     "Atomic-orbital Based Ab-initio",
 )
@@ -126,6 +527,7 @@ def collect(
     workspace: str | Path | Workspace,
     *,
     output_log: str | Path | None = None,
+    layout: str = "forge",
 ) -> CollectionResult:
     """Parse metrics, structures, and artifacts from one workspace.
 
@@ -139,15 +541,16 @@ def collect(
     """
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
-    artifacts = _collect_artifacts(ws)
-    inputs_snapshot = _inputs_snapshot(ws)
-    log_selection = _select_log_sources(ws, artifacts, inputs_snapshot=inputs_snapshot, output_log=output_log)
+    normalized_layout = _normalize_layout(ws, layout)
+    artifacts = _collect_artifacts(ws, layout=normalized_layout)
+    inputs_snapshot = _inputs_snapshot(ws, layout=normalized_layout)
+    log_selection = _select_log_sources(ws, artifacts, inputs_snapshot=inputs_snapshot, output_log=output_log, layout=normalized_layout)
     main_log_path = log_selection["main_log_path"]
     output_log_path = log_selection["output_log_path"]
     main_log_text = _read_text_if_exists(main_log_path)
     output_log_text = _read_text_if_exists(output_log_path)
-    stderr_path = ws.outputs_dir / "stderr.log"
-    structure_snapshot = _structure_snapshot(ws.inputs_dir / "STRU")
+    stderr_path = _stderr_path(ws, layout=normalized_layout)
+    structure_snapshot = _structure_snapshot(_input_path(ws, "STRU", layout=normalized_layout))
     final_structure_snapshot, final_structure_diagnostics = _final_structure_snapshot(artifacts)
     metrics, diagnostics = collect_abacus_metrics(
         main_log_text=main_log_text,
@@ -158,6 +561,7 @@ def collect(
     )
     diagnostics.update(log_selection["diagnostics"])
     diagnostics.update(final_structure_diagnostics)
+    diagnostics["layout"] = normalized_layout
     diagnostics["log_paths"] = [
         str(path)
         for path in (main_log_path, output_log_path)
@@ -204,8 +608,191 @@ def export(result: RunResult | CollectionResult | TaskResult, destination: str |
     return text
 
 
-def _collect_artifacts(workspace: Workspace) -> dict[str, str]:
+def _workspace(value: str | Path | Workspace) -> Workspace:
+    return value if isinstance(value, Workspace) else Workspace(Path(value))
+
+
+def _workspace_or_none(value: str | Path | Workspace | None) -> Workspace | None:
+    if value is None:
+        return None
+    return _workspace(value)
+
+
+def _require_input_file(path: Path, name: str) -> Path:
+    if not path.exists():
+        raise FileNotFoundError(f"{name} file not found: {path}")
+    return path
+
+
+def _input_modification_requested(spec: UnitModifySpec) -> bool:
+    return bool(spec.input_updates) or bool(list(spec.remove_parameters or ()))
+
+
+def _kpt_modification_requested(spec: UnitModifySpec) -> bool:
+    return any(
+        value is not None
+        for value in (
+            spec.kpt_mode,
+            spec.mesh,
+            spec.shifts,
+            spec.line_kpoints,
+            spec.line_segments,
+        )
+    )
+
+
+def _structure_modification_requested(spec: UnitModifySpec) -> bool:
+    return any(
+        (
+            spec.magmom_by_element,
+            spec.magmoms is not None,
+            spec.afm,
+            spec.afm_elements,
+            spec.supercell,
+            spec.vacancy_indices,
+            spec.ensure_pbc,
+            spec.structure_standardization,
+        )
+    )
+
+
+def _normalize_task(task: str) -> str:
+    normalized = str(task).strip().lower()
+    if normalized not in {"scf", "relax", "cell-relax", "md", "band", "dos"}:
+        raise ValueError(f"unsupported unit task: {task!r}")
+    return normalized
+
+
+def _normalize_unit(task: str, unit: str | None) -> str:
+    normalized = str(unit or "default").strip().lower()
+    if normalized == "default":
+        return "default" if task not in {"band", "dos"} else ("nscf" if task == "dos" else "scf")
+    allowed = {
+        "scf": {"default"},
+        "relax": {"default"},
+        "cell-relax": {"default"},
+        "md": {"default"},
+        "band": {"scf", "nscf", "pyatb"},
+        "dos": {"scf", "nscf", "postprocess"},
+    }[task]
+    if normalized not in allowed:
+        raise ValueError(f"unsupported unit {normalized!r} for task {task!r}")
+    return normalized
+
+
+def _normalize_engine(engine: str, unit: str) -> str:
+    normalized = "pyatb" if unit == "pyatb" else str(engine).strip().lower()
+    if normalized not in {"abacus", "pyatb"}:
+        raise ValueError(f"unsupported unit engine: {engine!r}")
+    return normalized
+
+
+def _calculation_task_for_unit(task: str, unit: str) -> str:
+    if unit == "scf":
+        return "scf"
+    if unit == "nscf":
+        return task
+    return task
+
+
+def _unit_parameters(task: str, unit: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(parameters or {})
+    if unit == "scf" and task in {"band", "dos"}:
+        payload.setdefault("out_chg", 1)
+    if unit == "nscf" and task == "band":
+        payload.setdefault("symmetry", 0)
+    if unit == "nscf" and task == "dos":
+        payload.setdefault("out_chg", -1)
+    return payload
+
+
+def _normalize_line_kpoints_for_unit(points: Iterable[dict[str, Any] | tuple[Iterable[float], str | None]] | None) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for point in points or []:
+        if isinstance(point, dict):
+            coords = [float(value) for value in point["coords"]]
+            label = point.get("label")
+            npoints = point.get("npoints")
+        else:
+            coords_raw, label = point
+            coords = [float(value) for value in coords_raw]
+            npoints = None
+        payload: dict[str, Any] = {"coords": coords, "label": str(label) if label is not None else None}
+        if npoints is not None:
+            payload["npoints"] = int(npoints)
+        normalized.append(payload)
+    return normalized
+
+
+def _source_structure_path(source: Workspace) -> Path | None:
+    for candidate in (
+        source.outputs_dir / "OUT.ABACUS" / "STRU_ION_D",
+        source.inputs_dir / "OUT.ABACUS" / "STRU_ION_D",
+        source.inputs_dir / "STRU",
+        source.root / "STRU",
+    ):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _structure_format_for_path(path: Path) -> str | None:
+    return "stru" if path.name in {"STRU", "STRU_ION_D"} else None
+
+
+def _stage_source_out_dirs(source: Workspace, destination: Workspace, *, link: bool = False) -> list[str]:
+    destination.ensure_layout()
+    staged: list[str] = []
+    for base in (source.inputs_dir, source.outputs_dir, source.root):
+        if not base.exists():
+            continue
+        for out_dir in sorted(path for path in base.glob("OUT.*") if path.is_dir()):
+            target = destination.inputs_dir / out_dir.name
+            if target.exists() or target.is_symlink():
+                if target.is_dir() and not target.is_symlink():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            if link:
+                target.symlink_to(out_dir.resolve(), target_is_directory=True)
+            else:
+                shutil.copytree(out_dir, target)
+            staged.append(str(target))
+    return staged
+
+
+def _unit_manifest(spec: UnitSpec, *, task: str, unit: str, engine: str, prepared: bool) -> dict[str, Any]:
+    return {
+        "kind": "abacus-forge.unit",
+        "task": task,
+        "unit": unit,
+        "engine": engine,
+        "prepared": prepared,
+        "source_workdir": str(_workspace(spec.source_workdir).root) if spec.source_workdir is not None else None,
+        "metadata": dict(spec.metadata or {}),
+    }
+
+
+def _normalize_layout(workspace: Workspace, layout: str) -> str:
+    normalized = str(layout).strip().lower()
+    if normalized not in {"forge", "flat", "auto"}:
+        raise ValueError(f"unsupported collect layout: {layout!r}")
+    if normalized == "auto":
+        if workspace.inputs_dir.exists() or workspace.outputs_dir.exists() or workspace.reports_dir.exists():
+            return "forge"
+        return "flat"
+    return normalized
+
+
+def _collect_artifacts(workspace: Workspace, *, layout: str = "forge") -> dict[str, str]:
     artifacts: dict[str, str] = {}
+    if layout == "flat":
+        if not workspace.root.exists():
+            return artifacts
+        for path in sorted(workspace.root.rglob("*")):
+            if path.is_file():
+                artifacts[str(path.relative_to(workspace.root))] = str(path)
+        return artifacts
     for relative in ("inputs", "outputs", "reports"):
         base = workspace.root / relative
         if not base.exists():
@@ -222,6 +809,7 @@ def _select_log_sources(
     *,
     inputs_snapshot: dict[str, Any],
     output_log: str | Path | None = None,
+    layout: str = "forge",
 ) -> dict[str, Any]:
     input_parameters = inputs_snapshot.get("INPUT", {})
     calculation = str(input_parameters.get("calculation", "")).strip() if isinstance(input_parameters, dict) else ""
@@ -258,10 +846,7 @@ def _select_log_sources(
         warning = warning or f"Multiple running logs detected without unique match for calculation={calculation or 'unknown'}."
 
     fallback_candidates: list[Path] = []
-    for candidate in (
-        workspace.outputs_dir / "stdout.log",
-        workspace.outputs_dir / "out.log",
-    ):
+    for candidate in _fallback_log_paths(workspace, layout=layout):
         if candidate.exists():
             fallback_candidates.append(candidate)
 
@@ -286,6 +871,7 @@ def _select_log_sources(
     output_selection = _discover_output_log(
         workspace,
         explicit_output_log=output_log,
+        layout=layout,
     )
 
     return {
@@ -349,6 +935,7 @@ def _discover_output_log(
     workspace: Workspace,
     *,
     explicit_output_log: str | Path | None,
+    layout: str = "forge",
 ) -> dict[str, Any]:
     override_requested = str(explicit_output_log) if explicit_output_log is not None else None
     override_missing = False
@@ -366,14 +953,7 @@ def _discover_output_log(
             }
         override_missing = True
 
-    fixed_candidates = [
-        candidate
-        for candidate in (
-            workspace.outputs_dir / "stdout.log",
-            workspace.outputs_dir / "out.log",
-        )
-        if candidate.exists() and candidate.is_file()
-    ]
+    fixed_candidates = [candidate for candidate in _fallback_log_paths(workspace, layout=layout) if candidate.exists() and candidate.is_file()]
     if fixed_candidates:
         selected = sorted(fixed_candidates, key=lambda path: _natural_sort_key(str(path.relative_to(workspace.root))))[0]
         return {
@@ -386,7 +966,7 @@ def _discover_output_log(
             "ignored_paths": [str(path) for path in fixed_candidates if path != selected],
         }
 
-    content_candidates = _candidate_output_logs(workspace)
+    content_candidates = _candidate_output_logs(workspace, layout=layout)
     matching_candidates = [path for path in content_candidates if _file_contains_output_banner(path)]
     if not matching_candidates:
         return {
@@ -411,9 +991,10 @@ def _discover_output_log(
     }
 
 
-def _candidate_output_logs(workspace: Workspace) -> list[Path]:
+def _candidate_output_logs(workspace: Workspace, *, layout: str = "forge") -> list[Path]:
     candidates: list[Path] = []
-    for base in (workspace.root, workspace.outputs_dir):
+    bases = (workspace.root,) if layout == "flat" else (workspace.root, workspace.outputs_dir)
+    for base in bases:
         if not base.exists():
             continue
         for path in sorted(base.iterdir(), key=lambda item: _natural_sort_key(str(item.relative_to(workspace.root)))):
@@ -429,6 +1010,16 @@ def _candidate_output_logs(workspace: Workspace) -> list[Path]:
             unique.append(path)
             seen.add(path)
     return unique
+
+
+def _fallback_log_paths(workspace: Workspace, *, layout: str) -> tuple[Path, ...]:
+    if layout == "flat":
+        return (workspace.root / "stdout.log", workspace.root / "out.log")
+    return (workspace.outputs_dir / "stdout.log", workspace.outputs_dir / "out.log")
+
+
+def _stderr_path(workspace: Workspace, *, layout: str) -> Path:
+    return workspace.root / "stderr.log" if layout == "flat" else workspace.outputs_dir / "stderr.log"
 
 
 def _file_contains_output_banner(path: Path) -> bool:
@@ -452,12 +1043,16 @@ def _read_text_if_exists(path: Path | None) -> str | None:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
-def _inputs_snapshot(workspace: Workspace) -> dict[str, Any]:
+def _input_path(workspace: Workspace, name: str, *, layout: str) -> Path:
+    return (workspace.root if layout == "flat" else workspace.inputs_dir) / name
+
+
+def _inputs_snapshot(workspace: Workspace, *, layout: str = "forge") -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
-    input_path = workspace.inputs_dir / "INPUT"
+    input_path = _input_path(workspace, "INPUT", layout=layout)
     if input_path.exists():
         snapshot["INPUT"] = read_input(input_path)
-    kpt_path = workspace.inputs_dir / "KPT"
+    kpt_path = _input_path(workspace, "KPT", layout=layout)
     if kpt_path.exists():
         snapshot["KPT"] = kpt_path.read_text(encoding="utf-8")
         try:

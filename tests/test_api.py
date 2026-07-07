@@ -59,6 +59,42 @@ def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> Non
     assert meta["validation"]["valid"] is True
 
 
+def test_prepare_filters_pseudo_and_orbital_assets_by_file_family(tmp_path: Path) -> None:
+    structure = Atoms(
+        symbols=["Ni", "O"],
+        positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        cell=[4.0, 4.0, 4.0],
+        pbc=True,
+    )
+    asset_dir = tmp_path / "legacy-run"
+    asset_dir.mkdir()
+    (asset_dir / "Ni_ONCV_PBE-1.2.upf").write_text("ni pseudo", encoding="utf-8")
+    (asset_dir / "O.upf").write_text("o pseudo", encoding="utf-8")
+    (asset_dir / "Ni_gga_7au_100Ry_4s2p2d1f.orb").write_text("ni orb", encoding="utf-8")
+    (asset_dir / "O_gga_6au_100Ry_2s2p1d.orb").write_text("o orb", encoding="utf-8")
+    (asset_dir / "abacus.json").write_text("{}", encoding="utf-8")
+    (asset_dir / "band.png").write_text("not an asset", encoding="utf-8")
+    (asset_dir / "time.json").write_text('{"total": 1.0}', encoding="utf-8")
+
+    workspace = prepare(
+        tmp_path / "case",
+        task="cell-relax",
+        structure=structure,
+        pseudo_path=asset_dir,
+        orbital_path=asset_dir,
+        asset_mode="copy",
+        parameters={"basis_type": "lcao"},
+    )
+
+    staged = {path.name for path in workspace.inputs_dir.iterdir()}
+    assert {"Ni_ONCV_PBE-1.2.upf", "O.upf", "Ni_gga_7au_100Ry_4s2p2d1f.orb", "O_gga_6au_100Ry_2s2p1d.orb"}.issubset(staged)
+    assert "abacus.json" not in staged
+    assert "band.png" not in staged
+    assert "time.json" not in staged
+    assert "Ni_ONCV_PBE-1.2.upf" in (workspace.inputs_dir / "STRU").read_text(encoding="utf-8")
+    assert "Ni_gga_7au_100Ry_4s2p2d1f.orb" in (workspace.inputs_dir / "STRU").read_text(encoding="utf-8")
+
+
 def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "run-case")
     structure = Atoms(
@@ -127,6 +163,56 @@ def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     assert collected.diagnostics["time_json_absent"] is False
     assert any(path.endswith("stdout.log") for path in collected.diagnostics["log_paths"])
     assert collected.diagnostics["stderr_nonempty"] is False
+
+
+def test_collect_flat_layout_reads_legacy_nio_relax_band_and_dos_artifacts(tmp_path: Path) -> None:
+    root = tmp_path / "flat-nio"
+    out = root / "OUT.ABACUS"
+    band = root / "Out" / "Band_Structure"
+    out.mkdir(parents=True)
+    band.mkdir(parents=True)
+    structure = AbacusStructure.from_input(
+        Atoms(
+            symbols=["Ni", "O"],
+            positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+            cell=[4.0, 4.0, 4.0],
+            pbc=True,
+        )
+    )
+    (root / "INPUT").write_text("INPUT_PARAMETERS\ncalculation cell-relax\n", encoding="utf-8")
+    (root / "KPT").write_text("K_POINTS\n0\nGamma\n1 1 1 0 0 0\n", encoding="utf-8")
+    (root / "STRU").write_text(structure.to_stru(), encoding="utf-8")
+    (root / "abacus.log").write_text("Atomic-orbital Based Ab-initio\ntotal 12.5\n", encoding="utf-8")
+    (root / "time.json").write_text('{"total": 12.5}', encoding="utf-8")
+    (out / "running_cell-relax.log").write_text("TOTAL ENERGY = -10.0\nSCF CONVERGED\nTOTAL  TIME\n", encoding="utf-8")
+    (out / "STRU_ION_D").write_text(structure.to_stru(), encoding="utf-8")
+    (out / "DOS1_smearing.dat").write_text("-1.0 0.1\n0.0 1.0\n", encoding="utf-8")
+    (out / "DOS2_smearing.dat").write_text("-1.0 0.2\n0.0 0.8\n", encoding="utf-8")
+    (out / "PDOS").write_text("Ni 0.7\nO 0.3\n", encoding="utf-8")
+    (out / "TDOS").write_text("-1.0 0.3\n0.0 1.8\n", encoding="utf-8")
+    (band / "band_info.dat").write_text(
+        "For nspin up:\n                 Band gap (eV):    0.4\n"
+        "For total band:\n                 Band gap (eV):    0.9\n",
+        encoding="utf-8",
+    )
+    (band / "band_up.dat").write_text("0.0 -1.0 0.2\n", encoding="utf-8")
+    (band / "band_dn.dat").write_text("0.0 -0.8 0.4\n", encoding="utf-8")
+    (band / "band.pdf").write_text("pdf", encoding="utf-8")
+
+    result = collect(root, layout="flat")
+
+    assert result.status == "completed"
+    assert result.metrics["total_energy"] == -10.0
+    assert result.metrics["total_time"] == 12.5
+    assert result.metrics["dos_summary"]["points"] == 4
+    assert result.metrics["dos_family_summary"]["projected_dos"]["pdos_file"].endswith("PDOS")
+    assert result.metrics["pyatb_band_metrics"]["band_gap"] == 0.9
+    assert any(path.endswith("Out/Band_Structure/band_up.dat") for path in result.metrics["pyatb_band_artifacts"])
+    assert result.inputs_snapshot["INPUT"]["calculation"] == "cell-relax"
+    assert result.final_structure_snapshot is not None
+    assert result.final_structure_snapshot["source"].endswith("STRU_ION_D")
+    assert result.diagnostics["layout"] == "flat"
+    assert result.diagnostics["selected_log_path"].endswith("running_cell-relax.log")
 
 
 def test_export_writes_extended_json_file(tmp_path: Path) -> None:
