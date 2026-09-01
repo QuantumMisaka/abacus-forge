@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import stat
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +13,7 @@ from abacus_forge.band_data import BandData, write_sample_band_artifacts
 from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_dos_family_artifacts
 from abacus_forge.sample_outputs import write_sample_analysis_outputs
 from abacus_forge.structure_recognition import detect_structure_format
+from tests.support.fake_executables import write_fake_abacus
 
 
 def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> None:
@@ -105,19 +105,17 @@ def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     )
     prepare(workspace, task="band", structure=structure, parameters={"ecutwfc": 60}, kpoints=[2, 2, 2])
 
-    fake_abacus = tmp_path / "fake-abacus"
-    fake_abacus.write_text(
-        "#!/usr/bin/env python3\n"
-        "import os\n"
-        "print(f\"OMP = {os.environ.get('OMP_NUM_THREADS', 'missing')}\")\n"
-        "print('TOTAL ENERGY = -10.5')\n"
-        "print('FERMI ENERGY = 3.2')\n"
-        "print('BAND GAP = 1.1')\n"
-        "print('SCF STEPS = 12')\n"
-        "print('SCF CONVERGED')\n",
-        encoding="utf-8",
+    fake_abacus = write_fake_abacus(
+        tmp_path / "fake-abacus",
+        stdout_lines=[
+            "TOTAL ENERGY = -10.5",
+            "FERMI ENERGY = 3.2",
+            "BAND GAP = 1.1",
+            "SCF STEPS = 12",
+            "SCF CONVERGED",
+        ],
+        include_omp_line=True,
     )
-    fake_abacus.chmod(fake_abacus.stat().st_mode | stat.S_IEXEC)
 
     result = run(workspace, runner=LocalRunner(executable=str(fake_abacus), omp_threads=4))
     workspace.write_text("outputs/BANDS_1.dat", "0.0 -1.0 0.5\n1.0 -0.8 0.7\n")

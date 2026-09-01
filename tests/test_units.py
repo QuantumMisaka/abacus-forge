@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import stat
 from pathlib import Path
 
 from ase import Atoms
@@ -10,6 +9,7 @@ from abacus_forge.api import UnitModifySpec, UnitSpec, collect_unit, execute_uni
 from abacus_forge.input_io import read_input, read_kpt
 from abacus_forge.dos_data import write_sample_dos_family_artifacts
 from abacus_forge.workspace import Workspace
+from tests.support.fake_executables import write_fake_abacus
 
 
 def test_prepare_unit_writes_manifest_and_handoffs_source_artifacts(tmp_path: Path) -> None:
@@ -93,7 +93,7 @@ def test_prepare_unit_reproduces_reference_dos_nscf_controls(tmp_path: Path) -> 
 
 
 def test_execute_and_collect_unit_are_decoupled_for_abacus(tmp_path: Path) -> None:
-    executable = _write_fake_abacus(tmp_path / "fake-abacus")
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED"])
     prepared = prepare_unit(
         UnitSpec(
             task="cell-relax",
@@ -217,14 +217,3 @@ def test_prepare_unit_requires_source_for_nscf_units(tmp_path: Path) -> None:
         assert "requires source_workdir" in str(exc)
     else:
         raise AssertionError("prepare_unit should reject nscf without source_workdir")
-
-
-def _write_fake_abacus(path: Path) -> Path:
-    path.write_text(
-        "#!/usr/bin/env python3\n"
-        "print('TOTAL ENERGY = -3.2')\n"
-        "print('SCF CONVERGED')\n",
-        encoding="utf-8",
-    )
-    path.chmod(path.stat().st_mode | stat.S_IEXEC)
-    return path

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
-import stat
 from pathlib import Path
 
 import pytest
 from ase import Atoms
 from ase.io import write as ase_write
 
-from abacus_forge.api import prepare
 from abacus_forge.cli import main
 from abacus_forge.input_io import read_input, read_kpt
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
+from tests.support.fake_executables import write_fake_abacus, write_fake_pyatb
+from tests.support.workspaces import write_fake_lcao_scf_workspace
 
 
 def test_cli_prepare_collect_and_export(tmp_path: Path, capsys) -> None:
@@ -142,7 +142,7 @@ def test_cli_collect_supports_explicit_output_log_override(tmp_path: Path, capsy
 
 
 def test_cli_prepare_pyatb_band_from_scf_workspace(tmp_path: Path, capsys) -> None:
-    scf = _write_fake_lcao_scf_workspace(tmp_path / "scf")
+    scf = write_fake_lcao_scf_workspace(tmp_path / "scf")
     workspace = tmp_path / "pyatb-prepare"
 
     assert (
@@ -181,7 +181,7 @@ def test_cli_prepare_pyatb_band_from_scf_workspace(tmp_path: Path, capsys) -> No
 def test_cli_run_pyatb_uses_pyatb_runner(tmp_path: Path, capsys) -> None:
     workspace = Workspace(tmp_path / "pyatb-run").ensure_layout()
     workspace.write_text("inputs/Input", "INPUT_PARAMETERS\n{}\n")
-    executable = _write_fake_pyatb(tmp_path / "fake-pyatb")
+    executable = write_fake_pyatb(tmp_path / "fake-pyatb")
 
     assert main(["run", str(workspace.root), "--pyatb", "--executable", str(executable), "--omp", "2", "--timeout", "5"]) == 0
     payload = json.loads(capsys.readouterr().out)
@@ -491,7 +491,7 @@ def test_cli_modify_unit_edits_workspace_inputs(tmp_path: Path, capsys) -> None:
 
 
 def test_cli_scf_task_runs_end_to_end(tmp_path: Path, capsys) -> None:
-    executable = _write_fake_abacus(
+    executable = write_fake_abacus(
         tmp_path / "fake-scf",
         stdout_lines=[
             "TOTAL ENERGY = -6.8",
@@ -532,7 +532,7 @@ def test_cli_band_task_requires_explicit_points(tmp_path: Path) -> None:
 
 
 def test_cli_dos_task_enables_pdos_outputs_and_export(tmp_path: Path, capsys) -> None:
-    executable = _write_fake_abacus(
+    executable = write_fake_abacus(
         tmp_path / "fake-dos",
         stdout_lines=[
             "TOTAL ENERGY = -7.2",
@@ -629,7 +629,7 @@ def test_cli_exposes_execute_alias_and_hides_relax_band_dos(tmp_path: Path, caps
     structure_path = tmp_path / "NiO.cif"
     ase_write(structure_path, structure)
     workspace = tmp_path / "cell-relax"
-    executable = _write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["TOTAL ENERGY = -4.4", "SCF CONVERGED"])
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["TOTAL ENERGY = -4.4", "SCF CONVERGED"])
 
     assert (
         main(
@@ -654,60 +654,3 @@ def test_cli_exposes_execute_alias_and_hides_relax_band_dos(tmp_path: Path, caps
 
     with pytest.raises(SystemExit):
         main(["relax-band-dos", "--help"])
-
-
-def _write_fake_abacus(
-    path: Path,
-    *,
-    stdout_lines: list[str],
-    extra_writes: dict[str, str] | None = None,
-) -> Path:
-    extra_writes = extra_writes or {}
-    body = [
-        "#!/usr/bin/env python3",
-        "from pathlib import Path",
-        "import sys",
-        "args = sys.argv[1:]",
-        "workspace = Path.cwd().parent",
-    ]
-    for relative_path, content in extra_writes.items():
-        body.extend(
-            [
-                f"path = workspace / {relative_path!r}",
-                "path.parent.mkdir(parents=True, exist_ok=True)",
-                f"path.write_text({content!r}, encoding='utf-8')",
-            ]
-        )
-    body.extend([f"print({line!r})" for line in stdout_lines])
-    path.write_text("\n".join(body) + "\n", encoding="utf-8")
-    path.chmod(path.stat().st_mode | stat.S_IEXEC)
-    return path
-
-
-def _write_fake_lcao_scf_workspace(path: Path) -> Workspace:
-    workspace = prepare(
-        path,
-        task="scf",
-        structure=Atoms(symbols=["Si"], positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True),
-        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 1},
-    )
-    workspace.write_text("outputs/stdout.log", "FERMI ENERGY = 3.2\nSCF CONVERGED\n")
-    workspace.write_text("inputs/OUT.ABACUS/data-HR-sparse_SPIN0.csr", "hr")
-    workspace.write_text("inputs/OUT.ABACUS/data-SR-sparse_SPIN0.csr", "sr")
-    workspace.write_text("inputs/OUT.ABACUS/data-rR-sparse.csr", "rr")
-    return workspace
-
-
-def _write_fake_pyatb(path: Path) -> Path:
-    body = [
-        "#!/usr/bin/env python3",
-        "from pathlib import Path",
-        "out = Path.cwd() / 'Out' / 'Band_Structure'",
-        "out.mkdir(parents=True, exist_ok=True)",
-        "(out / 'band_info.dat').write_text('Band gap is 2.5\\n', encoding='utf-8')",
-        "(out / 'band.png').write_text('fake image', encoding='utf-8')",
-        "print('pyatb done')",
-    ]
-    path.write_text("\n".join(body) + "\n", encoding="utf-8")
-    path.chmod(path.stat().st_mode | stat.S_IEXEC)
-    return path

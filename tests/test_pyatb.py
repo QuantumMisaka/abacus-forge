@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import stat
 from pathlib import Path
 
 from ase import Atoms
@@ -10,6 +9,7 @@ from abacus_forge.api import prepare
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band
 from abacus_forge.tasks import run_band_sequence
 from abacus_forge.workspace import Workspace
+from tests.support.fake_executables import write_fake_abacus_with_matrix, write_fake_pyatb
 
 
 def test_prepare_pyatb_band_writes_input_from_scf_outputs(tmp_path: Path) -> None:
@@ -113,8 +113,8 @@ def test_prepare_pyatb_band_reuses_spin0_overlap_for_spin_polarized_abacus(tmp_p
 
 
 def test_run_band_sequence_with_pyatb_backend(tmp_path: Path) -> None:
-    abacus = _write_fake_abacus_with_matrix(tmp_path / "fake-abacus")
-    pyatb = _write_fake_pyatb(tmp_path / "fake-pyatb")
+    abacus = write_fake_abacus_with_matrix(tmp_path / "fake-abacus")
+    pyatb = write_fake_pyatb(tmp_path / "fake-pyatb")
     structure = Atoms(symbols=["Si"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True)
 
     result = run_band_sequence(
@@ -139,8 +139,8 @@ def test_run_band_sequence_with_pyatb_backend(tmp_path: Path) -> None:
 
 
 def test_run_band_sequence_auto_uses_pyatb_for_lcao(tmp_path: Path) -> None:
-    abacus = _write_fake_abacus_with_matrix(tmp_path / "fake-abacus")
-    pyatb = _write_fake_pyatb(tmp_path / "fake-pyatb")
+    abacus = write_fake_abacus_with_matrix(tmp_path / "fake-abacus")
+    pyatb = write_fake_pyatb(tmp_path / "fake-pyatb")
     result = run_band_sequence(
         tmp_path / "band-auto",
         structure=Atoms(symbols=["Si"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
@@ -155,37 +155,3 @@ def test_run_band_sequence_auto_uses_pyatb_for_lcao(tmp_path: Path) -> None:
     )
 
     assert result.summary["backend"] == "pyatb"
-
-
-def _write_fake_abacus_with_matrix(path: Path) -> Path:
-    body = [
-        "#!/usr/bin/env python3",
-        "from pathlib import Path",
-        "workspace = Path.cwd().parent",
-        "out = workspace / 'inputs' / 'OUT.ABACUS'",
-        "out.mkdir(parents=True, exist_ok=True)",
-        "(out / 'data-HR-sparse_SPIN0.csr').write_text('hr', encoding='utf-8')",
-        "(out / 'data-SR-sparse_SPIN0.csr').write_text('sr', encoding='utf-8')",
-        "(out / 'data-rR-sparse.csr').write_text('rr', encoding='utf-8')",
-        "print('TOTAL ENERGY = -9.2')",
-        "print('FERMI ENERGY = 3.2')",
-        "print('SCF CONVERGED')",
-    ]
-    path.write_text("\n".join(body) + "\n", encoding="utf-8")
-    path.chmod(path.stat().st_mode | stat.S_IEXEC)
-    return path
-
-
-def _write_fake_pyatb(path: Path) -> Path:
-    body = [
-        "#!/usr/bin/env python3",
-        "from pathlib import Path",
-        "out = Path.cwd() / 'Out' / 'Band_Structure'",
-        "out.mkdir(parents=True, exist_ok=True)",
-        "(out / 'band_info.dat').write_text('Band gap is 2.5\\n', encoding='utf-8')",
-        "(out / 'band.png').write_text('fake image', encoding='utf-8')",
-        "print('pyatb done')",
-    ]
-    path.write_text("\n".join(body) + "\n", encoding="utf-8")
-    path.chmod(path.stat().st_mode | stat.S_IEXEC)
-    return path
