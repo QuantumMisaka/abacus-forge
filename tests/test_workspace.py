@@ -15,6 +15,17 @@ def _append_events(root: str, count: int, operation: str) -> None:
         workspace.append_operation_event(operation, {"index": index})
 
 
+def _hold_manifest_lock(root: str, ready: multiprocessing.Event, release: multiprocessing.Event) -> None:
+    workspace = Workspace(Path(root))
+    with workspace._manifest_lock():
+        ready.set()
+        release.wait(timeout=10)
+
+
+def _ensure_manifest(root: str) -> None:
+    Workspace(Path(root)).ensure_manifest()
+
+
 def test_workspace_rejects_escape_paths(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "safe")
     with pytest.raises(ValueError, match="workspace root"):
@@ -48,3 +59,28 @@ def test_workspace_concurrent_events_preserve_all_manifest_references(tmp_path: 
     manifest = json.loads((root / "reports" / "forge-workspace.json").read_text(encoding="utf-8"))
     assert len(manifest["events"]) == 16
     assert {event["operation"] for event in manifest["events"]} == {"prepare", "collect"}
+
+
+def test_public_manifest_initialization_waits_for_append_lock(tmp_path: Path) -> None:
+    root = tmp_path / "ensure-lock"
+    context = multiprocessing.get_context("fork")
+    ready = context.Event()
+    release = context.Event()
+    holder = context.Process(target=_hold_manifest_lock, args=(str(root), ready, release))
+    holder.start()
+    assert ready.wait(timeout=10)
+
+    ensure_process = context.Process(target=_ensure_manifest, args=(str(root),))
+    ensure_process.start()
+    ensure_process.join(timeout=0.2)
+    assert ensure_process.is_alive()
+    release.set()
+    ensure_process.join(timeout=10)
+    holder.join(timeout=10)
+    assert ensure_process.exitcode == 0
+    assert holder.exitcode == 0
+
+    workspace = Workspace(root)
+    workspace.append_operation_event("prepare", {"status": "prepared"})
+    manifest = json.loads((root / "reports" / "forge-workspace.json").read_text(encoding="utf-8"))
+    assert len(manifest["events"]) == 1

@@ -89,7 +89,12 @@ class Workspace:
         except OSError:
             return
         try:
-            os.fsync(descriptor)
+            try:
+                os.fsync(descriptor)
+            except OSError:
+                # Directory fsync improves crash durability where supported;
+                # atomic replacement remains the process-failure guarantee.
+                pass
         finally:
             os.close(descriptor)
 
@@ -121,6 +126,10 @@ class Workspace:
 
     def ensure_manifest(self) -> Path:
         """Create reports/forge-workspace.json once and return it."""
+        with self._manifest_lock():
+            return self._ensure_manifest_unlocked()
+
+    def _ensure_manifest_unlocked(self) -> Path:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         path = self.resolve_relative(Path("reports") / "forge-workspace.json")
         if not path.exists():
@@ -135,7 +144,7 @@ class Workspace:
         if not isinstance(operation, str) or not operation or "/" in operation or "\\" in operation:
             raise ValueError("operation must be a non-empty path-safe string")
         with self._manifest_lock():
-            manifest_path = self.ensure_manifest()
+            manifest_path = self._ensure_manifest_unlocked()
             events_dir = self.resolve_relative(Path("reports") / "events")
             events_dir.mkdir(parents=True, exist_ok=True)
 
@@ -146,12 +155,21 @@ class Workspace:
                 event_path = events_dir / f"{event_id}-{operation}.json"
             self._write_json_atomic(event_path, {"id": event_id, "operation": operation, "payload": payload})
 
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
-                raise ValueError("workspace manifest has invalid events")
-            event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
-            manifest["events"].append({"id": event_id, "operation": operation, "path_rel": event_rel})
-            self._write_json_atomic(manifest_path, manifest)
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                    raise ValueError("workspace manifest has invalid events")
+                event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
+                manifest["events"].append({"id": event_id, "operation": operation, "path_rel": event_rel})
+                self._write_json_atomic(manifest_path, manifest)
+            except Exception:
+                # A failed append should not leave a newly-created event
+                # visible when cleanup is possible; preserve the primary error.
+                try:
+                    event_path.unlink()
+                except OSError:
+                    pass
+                raise
         return event_path
 
     def record_metadata(self, payload: dict[str, Any]) -> Path:
