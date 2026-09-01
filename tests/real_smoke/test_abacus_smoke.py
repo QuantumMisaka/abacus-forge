@@ -18,7 +18,12 @@ def test_real_abacus_scf_execute_and_collect(tmp_path: Path) -> None:
     source = Path(source_value)
     if not source.is_dir():
         pytest.fail(f"ABACUS_FORGE_REAL_SMOKE_WORKSPACE is not a directory: {source}")
-    if not shutil.which(executable) and not Path(executable).is_file():
+    executable_path = Path(executable)
+    if executable_path.parent != Path() or executable_path.exists():
+        executable_ok = executable_path.is_file() and os.access(executable_path, os.X_OK)
+    else:
+        executable_ok = shutil.which(executable) is not None
+    if not executable_ok:
         pytest.fail(f"ABACUS_FORGE_ABACUS_EXECUTABLE is not executable: {executable}")
 
     workspace = tmp_path / "real-smoke"
