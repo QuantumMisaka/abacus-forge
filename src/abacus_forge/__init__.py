@@ -2,6 +2,7 @@
 
 from abacus_forge.api import UnitModifyResult, UnitModifySpec, UnitPrepareResult, UnitSpec, collect, collect_unit, execute, execute_unit, export, modify_unit, prepare, prepare_unit, run
 from abacus_forge.band_data import BandData
+from abacus_forge.contracts import ArtifactRecord, CheckRecord, ForgeRequest, ForgeResultEnvelope, MetricRecord, OperationStatus
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
@@ -15,13 +16,19 @@ from abacus_forge.workspace import Workspace
 
 __all__ = [
     "AbacusStructure",
+    "ArtifactRecord",
     "BandData",
     "CollectionResult",
+    "CheckRecord",
     "CubeData",
     "DOSData",
     "DOSFamilyData",
+    "ForgeRequest",
+    "ForgeResultEnvelope",
     "LocalDOSData",
     "LocalRunner",
+    "MetricRecord",
+    "OperationStatus",
     "PDOSData",
     "RunResult",
     "TaskResult",
