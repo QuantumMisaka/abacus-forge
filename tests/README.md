@@ -27,3 +27,8 @@ conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 
 Deleting or merging a test requires a named production mutation that the
 remaining test still catches. A passing count alone is not evidence.
+
+Evidence limits: `core`, `integration`, `cli`, and `composite` are deterministic
+PR gates; `compat` and `benchmark` are migration evidence; `real_smoke` is
+release evidence. None of these alone proves physical convergence or HPC
+scheduler correctness.

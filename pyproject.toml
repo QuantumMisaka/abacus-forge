@@ -49,3 +49,6 @@ markers = [
     "real_smoke: opt-in execution against a supplied real ABACUS workspace",
     "benchmark: opt-in compatibility benchmark projections",
 ]
+filterwarnings = [
+    "ignore:Set OLD_ERROR_HANDLING to false and catch the errors directly\\.:DeprecationWarning:spglib\\..*",
+]

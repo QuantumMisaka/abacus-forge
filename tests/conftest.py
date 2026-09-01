@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -52,7 +53,20 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for marker_name in _FILE_MARKERS.get(filename, ()):
             item.add_marker(getattr(pytest.mark, marker_name))
         relative_parts = Path(str(item.fspath)).parts
-        if "real_smoke" in relative_parts and not config.getoption("--run-real-smoke"):
-            item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real ABACUS smoke tests"))
+        if "real_smoke" in relative_parts:
+            if not config.getoption("--run-real-smoke"):
+                item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real ABACUS smoke tests"))
+            elif not all(
+                os.environ.get(name)
+                for name in (
+                    "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
+                    "ABACUS_FORGE_ABACUS_EXECUTABLE",
+                )
+            ):
+                item.add_marker(
+                    pytest.mark.skip(
+                        reason="set ABACUS_FORGE_REAL_SMOKE_WORKSPACE and ABACUS_FORGE_ABACUS_EXECUTABLE"
+                    )
+                )
         if "benchmark" in relative_parts and not config.getoption("--run-benchmark"):
             item.add_marker(pytest.mark.skip(reason="pass --run-benchmark to run benchmark tests"))
