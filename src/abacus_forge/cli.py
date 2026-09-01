@@ -54,6 +54,7 @@ from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_relax, run_scf
+from abacus_forge.workspace import Workspace
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--efermi", type=float, help="Fermi energy override for --pyatb")
     prepare_parser.add_argument("--copy-outputs", action="store_true", help="copy ABACUS OUT.* files instead of linking them for --pyatb")
     prepare_parser.add_argument("--max-kpoint-num", type=int, help="PyATB max_kpoint_num input value")
+    prepare_parser.add_argument("--json", action="store_true", help="print a structured result to stdout")
 
     modify_input_parser = subparsers.add_parser("modify-input", help="modify one INPUT file")
     modify_input_parser.add_argument("source")
@@ -221,6 +223,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print_prepared_workspace(workspace: Workspace, *, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps({"status": "prepared", "workspace": str(workspace.root)}, sort_keys=True))
+    else:
+        print(workspace.root)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments, dispatch to a Forge primitive, and return an exit code."""
     parser = build_parser()
@@ -243,7 +252,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.max_kpoint_num is not None:
                 kwargs["max_kpoint_num"] = args.max_kpoint_num
             workspace = prepare_pyatb_band(args.workspace, **kwargs)
-            print(workspace.root)
+            _print_prepared_workspace(workspace, as_json=args.json)
             return 0
         parameters = _parse_parameters(args.parameter)
         magmom_by_element = _parse_numeric_mapping(args.magmom)
@@ -285,7 +294,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ensure_pbc=args.ensure_pbc,
                 magmom_by_element=magmom_by_element or None,
             )
-        print(workspace.root)
+        _print_prepared_workspace(workspace, as_json=args.json)
         return 0
 
     if args.command == "modify-input":
