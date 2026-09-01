@@ -6,6 +6,7 @@ from pathlib import Path
 from abacus_forge.api import prepare
 from tests.support.fake_executables import write_fake_abacus
 from tests.support.process import run_cli
+from tests.support.workspaces import write_fake_lcao_scf_workspace
 
 
 def test_prepare_json_is_machine_readable(tmp_path: Path) -> None:
@@ -21,6 +22,24 @@ def test_prepare_without_json_keeps_legacy_path_output(tmp_path: Path) -> None:
     result = run_cli("prepare", workspace)
     assert result.returncode == 0
     assert result.stdout.strip() == str(workspace)
+
+
+def test_prepare_pyatb_json_is_machine_readable(tmp_path: Path) -> None:
+    scf_workspace = write_fake_lcao_scf_workspace(tmp_path / "scf")
+    workspace = tmp_path / "prepare-pyatb-json"
+    result = run_cli(
+        "prepare",
+        workspace,
+        "--pyatb",
+        "--scf-workspace",
+        scf_workspace.root,
+        "--point",
+        "0,0,0:G",
+        "--json",
+    )
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert json.loads(result.stdout) == {"status": "prepared", "workspace": str(workspace)}
 
 
 def test_execute_process_emits_json_and_zero_exit(tmp_path: Path) -> None:

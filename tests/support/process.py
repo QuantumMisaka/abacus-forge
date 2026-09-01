@@ -21,4 +21,12 @@ def run_cli(
     if env:
         merged_env.update(env)
     command: Sequence[str] = [sys.executable, "-m", "abacus_forge.cli", *(str(arg) for arg in args)]
-    return subprocess.run(command, cwd=cwd, env=merged_env, text=True, capture_output=True)
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        env=merged_env,
+        text=True,
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        timeout=30,
+    )
