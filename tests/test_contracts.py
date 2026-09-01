@@ -77,3 +77,13 @@ def test_result_envelope_rejects_duplicate_artifacts_and_missing_metric_sources(
             status=status,
             metrics=[MetricRecord(name="energy", value=-1.0, unit="eV", kind="reported", source_artifact_id="missing")],
         )
+
+
+@pytest.mark.parametrize("factory,payload", [
+    (ArtifactRecord.from_dict, []), (MetricRecord.from_dict, {"name": "x"}),
+    (OperationStatus.from_dict, {"execution": [], "scientific": "unassessed", "collection": "not_collected"}),
+    (ForgeRequest.from_dict, {"operation": "prepare"}),
+])
+def test_from_dict_normalizes_malformed_shapes_to_value_error(factory, payload) -> None:
+    with pytest.raises(ValueError):
+        factory(payload)

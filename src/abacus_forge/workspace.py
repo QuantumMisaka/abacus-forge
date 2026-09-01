@@ -56,6 +56,14 @@ class Workspace:
         return candidate
 
     def _resolve_owned_path(self, relative_path: str | Path) -> Path:
+        raw = os.fspath(relative_path)
+        if not isinstance(raw, str) or raw == ".":
+            raise ValueError("path must be a canonical relative path under the workspace root")
+        # Validate the spelling before Path.resolve() can normalize it.
+        try:
+            canonical_relative_path(raw)
+        except ValueError as error:
+            raise ValueError("path must remain under the workspace root and be canonical") from error
         return self.resolve_relative(relative_path)
 
     @staticmethod
@@ -67,8 +75,9 @@ class Workspace:
                 mode="w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
             ) as temporary:
                 temporary_path = Path(temporary.name)
+                # Keep the historical write_json byte representation exactly:
+                # json.dumps(..., indent=2, sort_keys=True) has no newline.
                 temporary.write(serialized)
-                temporary.write("\n")
                 temporary.flush()
                 os.fsync(temporary.fileno())
             os.replace(temporary_path, path)
@@ -137,7 +146,38 @@ class Workspace:
                 path,
                 {"schema_version": WORKSPACE_SCHEMA_VERSION, "workspace_rel": ".", "events": []},
             )
+        self._reconcile_events_unlocked(path)
         return path
+
+    def _reconcile_events_unlocked(self, manifest_path: Path) -> None:
+        """Index valid immutable event files that are not yet discoverable."""
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError("workspace manifest is not valid JSON") from error
+        if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+            raise ValueError("workspace manifest has invalid events")
+        indexed = {item.get("id") for item in manifest["events"] if isinstance(item, dict)}
+        additions = []
+        events_dir = self.resolve_relative(Path("reports") / "events")
+        if events_dir.exists():
+            for event_path in sorted(events_dir.glob("*.json"), key=lambda item: item.name):
+                try:
+                    event = json.loads(event_path.read_text(encoding="utf-8"))
+                    event_id = event["id"]
+                    operation = event["operation"]
+                    if not isinstance(event, dict) or not isinstance(event_id, str) or not isinstance(operation, str) or not operation or not isinstance(event.get("payload"), dict):
+                        continue
+                    if event_id in indexed:
+                        continue
+                    rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
+                    additions.append({"id": event_id, "operation": operation, "path_rel": rel})
+                    indexed.add(event_id)
+                except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+                    continue
+        if additions:
+            manifest["events"].extend(additions)
+            self._write_json_atomic(manifest_path, manifest)
 
     def append_operation_event(self, operation: str, payload: Mapping[str, JSONValue]) -> Path:
         """Atomically write an operation event and append its manifest reference."""
@@ -155,21 +195,14 @@ class Workspace:
                 event_path = events_dir / f"{event_id}-{operation}.json"
             self._write_json_atomic(event_path, {"id": event_id, "operation": operation, "payload": payload})
 
-            try:
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
-                    raise ValueError("workspace manifest has invalid events")
-                event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
-                manifest["events"].append({"id": event_id, "operation": operation, "path_rel": event_rel})
-                self._write_json_atomic(manifest_path, manifest)
-            except Exception:
-                # A failed append should not leave a newly-created event
-                # visible when cleanup is possible; preserve the primary error.
-                try:
-                    event_path.unlink()
-                except OSError:
-                    pass
-                raise
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                raise ValueError("workspace manifest has invalid events")
+            event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
+            manifest["events"].append({"id": event_id, "operation": operation, "path_rel": event_rel})
+            # Event file is authoritative if this replacement fails; the next
+            # locked workspace access reconciles it into the index.
+            self._write_json_atomic(manifest_path, manifest)
         return event_path
 
     def record_metadata(self, payload: dict[str, Any]) -> Path:

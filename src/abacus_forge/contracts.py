@@ -56,7 +56,11 @@ def _require_nonempty_string(value: str, field_name: str) -> None:
 
 
 def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> None:
-    if value not in allowed:
+    try:
+        valid = value in allowed
+    except TypeError as error:
+        raise ValueError(f"{field_name} has invalid value") from error
+    if not valid:
         allowed_values = ", ".join(sorted(allowed))
         raise ValueError(f"{field_name} must be one of: {allowed_values}")
 
@@ -64,6 +68,24 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 def _require_schema_version(value: str, expected: str) -> None:
     if value != expected:
         raise ValueError(f"schema_version must be {expected!r}")
+
+
+def _mapping_payload(payload: object, record_name: str) -> dict[str, JSONValue]:
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"{record_name} must be a mapping")
+    try:
+        return dict(payload)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{record_name} must be a mapping") from error
+
+
+def _construct(cls, payload: object, record_name: str):
+    try:
+        return cls(**_mapping_payload(payload, record_name))
+    except ValueError:
+        raise
+    except (TypeError, KeyError) as error:
+        raise ValueError(f"{record_name} contains invalid fields") from error
 
 
 def canonical_relative_path(value: str) -> str:
@@ -127,7 +149,7 @@ class ArtifactRecord:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> ArtifactRecord:
-        return cls(**dict(payload))  # type: ignore[arg-type]
+        return _construct(cls, payload, "artifact")
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +180,7 @@ class MetricRecord:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> MetricRecord:
-        return cls(**dict(payload))  # type: ignore[arg-type]
+        return _construct(cls, payload, "metric")
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,7 +200,7 @@ class CheckRecord:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> CheckRecord:
-        return cls(**dict(payload))  # type: ignore[arg-type]
+        return _construct(cls, payload, "check")
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +223,7 @@ class OperationStatus:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> OperationStatus:
-        return cls(**dict(payload))  # type: ignore[arg-type]
+        return _construct(cls, payload, "status")
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,7 +252,7 @@ class ForgeRequest:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> ForgeRequest:
-        return cls(**dict(payload))  # type: ignore[arg-type]
+        return _construct(cls, payload, "request")
 
 
 @dataclass(frozen=True, slots=True)
@@ -297,7 +319,7 @@ class ForgeResultEnvelope:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> ForgeResultEnvelope:
-        values = dict(payload)
+        values = _mapping_payload(payload, "result envelope")
         try:
             values["status"] = OperationStatus.from_dict(values["status"])  # type: ignore[arg-type]
             values["artifacts"] = tuple(ArtifactRecord.from_dict(item) for item in values.get("artifacts", ()))  # type: ignore[arg-type]
@@ -305,4 +327,7 @@ class ForgeResultEnvelope:
             values["checks"] = tuple(CheckRecord.from_dict(item) for item in values.get("checks", ()))  # type: ignore[arg-type]
         except (KeyError, TypeError, AttributeError) as error:
             raise ValueError("result envelope must contain valid record objects") from error
-        return cls(**values)  # type: ignore[arg-type]
+        try:
+            return cls(**values)  # type: ignore[arg-type]
+        except (TypeError, KeyError) as error:
+            raise ValueError("result envelope contains invalid fields") from error

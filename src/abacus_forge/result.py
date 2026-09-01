@@ -163,6 +163,7 @@ def _scalar_metric_records(values: dict[str, Any]) -> tuple[tuple[MetricRecord, 
 def _workspace_artifact_records(workspace: Path, artifacts: dict[str, str]) -> tuple[ArtifactRecord, ...]:
     root = Path(workspace).resolve()
     records: list[ArtifactRecord] = []
+    alias_counts: dict[str, int] = {}
     for name, raw_path in artifacts.items():
         path = Path(raw_path)
         try:
@@ -172,11 +173,12 @@ def _workspace_artifact_records(workspace: Path, artifacts: dict[str, str]) -> t
             continue
         if not rel or rel == ".":
             continue
-        artifact_id = (
-            "stdout_log" if rel in {"outputs/stdout.log", "stdout.log"} else
-            "stderr_log" if rel in {"outputs/stderr.log", "stderr.log"} else
-            f"artifact-{__import__('hashlib').sha256(rel.encode()).hexdigest()[:12]}"
-        )
+        alias = "stdout_log" if rel in {"outputs/stdout.log", "stdout.log"} else "stderr_log" if rel in {"outputs/stderr.log", "stderr.log"} else None
+        if alias is not None:
+            alias_counts[alias] = alias_counts.get(alias, 0) + 1
+            artifact_id = alias if alias_counts[alias] == 1 else f"{alias}__{alias_counts[alias]}"
+        else:
+            artifact_id = f"artifact-{__import__('hashlib').sha256(rel.encode()).hexdigest()[:12]}"
         size = resolved.stat().st_size if resolved.is_file() else None
         digest = None
         if resolved.is_file():

@@ -355,6 +355,8 @@ runs/<run_id>/
 
 `reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个事件文件保存事件 ID、操作名和 v1 结果 envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；请求文件 CLI、扩展状态策略、ATP 集成和真实计算验收不属于本说明的保证范围。
 
+事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
+
 ## 非目标
 
 - 不内置云平台提交、追踪、下载能力

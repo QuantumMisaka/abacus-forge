@@ -103,3 +103,14 @@ def test_run_and_task_external_artifacts_are_reported_in_diagnostics(tmp_path: P
     assert "warnings" in run_result.to_envelope().diagnostics
     task_result = TaskResult("x", tmp_path, "completed", artifacts={"outside": str(outside)})
     assert "warnings" in task_result.to_envelope().diagnostics
+
+
+def test_duplicate_stdout_aliases_are_disambiguated(tmp_path: Path) -> None:
+    first = tmp_path / "stdout.log"
+    second = tmp_path / "outputs" / "stdout.log"
+    second.parent.mkdir()
+    first.write_text("a", encoding="utf-8")
+    second.write_text("b", encoding="utf-8")
+    result = TaskResult("x", tmp_path, "completed", artifacts={"one": str(first), "two": str(second)})
+    artifacts = result.to_envelope().artifacts
+    assert [item.id for item in artifacts] == ["stdout_log", "stdout_log__2"]
