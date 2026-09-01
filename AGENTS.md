@@ -5,17 +5,18 @@
 
 ## 1. 开发者快速入口
 - **先看顺序**：`AGENTS.md -> README.md -> tests/`
-- **开发定位**：`ABACUS-Forge` 是 `PAIMON` 主链 `AI -> 协议层 -> AiiDA Workflow -> ABACUS-Forge -> ABACUS` 中的最底层执行核心。
-- **工作模式**：作为纯 Python 库和 CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
-- **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`run`、`collect`、`export` 的职责边界。
+- **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算内核，同时服务 ABACUS Agent（Paimon）v1.3 适配层和独立 CLI 用户。
+- **工作模式**：作为纯 Python 库和 Agent-first CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
+- **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`export` 的职责边界；`run` 仅作为兼容别名。
+- **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 验收的稳定能力。
 
 ## 2. 本地开发与验证
 - **CLI 开发态运行**：
-  - `cd deps/abacus-forge`
+  - 在本仓库根目录执行
   - `PYTHONPATH=src python -m abacus_forge.cli --help`
 - **测试入口**：
-  - `python -m pytest deps/abacus-forge/tests/test_cli.py -q`
-  - `python -m pytest deps/abacus-forge/tests -q`
+  - `conda run -n paimon python -m pytest tests/test_cli.py -q`
+  - `conda run -n paimon python -m pytest -q`
 - **开发习惯**：
   - 新增 CLI 时，必须同时补充对应 pytest 用例。
   - 修改 `README.md` 中 CLI 示例时，必须核对 `--help` 与测试覆盖是否同步。
@@ -41,6 +42,6 @@
 - **`ROADMAP.md`**：未来规划、候选方向、阶段性里程碑。
 
 ## 6. 跨项目联动说明
-在进行实质性开发前，建议核对 PAIMON 主项目总控契约：
-- 架构主链与顶层契约：[PAIMON 主项目 AGENTS.md](../../AGENTS.md)
-- 包边界划分：[PAIMON packages.md](../../docs/packages.md)
+在进行实质性开发前，应核对工作区当前产品边界：
+- [工作区 AGENTS.md](../AGENTS.md)
+- 已结项 `paimon/` 仅是历史设计和能力抽取证据，不是 Forge 的上级规范或运行时依赖。

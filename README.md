@@ -2,13 +2,14 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。`run` 仍作为 `execute` 的兼容别名保留。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及实验性 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。`run` 仍作为 `execute` 的兼容别名保留。
 
 ## 当前定位
 
 - 面向单个工作目录的输入准备、输入编辑、程序拉起与结果收集。
 - 保持轻量边界：不处理 Slurm/Bohrium/DPDispatcher 等调度与平台编排。
-- 作为 `PAIMON` 主链中的本地执行基座，被更上层 workflow 或 agent 调用。
+- 作为协议与平台无关的科学计算内核，同时被 ABACUS Agent（Paimon）v1.3 适配层、其他 workflow/agent 和独立 CLI 用户消费。
+- CLI 优先保持非交互式、参数显式与结果结构化；TUI 和数字 Task-ID 不定义核心能力协议。
 
 ## 当前已实现能力
 
@@ -77,6 +78,8 @@
 
 ### 本地 property pack
 
+> **成熟度：实验性。** 以下能力已具备 API/CLI 和 mock/fixture 回归，但尚未逐项完成真实 ABACUS 计算验收；不应视为 PAIMON v1.3 已稳定暴露的能力。
+
 - `abacus-forge convergence prepare|run|post`
 - `abacus-forge charge-density prepare|run|post`
 - `abacus-forge spin-density prepare|run|post`
@@ -94,7 +97,7 @@
 ### 开发态
 
 ```bash
-cd deps/abacus-forge
+# 在 abacus-forge 仓库根目录
 PYTHONPATH=src python -m abacus_forge.cli --help
 ```
 

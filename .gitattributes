@@ -1,0 +1,3 @@
+# Preserve verbatim upstream scientific-output fixtures without treating their
+# fixed-width trailing spaces as repository formatting errors.
+tests/fixtures/abacustest-abacus-scf/** -whitespace

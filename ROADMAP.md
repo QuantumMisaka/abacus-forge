@@ -4,16 +4,16 @@
 当前可用接口、CLI 示例与 Python API 用法请参阅 [README.md](./README.md)；开发入口与边界请参阅 [AGENTS.md](./AGENTS.md)。
 
 ## 当前阶段
-- 已形成 `prepare -> modify -> run -> collect -> export` 的最小执行闭环。
+- 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
-- 已初步放开首批模板外的 Forge-level property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
-- property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总；不改变 PAIMON 主仓 `scf/relax/band/dos` 稳定模板范围。
-- 当前 Forge 测试基线：`PYTHONNOUSERSITE=1 conda run -n paimon python -m pytest deps/abacus-forge/tests -q`。
-- SAI NiO trace smoke 已落在 `test/sai-nio-forge/20260509133012`：ABACUS LTS 单 GPU 完成 `cell-relax -> DOS(SCF/NSCF)` 与 Band SCF，PyATB CPU 后处理完成并收集 `band_info.dat` / `band_up.dat` / `band_dn.dat` / `band.pdf`。
+- 已初步实现 Forge-level 实验性 property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
+- property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
+- property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
+- 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 
 ## 近期方向
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
@@ -25,15 +25,16 @@
 - 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
 - 为 cube family 补齐更严格的 artifact manifest：明确 charge cube、spin cube、potential cube、ELF cube、Bader 输出和后处理派生产物的来源。
+- 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录。
 
 ## 中期方向
 - 进一步补齐更多 ABACUS 输出指标解析。
-- 评估与 `aiida-abacus` 的薄边界对接点，但不把 AiiDA 语义下沉到 Forge。
+- 完善面向 PAIMON v1.3 与其他上层编排器的薄 adapter 契约，但不把协议、平台或编排器对象语义下沉到 Forge。
 - 在保持单工作目录原子语义的前提下优化本地执行体验。
-- 当 property pack 经过真实 smoke 后，再由 `aiida-abacus` 选择成熟 Forge API 装配成 AiiDA DAG；Forge 本体仍不承接 Group/provenance/站点策略。
+- 当 property pack 经过真实 smoke 后，再由上层 adapter/workflow 选择成熟 Forge API 进行编排；Forge 本体仍不承接 provenance 存储、站点策略或恢复式工作流。
 
 ## 明确延后项
 - `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
 - 不在 Forge 中引入平台化 UI 或任务管理逻辑。
-- 新增 property pack 不自动进入 PAIMON 主仓首批 IntentSpec/task template；进入协议层前需要另行评估契约、AiiDA DAG 和真实运行门禁。
+- 新增 property pack 不自动进入 PAIMON v1.3 能力面；进入 Agent/协议适配层前需要另行评估契约、用户体验与真实运行门禁。

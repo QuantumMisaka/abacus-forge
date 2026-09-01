@@ -10,9 +10,7 @@ from abacus_forge.workspace import Workspace
 
 
 def test_collect_matches_abacustest_reference_for_force_stress_and_pressure(tmp_path: Path) -> None:
-    fixture_root = Path(
-        "/home/pku-jianghong/liuzhaoqing/work/sidereus/paimon/repo/abacus-test/tests/test_collectdata/abacus-scf"
-    )
+    fixture_root = Path(__file__).parent / "fixtures" / "abacustest-abacus-scf"
     reference = json.loads((fixture_root / "abacus.json").read_text(encoding="utf-8"))["output"][0]
 
     workspace = Workspace(tmp_path / "reference-case").ensure_layout()
