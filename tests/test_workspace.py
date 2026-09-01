@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 from pathlib import Path
 
 import pytest
 
 from abacus_forge.workspace import Workspace
+
+
+def _append_events(root: str, count: int, operation: str) -> None:
+    workspace = Workspace(Path(root))
+    for index in range(count):
+        workspace.append_operation_event(operation, {"index": index})
 
 
 def test_workspace_rejects_escape_paths(tmp_path: Path) -> None:
@@ -23,3 +30,21 @@ def test_workspace_events_are_append_only(tmp_path: Path) -> None:
     assert first != second
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "collect"]
     assert all((workspace.root / event["path_rel"]).exists() for event in manifest["events"])
+
+
+def test_workspace_concurrent_events_preserve_all_manifest_references(tmp_path: Path) -> None:
+    root = tmp_path / "concurrent"
+    context = multiprocessing.get_context("fork")
+    processes = [
+        context.Process(target=_append_events, args=(str(root), 8, operation))
+        for operation in ("prepare", "collect")
+    ]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join(timeout=10)
+        assert process.exitcode == 0
+
+    manifest = json.loads((root / "reports" / "forge-workspace.json").read_text(encoding="utf-8"))
+    assert len(manifest["events"]) == 16
+    assert {event["operation"] for event in manifest["events"]} == {"prepare", "collect"}

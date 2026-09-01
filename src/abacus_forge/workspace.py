@@ -6,9 +6,10 @@ import json
 import os
 import tempfile
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 from .contracts import JSONValue, WORKSPACE_SCHEMA_VERSION, canonical_relative_path
 
@@ -71,6 +72,7 @@ class Workspace:
                 temporary.flush()
                 os.fsync(temporary.fileno())
             os.replace(temporary_path, path)
+            Workspace._fsync_directory(path.parent)
             temporary_path = None
         finally:
             if temporary_path is not None:
@@ -78,6 +80,32 @@ class Workspace:
                     temporary_path.unlink()
                 except FileNotFoundError:
                     pass
+
+    @staticmethod
+    def _fsync_directory(directory: Path) -> None:
+        """Persist directory-entry changes on supported Unix filesystems."""
+        try:
+            descriptor = os.open(directory, os.O_RDONLY)
+        except OSError:
+            return
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    @contextmanager
+    def _manifest_lock(self) -> Iterator[None]:
+        """Serialize manifest read-modify-write operations across processes."""
+        import fcntl
+
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = self.resolve_relative(Path("reports") / ".forge-workspace.lock")
+        with lock_path.open("a+", encoding="utf-8") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
     def write_text(self, relative_path: str | Path, content: str) -> Path:
         path = self._resolve_owned_path(relative_path)
@@ -106,28 +134,24 @@ class Workspace:
         """Atomically write an operation event and append its manifest reference."""
         if not isinstance(operation, str) or not operation or "/" in operation or "\\" in operation:
             raise ValueError("operation must be a non-empty path-safe string")
-        manifest_path = self.ensure_manifest()
-        events_dir = self.resolve_relative(Path("reports") / "events")
-        events_dir.mkdir(parents=True, exist_ok=True)
+        with self._manifest_lock():
+            manifest_path = self.ensure_manifest()
+            events_dir = self.resolve_relative(Path("reports") / "events")
+            events_dir.mkdir(parents=True, exist_ok=True)
 
-        event_id = uuid.uuid4().hex
-        event_path = events_dir / f"{event_id}-{operation}.json"
-        while event_path.exists():
             event_id = uuid.uuid4().hex
             event_path = events_dir / f"{event_id}-{operation}.json"
-        self._write_json_atomic(event_path, {"id": event_id, "operation": operation, "payload": payload})
+            while event_path.exists():
+                event_id = uuid.uuid4().hex
+                event_path = events_dir / f"{event_id}-{operation}.json"
+            self._write_json_atomic(event_path, {"id": event_id, "operation": operation, "payload": payload})
 
-        try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
                 raise ValueError("workspace manifest has invalid events")
             event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
             manifest["events"].append({"id": event_id, "operation": operation, "path_rel": event_rel})
             self._write_json_atomic(manifest_path, manifest)
-        except Exception:
-            # The event itself remains immutable and can be recovered if the
-            # manifest cannot be updated.
-            raise
         return event_path
 
     def record_metadata(self, payload: dict[str, Any]) -> Path:

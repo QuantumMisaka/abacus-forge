@@ -42,4 +42,20 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 ## Risks
 
-Concurrent writers can still race while appending the manifest; individual event files remain immutable and atomic, but multi-process manifest serialization is not locked.
+ The lock uses Unix `fcntl`; the supported runtime is Unix. A process crash
+ between event creation and manifest replacement can leave an unreferenced
+ event file, but cannot remove an already-recorded reference.
+
+## Fix round 1
+
+- Review finding addressed: `append_operation_event()` now serializes the full
+  event creation and manifest read-modify-write with a cross-process Unix
+  `fcntl.flock` lock stored under `reports/`.
+- Added a two-process regression test that appends 16 events and verifies all
+  manifest references are retained.
+- Added parent-directory fsync after atomic replacement where supported by the
+  Unix filesystem.
+- Verification: `30 passed` for `tests/test_workspace.py`,
+  `tests/test_api.py`, and `tests/test_units.py`.
+- Fix commit: final `HEAD` at handoff (message:
+  `fix: serialize concurrent workspace event appends`).
