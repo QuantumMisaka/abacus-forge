@@ -11,6 +11,15 @@
 - 作为协议与平台无关的科学计算内核，同时被 ABACUS Agent（Paimon）v1.3 适配层、其他 workflow/agent 和独立 CLI 用户消费。
 - CLI 优先保持非交互式、参数显式与结果结构化；TUI 和数字 Task-ID 不定义核心能力协议。
 
+## 成熟度与文档入口
+
+本 README 描述当前可用实现，不把所有现有 Python API 都承诺为 Paimon v1.3 的最终后端协议。Forge 正在以契约优先方式收敛请求、workspace、结果和 artifact 语义；在此期间，稳定使用应优先采用本文列出的显式 CLI 与核心基元，实验性能力见下文明确标记。
+
+- 科研用户与调用者：阅读本文、[ROADMAP.md](./ROADMAP.md) 和 CLI `--help`，按成熟度选择能力。
+- 人类与 AI 开发者：先阅读 [AGENTS.md](./AGENTS.md)；其中定义边界、测试和开发路由。
+- 架构与 Paimon v1.3 迁移规范：阅读 [契约优先重构 SPEC](./docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。
+- 实施前的文档先行流程：阅读 [开发治理入口](./docs/superpowers/README.md)。
+
 ## 当前已实现能力
 
 ### 输入准备
@@ -349,4 +358,4 @@ runs/<run_id>/
 
 - 小步提交，保持边界清晰
 - 为解析器和 CLI 补充可复现测试
-- 开发前先阅读 [AGENTS.md](./AGENTS.md)
+- 开发前先阅读 [AGENTS.md](./AGENTS.md)；涉及公共契约、workspace、CLI 协议或 Paimon 适配时，先按 [开发治理入口](./docs/superpowers/README.md) 生成或阅读对应 SPEC/PLAN

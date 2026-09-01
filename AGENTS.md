@@ -1,7 +1,7 @@
 # AGENTS.md
 
-本文件是 `ABACUS-Forge` 子项目的开发第一入口，负责说明开发定位、开发边界、快速运行方式与跨项目协同约束。
-用户向说明与当前 CLI / Python API 用法请参阅 [README.md](README.md)，项目规划与路线图请参阅 [ROADMAP.md](ROADMAP.md)。
+本文件是 `ABACUS-Forge` 子项目的人类与 AI 开发第一入口，负责说明开发定位、边界、验证与文档路由。
+用户向说明与当前 CLI / Python API 用法请参阅 [README.md](README.md)，项目规划与路线图请参阅 [ROADMAP.md](ROADMAP.md)。详细的文档先行治理在 [docs/superpowers/README.md](docs/superpowers/README.md)。
 
 ## 1. 开发者快速入口
 - **先看顺序**：`AGENTS.md -> README.md -> tests/`
@@ -41,10 +41,16 @@
 - **`run`**：只负责将指定目录与资源参数转换为本地进程执行，不负责前置准备与后置分析。
 - **`collect/export`**：只负责解析工作目录输出并返回标准化结果或 JSON，不负责落库、展示和平台化交付。
 
-## 5. 文档职责划分
-- **`AGENTS.md`**：开发入口、开发约束、实现边界、验证方式。
-- **`README.md`**：当前已实现能力、安装方式、CLI/Python API 使用方法。
-- **`ROADMAP.md`**：未来规划、候选方向、阶段性里程碑。
+## 5. 文档职责与开发路由
+- **`README.md`**：面向科研用户和调用者；只记录当前能力、成熟度、安装与稳定用法。
+- **`AGENTS.md`**：面向人类与 AI 开发者；只记录边界、验证和文档入口，不承载详细设计。
+- **`docs/superpowers/specs/*.html`**：公共 API/schema、workspace、CLI 协议、迁移或跨仓边界的规范源；批准后高于 plan 与 roadmap。
+- **`docs/superpowers/plans/*.md`**：从已批准 SPEC 推导的执行清单，不得反向发明或改变架构。
+- **`ROADMAP.md`**：方向和候选里程碑，不是 API 或持久化契约。
+
+按当前 Superpowers 路由开发：L1 局部可逆修改做最小验证；L2 行为变更先建立回归证据，适用时使用 TDD；L3α（设计未定的公共边界）先 `brainstorming` 和 SPEC，L3β（用户已拍板的多步骤工作）先 `writing-plans`。L3 的 SPEC/PLAN 必须存入 `docs/superpowers/`；实施前应取得对应设计/计划批准。完成声明只认 diff 与命令输出。
+
+当前 Paimon v1.3 迁移的设计基线是 [契约优先重构 SPEC](docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。在它获批前，不得以重构名义修改公共 CLI、结果 schema、workspace 持久化语义或 ATP adapter 边界。
 
 ## 6. 跨项目联动说明
 在进行实质性开发前，应核对工作区当前产品边界：
