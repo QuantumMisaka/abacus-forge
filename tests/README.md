@@ -7,7 +7,7 @@ not implementation ownership:
 | --- | --- | --- |
 | `core` | INPUT/STRU/KPT, structures, transformations, DOS data | required PR gate |
 | `integration` | prepare/execute/collect/unit/task boundaries | required PR gate |
-| `cli` | in-process CLI dispatch | required PR gate |
+| `cli` | CLI dispatch and process contracts | required PR gate |
 | `compat` | ABACUS/abacustest output compatibility | required migration gate |
 | `pyatb` | PyATB mapping and collection | required when PyATB bridge is enabled |
 | `composite` | local composite pack wiring | deterministic regression, not physics proof |
