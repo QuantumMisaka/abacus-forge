@@ -15,6 +15,8 @@
 
 本 README 描述当前可用实现，不把所有现有 Python API 都承诺为 Paimon v1.3 的最终后端协议。Forge 正在以契约优先方式收敛请求、workspace、结果和 artifact 语义；在此期间，稳定使用应优先采用本文列出的显式 CLI 与核心基元，实验性能力见下文明确标记。
 
+workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现有兼容文件，继续按既有格式写出；它们不会被 v1 记录替换。需要机器读取操作历史或跨操作 artifact 引用时，应读取新增的 `reports/forge-workspace.json` 及其 `reports/events/*.json` 记录。当前 v1 workspace manifest 的 schema version 是 `forge.workspace/v1`，事件 payload 使用 `forge.result/v1` envelope；`ArtifactRecord.path_rel` 始终指向 workspace 内的相对路径。该记录层是追加式兼容扩展，不改变现有 CLI 命令示例或旧文件消费者。
+
 - 科研用户与调用者：阅读本文、[ROADMAP.md](./ROADMAP.md) 和 CLI `--help`，按成熟度选择能力。
 - 人类与 AI 开发者：先阅读 [AGENTS.md](./AGENTS.md)；其中定义边界、测试和开发路由。
 - 架构与 Paimon v1.3 迁移规范：阅读 [契约优先重构 SPEC](./docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。
@@ -346,7 +348,12 @@ runs/<run_id>/
   inputs/
   outputs/
   reports/
+    forge-workspace.json
+    events/
+      <event-id>-<operation>.json
 ```
+
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个事件文件保存事件 ID、操作名和 v1 结果 envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；请求文件 CLI、扩展状态策略、ATP 集成和真实计算验收不属于本说明的保证范围。
 
 ## 非目标
 

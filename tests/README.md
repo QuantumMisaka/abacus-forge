@@ -25,6 +25,23 @@ conda run -n paimon python -m pytest -q --run-benchmark -m benchmark
 conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 ```
 
+## Contract and workspace gate
+
+Changes to versioned records, workspace persistence, or operation-boundary
+artifacts must run the offline contract gate below, together with any owning
+API/result tests:
+
+```bash
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py
+```
+
+`tests/test_contracts.py` owns record validation, `tests/test_workspace.py`
+owns the append-only manifest and event paths, and
+`tests/test_result_contract.py` plus `tests/test_units.py` own result/API
+projections. The v1 workspace manifest and event records are additive; legacy
+`forge-unit.json` and `forge-result.json` compatibility outputs remain covered
+by the unit tests.
+
 Deleting or merging a test requires a named production mutation that the
 remaining test still catches. A passing count alone is not evidence.
 

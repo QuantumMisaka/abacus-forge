@@ -22,6 +22,9 @@
 - 删除或合并测试前必须记录真实 mutation 及剩余测试的失败证据；不得以测试数量或覆盖率替代行为证据。
 - 第三方 warning 只能按精确模块与消息过滤；项目自身 warning 应修复，不得静默。
 - `compat`/`benchmark` 是迁移证据，`real_smoke` 是发布证据；以上任何一类测试单独都不能证明物理收敛或 HPC 调度器正确性。
+- New Forge artifacts exposed across an operation boundary require a v1 `ArtifactRecord` and a regression asserting a workspace-relative path.
+- `reports/forge-workspace.json` and `reports/events/*.json` are append-only audit records; do not replace them with a mutable last-result file.
+- Run `tests/test_contracts.py`, `tests/test_workspace.py`, and the owning API/result tests whenever contracts or workspace persistence change.
 - **开发习惯**：
   - 新增 CLI 时，必须同时补充对应 pytest 用例。
   - 修改 `README.md` 中 CLI 示例时，必须核对 `--help` 与测试覆盖是否同步。
