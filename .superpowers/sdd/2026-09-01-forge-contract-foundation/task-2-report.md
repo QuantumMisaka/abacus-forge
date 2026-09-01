@@ -58,3 +58,20 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 - Verification: `30 passed` for `tests/test_workspace.py`,
   `tests/test_api.py`, and `tests/test_units.py`.
 - Fix commit: `6cb475e` (`fix: serialize concurrent workspace event appends`).
+
+## Fix round 2
+
+- Public `ensure_manifest()` now acquires the manifest lock and delegates to
+  `_ensure_manifest_unlocked()`; append uses that helper inside its existing
+  critical section, avoiding nested lock acquisition.
+- Added a coordinated cross-process test proving public initialization waits
+  for the shared lock and cannot reset event history.
+- Manifest-update failures now attempt to remove only the newly-created event,
+  preserving the primary exception; a crash can still leave a reconcilable
+  orphan.
+- Directory fsync is explicitly best-effort: open and fsync errors are
+  swallowed after atomic replacement, so unsupported filesystems do not turn a
+  successful write into a spurious failure.
+- Verification: `31 passed` for `tests/test_workspace.py`,
+  `tests/test_api.py`, and `tests/test_units.py`.
+- Fix commit: `0822a46` (`fix: serialize public workspace manifest initialization`).
