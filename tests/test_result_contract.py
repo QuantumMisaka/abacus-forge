@@ -34,10 +34,21 @@ def test_run_result_to_dict_serializes_paths_and_exit_status(tmp_path: Path) -> 
         stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED"],
     )
     payload = run(workspace, runner=LocalRunner(executable=str(executable))).to_dict()
+    assert set(payload) == {
+        "workspace",
+        "command",
+        "returncode",
+        "status",
+        "stdout_path",
+        "stderr_path",
+        "omp_threads",
+        "diagnostics",
+    }
     assert payload["workspace"] == str(workspace.root)
     assert isinstance(payload["returncode"], int)
     assert payload["stdout_path"].endswith("stdout.log")
     assert payload["stderr_path"].endswith("stderr.log")
+    json.dumps(payload, allow_nan=False)
 
 
 def test_unit_prepare_payload_matches_manifest_contract(tmp_path: Path) -> None:
@@ -48,3 +59,4 @@ def test_unit_prepare_payload_matches_manifest_contract(tmp_path: Path) -> None:
     assert payload["unit"] == "default"
     assert payload["engine"] == "abacus"
     assert payload["manifest"]["prepared"] is True
+    json.dumps(payload, allow_nan=False)
