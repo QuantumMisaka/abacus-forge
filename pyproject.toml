@@ -41,7 +41,7 @@ addopts = "--strict-markers"
 markers = [
     "core: pure input, structure, transformation, and data contracts",
     "integration: prepare/execute/collect/unit/task integration contracts",
-    "cli: in-process CLI dispatch contracts",
+    "cli: CLI dispatch and process contracts",
     "compat: ABACUS and abacustest compatibility fixtures",
     "pyatb: optional PyATB bridge contracts",
     "composite: local composite task-pack contracts",
