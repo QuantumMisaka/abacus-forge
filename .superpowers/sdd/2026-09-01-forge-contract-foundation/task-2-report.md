@@ -57,5 +57,4 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
   Unix filesystem.
 - Verification: `30 passed` for `tests/test_workspace.py`,
   `tests/test_api.py`, and `tests/test_units.py`.
-- Fix commit: final `HEAD` at handoff (message:
-  `fix: serialize concurrent workspace event appends`).
+- Fix commit: `6cb475e` (`fix: serialize concurrent workspace event appends`).
