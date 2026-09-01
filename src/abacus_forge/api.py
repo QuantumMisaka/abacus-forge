@@ -13,6 +13,7 @@ from ase import Atoms
 
 from abacus_forge.assets import collect_assets, stage_assets
 from abacus_forge.collectors.abacus import collect_abacus_metrics
+from abacus_forge.contracts import ArtifactRecord, ForgeResultEnvelope, OperationStatus
 from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt_line_mode, write_kpt_mesh
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.prepare_profiles import build_task_parameters
@@ -309,7 +310,14 @@ def prepare_unit(spec: UnitSpec) -> UnitPrepareResult:
 
     manifest = _unit_manifest(spec, task=task, unit=unit, engine=engine, prepared=True)
     workspace.write_json("forge-unit.json", manifest)
-    return UnitPrepareResult(workspace=workspace, task=task, unit=unit, engine=engine, manifest=manifest)
+    result = UnitPrepareResult(workspace=workspace, task=task, unit=unit, engine=engine, manifest=manifest)
+    _record_operation_event(workspace, ForgeResultEnvelope(
+        operation="prepare", workspace_rel=".",
+        status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+        artifacts=_manifest_artifact(workspace, "forge-unit.json"),
+        diagnostics={"task": task, "unit": unit, "engine": engine},
+    ))
+    return result
 
 
 def execute_unit(spec: UnitSpec) -> RunResult:
@@ -349,6 +357,7 @@ def execute_unit(spec: UnitSpec) -> RunResult:
             "command": result.command,
         },
     )
+    _record_operation_event(_workspace(spec.workdir), result.to_envelope())
     return result
 
 
@@ -447,6 +456,15 @@ def modify_unit(spec: UnitModifySpec) -> UnitModifyResult:
             **result.to_dict(),
         },
     )
+    _record_operation_event(ws, ForgeResultEnvelope(
+        operation="modify", workspace_rel=".",
+        status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
+        artifacts=tuple(
+            ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
+            for name in modified_files if (ws.inputs_dir / name).is_file()
+        ),
+        diagnostics={"task": task, "unit": unit, "engine": engine, "modified_files": modified_files},
+    ))
     return result
 
 
@@ -478,7 +496,20 @@ def collect_unit(spec: UnitSpec) -> CollectionResult:
             "diagnostics": result.diagnostics,
         },
     )
+    _record_operation_event(_workspace(spec.workdir), result.to_envelope())
     return result
+
+
+def _manifest_artifact(workspace: Workspace, relative: str) -> tuple[ArtifactRecord, ...]:
+    path = workspace.root / relative
+    if not path.is_file():
+        return ()
+    import hashlib
+    return (ArtifactRecord(id="provenance_manifest", path_rel=relative, role="provenance_manifest", stage="prepare", sha256=hashlib.sha256(path.read_bytes()).hexdigest(), size_bytes=path.stat().st_size),)
+
+
+def _record_operation_event(workspace: Workspace, envelope: ForgeResultEnvelope) -> None:
+    workspace.append_operation_event(envelope.operation, envelope.to_dict())
 
 
 def _postprocess_unit_before_collect(spec: UnitSpec, *, task: str, unit: str, engine: str) -> dict[str, Any]:

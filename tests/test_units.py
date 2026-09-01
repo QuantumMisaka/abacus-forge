@@ -53,6 +53,15 @@ def test_prepare_unit_writes_manifest_and_handoffs_source_artifacts(tmp_path: Pa
     assert manifest["prepared"] is True
 
 
+def test_unit_operations_append_v1_events_without_replacing_prior_events(tmp_path: Path) -> None:
+    workspace = prepare_unit(UnitSpec(task="scf", workdir=tmp_path / "event-unit")).workspace
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["SCF CONVERGED"])
+    execute_unit(UnitSpec(task="scf", workdir=workspace.root, executable=str(executable)))
+    collect_unit(UnitSpec(task="scf", workdir=workspace.root))
+    manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text(encoding="utf-8"))
+    assert [event["operation"] for event in manifest["events"]] == ["prepare", "execute", "collect"]
+
+
 def test_prepare_unit_reproduces_reference_dos_nscf_controls(tmp_path: Path) -> None:
     source = tmp_path / "dos-scf"
     prepared_source = prepare_unit(
