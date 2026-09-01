@@ -31,6 +31,33 @@ def test_request_rejects_non_json_payload() -> None:
         ForgeRequest(operation="prepare", workspace_rel=".", payload={"value": float("nan")})
 
 
+def test_request_payload_is_deeply_immutable_and_remains_json_safe() -> None:
+    request = ForgeRequest(operation="prepare", workspace_rel=".", payload={"nested": {"items": [1]}})
+    with pytest.raises(TypeError):
+        request.payload["nested"] = {}  # type: ignore[index]
+    with pytest.raises(TypeError):
+        request.payload["nested"]["items"] = float("nan")  # type: ignore[index]
+    with pytest.raises(AttributeError):
+        request.payload["nested"]["items"].append(float("nan"))  # type: ignore[union-attr]
+    assert json.dumps(request.to_dict(), allow_nan=False)
+
+
+def test_result_diagnostics_are_deeply_immutable_and_remain_json_safe() -> None:
+    result = ForgeResultEnvelope(
+        operation="collect",
+        workspace_rel=".",
+        status=OperationStatus(execution="completed", scientific="accepted", collection="complete"),
+        diagnostics={"parser": {"warnings": ["incomplete"]}},
+    )
+    with pytest.raises(TypeError):
+        result.diagnostics["parser"] = {}  # type: ignore[index]
+    with pytest.raises(TypeError):
+        result.diagnostics["parser"]["warnings"] = float("nan")  # type: ignore[index]
+    with pytest.raises(AttributeError):
+        result.diagnostics["parser"]["warnings"].append(float("nan"))  # type: ignore[union-attr]
+    assert json.dumps(result.to_dict(), allow_nan=False)
+
+
 def test_contract_records_reject_wrong_schema_versions_and_status_values() -> None:
     with pytest.raises(ValueError, match="schema_version"):
         ForgeRequest(operation="prepare", workspace_rel=".", payload={}, schema_version="forge.request/v2")

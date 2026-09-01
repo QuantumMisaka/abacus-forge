@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
+from types import MappingProxyType
 from typing import Literal, Mapping, Sequence, TypeAlias
 
 
@@ -29,6 +30,24 @@ def _json_round_trip(value: object) -> JSONValue:
         return json.loads(serialized)
     except (TypeError, ValueError) as error:
         raise ValueError("value must be JSON-safe") from error
+
+
+def _freeze_json(value: JSONValue) -> object:
+    """Recursively protect a JSON value retained by an immutable record."""
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze_json(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze_json(item) for item in value)
+    return value
+
+
+def _thaw_json(value: object) -> JSONValue:
+    """Build a fresh standard JSON value for public serialization."""
+    if isinstance(value, Mapping):
+        return {str(key): _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json(item) for item in value]
+    return value  # type: ignore[return-value]
 
 
 def _require_nonempty_string(value: str, field_name: str) -> None:
@@ -126,12 +145,12 @@ class MetricRecord:
         _require_literal(self.kind, _METRIC_KINDS, "kind")
         if self.source_artifact_id is not None:
             _require_nonempty_string(self.source_artifact_id, "source_artifact_id")
-        object.__setattr__(self, "value", _json_round_trip(self.value))
+        object.__setattr__(self, "value", _freeze_json(_json_round_trip(self.value)))
 
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "name": self.name,
-            "value": self.value,
+            "value": _thaw_json(self.value),
             "unit": self.unit,
             "kind": self.kind,
             "source_artifact_id": self.source_artifact_id,
@@ -199,14 +218,14 @@ class ForgeRequest:
         payload = _json_round_trip(self.payload)
         if not isinstance(payload, dict):
             raise ValueError("payload must be a JSON-safe object")
-        object.__setattr__(self, "payload", payload)
+        object.__setattr__(self, "payload", _freeze_json(payload))
 
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "schema_version": self.schema_version,
             "operation": self.operation,
             "workspace_rel": self.workspace_rel,
-            "payload": self.payload,
+            "payload": _thaw_json(self.payload),
         }
 
     @classmethod
@@ -259,7 +278,7 @@ class ForgeResultEnvelope:
         object.__setattr__(self, "metrics", metrics)
         object.__setattr__(self, "checks", checks)
         object.__setattr__(self, "warnings", warnings)
-        object.__setattr__(self, "diagnostics", diagnostics)
+        object.__setattr__(self, "diagnostics", _freeze_json(diagnostics))
         _json_round_trip(self.to_dict())
 
     def to_dict(self) -> dict[str, JSONValue]:
@@ -272,7 +291,7 @@ class ForgeResultEnvelope:
             "metrics": [metric.to_dict() for metric in self.metrics],
             "checks": [check.to_dict() for check in self.checks],
             "warnings": list(self.warnings),
-            "diagnostics": dict(self.diagnostics),
+            "diagnostics": _thaw_json(self.diagnostics),
         }
         return _json_round_trip(payload)  # type: ignore[return-value]
 
