@@ -7,43 +7,13 @@ import pytest
 
 from abacus_forge import collect
 from abacus_forge.workspace import Workspace
+from tests.support.reference_workspaces import FIXTURE_ROOT, copy_abacustest_scf_workspace
 
 
 def test_collect_matches_abacustest_reference_for_force_stress_and_pressure(tmp_path: Path) -> None:
-    fixture_root = Path(__file__).parent / "fixtures" / "abacustest-abacus-scf"
-    reference = json.loads((fixture_root / "abacus.json").read_text(encoding="utf-8"))["output"][0]
+    reference = json.loads((FIXTURE_ROOT / "abacus.json").read_text(encoding="utf-8"))["output"][0]
 
-    workspace = Workspace(tmp_path / "reference-case").ensure_layout()
-    workspace.write_text("inputs/INPUT", (fixture_root / "INPUT").read_text(encoding="utf-8"))
-    workspace.write_text("inputs/KPT", "K_POINTS\n0\nGamma\n5 5 2 0 0 0\n")
-    workspace.write_text(
-        "inputs/STRU",
-        """ATOMIC_SPECIES
-Si 28.085500 Si.upf
-
-LATTICE_CONSTANT
-1.0
-LATTICE_CONSTANT_UNIT
-Angstrom
-
-LATTICE_VECTORS
-8.3004 0.0 0.0
-0.0 8.3004 0.0
-0.0 0.0 25.362243471279523
-
-ATOMIC_POSITIONS
-Direct
-Si
-0.0
-1
-0.0 0.0 0.0 m 1 1 1
-""",
-    )
-    workspace.write_text("outputs/OUT.ABACUS/running_scf.log", (fixture_root / "OUT.ABACUS" / "running_scf.log").read_text(encoding="utf-8"))
-    workspace.write_text("outputs/out.log", (fixture_root / "out.log").read_text(encoding="utf-8"))
-    workspace.write_text("outputs/OUT.ABACUS/INPUT", (fixture_root / "OUT.ABACUS" / "INPUT").read_text(encoding="utf-8"))
-    workspace.write_text("outputs/stderr.log", "")
-    workspace.write_json("outputs/OUT.ABACUS/time.json", json.loads((fixture_root / "time.json").read_text(encoding="utf-8")))
+    workspace = copy_abacustest_scf_workspace(tmp_path / "reference-case")
 
     result = collect(workspace)
 
