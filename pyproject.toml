@@ -37,3 +37,15 @@ abacus-forge = "abacus_forge.cli:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = "--strict-markers"
+markers = [
+    "core: pure input, structure, transformation, and data contracts",
+    "integration: prepare/execute/collect/unit/task integration contracts",
+    "cli: in-process CLI dispatch contracts",
+    "compat: ABACUS and abacustest compatibility fixtures",
+    "pyatb: optional PyATB bridge contracts",
+    "composite: local composite task-pack contracts",
+    "experimental: mock/fixture-only property-pack contracts",
+    "real_smoke: opt-in execution against a supplied real ABACUS workspace",
+    "benchmark: opt-in compatibility benchmark projections",
+]

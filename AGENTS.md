@@ -17,6 +17,10 @@
 - **测试入口**：
   - `conda run -n paimon python -m pytest tests/test_cli.py -q`
   - `conda run -n paimon python -m pytest -q`
+- `tests/README.md` 是测试分层和门禁的唯一入口；新增测试先选择最近的行为边界和 marker。
+- 默认回归不得访问真实集群；`real_smoke` 与 `benchmark` 只能通过显式 pytest 选项运行。
+- 删除或合并测试前必须记录真实 mutation 及剩余测试的失败证据；不得以测试数量或覆盖率替代行为证据。
+- 第三方 warning 只能按精确模块与消息过滤；项目自身 warning 应修复，不得静默。
 - **开发习惯**：
   - 新增 CLI 时，必须同时补充对应 pytest 用例。
   - 修改 `README.md` 中 CLI 示例时，必须核对 `--help` 与测试覆盖是否同步。
