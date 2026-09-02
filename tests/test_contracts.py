@@ -64,7 +64,16 @@ def test_scf_collect_request_requires_lowercase_uuid4_and_round_trips() -> None:
     assert contracts.ScfCollectRequest.from_dict(request.to_dict()).to_dict() == request.to_dict()
 
 
-@pytest.mark.parametrize("operation_id", ["x", "123E4567-E89B-42D3-A456-426614174000"])
+@pytest.mark.parametrize(
+    "operation_id",
+    [
+        "x",
+        "123E4567-E89B-42D3-A456-426614174000",
+        # These are canonically formatted, lowercase UUIDs, but are not v4.
+        "c232dad3-7f13-11f0-8000-426614174000",  # UUIDv1
+        "6fa459ea-ee8a-3ca4-894e-db77e160355e",  # UUIDv3
+    ],
+)
 def test_scf_collect_request_rejects_noncanonical_uuid4(operation_id: str) -> None:
     with pytest.raises(ValueError, match="operation_id"):
         contracts.ScfCollectRequest(operation_id=operation_id, workspace_rel=".", policy_id="abacus.scf/v1")
@@ -137,6 +146,10 @@ def test_error_envelope_requires_affected_fields_and_strictly_decodes_error() ->
         contracts.ForgeErrorEnvelope.from_dict(
             {**payload, "error": {**payload["error"], "extra": "reject"}}
         )
+    missing_affected_fields = {**payload, "error": {**payload["error"]}}
+    missing_affected_fields["error"].pop("affected_fields")
+    with pytest.raises(ValueError, match="incomplete"):
+        contracts.ForgeErrorEnvelope.from_dict(missing_affected_fields)
     with pytest.raises(ValueError, match="unknown"):
         contracts.ForgeErrorEnvelope.from_dict({**payload, "extra": "reject"})
 
