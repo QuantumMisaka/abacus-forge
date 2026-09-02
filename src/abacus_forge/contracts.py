@@ -425,6 +425,18 @@ class ScfModifyRequest(_ScfRequest):
 class ScfExecuteRequest(_ScfRequest):
     """Typed request for executing one SCF workspace under an explicit policy."""
 
+    dry_run: bool = False
+
+    def __post_init__(self) -> None:
+        _ScfRequest.__post_init__(self)
+        if not isinstance(self.dry_run, bool):
+            raise ValueError("dry_run must be a boolean")
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _ScfRequest.to_dict(self)
+        payload["dry_run"] = self.dry_run
+        return payload
+
     @property
     def operation(self) -> Literal["execute"]:
         return "execute"

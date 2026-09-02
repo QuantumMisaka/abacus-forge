@@ -46,6 +46,18 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
 
+### Typed SCF service boundary
+
+`ForgeServices` 提供当前迁移阶段唯一带 `abacus.scf/v1` policy 的 typed SCF
+路径。`ScfExecuteRequest(dry_run=True)` 才能产生 `execution=skipped`；typed
+execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，并且实际执行直接调用
+本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留给现有 composite
+兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
+
+该阶段的 typed service 仍是 Forge 内部 Python API；Agent-first CLI 与独立
+`paimon-v3` adapter/benchmark 仓库在 SCF contract 稳定后再推进。当前
+`app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
+
 ### 原子 unit API
 
 - `UnitSpec`

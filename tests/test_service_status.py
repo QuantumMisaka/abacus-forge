@@ -6,7 +6,7 @@ import json
 import importlib
 
 import abacus_forge
-from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner
+from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner, Workspace
 from abacus_forge.contracts import CheckRecord, ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from tests.support.fake_executables import write_fake_abacus
 
@@ -143,6 +143,72 @@ def test_scf_policy_rejects_explicit_nonconvergence_with_complete_parse() -> Non
     assert status.scientific == "rejected"
 
 
+def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    (workspace.outputs_dir / "stdout.log").write_text(content + "\n", encoding="utf-8")
+    return workspace.root
+
+
+class _FailIfCalled:
+    def run(self, workspace):
+        raise AssertionError("typed dry-run must not start the runner")
+
+
+def test_typed_execute_does_not_infer_skip_from_normal_end(tmp_path: Path) -> None:
+    workspace = _prepared_scf_workspace_with_log(tmp_path, "NORMAL END")
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(
+        _request(
+            ScfExecuteRequest,
+            "scf",
+            "123e4567-e89b-42d3-a456-426614174007",
+            dry_run=False,
+        )
+    )
+
+    assert isinstance(result, ForgeResultEnvelope)
+    assert result.status.execution == "completed"
+
+
+def test_typed_execute_dry_run_does_not_start_runner(tmp_path: Path) -> None:
+    result = ForgeServices(
+        workspace_root=tmp_path,
+        runner=_FailIfCalled(),  # type: ignore[arg-type]
+    ).execute_scf(
+        _request(
+            ScfExecuteRequest,
+            "scf",
+            "123e4567-e89b-42d3-a456-426614174008",
+            dry_run=True,
+        )
+    )
+
+    assert isinstance(result, ForgeResultEnvelope)
+    assert result.status.execution == "skipped"
+
+
+def test_legacy_run_many_skip_completed_remains_available(tmp_path: Path) -> None:
+    workspace = _prepared_scf_workspace_with_log(tmp_path, "NORMAL END")
+    calls = 0
+
+    class CountingRunner(LocalRunner):
+        def run(self, workspace, check=False):
+            nonlocal calls
+            calls += 1
+            return super().run(workspace, check=check)
+
+    from abacus_forge.runner import run_many
+
+    results = run_many([workspace], runner=CountingRunner(executable="missing-abacus"), skip_completed=True)
+
+    assert results[0].status == "skipped"
+    assert calls == 0
+
+
 def test_scf_policy_does_not_turn_missing_collection_into_rejection() -> None:
     status, _ = _evaluate(collection="missing_output", convergence="failed", required_artifacts_present=False)
 
@@ -247,7 +313,9 @@ def test_typed_scf_services_persist_request_ids_and_apply_policy(
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
     assert isinstance(modified, ForgeResultEnvelope)
     assert modified.status.execution == "not_run"
-    assert calls == {"prepare_unit": 1, "modify_unit": 1, "execute": 1, "collect": 1}
+    # Typed execution calls LocalRunner.run directly; the legacy ``execute``
+    # API remains imported for compatibility but is not part of this path.
+    assert calls == {"prepare_unit": 1, "modify_unit": 1, "execute": 0, "collect": 1}
 
 
 def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path) -> None:

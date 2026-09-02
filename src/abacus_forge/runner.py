@@ -159,7 +159,12 @@ def run_many(
     max_workers: int = 1,
     skip_completed: bool = True,
 ) -> list[RunResult]:
-    """Run several local workspaces without introducing scheduler semantics."""
+    """Run several local workspaces using the legacy skip policy.
+
+    This compatibility helper may infer ``skipped`` from existing output when
+    ``skip_completed`` is true.  Typed v1 services must call ``LocalRunner.run``
+    directly and use an explicit request-level dry-run instead.
+    """
 
     local_runner = runner or LocalRunner()
     normalized = [item if isinstance(item, Workspace) else Workspace(Path(item)) for item in workspaces]

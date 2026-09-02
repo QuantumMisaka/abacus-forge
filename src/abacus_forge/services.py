@@ -115,21 +115,52 @@ class ForgeServices:
             return self._error("request.type", "expected ScfExecuteRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
-            result = execute(workspace, runner=self.runner)
-            self._execution[workspace.root] = "completed" if result.status == "completed" and result.returncode == 0 else "failed"
-            workspace.write_json(
-                "forge-result.json",
-                {
-                    "step": "execute",
-                    "task": "scf",
-                    "unit": "default",
-                    "engine": "abacus",
-                    "status": result.status,
-                    "returncode": result.returncode,
-                    "command": result.command,
-                },
-            )
-            envelope = _with_workspace(result.to_envelope(), request.workspace_rel, policy_id=request.policy_id)
+            if request.dry_run:
+                # Dry-run is an explicit typed-service fact.  Do not inspect
+                # existing logs or invoke the runner: a preview is not an
+                # execution attempt and must never be inferred from output.
+                workspace.ensure_layout()
+                self._execution[workspace.root] = "skipped"
+                workspace.write_json(
+                    "forge-result.json",
+                    {
+                        "step": "execute",
+                        "task": "scf",
+                        "unit": "default",
+                        "engine": "abacus",
+                        "status": "skipped",
+                        "returncode": None,
+                        "command": [],
+                        "dry_run": True,
+                    },
+                )
+                envelope = ForgeResultEnvelope(
+                    operation="execute",
+                    workspace_rel=request.workspace_rel,
+                    status=OperationStatus(
+                        execution="skipped", scientific="unassessed", collection="not_collected"
+                    ),
+                    diagnostics={"policy_id": request.policy_id, "dry_run": True},
+                )
+            else:
+                # Typed services intentionally bypass legacy run_many's
+                # log-based skip policy.  Only this caller's execution result
+                # determines the v1 execution fact.
+                result = self.runner.run(workspace)
+                self._execution[workspace.root] = "completed" if result.status == "completed" and result.returncode == 0 else "failed"
+                workspace.write_json(
+                    "forge-result.json",
+                    {
+                        "step": "execute",
+                        "task": "scf",
+                        "unit": "default",
+                        "engine": "abacus",
+                        "status": result.status,
+                        "returncode": result.returncode,
+                        "command": result.command,
+                    },
+                )
+                envelope = _with_workspace(result.to_envelope(), request.workspace_rel, policy_id=request.policy_id)
             return self._persist(workspace, request, envelope)
         except Exception as error:
             return self._error_from_exception(error, request)
@@ -197,8 +228,8 @@ class ForgeServices:
         if record.is_file():
             try:
                 payload = json.loads(record.read_text(encoding="utf-8"))
-                if payload.get("step") == "execute" and payload.get("status") in {"completed", "failed"}:
-                    return "completed" if payload["status"] == "completed" else "failed"
+                if payload.get("step") == "execute" and payload.get("status") in {"completed", "failed", "skipped"}:
+                    return str(payload["status"])
             except (OSError, ValueError, TypeError):
                 pass
         return "not_run"

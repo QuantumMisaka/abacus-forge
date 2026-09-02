@@ -8,6 +8,7 @@
 - **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算内核，同时服务 ABACUS Agent（Paimon）v1.3 适配层和独立 CLI 用户。
 - **工作模式**：作为纯 Python 库和 Agent-first CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
 - **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`export` 的职责边界；`run` 仅作为兼容别名。
+- **typed SCF 状态边界**：当前阶段只有 `ForgeServices` 的 typed SCF 路径使用 `abacus.scf/v1` policy；`dry_run` 必须由请求显式指定，不能从已有日志推断 `skipped`。`run_many(skip_completed=True)` 保留为 legacy composite helper，不得被 typed service 复用为状态协议。
 - **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 验收的稳定能力。
 
 ## 2. 本地开发与验证
@@ -54,6 +55,8 @@
 按当前 Superpowers 路由开发：L1 局部可逆修改做最小验证；L2 行为变更先建立回归证据，适用时使用 TDD；L3α（设计未定的公共边界）先 `brainstorming` 和 SPEC，L3β（用户已拍板的多步骤工作）先 `writing-plans`。L3 的 SPEC/PLAN 必须存入 `docs/superpowers/`；实施前应取得对应设计/计划批准。完成声明只认 diff 与命令输出。
 
 当前 Paimon v1.3 迁移的设计基线是 [契约优先重构 SPEC](docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。在它获批前，不得以重构名义修改公共 CLI、结果 schema、workspace 持久化语义或 ATP adapter 边界。
+
+当前阶段的 typed SCF service 仅负责 Forge 内部契约与本地 runner 边界；Agent-first CLI、真实 ABACUS/PyATB 验收以及独立 `paimon-v3` adapter/benchmark 仓库均延后到 typed 输出稳定后推进。
 
 ## 6. 跨项目联动说明
 在进行实质性开发前，应核对工作区当前产品边界：
