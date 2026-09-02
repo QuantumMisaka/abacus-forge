@@ -180,6 +180,25 @@ class ArtifactRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ArtifactRef:
+    """Stable cross-operation reference to an artifact."""
+
+    operation_id: str
+    artifact_id: str
+
+    def __post_init__(self) -> None:
+        _require_uuid4(self.operation_id)
+        _require_nonempty_string(self.artifact_id, "artifact_id")
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {"operation_id": self.operation_id, "artifact_id": self.artifact_id}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ArtifactRef:
+        return _construct_strict(cls, payload, "artifact reference")
+
+
+@dataclass(frozen=True, slots=True)
 class MetricRecord:
     name: str
     value: JSONValue

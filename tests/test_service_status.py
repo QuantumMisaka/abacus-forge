@@ -341,3 +341,64 @@ def test_typed_scf_internal_failure_returns_error_without_caller_event(tmp_path:
     assert isinstance(result, ForgeErrorEnvelope)
     manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text())
     assert operation_id not in {event["id"] for event in manifest["events"]}
+
+
+def test_collect_has_operation_local_not_run_execution_even_after_execute(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["SCF CONVERGED", "NORMAL END"])
+    services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable)))
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    (workspace.outputs_dir / "running_scf.log").write_text("SCF CONVERGED\nNORMAL END\n", encoding="utf-8")
+    execute_id = "123e4567-e89b-42d3-a456-426614174009"
+    collect_id = "123e4567-e89b-42d3-a456-426614174010"
+    services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
+    collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
+    assert isinstance(collected, ForgeResultEnvelope)
+    assert collected.status.execution == "not_run"
+
+
+def test_typed_services_reject_unknown_policy(tmp_path: Path) -> None:
+    services = ForgeServices.default(workspace_root=tmp_path)
+    result = services.execute_scf(_request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174011", policy_id="garbage"))
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.policy"
+
+
+def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    calls = 0
+    class CountingRunner(LocalRunner):
+        def run(self, workspace, check=False):
+            nonlocal calls
+            calls += 1
+            return super().run(workspace, check=check)
+    runner = CountingRunner(executable=str(executable))
+    services = ForgeServices.default(workspace_root=tmp_path, runner=runner)
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174012")
+    first = services.execute_scf(request)
+    second = services.execute_scf(request)
+    assert isinstance(first, ForgeResultEnvelope)
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "persistence.conflict"
+    assert calls == 1
+    manifest = json.loads((tmp_path / "scf" / "reports" / "forge-workspace.json").read_text())
+    assert [event["id"] for event in manifest["events"]].count(request.operation_id) == 1
+
+
+def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) -> None:
+    services = ForgeServices.default(workspace_root=tmp_path)
+    structure = tmp_path / "scf" / "source.STRU"
+    structure.parent.mkdir()
+    structure.write_text(
+        "ATOMIC_SPECIES\nSi 28.085500 Si.upf\n\nLATTICE_CONSTANT\n1.0\n"
+        "LATTICE_CONSTANT_UNIT\nAngstrom\n\nLATTICE_VECTORS\n4 0 0\n0 4 0\n0 0 4\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0 m 1 1 1\n", encoding="utf-8"
+    )
+    prepared = services.prepare_scf(_request(ScfPrepareRequest, "scf", "123e4567-e89b-42d3-a456-426614174013", structure_path_rel="source.STRU"))
+    modified = services.modify_scf(_request(ScfModifyRequest, "scf", "123e4567-e89b-42d3-a456-426614174014", input_updates={"ecutwfc": 90}))
+    assert isinstance(prepared, ForgeResultEnvelope)
+    assert {artifact.path_rel for artifact in prepared.artifacts} >= {"inputs/INPUT", "inputs/STRU", "inputs/KPT", "forge-unit.json"}
+    assert isinstance(modified, ForgeResultEnvelope)
+    assert modified.diagnostics["changes"]["INPUT"]["updates"] == {"ecutwfc": 90}
+    assert "input_snapshot_before" in modified.diagnostics
+    assert "input_snapshot_after" in modified.diagnostics

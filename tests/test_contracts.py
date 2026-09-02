@@ -7,6 +7,7 @@ import pytest
 from abacus_forge import contracts
 from abacus_forge.contracts import (
     ArtifactRecord,
+    ArtifactRef,
     ForgeRequest,
     ForgeResultEnvelope,
     MetricRecord,
@@ -109,6 +110,18 @@ def test_operation_ref_round_trips_and_rejects_unknown_fields() -> None:
     assert OperationRef.from_dict(ref.to_dict()) == ref
     with pytest.raises(ValueError, match="unknown"):
         OperationRef.from_dict({**ref.to_dict(), "extra": True})
+
+
+def test_artifact_ref_is_strict_and_operation_scoped() -> None:
+    ref = ArtifactRef(
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        artifact_id="stdout_log",
+    )
+    assert ArtifactRef.from_dict(ref.to_dict()) == ref
+    with pytest.raises(ValueError, match="unknown"):
+        ArtifactRef.from_dict({**ref.to_dict(), "path_rel": "outputs/stdout.log"})
+    with pytest.raises(ValueError, match="artifact_id"):
+        ArtifactRef(operation_id=ref.operation_id, artifact_id="")
 
 
 @pytest.mark.parametrize("request_type", [ScfPrepareRequest, ScfModifyRequest, ScfExecuteRequest, ScfCollectRequest])

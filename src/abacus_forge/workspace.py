@@ -19,6 +19,10 @@ from .contracts import JSONValue, WORKSPACE_SCHEMA_VERSION, canonical_relative_p
 _V1_OPERATION_PATTERN = re.compile(r"[a-z][a-z0-9_]*\Z")
 
 
+class OperationConflictError(ValueError):
+    """Raised when a v1 operation identity is already claimed or committed."""
+
+
 def _validate_v1_json_value(value: object, *, active: set[int]) -> JSONValue:
     """Validate and normalize a JSON value for a v1 event payload."""
     if value is None or isinstance(value, (bool, int, str)):
@@ -267,6 +271,76 @@ class Workspace:
 
     def append_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue]) -> Path:
         """Append one v1 event whose identity is supplied by its typed request."""
+        return self._append_v1_operation_event(operation_id, operation, payload, claim_token=None)
+
+    def append_claimed_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue]) -> Path:
+        """Commit an event for a reservation held by :meth:`claim_v1_operation`."""
+        return self._append_v1_operation_event(operation_id, operation, payload, claim_token=operation_id)
+
+    @contextmanager
+    def claim_v1_operation(self, operation_id: str, operation: str) -> Iterator[None]:
+        """Reserve a v1 identity before any workspace or process mutation."""
+        if not isinstance(operation_id, str):
+            raise ValueError("operation_id must be a lowercase UUIDv4")
+        try:
+            parsed_id = uuid.UUID(operation_id)
+        except ValueError as error:
+            raise ValueError("operation_id must be a lowercase UUIDv4") from error
+        if parsed_id.version != 4 or str(parsed_id) != operation_id:
+            raise ValueError("operation_id must be a lowercase UUIDv4")
+        if not isinstance(operation, str) or _V1_OPERATION_PATTERN.fullmatch(operation) is None:
+            raise ValueError("operation must match [a-z][a-z0-9_]*")
+        with self._manifest_lock():
+            manifest_path = self._ensure_manifest_unlocked()
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                raise ValueError("workspace manifest has invalid events")
+            if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
+                raise OperationConflictError("operation_id already exists in workspace manifest")
+
+            claims_dir = self.resolve_relative(Path("reports") / "claims")
+            claims_dir.mkdir(parents=True, exist_ok=True)
+            claim_path = claims_dir / f"{operation_id}.json"
+            try:
+                with claim_path.open("x", encoding="utf-8") as claim:
+                    json.dump({"operation_id": operation_id, "operation": operation, "pid": os.getpid()}, claim, sort_keys=True)
+                    claim.flush()
+                    os.fsync(claim.fileno())
+            except FileExistsError as error:
+                if not self._claim_process_alive(claim_path):
+                    try:
+                        claim_path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    with claim_path.open("x", encoding="utf-8") as claim:
+                        json.dump({"operation_id": operation_id, "operation": operation, "pid": os.getpid()}, claim, sort_keys=True)
+                        claim.flush()
+                        os.fsync(claim.fileno())
+                else:
+                    raise OperationConflictError("operation_id is already claimed") from error
+
+        try:
+            yield
+        finally:
+            with self._manifest_lock():
+                try:
+                    claim_path.unlink()
+                except FileNotFoundError:
+                    pass
+
+    @staticmethod
+    def _claim_process_alive(claim_path: Path) -> bool:
+        try:
+            payload = json.loads(claim_path.read_text(encoding="utf-8"))
+            pid = payload.get("pid")
+            if not isinstance(pid, int):
+                return False
+            os.kill(pid, 0)
+            return True
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return False
+
+    def _append_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue], *, claim_token: str | None) -> Path:
         if not isinstance(operation_id, str):
             raise ValueError("operation_id must be a lowercase UUIDv4")
         try:
@@ -285,7 +359,10 @@ class Workspace:
             if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
                 raise ValueError("workspace manifest has invalid events")
             if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
-                raise ValueError("operation_id already exists in workspace manifest")
+                raise OperationConflictError("operation_id already exists in workspace manifest")
+            claim_path = self.resolve_relative(Path("reports") / "claims" / f"{operation_id}.json")
+            if claim_path.exists() and claim_token != operation_id:
+                raise OperationConflictError("operation_id is already claimed")
 
             events_dir = self.resolve_relative(Path("reports") / "events")
             events_dir.mkdir(parents=True, exist_ok=True)
@@ -297,7 +374,15 @@ class Workspace:
             )
             event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
             manifest["events"].append({"id": operation_id, "operation": operation, "path_rel": event_rel})
-            self._write_json_atomic(manifest_path, manifest)
+            try:
+                self._write_json_atomic(manifest_path, manifest)
+            except Exception:
+                if claim_token is not None:
+                    try:
+                        event_path.unlink()
+                    except FileNotFoundError:
+                        pass
+                raise
         return event_path
 
     def record_metadata(self, payload: dict[str, Any]) -> Path:

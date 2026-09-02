@@ -7,9 +7,9 @@ import json
 from pathlib import Path
 from typing import TypeVar
 
-from abacus_forge.api import UnitModifySpec, UnitSpec, collect, modify_unit, prepare_unit, execute
+from abacus_forge.api import UnitModifySpec, UnitSpec, collect, modify_unit, prepare_unit, execute, suppress_legacy_events
 from abacus_forge.contracts import (
-    ArtifactRecord,
+    ArtifactRecord, ArtifactRef,
     CheckRecord,
     ForgeErrorEnvelope,
     ForgeResultEnvelope,
@@ -22,7 +22,7 @@ from abacus_forge.contracts import (
 from abacus_forge.policies import evaluate_abacus_scf_v1
 from abacus_forge.result import CollectionResult
 from abacus_forge.runner import LocalRunner
-from abacus_forge.workspace import Workspace
+from abacus_forge.workspace import OperationConflictError, Workspace
 
 
 RequestT = TypeVar("RequestT")
@@ -52,26 +52,25 @@ class ForgeServices:
         if not isinstance(request, ScfPrepareRequest):
             return self._error("request.type", "expected ScfPrepareRequest", request)
         try:
+            self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
             structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
-            result = prepare_unit(
-                UnitSpec(
-                    task="scf",
-                    workdir=workspace.root,
-                    structure=structure_path,
-                    structure_format=request.structure_format,
-                    parameters=dict(request.parameters),
-                ),
-                record_event=False,
-            )
-            envelope = ForgeResultEnvelope(
-                operation="prepare",
-                workspace_rel=request.workspace_rel,
-                status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-                artifacts=_manifest_artifact(workspace),
-                diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit},
-            )
-            return self._persist(workspace, request, envelope)
+            with workspace.claim_v1_operation(request.operation_id, request.operation):
+                with suppress_legacy_events():
+                    result = prepare_unit(
+                        UnitSpec(
+                            task="scf", workdir=workspace.root, structure=structure_path,
+                            structure_format=request.structure_format, parameters=dict(request.parameters),
+                        )
+                    )
+                envelope = ForgeResultEnvelope(
+                    operation="prepare", workspace_rel=request.workspace_rel,
+                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+                    artifacts=_prepare_artifacts(workspace),
+                    diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit,
+                                 "prepare_manifest": "forge-unit.json"},
+                )
+                return self._persist(workspace, request, envelope, claimed=True)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -79,34 +78,29 @@ class ForgeServices:
         if not isinstance(request, ScfModifyRequest):
             return self._error("request.type", "expected ScfModifyRequest", request)
         try:
+            self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
-            result = modify_unit(
-                UnitModifySpec(
-                    task="scf",
-                    workdir=workspace.root,
-                    input_updates=dict(request.input_updates),
-                    remove_parameters=request.remove_parameters,
-                ),
-                record_event=False,
-            )
-            artifacts = tuple(
-                ArtifactRecord(
-                    id=f"artifact-{name.lower()}",
-                    path_rel=f"inputs/{name}",
-                    role="input",
-                    stage="modify",
+            before = _input_snapshot(workspace)
+            with workspace.claim_v1_operation(request.operation_id, request.operation):
+                with suppress_legacy_events():
+                    result = modify_unit(UnitModifySpec(
+                        task="scf", workdir=workspace.root,
+                        input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
+                    ))
+                after = _input_snapshot(workspace)
+                artifacts = tuple(
+                    ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
+                    for name in result.modified_files if (workspace.inputs_dir / name).is_file()
                 )
-                for name in result.modified_files
-                if (workspace.inputs_dir / name).is_file()
-            )
-            envelope = ForgeResultEnvelope(
-                operation="modify",
-                workspace_rel=request.workspace_rel,
-                status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-                artifacts=artifacts,
-                diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit},
-            )
-            return self._persist(workspace, request, envelope)
+                envelope = ForgeResultEnvelope(
+                    operation="modify", workspace_rel=request.workspace_rel,
+                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+                    artifacts=artifacts,
+                    diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit,
+                                 "modified_files": result.modified_files, "changes": result.changes,
+                                 "input_snapshot_before": before, "input_snapshot_after": after},
+                )
+                return self._persist(workspace, request, envelope, claimed=True)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -114,54 +108,35 @@ class ForgeServices:
         if not isinstance(request, ScfExecuteRequest):
             return self._error("request.type", "expected ScfExecuteRequest", request)
         try:
+            self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
-            if request.dry_run:
-                # Dry-run is an explicit typed-service fact.  Do not inspect
-                # existing logs or invoke the runner: a preview is not an
-                # execution attempt and must never be inferred from output.
-                workspace.ensure_layout()
-                self._execution[workspace.root] = "skipped"
-                workspace.write_json(
-                    "forge-result.json",
-                    {
-                        "step": "execute",
-                        "task": "scf",
-                        "unit": "default",
-                        "engine": "abacus",
-                        "status": "skipped",
-                        "returncode": None,
-                        "command": [],
-                        "dry_run": True,
-                    },
-                )
-                envelope = ForgeResultEnvelope(
-                    operation="execute",
-                    workspace_rel=request.workspace_rel,
-                    status=OperationStatus(
-                        execution="skipped", scientific="unassessed", collection="not_collected"
-                    ),
-                    diagnostics={"policy_id": request.policy_id, "dry_run": True},
-                )
-            else:
-                # Typed services intentionally bypass legacy run_many's
-                # log-based skip policy.  Only this caller's execution result
-                # determines the v1 execution fact.
-                result = self.runner.run(workspace)
-                self._execution[workspace.root] = "completed" if result.status == "completed" and result.returncode == 0 else "failed"
-                workspace.write_json(
-                    "forge-result.json",
-                    {
-                        "step": "execute",
-                        "task": "scf",
-                        "unit": "default",
-                        "engine": "abacus",
-                        "status": result.status,
-                        "returncode": result.returncode,
-                        "command": result.command,
-                    },
-                )
-                envelope = _with_workspace(result.to_envelope(), request.workspace_rel, policy_id=request.policy_id)
-            return self._persist(workspace, request, envelope)
+            with workspace.claim_v1_operation(request.operation_id, request.operation):
+                if request.dry_run:
+                    # Dry-run is an explicit typed-service fact.  Do not inspect
+                    # existing logs or invoke the runner.
+                    workspace.ensure_layout()
+                    workspace.write_json(
+                        "forge-result.json",
+                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
+                         "status": "skipped", "returncode": None, "command": [], "dry_run": True},
+                    )
+                    envelope = ForgeResultEnvelope(
+                        operation="execute", workspace_rel=request.workspace_rel,
+                        status=OperationStatus(execution="skipped", scientific="unassessed", collection="not_collected"),
+                        diagnostics={"policy_id": request.policy_id, "dry_run": True},
+                    )
+                else:
+                    # Typed services intentionally bypass the legacy log-based
+                    # skip policy and use only this invocation's result.
+                    result = self.runner.run(workspace)
+                    workspace.write_json(
+                        "forge-result.json",
+                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
+                         "status": result.status, "returncode": result.returncode, "command": result.command},
+                    )
+                    envelope = _with_workspace(result.to_envelope(), request.workspace_rel, policy_id=request.policy_id,
+                                               operation_id=request.operation_id)
+                return self._persist(workspace, request, envelope, claimed=True)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -171,10 +146,12 @@ class ForgeServices:
         try:
             if request.policy_id != "abacus.scf/v1":
                 raise ValueError("unsupported policy_id; expected 'abacus.scf/v1'")
+            self._validate_policy(request.policy_id, allow_none=False)
             workspace = self._workspace(request.workspace_rel)
-            result = collect(workspace)
-            envelope = self._policy_envelope(workspace, request, result)
-            return self._persist(workspace, request, envelope)
+            with workspace.claim_v1_operation(request.operation_id, request.operation):
+                result = collect(workspace)
+                envelope = self._policy_envelope(workspace, request, result)
+                return self._persist(workspace, request, envelope, claimed=True)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -182,7 +159,7 @@ class ForgeServices:
         self, workspace: Workspace, request: ScfCollectRequest, result: CollectionResult
     ) -> ForgeResultEnvelope:
         base = result.to_envelope()
-        execution = self._execution_for(workspace)
+        execution = "not_run"
         log_sources = result.diagnostics.get("log_sources", 0)
         normal_end = CheckRecord(
             name="normal_end",
@@ -221,18 +198,11 @@ class ForgeServices:
             diagnostics=diagnostics,
         )
 
-    def _execution_for(self, workspace: Workspace) -> str:
-        if workspace.root in self._execution:
-            return self._execution[workspace.root]
-        record = workspace.root / "forge-result.json"
-        if record.is_file():
-            try:
-                payload = json.loads(record.read_text(encoding="utf-8"))
-                if payload.get("step") == "execute" and payload.get("status") in {"completed", "failed", "skipped"}:
-                    return str(payload["status"])
-            except (OSError, ValueError, TypeError):
-                pass
-        return "not_run"
+    @staticmethod
+    def _validate_policy(policy_id: str, *, allow_none: bool) -> None:
+        allowed = {"abacus.scf/v1"} | ({"none"} if allow_none else set())
+        if policy_id not in allowed:
+            raise ValueError("unsupported policy_id; expected one of: " + ", ".join(sorted(allowed)))
 
     def _workspace(self, workspace_rel: str) -> Workspace:
         candidate = (self.workspace_root / workspace_rel).resolve()
@@ -253,8 +223,12 @@ class ForgeServices:
             raise FileNotFoundError(f"{field_name} file not found: {path_rel}")
         return candidate
 
-    def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope) -> ForgeResultEnvelope:
-        workspace.append_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]
+    def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope, *, claimed: bool = False) -> ForgeResultEnvelope:
+        envelope = _with_artifact_refs(envelope, request.operation_id)  # type: ignore[attr-defined]
+        if claimed:
+            workspace.append_claimed_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]
+        else:
+            workspace.append_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]
         return envelope
 
     @staticmethod
@@ -274,7 +248,17 @@ class ForgeServices:
         )
 
     def _error_from_exception(self, error: Exception, request: object) -> ForgeErrorEnvelope:
-        error_class = "request.invalid" if isinstance(error, (TypeError, ValueError)) else "service.error"
+        if "unsupported policy_id" in str(error):
+            error_class = "request.policy"
+        elif isinstance(error, OperationConflictError):
+            error_class = "persistence.conflict"
+        elif isinstance(error, FileNotFoundError):
+            error_class = "precondition.environment"
+        elif isinstance(error, (TypeError, ValueError)):
+            text = str(error)
+            error_class = "request.schema" if "schema_version" in text else "request.path" if "path" in text else "request.invalid"
+        else:
+            error_class = "internal.error"
         affected = tuple(
             field
             for field in ("workspace_rel", "operation_id", "policy_id")
@@ -290,9 +274,11 @@ class ForgeServices:
         )
 
 
-def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str, *, policy_id: str) -> ForgeResultEnvelope:
+def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str, *, policy_id: str, operation_id: str | None = None) -> ForgeResultEnvelope:
     diagnostics = dict(envelope.to_dict()["diagnostics"])  # type: ignore[arg-type]
     diagnostics["policy_id"] = policy_id
+    if operation_id is not None:
+        diagnostics["artifact_refs"] = [ArtifactRef(operation_id, artifact.id).to_dict() for artifact in envelope.artifacts]
     return ForgeResultEnvelope(
         operation=envelope.operation,
         workspace_rel=workspace_rel,
@@ -318,4 +304,39 @@ def _manifest_artifact(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
             sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
             size_bytes=path.stat().st_size,
         ),
+    )
+
+
+def _prepare_artifacts(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
+    records = list(_manifest_artifact(workspace))
+    if workspace.inputs_dir.is_dir():
+        for path in sorted(item for item in workspace.inputs_dir.rglob("*") if item.is_file()):
+            relative = path.relative_to(workspace.root).as_posix()
+            records.append(ArtifactRecord(
+                id=f"input-{path.relative_to(workspace.inputs_dir).as_posix().replace('/', '-').lower()}",
+                path_rel=relative, role="input", stage="prepare",
+                sha256=hashlib.sha256(path.read_bytes()).hexdigest(), size_bytes=path.stat().st_size,
+            ))
+    return tuple(records)
+
+
+def _input_snapshot(workspace: Workspace) -> dict[str, object]:
+    snapshot: dict[str, object] = {}
+    if workspace.inputs_dir.is_dir():
+        for path in sorted(item for item in workspace.inputs_dir.rglob("*") if item.is_file()):
+            rel = path.relative_to(workspace.inputs_dir).as_posix()
+            snapshot[rel] = {
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "size_bytes": path.stat().st_size,
+            }
+    return snapshot
+
+
+def _with_artifact_refs(envelope: ForgeResultEnvelope, operation_id: str) -> ForgeResultEnvelope:
+    diagnostics = dict(envelope.to_dict()["diagnostics"])  # type: ignore[arg-type]
+    diagnostics["artifact_refs"] = [ArtifactRef(operation_id, artifact.id).to_dict() for artifact in envelope.artifacts]
+    return ForgeResultEnvelope(
+        operation=envelope.operation, workspace_rel=envelope.workspace_rel, status=envelope.status,
+        artifacts=envelope.artifacts, metrics=envelope.metrics, checks=envelope.checks,
+        warnings=envelope.warnings, diagnostics=diagnostics,
     )
