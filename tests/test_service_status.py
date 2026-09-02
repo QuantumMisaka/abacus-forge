@@ -256,3 +256,20 @@ def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.operation_id is None
     assert result.workspace_rel is None
+
+
+def test_typed_scf_internal_failure_returns_error_without_caller_event(tmp_path: Path) -> None:
+    class FailingRunner:
+        def run(self, workspace):
+            raise RuntimeError("runner fixture failed")
+
+    workspace = abacus_forge.Workspace(tmp_path / "scf")
+    workspace.append_operation_event("legacy", {"status": "completed"})
+    operation_id = "123e4567-e89b-42d3-a456-426614174006"
+    services = ForgeServices.default(workspace_root=tmp_path, runner=FailingRunner())  # type: ignore[arg-type]
+
+    result = services.execute_scf(_request(ScfExecuteRequest, "scf", operation_id))
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text())
+    assert operation_id not in {event["id"] for event in manifest["events"]}

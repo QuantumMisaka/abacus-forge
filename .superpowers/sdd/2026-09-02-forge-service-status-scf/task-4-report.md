@@ -60,6 +60,22 @@ Result: `220 passed, 2 skipped in 13.01s`.
 
 `git diff --check` passed.
 
+## Fix round 2
+
+The scoped review found only a missing negative test for a valid typed request
+that fails inside the service. Added a test with an injected failing runner;
+the pre-existing legacy event manifest remains unchanged and contains no
+caller-owned v1 event for the failed request. Production code already returned
+the required `ForgeErrorEnvelope`, so no production change was necessary.
+
+Focused verification command:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_result_contract.py tests/test_contracts.py tests/test_workspace.py tests/test_units.py tests/test_cli_process.py
+```
+
+Result: `118 passed in 8.28s`; `git diff --check` passed.
+
 ## Fix round 1
 
 ### Diagnosis
