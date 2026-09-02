@@ -83,6 +83,26 @@ def test_workspace_events_are_append_only(tmp_path: Path) -> None:
     assert all((workspace.root / event["path_rel"]).exists() for event in manifest["events"])
 
 
+def test_v1_event_uses_request_operation_id(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "v1-event")
+    operation_id = "123e4567-e89b-42d3-a456-426614174000"
+
+    event_path = workspace.append_v1_operation_event(operation_id, "collect", {"status": "complete"})
+    manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text(encoding="utf-8"))
+
+    assert manifest["events"][-1]["id"] == operation_id
+    assert event_path.name == f"{operation_id}-collect.json"
+
+
+def test_v1_event_rejects_duplicate_operation_id(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "duplicate-v1-event")
+    operation_id = "123e4567-e89b-42d3-a456-426614174000"
+    workspace.append_v1_operation_event(operation_id, "collect", {"status": "complete"})
+
+    with pytest.raises(ValueError, match="operation_id"):
+        workspace.append_v1_operation_event(operation_id, "collect", {"status": "complete"})
+
+
 def test_workspace_concurrent_events_preserve_all_manifest_references(tmp_path: Path) -> None:
     root = tmp_path / "concurrent"
     context = multiprocessing.get_context("fork")

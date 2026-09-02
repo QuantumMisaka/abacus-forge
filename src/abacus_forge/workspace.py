@@ -205,5 +205,37 @@ class Workspace:
             self._write_json_atomic(manifest_path, manifest)
         return event_path
 
+    def append_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue]) -> Path:
+        """Append one v1 event whose identity is supplied by its typed request."""
+        if not isinstance(operation_id, str):
+            raise ValueError("operation_id must be a lowercase UUIDv4")
+        try:
+            parsed_id = uuid.UUID(operation_id)
+        except ValueError as error:
+            raise ValueError("operation_id must be a lowercase UUIDv4") from error
+        if parsed_id.version != 4 or str(parsed_id) != operation_id:
+            raise ValueError("operation_id must be a lowercase UUIDv4")
+        if not isinstance(operation, str) or not operation or "/" in operation or "\\" in operation:
+            raise ValueError("operation must be a non-empty path-safe string")
+
+        with self._manifest_lock():
+            manifest_path = self._ensure_manifest_unlocked()
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                raise ValueError("workspace manifest has invalid events")
+            if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
+                raise ValueError("operation_id already exists in workspace manifest")
+
+            events_dir = self.resolve_relative(Path("reports") / "events")
+            events_dir.mkdir(parents=True, exist_ok=True)
+            event_path = events_dir / f"{operation_id}-{operation}.json"
+            if event_path.exists():
+                raise ValueError("operation_id already exists in workspace events")
+            self._write_json_atomic(event_path, {"id": operation_id, "operation": operation, "payload": payload})
+            event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
+            manifest["events"].append({"id": operation_id, "operation": operation, "path_rel": event_rel})
+            self._write_json_atomic(manifest_path, manifest)
+        return event_path
+
     def record_metadata(self, payload: dict[str, Any]) -> Path:
         return self.write_json(self.meta_path.relative_to(self.root), payload)
