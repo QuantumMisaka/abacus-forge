@@ -77,12 +77,12 @@ def test_scf_policy_preserves_valid_execution_fact(execution: str) -> None:
     assert status.scientific == "accepted"
 
 
-@pytest.mark.parametrize("execution", ["failed", "skipped"])
-def test_scf_policy_never_accepts_failed_or_skipped_execution(execution: str) -> None:
+@pytest.mark.parametrize("execution", ["not_run", "completed", "failed", "skipped"])
+def test_scf_policy_keeps_execution_independent_from_scientific_assessment(execution: str) -> None:
     status, _ = _evaluate(execution=execution)
 
     assert status.execution == execution
-    assert status.scientific == "unassessed"
+    assert status.scientific == "accepted"
 
 
 @pytest.mark.parametrize("collection", ["not_collected", "missing_output"])

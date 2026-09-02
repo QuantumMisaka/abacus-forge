@@ -41,12 +41,11 @@ def evaluate_abacus_scf_v1(
         if check.name != expected_name:
             raise ValueError(f"{expected_name} check must be named {expected_name!r}")
 
-    # Missing collection/artifacts and a failed or skipped operation do not
-    # provide enough evidence for a scientific assessment.  In particular,
-    # missing collection must not be misreported as scientific rejection.
+    # Missing collection/artifacts do not provide enough evidence for a
+    # scientific assessment.  In particular, missing collection must not be
+    # misreported as scientific rejection.  Execution is an independent,
+    # service-supplied axis and must never be used to infer scientific state.
     if collection in {"not_collected", "missing_output"} or not required_artifacts_present:
-        scientific = "unassessed"
-    elif execution in {"failed", "skipped"}:
         scientific = "unassessed"
     # A failed parser cannot establish usable domain evidence.  Warnings and
     # unavailable checks retain a guarded assessment when output is usable.
