@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import tempfile
 import uuid
 from contextlib import contextmanager
@@ -12,6 +14,64 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping
 
 from .contracts import JSONValue, WORKSPACE_SCHEMA_VERSION, canonical_relative_path
+
+
+_V1_OPERATION_PATTERN = re.compile(r"[a-z][a-z0-9_]*\Z")
+
+
+def _validate_v1_json_value(value: object, *, active: set[int]) -> JSONValue:
+    """Validate and normalize a JSON value for a v1 event payload."""
+    if value is None or isinstance(value, (bool, int, str)):
+        return value  # type: ignore[return-value]
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("payload must contain only finite JSON values")
+        return value
+
+    value_id = id(value)
+    if isinstance(value, Mapping):
+        if value_id in active:
+            raise ValueError("payload must not contain circular references")
+        active.add(value_id)
+        try:
+            normalized: dict[str, JSONValue] = {}
+            try:
+                items = value.items()
+                for key, item in items:
+                    if not isinstance(key, str):
+                        raise ValueError("payload object keys must be strings")
+                    normalized[key] = _validate_v1_json_value(item, active=active)
+            except ValueError:
+                raise
+            except (TypeError, AttributeError, RuntimeError) as error:
+                raise ValueError("payload must contain only JSON values") from error
+            return normalized
+        finally:
+            active.remove(value_id)
+
+    if isinstance(value, list):
+        if value_id in active:
+            raise ValueError("payload must not contain circular references")
+        active.add(value_id)
+        try:
+            try:
+                return [_validate_v1_json_value(item, active=active) for item in value]
+            except ValueError:
+                raise
+            except (TypeError, RuntimeError) as error:
+                raise ValueError("payload must contain only JSON values") from error
+        finally:
+            active.remove(value_id)
+
+    raise ValueError("payload must contain only JSON values")
+
+
+def _validate_v1_payload(payload: object) -> dict[str, JSONValue]:
+    if not isinstance(payload, Mapping):
+        raise ValueError("payload must be a mapping of JSON values")
+    normalized = _validate_v1_json_value(payload, active=set())
+    # The Mapping check above and helper guarantee this cast at runtime.
+    return normalized  # type: ignore[return-value]
 
 
 @dataclass(slots=True)
@@ -215,8 +275,9 @@ class Workspace:
             raise ValueError("operation_id must be a lowercase UUIDv4") from error
         if parsed_id.version != 4 or str(parsed_id) != operation_id:
             raise ValueError("operation_id must be a lowercase UUIDv4")
-        if not isinstance(operation, str) or not operation or "/" in operation or "\\" in operation:
-            raise ValueError("operation must be a non-empty path-safe string")
+        if not isinstance(operation, str) or _V1_OPERATION_PATTERN.fullmatch(operation) is None:
+            raise ValueError("operation must match [a-z][a-z0-9_]*")
+        normalized_payload = _validate_v1_payload(payload)
 
         with self._manifest_lock():
             manifest_path = self._ensure_manifest_unlocked()
@@ -231,7 +292,9 @@ class Workspace:
             event_path = events_dir / f"{operation_id}-{operation}.json"
             if event_path.exists():
                 raise ValueError("operation_id already exists in workspace events")
-            self._write_json_atomic(event_path, {"id": operation_id, "operation": operation, "payload": payload})
+            self._write_json_atomic(
+                event_path, {"id": operation_id, "operation": operation, "payload": normalized_payload}
+            )
             event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
             manifest["events"].append({"id": operation_id, "operation": operation, "path_rel": event_rel})
             self._write_json_atomic(manifest_path, manifest)

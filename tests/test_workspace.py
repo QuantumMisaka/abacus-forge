@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+import uuid
 from pathlib import Path
 
 import pytest
@@ -101,6 +102,89 @@ def test_v1_event_rejects_duplicate_operation_id(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="operation_id"):
         workspace.append_v1_operation_event(operation_id, "collect", {"status": "complete"})
+
+
+@pytest.mark.parametrize(
+    "operation_id",
+    [
+        "123E4567-E89B-42D3-A456-426614174000",
+        "c232dad3-7f13-11f0-8000-426614174000",
+        "123e4567e89b42d3a456426614174000",
+    ],
+)
+def test_v1_event_rejects_noncanonical_uuid4(tmp_path: Path, operation_id: str) -> None:
+    workspace = Workspace(tmp_path / "invalid-v1-id")
+
+    with pytest.raises(ValueError, match="operation_id"):
+        workspace.append_v1_operation_event(operation_id, "collect", {"status": "complete"})
+
+
+@pytest.mark.parametrize("operation", ["", "Collect", "collect-status", "collect/status", "collect\\status"])
+def test_v1_event_rejects_unsafe_operation_tokens(tmp_path: Path, operation: str) -> None:
+    workspace = Workspace(tmp_path / "invalid-v1-operation")
+
+    with pytest.raises(ValueError, match="operation"):
+        workspace.append_v1_operation_event(
+            "123e4567-e89b-42d3-a456-426614174000", operation, {"status": "complete"}
+        )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {1: "non-string key"},
+        {"nested": {1: "non-string key"}},
+        {"nested": ("tuple is not JSONValue",)},
+        {"nested": float("nan")},
+        {"nested": object()},
+    ],
+)
+def test_v1_event_rejects_non_json_mapping_payload(tmp_path: Path, payload: dict) -> None:
+    workspace = Workspace(tmp_path / "invalid-v1-payload")
+
+    with pytest.raises(ValueError, match="payload"):
+        workspace.append_v1_operation_event(
+            "123e4567-e89b-42d3-a456-426614174000", "collect", payload
+        )
+    assert not (workspace.reports_dir / "events").exists()
+
+
+def test_v1_event_reconciles_after_manifest_write_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace = Workspace(tmp_path / "v1-recovery")
+    original = Workspace._write_json_atomic
+    calls = 0
+
+    def fail_manifest(path: Path, payload: dict) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise OSError("simulated manifest failure")
+        original(path, payload)
+
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_manifest))
+    with pytest.raises(OSError, match="simulated"):
+        workspace.append_v1_operation_event(
+            "123e4567-e89b-42d3-a456-426614174000", "collect", {"status": "complete"}
+        )
+    events = list((workspace.root / "reports" / "events").glob("*.json"))
+    assert len(events) == 1
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(original))
+    workspace.ensure_manifest()
+    manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text())
+    assert manifest["events"][-1]["id"] == "123e4567-e89b-42d3-a456-426614174000"
+    assert manifest["events"][-1]["path_rel"] == events[0].relative_to(workspace.root).as_posix()
+
+
+def test_legacy_event_ids_remain_random_uuid4(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "legacy-event-id")
+    first = workspace.append_operation_event("legacy-operation", {"status": "complete"})
+    second = workspace.append_operation_event("legacy-operation", {"status": "complete"})
+
+    first_id = json.loads(first.read_text(encoding="utf-8"))["id"]
+    second_id = json.loads(second.read_text(encoding="utf-8"))["id"]
+    assert first_id != second_id
+    assert uuid.UUID(first_id).version == 4
+    assert uuid.UUID(second_id).version == 4
 
 
 def test_workspace_concurrent_events_preserve_all_manifest_references(tmp_path: Path) -> None:
