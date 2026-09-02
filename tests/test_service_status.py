@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 import json
+import importlib
 
 import abacus_forge
 from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner
@@ -181,11 +182,24 @@ def test_scf_policy_rejects_invalid_collection() -> None:
         _evaluate(collection="unknown")
 
 
-def _request(request_type, workspace: str, operation_id: str, policy_id: str = "abacus.scf/v1"):
-    return request_type(operation_id=operation_id, workspace_rel=workspace, policy_id=policy_id)
+def _request(request_type, workspace: str, operation_id: str, policy_id: str = "abacus.scf/v1", **kwargs):
+    return request_type(operation_id=operation_id, workspace_rel=workspace, policy_id=policy_id, **kwargs)
 
 
-def test_typed_scf_services_persist_request_ids_and_apply_policy(tmp_path: Path) -> None:
+def test_typed_scf_services_persist_request_ids_and_apply_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services_module = importlib.import_module("abacus_forge.services")
+    calls = {name: 0 for name in ("prepare_unit", "modify_unit", "execute", "collect")}
+    for name in calls:
+        original = getattr(services_module, name)
+
+        def counted(*args, _name=name, _original=original, **kwargs):
+            calls[_name] += 1
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(services_module, name, counted)
+
     executable = write_fake_abacus(
         tmp_path / "fake-abacus",
         stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED", "NORMAL END"],
@@ -198,9 +212,28 @@ def test_typed_scf_services_persist_request_ids_and_apply_policy(tmp_path: Path)
     modify_id = "123e4567-e89b-42d3-a456-426614174002"
     execute_id = "123e4567-e89b-42d3-a456-426614174003"
     collect_id = "123e4567-e89b-42d3-a456-426614174004"
+    structure = tmp_path / "scf" / "source.STRU"
+    structure.parent.mkdir()
+    structure.write_text(
+        "ATOMIC_SPECIES\nSi 28.085500 Si.upf\n\nLATTICE_CONSTANT\n1.0\n"
+        "LATTICE_CONSTANT_UNIT\nAngstrom\n\nLATTICE_VECTORS\n"
+        "4 0 0\n0 4 0\n0 0 4\n\nATOMIC_POSITIONS\nDirect\nSi\n0\n1\n"
+        "0 0 0 m 1 1 1\n",
+        encoding="utf-8",
+    )
 
-    prepared = services.prepare_scf(_request(ScfPrepareRequest, "scf", prepare_id))
-    modified = services.modify_scf(_request(ScfModifyRequest, "scf", modify_id))
+    prepared = services.prepare_scf(
+        _request(
+            ScfPrepareRequest,
+            "scf",
+            prepare_id,
+            structure_path_rel="source.STRU",
+            parameters={"ecutwfc": 80},
+        )
+    )
+    modified = services.modify_scf(
+        _request(ScfModifyRequest, "scf", modify_id, input_updates={"ecutwfc": 90})
+    )
     executed = services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
     collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
 
@@ -210,7 +243,11 @@ def test_typed_scf_services_persist_request_ids_and_apply_policy(tmp_path: Path)
     assert isinstance(collected, ForgeResultEnvelope)
     assert collected.status.scientific == "accepted"
     manifest = json.loads((tmp_path / "scf" / "reports" / "forge-workspace.json").read_text())
-    assert {event["id"] for event in manifest["events"]} >= {prepare_id, modify_id, execute_id, collect_id}
+    assert [event["id"] for event in manifest["events"]] == [prepare_id, modify_id, execute_id, collect_id]
+    assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
+    assert isinstance(modified, ForgeResultEnvelope)
+    assert modified.status.execution == "not_run"
+    assert calls == {"prepare_unit": 1, "modify_unit": 1, "execute": 1, "collect": 1}
 
 
 def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path) -> None:

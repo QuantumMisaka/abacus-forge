@@ -156,6 +156,8 @@ def test_modify_unit_edits_prepared_workspace_inputs(tmp_path: Path) -> None:
     manifest = json.loads(prepared.workspace.root.joinpath("forge-result.json").read_text(encoding="utf-8"))
     assert manifest["step"] == "modify"
     assert manifest["modified_files"] == ["INPUT", "KPT", "STRU"]
+    events = json.loads((prepared.workspace.reports_dir / "forge-workspace.json").read_text(encoding="utf-8"))
+    assert [event["operation"] for event in events["events"]] == ["prepare", "modify"]
 
 
 def test_modify_unit_rejects_missing_requested_input_file(tmp_path: Path) -> None:

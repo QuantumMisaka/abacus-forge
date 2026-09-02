@@ -89,10 +89,12 @@ def test_scf_collect_request_rejects_noncanonical_uuid4(operation_id: str) -> No
     ],
 )
 def test_typed_scf_requests_are_immutable_and_round_trip(request_type, operation) -> None:
+    extra = {"structure_path_rel": "source.STRU"} if request_type is ScfPrepareRequest else {}
     request = request_type(
         operation_id="123e4567-e89b-42d3-a456-426614174000",
         workspace_rel="work",
         policy_id="abacus.scf/v1",
+        **extra,
     )
 
     assert request.operation == operation
@@ -115,11 +117,45 @@ def test_typed_scf_requests_require_policy_and_reject_unknown_fields(request_typ
     with pytest.raises((TypeError, ValueError), match="policy_id"):
         request_type(**kwargs)
 
-    request = request_type(**kwargs, policy_id="abacus.scf/v1")
+    extra = {"structure_path_rel": "source.STRU"} if request_type is ScfPrepareRequest else {}
+    request = request_type(**kwargs, policy_id="abacus.scf/v1", **extra)
     with pytest.raises(ValueError, match="unknown"):
         request_type.from_dict({**request.to_dict(), "extra": True})
     with pytest.raises(ValueError, match="operation"):
         request_type.from_dict({**request.to_dict(), "operation": "export"})
+
+
+def test_typed_prepare_request_requires_workspace_relative_structure() -> None:
+    with pytest.raises(ValueError, match="structure_path_rel"):
+        ScfPrepareRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174000",
+            workspace_rel=".",
+            policy_id="abacus.scf/v1",
+        )
+
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        workspace_rel="scf",
+        policy_id="abacus.scf/v1",
+        structure_path_rel="source/STRU",
+        parameters={"ecutwfc": 80},
+    )
+    assert request.to_dict()["structure_path_rel"] == "source/STRU"
+    assert request.to_dict()["parameters"] == {"ecutwfc": 80}
+    assert ScfPrepareRequest.from_dict(request.to_dict()) == request
+
+
+def test_typed_modify_request_exposes_narrow_input_changes() -> None:
+    request = ScfModifyRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        workspace_rel="scf",
+        policy_id="abacus.scf/v1",
+        input_updates={"ecutwfc": 90},
+        remove_parameters=("smearing_sigma",),
+    )
+    assert request.to_dict()["input_updates"] == {"ecutwfc": 90}
+    assert request.to_dict()["remove_parameters"] == ["smearing_sigma"]
+    assert ScfModifyRequest.from_dict(request.to_dict()) == request
 
 
 def test_error_envelope_round_trips_with_known_request_identity() -> None:

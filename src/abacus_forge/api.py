@@ -246,7 +246,7 @@ def execute(workspace: str | Path | Workspace, *, runner: LocalRunner | None = N
     return run(workspace, runner=runner, check=check)
 
 
-def prepare_unit(spec: UnitSpec) -> UnitPrepareResult:
+def prepare_unit(spec: UnitSpec, *, record_event: bool = True) -> UnitPrepareResult:
     """Prepare one explicit ABACUS/PyATB task unit."""
 
     task = _normalize_task(spec.task)
@@ -311,12 +311,13 @@ def prepare_unit(spec: UnitSpec) -> UnitPrepareResult:
     manifest = _unit_manifest(spec, task=task, unit=unit, engine=engine, prepared=True)
     workspace.write_json("forge-unit.json", manifest)
     result = UnitPrepareResult(workspace=workspace, task=task, unit=unit, engine=engine, manifest=manifest)
-    _record_operation_event(workspace, ForgeResultEnvelope(
-        operation="prepare", workspace_rel=".",
-        status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-        artifacts=_manifest_artifact(workspace, "forge-unit.json"),
-        diagnostics={"task": task, "unit": unit, "engine": engine},
-    ))
+    if record_event:
+        _record_operation_event(workspace, ForgeResultEnvelope(
+            operation="prepare", workspace_rel=".",
+            status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+            artifacts=_manifest_artifact(workspace, "forge-unit.json"),
+            diagnostics={"task": task, "unit": unit, "engine": engine},
+        ))
     return result
 
 
@@ -361,7 +362,7 @@ def execute_unit(spec: UnitSpec) -> RunResult:
     return result
 
 
-def modify_unit(spec: UnitModifySpec) -> UnitModifyResult:
+def modify_unit(spec: UnitModifySpec, *, record_event: bool = True) -> UnitModifyResult:
     """Modify prepared workspace inputs for one explicit unit."""
 
     task = _normalize_task(spec.task)
@@ -456,15 +457,16 @@ def modify_unit(spec: UnitModifySpec) -> UnitModifyResult:
             **result.to_dict(),
         },
     )
-    _record_operation_event(ws, ForgeResultEnvelope(
-        operation="modify", workspace_rel=".",
-        status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
-        artifacts=tuple(
-            ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
-            for name in modified_files if (ws.inputs_dir / name).is_file()
-        ),
-        diagnostics={"task": task, "unit": unit, "engine": engine, "modified_files": modified_files},
-    ))
+    if record_event:
+        _record_operation_event(ws, ForgeResultEnvelope(
+            operation="modify", workspace_rel=".",
+            status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
+            artifacts=tuple(
+                ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
+                for name in modified_files if (ws.inputs_dir / name).is_file()
+            ),
+            diagnostics={"task": task, "unit": unit, "engine": engine, "modified_files": modified_files},
+        ))
     return result
 
 

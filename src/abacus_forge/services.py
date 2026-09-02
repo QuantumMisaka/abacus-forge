@@ -53,7 +53,17 @@ class ForgeServices:
             return self._error("request.type", "expected ScfPrepareRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
-            result = prepare_unit(UnitSpec(task="scf", workdir=workspace.root))
+            structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
+            result = prepare_unit(
+                UnitSpec(
+                    task="scf",
+                    workdir=workspace.root,
+                    structure=structure_path,
+                    structure_format=request.structure_format,
+                    parameters=dict(request.parameters),
+                ),
+                record_event=False,
+            )
             envelope = ForgeResultEnvelope(
                 operation="prepare",
                 workspace_rel=request.workspace_rel,
@@ -70,7 +80,15 @@ class ForgeServices:
             return self._error("request.type", "expected ScfModifyRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
-            result = modify_unit(UnitModifySpec(task="scf", workdir=workspace.root))
+            result = modify_unit(
+                UnitModifySpec(
+                    task="scf",
+                    workdir=workspace.root,
+                    input_updates=dict(request.input_updates),
+                    remove_parameters=request.remove_parameters,
+                ),
+                record_event=False,
+            )
             artifacts = tuple(
                 ArtifactRecord(
                     id=f"artifact-{name.lower()}",
@@ -84,7 +102,7 @@ class ForgeServices:
             envelope = ForgeResultEnvelope(
                 operation="modify",
                 workspace_rel=request.workspace_rel,
-                status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
+                status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
                 artifacts=artifacts,
                 diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit},
             )
@@ -192,6 +210,17 @@ class ForgeServices:
         except ValueError as error:
             raise ValueError("workspace_rel must remain under workspace_root") from error
         return Workspace(candidate)
+
+    @staticmethod
+    def _workspace_file(workspace: Workspace, path_rel: str, field_name: str) -> Path:
+        candidate = (workspace.root / path_rel).resolve()
+        try:
+            candidate.relative_to(workspace.root)
+        except ValueError as error:
+            raise ValueError(f"{field_name} must remain under workspace_rel") from error
+        if not candidate.is_file():
+            raise FileNotFoundError(f"{field_name} file not found: {path_rel}")
+        return candidate
 
     def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope) -> ForgeResultEnvelope:
         workspace.append_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]

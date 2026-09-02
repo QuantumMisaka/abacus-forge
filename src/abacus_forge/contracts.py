@@ -335,6 +335,37 @@ class _ScfRequest(OperationRef):
 class ScfPrepareRequest(_ScfRequest):
     """Typed request for preparing one SCF workspace under an explicit policy."""
 
+    # A preparation is only useful when it has a structure to normalize.  The
+    # empty sentinel keeps dataclass inheritance ergonomic while __post_init__
+    # still makes the field mandatory at the public boundary.
+    structure_path_rel: str = ""
+    structure_format: str | None = None
+    parameters: Mapping[str, JSONValue] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _ScfRequest.__post_init__(self)
+        if not self.structure_path_rel:
+            raise ValueError("structure_path_rel is required")
+        if canonical_relative_path(self.structure_path_rel) == ".":
+            raise ValueError("structure_path_rel must identify a workspace-relative file")
+        if self.structure_format is not None:
+            _require_nonempty_string(self.structure_format, "structure_format")
+        parameters = _json_round_trip(self.parameters)
+        if not isinstance(parameters, dict):
+            raise ValueError("parameters must be a JSON-safe object")
+        object.__setattr__(self, "parameters", _freeze_json(parameters))
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _ScfRequest.to_dict(self)
+        payload.update(
+            {
+                "structure_path_rel": self.structure_path_rel,
+                "structure_format": self.structure_format,
+                "parameters": _thaw_json(self.parameters),
+            }
+        )
+        return payload
+
     @property
     def operation(self) -> Literal["prepare"]:
         return "prepare"
@@ -347,6 +378,39 @@ class ScfPrepareRequest(_ScfRequest):
 @dataclass(frozen=True, slots=True)
 class ScfModifyRequest(_ScfRequest):
     """Typed request for modifying one SCF workspace under an explicit policy."""
+
+    # Keep modification input-specific: this maps directly to the existing
+    # INPUT key editing primitive without exposing UnitModifySpec itself.
+    input_updates: Mapping[str, JSONValue] = field(default_factory=dict)
+    remove_parameters: Sequence[str] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        _ScfRequest.__post_init__(self)
+        updates = _json_round_trip(self.input_updates)
+        if not isinstance(updates, dict):
+            raise ValueError("input_updates must be a JSON-safe object")
+        if not all(isinstance(key, str) and key for key in updates):
+            raise ValueError("input_updates keys must be non-empty strings")
+        object.__setattr__(self, "input_updates", _freeze_json(updates))
+        if isinstance(self.remove_parameters, (str, bytes)):
+            raise ValueError("remove_parameters must contain non-empty strings")
+        try:
+            removed = tuple(self.remove_parameters)
+        except TypeError as error:
+            raise ValueError("remove_parameters must contain non-empty strings") from error
+        if not all(isinstance(key, str) and key for key in removed):
+            raise ValueError("remove_parameters must contain non-empty strings")
+        object.__setattr__(self, "remove_parameters", removed)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _ScfRequest.to_dict(self)
+        payload.update(
+            {
+                "input_updates": _thaw_json(self.input_updates),
+                "remove_parameters": list(self.remove_parameters),
+            }
+        )
+        return payload
 
     @property
     def operation(self) -> Literal["modify"]:
