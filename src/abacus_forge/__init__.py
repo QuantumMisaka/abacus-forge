@@ -2,7 +2,7 @@
 
 from abacus_forge.api import UnitModifyResult, UnitModifySpec, UnitPrepareResult, UnitSpec, collect, collect_unit, execute, execute_unit, export, modify_unit, prepare, prepare_unit, run
 from abacus_forge.band_data import BandData
-from abacus_forge.contracts import ArtifactRecord, CheckRecord, ForgeErrorEnvelope, ForgeRequest, ForgeResultEnvelope, MetricRecord, OperationStatus, ScfCollectRequest
+from abacus_forge.contracts import ArtifactRecord, CheckRecord, ForgeErrorEnvelope, ForgeRequest, ForgeResultEnvelope, MetricRecord, OperationRef, OperationStatus, ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
@@ -30,10 +30,14 @@ __all__ = [
     "LocalDOSData",
     "LocalRunner",
     "MetricRecord",
+    "OperationRef",
     "OperationStatus",
     "PDOSData",
     "RunResult",
     "ScfCollectRequest",
+    "ScfExecuteRequest",
+    "ScfModifyRequest",
+    "ScfPrepareRequest",
     "TaskResult",
     "UnitModifyResult",
     "UnitModifySpec",

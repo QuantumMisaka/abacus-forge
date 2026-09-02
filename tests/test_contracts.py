@@ -10,7 +10,12 @@ from abacus_forge.contracts import (
     ForgeRequest,
     ForgeResultEnvelope,
     MetricRecord,
+    OperationRef,
     OperationStatus,
+    ScfCollectRequest,
+    ScfExecuteRequest,
+    ScfModifyRequest,
+    ScfPrepareRequest,
 )
 
 
@@ -65,6 +70,49 @@ def test_scf_collect_request_rejects_noncanonical_uuid4(operation_id: str) -> No
         contracts.ScfCollectRequest(operation_id=operation_id, workspace_rel=".", policy_id="abacus.scf/v1")
 
 
+@pytest.mark.parametrize(
+    "request_type,operation",
+    [
+        (ScfPrepareRequest, "prepare"),
+        (ScfModifyRequest, "modify"),
+        (ScfExecuteRequest, "execute"),
+        (ScfCollectRequest, "collect"),
+    ],
+)
+def test_typed_scf_requests_are_immutable_and_round_trip(request_type, operation) -> None:
+    request = request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        workspace_rel="work",
+        policy_id="abacus.scf/v1",
+    )
+
+    assert request.operation == operation
+    assert request.operation_id == "123e4567-e89b-42d3-a456-426614174000"
+    assert request.workspace_rel == "work"
+    assert request.policy_id == "abacus.scf/v1"
+    assert request_type.from_dict(request.to_dict()) == request
+
+
+def test_operation_ref_round_trips_and_rejects_unknown_fields() -> None:
+    ref = OperationRef(operation_id="123e4567-e89b-42d3-a456-426614174000", workspace_rel=".")
+    assert OperationRef.from_dict(ref.to_dict()) == ref
+    with pytest.raises(ValueError, match="unknown"):
+        OperationRef.from_dict({**ref.to_dict(), "extra": True})
+
+
+@pytest.mark.parametrize("request_type", [ScfPrepareRequest, ScfModifyRequest, ScfExecuteRequest, ScfCollectRequest])
+def test_typed_scf_requests_require_policy_and_reject_unknown_fields(request_type) -> None:
+    kwargs = {"operation_id": "123e4567-e89b-42d3-a456-426614174000", "workspace_rel": "."}
+    with pytest.raises((TypeError, ValueError), match="policy_id"):
+        request_type(**kwargs)
+
+    request = request_type(**kwargs, policy_id="abacus.scf/v1")
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**request.to_dict(), "extra": True})
+    with pytest.raises(ValueError, match="operation"):
+        request_type.from_dict({**request.to_dict(), "operation": "export"})
+
+
 def test_error_envelope_round_trips_with_known_request_identity() -> None:
     error = contracts.ForgeErrorEnvelope(
         error_class="request.path",
@@ -75,6 +123,22 @@ def test_error_envelope_round_trips_with_known_request_identity() -> None:
     )
 
     assert contracts.ForgeErrorEnvelope.from_dict(error.to_dict()).to_dict() == error.to_dict()
+
+
+def test_error_envelope_requires_affected_fields_and_strictly_decodes_error() -> None:
+    with pytest.raises(TypeError, match="affected_fields"):
+        contracts.ForgeErrorEnvelope(error_class="request.path", message="bad")
+
+    error = contracts.ForgeErrorEnvelope(
+        error_class="request.path", message="bad", affected_fields=("workspace_rel",)
+    )
+    payload = error.to_dict()
+    with pytest.raises(ValueError, match="unknown"):
+        contracts.ForgeErrorEnvelope.from_dict(
+            {**payload, "error": {**payload["error"], "extra": "reject"}}
+        )
+    with pytest.raises(ValueError, match="unknown"):
+        contracts.ForgeErrorEnvelope.from_dict({**payload, "extra": "reject"})
 
 
 def test_result_diagnostics_are_deeply_immutable_and_remain_json_safe() -> None:

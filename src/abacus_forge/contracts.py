@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import PurePosixPath
 from types import MappingProxyType
 from typing import Literal, Mapping, Sequence, TypeAlias
@@ -94,6 +94,21 @@ def _mapping_payload(payload: object, record_name: str) -> dict[str, JSONValue]:
 def _construct(cls, payload: object, record_name: str):
     try:
         return cls(**_mapping_payload(payload, record_name))
+    except ValueError:
+        raise
+    except (TypeError, KeyError) as error:
+        raise ValueError(f"{record_name} contains invalid fields") from error
+
+
+def _construct_strict(cls, payload: object, record_name: str):
+    """Construct a public record while rejecting unknown serialized fields."""
+    values = _mapping_payload(payload, record_name)
+    allowed = {record_field.name for record_field in fields(cls)}
+    unknown = sorted((key for key in values if key not in allowed), key=str)
+    if unknown:
+        raise ValueError(f"{record_name} contains unknown fields: {', '.join(map(str, unknown))}")
+    try:
+        return cls(**values)
     except ValueError:
         raise
     except (TypeError, KeyError) as error:
@@ -268,24 +283,35 @@ class ForgeRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class ScfCollectRequest:
-    """Typed request for collecting one SCF workspace under an explicit policy."""
+class OperationRef:
+    """Immutable identity and workspace scope shared by SCF operations."""
 
     operation_id: str
     workspace_rel: str
-    policy_id: str | None
-    schema_version: str = REQUEST_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
         _require_uuid4(self.operation_id)
         canonical_relative_path(self.workspace_rel)
-        if self.policy_id is not None:
-            _require_nonempty_string(self.policy_id, "policy_id")
-        _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
 
-    @property
-    def operation(self) -> str:
-        return "collect"
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {"operation_id": self.operation_id, "workspace_rel": self.workspace_rel}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> OperationRef:
+        return _construct_strict(cls, payload, "operation reference")
+
+
+@dataclass(frozen=True, slots=True)
+class _ScfRequest(OperationRef):
+    """Shared validation for the narrow, typed SCF request variants."""
+
+    policy_id: str
+    schema_version: str = REQUEST_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        OperationRef.__post_init__(self)
+        _require_nonempty_string(self.policy_id, "policy_id")
+        _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
 
     def to_dict(self) -> dict[str, JSONValue]:
         return {
@@ -297,12 +323,64 @@ class ScfCollectRequest:
         }
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfCollectRequest:
-        values = _mapping_payload(payload, "SCF collect request")
+    def _from_dict(cls, payload: Mapping[str, JSONValue], expected_operation: str):
+        values = _mapping_payload(payload, f"SCF {expected_operation} request")
         operation = values.pop("operation", None)
-        if operation != "collect":
-            raise ValueError("SCF collect request operation must be 'collect'")
-        return _construct(cls, values, "SCF collect request")
+        if operation != expected_operation:
+            raise ValueError(f"SCF {expected_operation} request operation must be {expected_operation!r}")
+        return _construct_strict(cls, values, f"SCF {expected_operation} request")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfPrepareRequest(_ScfRequest):
+    """Typed request for preparing one SCF workspace under an explicit policy."""
+
+    @property
+    def operation(self) -> Literal["prepare"]:
+        return "prepare"
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfPrepareRequest:
+        return cls._from_dict(payload, "prepare")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfModifyRequest(_ScfRequest):
+    """Typed request for modifying one SCF workspace under an explicit policy."""
+
+    @property
+    def operation(self) -> Literal["modify"]:
+        return "modify"
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfModifyRequest:
+        return cls._from_dict(payload, "modify")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfExecuteRequest(_ScfRequest):
+    """Typed request for executing one SCF workspace under an explicit policy."""
+
+    @property
+    def operation(self) -> Literal["execute"]:
+        return "execute"
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfExecuteRequest:
+        return cls._from_dict(payload, "execute")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfCollectRequest(_ScfRequest):
+    """Typed request for collecting one SCF workspace under an explicit policy."""
+
+    @property
+    def operation(self) -> Literal["collect"]:
+        return "collect"
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfCollectRequest:
+        return cls._from_dict(payload, "collect")
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,7 +389,7 @@ class ForgeErrorEnvelope:
 
     error_class: str
     message: str
-    affected_fields: Sequence[str] = ()
+    affected_fields: Sequence[str]
     operation_id: str | None = None
     workspace_rel: str | None = None
     schema_version: str = ERROR_SCHEMA_VERSION
@@ -324,7 +402,12 @@ class ForgeErrorEnvelope:
         if self.workspace_rel is not None:
             canonical_relative_path(self.workspace_rel)
         _require_schema_version(self.schema_version, ERROR_SCHEMA_VERSION)
-        affected_fields = tuple(self.affected_fields)
+        if isinstance(self.affected_fields, (str, bytes)):
+            raise ValueError("affected_fields must contain non-empty strings")
+        try:
+            affected_fields = tuple(self.affected_fields)
+        except TypeError as error:
+            raise ValueError("affected_fields must contain non-empty strings") from error
         if not all(isinstance(field_name, str) and field_name for field_name in affected_fields):
             raise ValueError("affected_fields must contain non-empty strings")
         object.__setattr__(self, "affected_fields", affected_fields)
@@ -347,13 +430,22 @@ class ForgeErrorEnvelope:
         error = values.pop("error", None)
         if not isinstance(error, Mapping):
             raise ValueError("error envelope must contain an error object")
+        nested_unknown = sorted(
+            (key for key in error if key not in {"class", "message", "affected_fields"}),
+            key=str,
+        )
+        if nested_unknown:
+            raise ValueError(
+                "error envelope error object contains unknown fields: "
+                + ", ".join(map(str, nested_unknown))
+            )
         try:
             values["error_class"] = error["class"]
             values["message"] = error["message"]
             values["affected_fields"] = error["affected_fields"]
         except KeyError as exc:
             raise ValueError("error envelope error object is incomplete") from exc
-        return _construct(cls, values, "error envelope")
+        return _construct_strict(cls, values, "error envelope")
 
 
 @dataclass(frozen=True, slots=True)
