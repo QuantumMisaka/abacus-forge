@@ -71,6 +71,8 @@ def test_collection_result_projects_a_v1_result_envelope(tmp_path: Path) -> None
     payload = envelope.to_dict()
     assert payload["schema_version"] == "forge.result/v1"
     assert payload["status"]["collection"] == "complete"
+    assert payload["status"]["scientific"] == "unassessed"
+    assert payload["checks"] == [{"name": "converged", "status": "passed", "message": None}]
     assert any(item["id"] == "stdout_log" and item["path_rel"] == "outputs/stdout.log" for item in payload["artifacts"])
 
 

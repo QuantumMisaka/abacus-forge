@@ -10,6 +10,7 @@ from abacus_forge.policies import evaluate_abacus_scf_v1
 from abacus_forge.perturbation import perturb_structure
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
+from abacus_forge.services import ForgeServices
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.tasks import run_band, run_band_sequence, run_cell_relax, run_dos, run_dos_sequence, run_md, run_relax, run_scf, run_task
@@ -27,6 +28,7 @@ __all__ = [
     "ForgeRequest",
     "ForgeErrorEnvelope",
     "ForgeResultEnvelope",
+    "ForgeServices",
     "LocalDOSData",
     "LocalRunner",
     "MetricRecord",

@@ -122,7 +122,9 @@ class CollectionResult:
         diagnostics["legacy_metrics"] = legacy_metrics
         return ForgeResultEnvelope(
             operation="collect", workspace_rel=".",
-            status=OperationStatus(execution="skipped" if dry_run else "not_run", scientific="unassessed" if dry_run else ("accepted" if converged else "guarded"), collection="not_collected" if dry_run else _collection_state(self.status)),
+            # Collection is an observation-only legacy projection.  It has no
+            # policy context, so even a convergence marker is not acceptance.
+            status=OperationStatus(execution="skipped" if dry_run else "not_run", scientific="unassessed", collection="not_collected" if dry_run else _collection_state(self.status)),
             artifacts=artifacts, metrics=metrics,
             checks=(CheckRecord(name="converged", status="passed" if converged else "warning"),),
             warnings=warnings, diagnostics=diagnostics,

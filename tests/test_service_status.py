@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
+import json
 
 import abacus_forge
-from abacus_forge.contracts import CheckRecord
+from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner
+from abacus_forge.contracts import CheckRecord, ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from tests.support.fake_executables import write_fake_abacus
 
 
 def _check(name: str, status: str) -> CheckRecord:
@@ -175,3 +179,43 @@ def test_scf_policy_rejects_invalid_execution() -> None:
 def test_scf_policy_rejects_invalid_collection() -> None:
     with pytest.raises(ValueError, match="collection"):
         _evaluate(collection="unknown")
+
+
+def _request(request_type, workspace: str, operation_id: str, policy_id: str = "abacus.scf/v1"):
+    return request_type(operation_id=operation_id, workspace_rel=workspace, policy_id=policy_id)
+
+
+def test_typed_scf_services_persist_request_ids_and_apply_policy(tmp_path: Path) -> None:
+    executable = write_fake_abacus(
+        tmp_path / "fake-abacus",
+        stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED", "NORMAL END"],
+    )
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    )
+    prepare_id = "123e4567-e89b-42d3-a456-426614174001"
+    modify_id = "123e4567-e89b-42d3-a456-426614174002"
+    execute_id = "123e4567-e89b-42d3-a456-426614174003"
+    collect_id = "123e4567-e89b-42d3-a456-426614174004"
+
+    prepared = services.prepare_scf(_request(ScfPrepareRequest, "scf", prepare_id))
+    modified = services.modify_scf(_request(ScfModifyRequest, "scf", modify_id))
+    executed = services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
+    collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
+
+    assert isinstance(prepared, ForgeResultEnvelope)
+    assert isinstance(modified, ForgeResultEnvelope)
+    assert isinstance(executed, ForgeResultEnvelope)
+    assert isinstance(collected, ForgeResultEnvelope)
+    assert collected.status.scientific == "accepted"
+    manifest = json.loads((tmp_path / "scf" / "reports" / "forge-workspace.json").read_text())
+    assert {event["id"] for event in manifest["events"]} >= {prepare_id, modify_id, execute_id, collect_id}
+
+
+def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path) -> None:
+    services = ForgeServices.default(workspace_root=tmp_path)
+    result = services.execute_scf(object())
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.operation_id is None
+    assert result.workspace_rel is None
