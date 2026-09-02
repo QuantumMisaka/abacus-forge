@@ -4,7 +4,14 @@ import json
 
 import pytest
 
-from abacus_forge.contracts import ArtifactRecord, ForgeRequest, ForgeResultEnvelope, MetricRecord, OperationStatus
+from abacus_forge import contracts
+from abacus_forge.contracts import (
+    ArtifactRecord,
+    ForgeRequest,
+    ForgeResultEnvelope,
+    MetricRecord,
+    OperationStatus,
+)
 
 
 def test_result_envelope_round_trips_with_relative_artifacts() -> None:
@@ -40,6 +47,34 @@ def test_request_payload_is_deeply_immutable_and_remains_json_safe() -> None:
     with pytest.raises(AttributeError):
         request.payload["nested"]["items"].append(float("nan"))  # type: ignore[union-attr]
     assert json.dumps(request.to_dict(), allow_nan=False)
+
+
+def test_scf_collect_request_requires_lowercase_uuid4_and_round_trips() -> None:
+    request = contracts.ScfCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        workspace_rel=".",
+        policy_id="abacus.scf/v1",
+    )
+
+    assert contracts.ScfCollectRequest.from_dict(request.to_dict()).to_dict() == request.to_dict()
+
+
+@pytest.mark.parametrize("operation_id", ["x", "123E4567-E89B-42D3-A456-426614174000"])
+def test_scf_collect_request_rejects_noncanonical_uuid4(operation_id: str) -> None:
+    with pytest.raises(ValueError, match="operation_id"):
+        contracts.ScfCollectRequest(operation_id=operation_id, workspace_rel=".", policy_id="abacus.scf/v1")
+
+
+def test_error_envelope_round_trips_with_known_request_identity() -> None:
+    error = contracts.ForgeErrorEnvelope(
+        error_class="request.path",
+        message="workspace must be canonical",
+        affected_fields=("workspace_rel",),
+        operation_id="123e4567-e89b-42d3-a456-426614174000",
+        workspace_rel=".",
+    )
+
+    assert contracts.ForgeErrorEnvelope.from_dict(error.to_dict()).to_dict() == error.to_dict()
 
 
 def test_result_diagnostics_are_deeply_immutable_and_remain_json_safe() -> None:

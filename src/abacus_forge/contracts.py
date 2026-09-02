@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from types import MappingProxyType
@@ -14,6 +15,7 @@ JSONValue: TypeAlias = None | bool | int | float | str | list["JSONValue"] | dic
 REQUEST_SCHEMA_VERSION = "forge.request/v1"
 RESULT_SCHEMA_VERSION = "forge.result/v1"
 WORKSPACE_SCHEMA_VERSION = "forge.workspace/v1"
+ERROR_SCHEMA_VERSION = "forge.error/v1"
 
 _OPERATIONS = frozenset({"prepare", "modify", "execute", "collect", "export"})
 _EXECUTION_STATUSES = frozenset({"not_run", "completed", "failed", "skipped"})
@@ -68,6 +70,16 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 def _require_schema_version(value: str, expected: str) -> None:
     if value != expected:
         raise ValueError(f"schema_version must be {expected!r}")
+
+
+def _require_uuid4(value: str, field_name: str = "operation_id") -> None:
+    _require_nonempty_string(value, field_name)
+    try:
+        parsed = uuid.UUID(value)
+    except (AttributeError, ValueError) as error:
+        raise ValueError(f"{field_name} must be a lowercase UUIDv4") from error
+    if parsed.version != 4 or str(parsed) != value:
+        raise ValueError(f"{field_name} must be a lowercase UUIDv4")
 
 
 def _mapping_payload(payload: object, record_name: str) -> dict[str, JSONValue]:
@@ -253,6 +265,95 @@ class ForgeRequest:
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> ForgeRequest:
         return _construct(cls, payload, "request")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfCollectRequest:
+    """Typed request for collecting one SCF workspace under an explicit policy."""
+
+    operation_id: str
+    workspace_rel: str
+    policy_id: str | None
+    schema_version: str = REQUEST_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        _require_uuid4(self.operation_id)
+        canonical_relative_path(self.workspace_rel)
+        if self.policy_id is not None:
+            _require_nonempty_string(self.policy_id, "policy_id")
+        _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
+
+    @property
+    def operation(self) -> str:
+        return "collect"
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": self.schema_version,
+            "operation": self.operation,
+            "operation_id": self.operation_id,
+            "workspace_rel": self.workspace_rel,
+            "policy_id": self.policy_id,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfCollectRequest:
+        values = _mapping_payload(payload, "SCF collect request")
+        operation = values.pop("operation", None)
+        if operation != "collect":
+            raise ValueError("SCF collect request operation must be 'collect'")
+        return _construct(cls, values, "SCF collect request")
+
+
+@dataclass(frozen=True, slots=True)
+class ForgeErrorEnvelope:
+    """Machine-readable outcome for an expected Forge request or runtime error."""
+
+    error_class: str
+    message: str
+    affected_fields: Sequence[str] = ()
+    operation_id: str | None = None
+    workspace_rel: str | None = None
+    schema_version: str = ERROR_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.error_class, "error_class")
+        _require_nonempty_string(self.message, "message")
+        if self.operation_id is not None:
+            _require_uuid4(self.operation_id)
+        if self.workspace_rel is not None:
+            canonical_relative_path(self.workspace_rel)
+        _require_schema_version(self.schema_version, ERROR_SCHEMA_VERSION)
+        affected_fields = tuple(self.affected_fields)
+        if not all(isinstance(field_name, str) and field_name for field_name in affected_fields):
+            raise ValueError("affected_fields must contain non-empty strings")
+        object.__setattr__(self, "affected_fields", affected_fields)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": self.schema_version,
+            "error": {
+                "class": self.error_class,
+                "message": self.message,
+                "affected_fields": list(self.affected_fields),
+            },
+            "operation_id": self.operation_id,
+            "workspace_rel": self.workspace_rel,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> ForgeErrorEnvelope:
+        values = _mapping_payload(payload, "error envelope")
+        error = values.pop("error", None)
+        if not isinstance(error, Mapping):
+            raise ValueError("error envelope must contain an error object")
+        try:
+            values["error_class"] = error["class"]
+            values["message"] = error["message"]
+            values["affected_fields"] = error["affected_fields"]
+        except KeyError as exc:
+            raise ValueError("error envelope error object is incomplete") from exc
+        return _construct(cls, values, "error envelope")
 
 
 @dataclass(frozen=True, slots=True)
