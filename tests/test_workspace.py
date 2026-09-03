@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+import threading
+import time
 import uuid
 from pathlib import Path
 
 import pytest
 
+from abacus_forge.errors import OperationConflictError, ForgePersistenceError
 from abacus_forge.workspace import Workspace
 
 
@@ -228,3 +231,53 @@ def test_public_manifest_initialization_waits_for_append_lock(tmp_path: Path) ->
     workspace.append_operation_event("prepare", {"status": "prepared"})
     manifest = json.loads((root / "reports" / "forge-workspace.json").read_text(encoding="utf-8"))
     assert len(manifest["events"]) == 1
+
+
+def test_v1_admission_does_not_reclaim_dead_claim(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "stale-claim")
+    workspace.ensure_layout()
+    claims_dir = workspace.reports_dir / "claims"
+    claims_dir.mkdir()
+    operation_id = "123e4567-e89b-42d3-a456-426614174020"
+    (claims_dir / f"{operation_id}.json").write_text(
+        json.dumps({"operation_id": operation_id, "operation": "execute", "owner_token": "dead"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(OperationConflictError):
+        with workspace.claim_v1_operation(operation_id, "execute"):
+            pytest.fail("a stale admission must remain a conflict")
+
+    assert (claims_dir / f"{operation_id}.json").exists()
+
+
+def test_v1_event_commit_requires_opaque_owner_token(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "owner-token")
+    operation_id = "123e4567-e89b-42d3-a456-426614174021"
+    with workspace.claim_v1_operation(operation_id, "prepare") as owner_token:
+        assert isinstance(owner_token, str)
+        assert owner_token != operation_id
+        with pytest.raises(OperationConflictError):
+            workspace.append_claimed_v1_operation_event(
+                operation_id, "prepare", {"status": "prepared"}, owner_token="wrong-token"
+            )
+        assert (workspace.reports_dir / "claims" / f"{operation_id}.json").exists()
+
+
+def test_v1_admission_persistence_failure_retains_tombstone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace = Workspace(tmp_path / "persist-failure")
+    operation_id = "123e4567-e89b-42d3-a456-426614174022"
+    original = Workspace._write_json_atomic
+
+    def fail_manifest(path: Path, payload: dict) -> None:
+        if path.name == "forge-workspace.json" and isinstance(payload.get("events"), list) and payload["events"]:
+            raise OSError("injected manifest failure")
+        original(path, payload)
+
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_manifest))
+    with workspace.claim_v1_operation(operation_id, "prepare") as owner_token:
+        with pytest.raises(ForgePersistenceError):
+            workspace.append_claimed_v1_operation_event(
+                operation_id, "prepare", {"status": "prepared"}, owner_token=owner_token
+            )
+    assert (workspace.reports_dir / "claims" / f"{operation_id}.json").exists()

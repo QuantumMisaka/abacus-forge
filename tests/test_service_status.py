@@ -4,6 +4,8 @@ import pytest
 from pathlib import Path
 import json
 import importlib
+import threading
+import time
 
 import abacus_forge
 from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner, Workspace
@@ -379,10 +381,104 @@ def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_p
     second = services.execute_scf(request)
     assert isinstance(first, ForgeResultEnvelope)
     assert isinstance(second, ForgeErrorEnvelope)
-    assert second.error_class == "persistence.conflict"
+    assert second.error_class == "operation.conflict"
     assert calls == 1
     manifest = json.loads((tmp_path / "scf" / "reports" / "forge-workspace.json").read_text())
     assert [event["id"] for event in manifest["events"]].count(request.operation_id) == 1
+
+
+def test_typed_execute_stale_admission_blocks_runner_and_domain_writes(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    claims_dir = workspace.reports_dir / "claims"
+    claims_dir.mkdir()
+    operation_id = "123e4567-e89b-42d3-a456-426614174023"
+    (claims_dir / f"{operation_id}.json").write_text(
+        json.dumps({"operation_id": operation_id, "operation": "execute", "owner_token": "dead"}),
+        encoding="utf-8",
+    )
+
+    calls = 0
+
+    class CountingRunner:
+        def run(self, workspace):
+            nonlocal calls
+            calls += 1
+            raise AssertionError("stale admission must stop before runner")
+
+    result = ForgeServices.default(workspace_root=tmp_path, runner=CountingRunner()).execute_scf(
+        _request(ScfExecuteRequest, "scf", operation_id)
+    )
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "operation.conflict"
+    assert calls == 0
+    assert not (workspace.root / "forge-result.json").exists()
+
+
+def test_typed_services_serialize_different_ids_for_one_workspace(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    first_started = threading.Event()
+    release_first = threading.Event()
+    calls: list[str] = []
+
+    class SerialRunner(LocalRunner):
+        def run(self, workspace, check=False):
+            calls.append("runner")
+            if len(calls) == 1:
+                first_started.set()
+                assert release_first.wait(timeout=5)
+            return super().run(workspace, check=check)
+
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=SerialRunner(executable=str(executable)),
+    )
+    requests = [
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174024"),
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174025"),
+    ]
+    results: list[ForgeResultEnvelope | ForgeErrorEnvelope] = []
+    threads = [threading.Thread(target=lambda request=request: results.append(services.execute_scf(request))) for request in requests]
+    threads[0].start()
+    assert first_started.wait(timeout=5)
+    threads[1].start()
+    time.sleep(0.1)
+    assert len(calls) == 1
+    release_first.set()
+    for thread in threads:
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+
+    assert len(results) == 2
+    assert all(isinstance(result, ForgeResultEnvelope) for result in results)
+
+
+def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    original = Workspace._write_json_atomic
+
+    def fail_manifest(path: Path, payload: dict) -> None:
+        if path.name == "forge-workspace.json" and isinstance(payload.get("events"), list) and payload["events"]:
+            raise OSError("injected manifest failure")
+        original(path, payload)
+
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_manifest))
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    )
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174026")
+
+    first = services.execute_scf(request)
+    second = services.execute_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "persistence.failure"
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
 
 
 def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) -> None:

@@ -22,7 +22,16 @@ from abacus_forge.contracts import (
 from abacus_forge.policies import evaluate_abacus_scf_v1
 from abacus_forge.result import CollectionResult
 from abacus_forge.runner import LocalRunner
-from abacus_forge.workspace import OperationConflictError, Workspace
+from abacus_forge.errors import (
+    ForgeInternalError,
+    ForgePolicyError,
+    ForgePathError,
+    ForgePersistenceError,
+    ForgePreconditionError,
+    ForgeSchemaError,
+    OperationConflictError,
+)
+from abacus_forge.workspace import Workspace
 
 
 RequestT = TypeVar("RequestT")
@@ -55,7 +64,7 @@ class ForgeServices:
             self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
             structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
-            with workspace.claim_v1_operation(request.operation_id, request.operation):
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 with suppress_legacy_events():
                     result = prepare_unit(
                         UnitSpec(
@@ -70,7 +79,7 @@ class ForgeServices:
                     diagnostics={"policy_id": request.policy_id, "task": result.task, "unit": result.unit,
                                  "prepare_manifest": "forge-unit.json"},
                 )
-                return self._persist(workspace, request, envelope, claimed=True)
+                return self._persist(workspace, request, envelope, owner_token=owner_token)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -80,8 +89,8 @@ class ForgeServices:
         try:
             self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
-            before = _input_snapshot(workspace)
-            with workspace.claim_v1_operation(request.operation_id, request.operation):
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                before = _input_snapshot(workspace)
                 with suppress_legacy_events():
                     result = modify_unit(UnitModifySpec(
                         task="scf", workdir=workspace.root,
@@ -100,7 +109,7 @@ class ForgeServices:
                                  "modified_files": result.modified_files, "changes": result.changes,
                                  "input_snapshot_before": before, "input_snapshot_after": after},
                 )
-                return self._persist(workspace, request, envelope, claimed=True)
+                return self._persist(workspace, request, envelope, owner_token=owner_token)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -110,7 +119,7 @@ class ForgeServices:
         try:
             self._validate_policy(request.policy_id, allow_none=True)
             workspace = self._workspace(request.workspace_rel)
-            with workspace.claim_v1_operation(request.operation_id, request.operation):
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 if request.dry_run:
                     # Dry-run is an explicit typed-service fact.  Do not inspect
                     # existing logs or invoke the runner.
@@ -136,7 +145,7 @@ class ForgeServices:
                     )
                     envelope = _with_workspace(result.to_envelope(), request.workspace_rel, policy_id=request.policy_id,
                                                operation_id=request.operation_id)
-                return self._persist(workspace, request, envelope, claimed=True)
+                return self._persist(workspace, request, envelope, owner_token=owner_token)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -148,10 +157,10 @@ class ForgeServices:
                 raise ValueError("unsupported policy_id; expected 'abacus.scf/v1'")
             self._validate_policy(request.policy_id, allow_none=False)
             workspace = self._workspace(request.workspace_rel)
-            with workspace.claim_v1_operation(request.operation_id, request.operation):
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 result = collect(workspace)
                 envelope = self._policy_envelope(workspace, request, result)
-                return self._persist(workspace, request, envelope, claimed=True)
+                return self._persist(workspace, request, envelope, owner_token=owner_token)
         except Exception as error:
             return self._error_from_exception(error, request)
 
@@ -202,14 +211,14 @@ class ForgeServices:
     def _validate_policy(policy_id: str, *, allow_none: bool) -> None:
         allowed = {"abacus.scf/v1"} | ({"none"} if allow_none else set())
         if policy_id not in allowed:
-            raise ValueError("unsupported policy_id; expected one of: " + ", ".join(sorted(allowed)))
+            raise ForgePolicyError("unsupported policy_id; expected one of: " + ", ".join(sorted(allowed)))
 
     def _workspace(self, workspace_rel: str) -> Workspace:
         candidate = (self.workspace_root / workspace_rel).resolve()
         try:
             candidate.relative_to(self.workspace_root)
         except ValueError as error:
-            raise ValueError("workspace_rel must remain under workspace_root") from error
+            raise ForgePathError("workspace_rel must remain under workspace_root") from error
         return Workspace(candidate)
 
     @staticmethod
@@ -218,17 +227,16 @@ class ForgeServices:
         try:
             candidate.relative_to(workspace.root)
         except ValueError as error:
-            raise ValueError(f"{field_name} must remain under workspace_rel") from error
+            raise ForgePathError(f"{field_name} must remain under workspace_rel") from error
         if not candidate.is_file():
-            raise FileNotFoundError(f"{field_name} file not found: {path_rel}")
+            raise ForgePreconditionError(f"{field_name} file not found: {path_rel}")
         return candidate
 
-    def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope, *, claimed: bool = False) -> ForgeResultEnvelope:
+    def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope, *, owner_token: str) -> ForgeResultEnvelope:
         envelope = _with_artifact_refs(envelope, request.operation_id)  # type: ignore[attr-defined]
-        if claimed:
-            workspace.append_claimed_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]
-        else:
-            workspace.append_v1_operation_event(request.operation_id, envelope.operation, envelope.to_dict())  # type: ignore[attr-defined]
+        workspace.append_claimed_v1_operation_event(
+            request.operation_id, envelope.operation, envelope.to_dict(), owner_token=owner_token  # type: ignore[attr-defined]
+        )
         return envelope
 
     @staticmethod
@@ -248,22 +256,35 @@ class ForgeServices:
         )
 
     def _error_from_exception(self, error: Exception, request: object) -> ForgeErrorEnvelope:
-        if "unsupported policy_id" in str(error):
+        if isinstance(error, OperationConflictError):
+            error_class = "operation.conflict"
+        elif isinstance(error, ForgePolicyError):
             error_class = "request.policy"
-        elif isinstance(error, OperationConflictError):
-            error_class = "persistence.conflict"
+        elif isinstance(error, ForgeSchemaError):
+            error_class = "request.schema"
+        elif isinstance(error, ForgePathError):
+            error_class = "request.path"
+        elif isinstance(error, ForgePersistenceError):
+            error_class = "persistence.failure"
+        elif isinstance(error, ForgePreconditionError):
+            error_class = "precondition.missing"
+        elif isinstance(error, ForgeInternalError):
+            error_class = "internal.failure"
         elif isinstance(error, FileNotFoundError):
-            error_class = "precondition.environment"
+            error_class = "precondition.missing"
+        elif isinstance(error, OSError):
+            error_class = "persistence.failure"
         elif isinstance(error, (TypeError, ValueError)):
-            text = str(error)
-            error_class = "request.schema" if "schema_version" in text else "request.path" if "path" in text else "request.invalid"
+            error_class = "request.invalid"
         else:
-            error_class = "internal.error"
-        affected = tuple(
-            field
-            for field in ("workspace_rel", "operation_id", "policy_id")
-            if field in str(error)
-        ) or ("request",)
+            error_class = "internal.failure"
+        affected = {
+            "operation.conflict": ("operation_id",),
+            "request.policy": ("policy_id",),
+            "request.path": ("workspace_rel",),
+            "persistence.failure": ("workspace_rel",),
+            "precondition.missing": ("request",),
+        }.get(error_class, ("request",))
         result = self._error(error_class, str(error), request)
         return ForgeErrorEnvelope(
             error_class=result.error_class,
