@@ -183,7 +183,7 @@
       <h3>目标</h3>
       <ul>
         <li>提供同等稳定、同一语义的 Python API 与 Agent-first CLI；两者共同消费 typed request/result 和 operation service。</li>
-        <li>提供具名 capability/task pack 作为快捷消费层，声明成熟度、支持 operation、输入/输出 artifact、engine 与可选依赖。</li>
+        <li>提供具名单元 operation 的 capability/task pack 作为快捷消费层，声明成熟度、输入/输出 artifact、engine 与可选依赖；pack 不在 Forge 内串联多 operation。</li>
         <li>为 prepare、modify、execute、collect、postprocess、export 建立可审计事件，并返回原始观察和收集完整性。</li>
         <li>把 runner、engine、collector、postprocessor 与 service 拆开，保留已验证的输入/解析实现。</li>
         <li>让 <code>UnitSpec</code>、旧 result dict、旧文件和旧 CLI 只承担兼容映射，不让新 service 依赖 God Object。</li>
@@ -269,7 +269,7 @@
             <tr><td>进程已启动：非零退出、超时、信号终止、runner 异常</td><td><code>OperationOutcome</code>（result 的 <code>execution=failed</code>）+ stdout/stderr artifact + failed event</td><td><code>4</code></td></tr>
             <tr><td>returncode=0 但 normal_end 缺失/失败；收敛观察为否或缺失；输出缺失/解析不完整</td><td><code>OperationOutcome</code>（observations/collection 状态如实交付，不产生科学状态）</td><td><code>0</code></td></tr>
             <tr><td>外部 postprocessor 进程已启动但失败</td><td><code>OperationOutcome</code>（postprocess operation <code>execution=failed</code>；不回写上游）</td><td><code>4</code></td></tr>
-            <tr><td>Forge 内部/持久化失败</td><td><code>ForgeErrorEnvelope</code>（class 5）</td><td><code>5</code></td></tr>
+            <tr><td>Forge 内部/持久化失败（包括已启动进程的 event/manifest 提交失败）</td><td><code>ForgeErrorEnvelope</code>（class 5；保留 admission，优先于原本的 process outcome）</td><td><code>5</code></td></tr>
           </tbody>
         </table></div>
         <p><strong>结果关联与兼容：</strong><code>ForgeResultEnvelope</code> 不新增 <code>operation_id</code> 或 observations 字段，其序列化 key set 保持冻结；新 Python API 与 v1 机器 CLI 由外层 <code>OperationOutcome</code> 同时携带 ID、result 与 observations，持久化 event 的 <code>id</code> 仍等于该 ID。error envelope 自描述并携带 <code>operation_id</code>。legacy CLI/API 继续直接使用旧 result，不被静默包裹。</p>
@@ -302,7 +302,7 @@
         <p><strong>排除：</strong>用 <code>--json</code> 切换“Agent 模式”，或自动检测终端后悄然改变协议。</p>
       </div>
       <div class="decision">
-        <p><strong>决策 7：operation_id 只作调用关联。</strong>每次 service invocation 使用 request 中的 UUIDv4 <code>operation_id</code>（便利构造器可生成），事件和 artifact 以它关联；它不承担幂等、恢复、重试或工作流语义。task name 仅作 convenience metadata，外部 job/task id 只能进入上层 adapter metadata。</p>
+        <p><strong>决策 7：operation_id 用于调用关联与一次性受理冲突检测。</strong>每次 service invocation 使用 request 中的 UUIDv4 <code>operation_id</code>（便利构造器可生成），admission、事件和 artifact 以它关联；重复 ID 被拒绝，但 Forge 不按 ID 返回旧结果，也不提供幂等结果、恢复、重试或工作流语义。task name 仅作 convenience metadata，外部 job/task id 只能进入上层 adapter metadata。</p>
         <p><strong>排除：</strong>要求 Agent 先列出菜单、选择数字任务或依赖目录 slug 才能调用能力。</p>
       </div>
       <div class="decision">
@@ -363,14 +363,16 @@ ExportService.export(ExportRequest) -&gt; OperationOutcome | ForgeErrorEnvelope<
         <table>
           <thead><tr><th>类别</th><th>Forge 行为</th><th>调用方后续动作</th></tr></thead>
           <tbody>
-            <tr><td>request/schema/path 错误</td><td>返回结构化 request error；不得启动 runner、写科学结果或伪造 execution failure。</td><td>调用方修正 typed request 后，以新 operation_id 重试。</td></tr>
-            <tr><td>prepare/modify 输入失败</td><td>保留受影响字段、路径和可恢复诊断；已创建的 workspace 记录 provenance，不写成功 envelope。</td><td>修正输入或显式创建新 workspace attempt。</td></tr>
-            <tr><td>缺 executable（进程启动前发现）</td><td>返回 error envelope（class 3）；不启动 runner、不写执行事实。</td><td>调用方修复环境后以新 operation_id 重试。</td></tr>
+            <tr><td>admission 前 request/schema/path 错误</td><td>返回 class 2 request error；不写 event，不启动 runner，不产生领域副作用。</td><td>调用方修正 typed request 后，以新 operation_id 重试。</td></tr>
+            <tr><td>admission 后 prepare/modify 输入资产或环境前置失败</td><td>返回 class 3 <code>precondition.missing</code>；保留 admission 与受影响字段，不写成功 outcome。</td><td>修正输入/环境后以新 operation_id 调用。</td></tr>
+            <tr><td>缺 executable（进程启动前发现）</td><td>返回 class 3 <code>precondition.missing</code>；不启动 runner、不写执行事实，保留 admission。</td><td>调用方修复环境后以新 operation_id 重试。</td></tr>
             <tr><td>timeout / 非零退出 / 信号终止（进程已启动）</td><td>写入 stdout/stderr artifact 和 execution failed event；collection 保持 not_collected。</td><td>调用方修复环境后决定重复执行或新建 operation，不覆盖旧 event。</td></tr>
             <tr><td>returncode=0 但 normal_end 缺失/失败</td><td>execution 可为 completed；保留 normal_end observation，collect 可为 partial。</td><td>调用方检查日志和 requested artifacts，再决定是否重新 collect。</td></tr>
             <tr><td>收敛观察为否或缺失</td><td>保留 convergence observation 与可用 artifact，不产生科学接受状态。</td><td>由人类/Agent 决定修改输入、重复执行、续算或接受。</td></tr>
             <tr><td>输出缺失/解析不完整</td><td>collection partial 或 missing_output；diagnostics 指向缺失 artifact 和 parser。</td><td>补齐输出、选择正确 parser 或重新 collect。</td></tr>
             <tr><td>外部 postprocessor 失败</td><td>只标记 postprocess operation 的 execution failed；不得回写上游 ABACUS execution。</td><td>修复本地程序或输入后重试 postprocess。</td></tr>
+            <tr><td>event/manifest 持久化失败</td><td>返回 class 5 <code>persistence.failure</code> 并保留 admission；即使进程已经失败，该错误也优先于原本的 process outcome。</td><td>不得以同一 ID 自动重放；检查诊断后使用新 ID。</td></tr>
+            <tr><td>其他 Forge 内部异常</td><td>返回 class 5 <code>internal.failure</code>；若已 admission 则保留 tombstone。</td><td>检查实现/诊断后使用新 ID。</td></tr>
           </tbody>
         </table>
       </div>
