@@ -25,6 +25,7 @@ from abacus_forge.errors import (
     ForgePathError,
     ForgePersistenceError,
     ForgePreconditionError,
+    ForgeRequestError,
     ForgeSchemaError,
     OperationConflictError,
 )
@@ -46,7 +47,6 @@ class ForgeServices:
     def __init__(self, *, workspace_root: str | Path = ".", runner: LocalRunner | None = None) -> None:
         self.workspace_root = Path(workspace_root).resolve()
         self.runner = runner or LocalRunner()
-        self._execution: dict[Path, str] = {}
 
     @classmethod
     def default(
@@ -56,18 +56,21 @@ class ForgeServices:
 
     def prepare_scf(self, request: ScfPrepareRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfPrepareRequest):
-            return self._error("request.type", "expected ScfPrepareRequest", request)
+            return self._error("request.invalid", "expected ScfPrepareRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
             structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 with suppress_legacy_events():
-                    result = prepare_unit(
-                        UnitSpec(
-                            task="scf", workdir=workspace.root, structure=structure_path,
-                            structure_format=request.structure_format, parameters=dict(request.parameters),
+                    try:
+                        result = prepare_unit(
+                            UnitSpec(
+                                task="scf", workdir=workspace.root, structure=structure_path,
+                                structure_format=request.structure_format, parameters=dict(request.parameters),
+                            )
                         )
-                    )
+                    except (TypeError, ValueError) as error:
+                        raise ForgeRequestError(str(error)) from error
                 envelope = ForgeResultEnvelope(
                     operation="prepare", workspace_rel=request.workspace_rel,
                     status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
@@ -81,16 +84,19 @@ class ForgeServices:
 
     def modify_scf(self, request: ScfModifyRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfModifyRequest):
-            return self._error("request.type", "expected ScfModifyRequest", request)
+            return self._error("request.invalid", "expected ScfModifyRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 before = _input_snapshot(workspace)
                 with suppress_legacy_events():
-                    result = modify_unit(UnitModifySpec(
-                        task="scf", workdir=workspace.root,
-                        input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
-                    ))
+                    try:
+                        result = modify_unit(UnitModifySpec(
+                            task="scf", workdir=workspace.root,
+                            input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
+                        ))
+                    except (TypeError, ValueError) as error:
+                        raise ForgeRequestError(str(error)) from error
                 after = _input_snapshot(workspace)
                 artifacts = tuple(
                     ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
@@ -110,7 +116,7 @@ class ForgeServices:
 
     def execute_scf(self, request: ScfExecuteRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfExecuteRequest):
-            return self._error("request.type", "expected ScfExecuteRequest", request)
+            return self._error("request.invalid", "expected ScfExecuteRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
@@ -147,7 +153,7 @@ class ForgeServices:
 
     def collect_scf(self, request: ScfCollectRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfCollectRequest):
-            return self._error("request.type", "expected ScfCollectRequest", request)
+            return self._error("request.invalid", "expected ScfCollectRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
@@ -218,7 +224,7 @@ class ForgeServices:
             error_class = "precondition.missing"
         elif isinstance(error, ForgeInternalError):
             error_class = "internal.failure"
-        elif isinstance(error, (TypeError, ValueError)):
+        elif isinstance(error, ForgeRequestError):
             error_class = "request.invalid"
         else:
             error_class = "internal.failure"
@@ -290,12 +296,12 @@ def _manifest_artifact(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
 def _prepare_artifacts(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
     records = list(_manifest_artifact(workspace))
     if workspace.inputs_dir.is_dir():
-        for path in sorted(item for item in workspace.inputs_dir.rglob("*") if item.is_file()):
-            relative = path.relative_to(workspace.root).as_posix()
+        for path, resolved in _contained_files(workspace, workspace.inputs_dir):
+            relative = path.relative_to(workspace.root.resolve()).as_posix()
             records.append(ArtifactRecord(
                 id=f"input-{path.relative_to(workspace.inputs_dir).as_posix().replace('/', '-').lower()}",
                 path_rel=relative, role="input", stage="prepare",
-                sha256=hashlib.sha256(path.read_bytes()).hexdigest(), size_bytes=path.stat().st_size,
+                sha256=hashlib.sha256(resolved.read_bytes()).hexdigest(), size_bytes=resolved.stat().st_size,
             ))
     return tuple(records)
 
@@ -303,13 +309,28 @@ def _prepare_artifacts(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
 def _input_snapshot(workspace: Workspace) -> dict[str, object]:
     snapshot: dict[str, object] = {}
     if workspace.inputs_dir.is_dir():
-        for path in sorted(item for item in workspace.inputs_dir.rglob("*") if item.is_file()):
+        for path, resolved in _contained_files(workspace, workspace.inputs_dir):
             rel = path.relative_to(workspace.inputs_dir).as_posix()
             snapshot[rel] = {
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "size_bytes": path.stat().st_size,
+                "sha256": hashlib.sha256(resolved.read_bytes()).hexdigest(),
+                "size_bytes": resolved.stat().st_size,
             }
     return snapshot
+
+
+def _contained_files(workspace: Workspace, directory: Path) -> tuple[tuple[Path, Path], ...]:
+    """Return files whose resolved targets remain inside the workspace."""
+    root = workspace.root.resolve()
+    contained: list[tuple[Path, Path]] = []
+    for path in sorted(directory.rglob("*")):
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(root)
+        except (OSError, RuntimeError, ValueError) as error:
+            raise ForgePathError(f"artifact path escapes workspace: {path}") from error
+        if resolved.is_file():
+            contained.append((path, resolved))
+    return tuple(contained)
 
 
 def _with_artifact_refs(envelope: ForgeResultEnvelope, operation_id: str) -> ForgeResultEnvelope:

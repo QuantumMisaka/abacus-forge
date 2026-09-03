@@ -17,6 +17,15 @@ RESULT_SCHEMA_VERSION = "forge.result/v1"
 OPERATION_OUTCOME_SCHEMA_VERSION = "forge.operation-outcome/v1"
 WORKSPACE_SCHEMA_VERSION = "forge.workspace/v1"
 ERROR_SCHEMA_VERSION = "forge.error/v1"
+ERROR_CLASSES = frozenset({
+    "request.invalid",
+    "request.schema",
+    "request.path",
+    "operation.conflict",
+    "precondition.missing",
+    "persistence.failure",
+    "internal.failure",
+})
 
 _OPERATIONS = frozenset({"prepare", "modify", "execute", "collect", "export"})
 _EXECUTION_STATUSES = frozenset({"not_run", "completed", "failed", "skipped"})
@@ -509,7 +518,7 @@ class ForgeErrorEnvelope:
     schema_version: str = ERROR_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        _require_nonempty_string(self.error_class, "error_class")
+        _require_literal(self.error_class, ERROR_CLASSES, "error_class")
         _require_nonempty_string(self.message, "message")
         if self.operation_id is not None:
             _require_uuid4(self.operation_id)

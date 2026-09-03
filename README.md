@@ -48,11 +48,12 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 
 ### Typed SCF service boundary
 
-`ForgeServices` 提供当前迁移阶段唯一带 `abacus.scf/v1` policy 的 typed SCF
-路径。`ScfExecuteRequest(dry_run=True)` 才能产生 `execution=skipped`；typed
-execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，并且实际执行直接调用
-本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留给现有 composite
-兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
+`ForgeServices` 提供 typed SCF 路径，交付 execution/collection 事实与
+observations；若兼容结果保留 `scientific` 字段，Forge 只写 `unassessed`，不在
+Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 才能产生
+`execution=skipped`；typed execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，
+并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
+给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
 
 该阶段的 typed service 仍是 Forge 内部 Python API；Agent-first CLI 与独立
 `paimon-v3` adapter/benchmark 仓库在 SCF contract 稳定后再推进。当前

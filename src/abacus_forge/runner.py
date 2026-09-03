@@ -80,6 +80,7 @@ class LocalRunner:
             diagnostics.update(
                 {
                     "failure_class": "missing_executable",
+                    "termination": "not_started",
                     "stderr_tail": str(exc),
                     "stdout_tail": "",
                 }
@@ -110,18 +111,25 @@ class LocalRunner:
             stdout = completed.stdout
             stderr = completed.stderr
             returncode = completed.returncode
-            failure_class = "none" if returncode == 0 else "nonzero_exit"
+            if returncode < 0:
+                failure_class = "signal"
+                termination = "signal"
+            else:
+                failure_class = "none" if returncode == 0 else "nonzero_exit"
+                termination = "exited"
         except subprocess.TimeoutExpired as exc:
             stdout = _coerce_output(exc.stdout)
             stderr = _coerce_output(exc.stderr) or f"Command timed out after {self.timeout_seconds} seconds\n"
             returncode = 124
             failure_class = "timeout"
+            termination = "timeout"
 
         stdout_path.write_text(stdout, encoding="utf-8")
         stderr_path.write_text(stderr, encoding="utf-8")
         diagnostics.update(
             {
                 "failure_class": failure_class,
+                "termination": termination,
                 "stdout_tail": _tail(stdout),
                 "stderr_tail": _tail(stderr),
             }

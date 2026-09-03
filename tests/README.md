@@ -42,9 +42,10 @@ projections. The v1 workspace manifest and event records are additive; legacy
 `forge-unit.json` and `forge-result.json` compatibility outputs remain covered
 by the unit tests.
 
-The typed SCF service tests additionally own the migration boundary: policy
-evaluation is available only through `ForgeServices`, `dry_run` is explicit,
-and typed execution never infers a skip from an existing `NORMAL END` log.
+The typed SCF service tests additionally own the migration boundary:
+`ForgeServices` returns execution/collection facts and observations, and any
+legacy `scientific` projection remains `unassessed`. `dry_run` is explicit, and
+typed execution never infers a skip from an existing `NORMAL END` log.
 `run_many(skip_completed=True)` remains covered as a legacy compatibility helper
 for composite tasks and is intentionally not part of the typed status protocol.
 

@@ -8,7 +8,7 @@
 - **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算内核，同时服务 ABACUS Agent（Paimon）v1.3 适配层和独立 CLI 用户。
 - **工作模式**：作为纯 Python 库和 Agent-first CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
 - **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`export` 的职责边界；`run` 仅作为兼容别名。
-- **typed SCF 状态边界**：当前阶段只有 `ForgeServices` 的 typed SCF 路径使用 `abacus.scf/v1` policy；`dry_run` 必须由请求显式指定，不能从已有日志推断 `skipped`。`run_many(skip_completed=True)` 保留为 legacy composite helper，不得被 typed service 复用为状态协议。
+- **typed SCF 状态边界**：`ForgeServices` 的 typed SCF 路径只交付 execution/collection 事实与 observations；若兼容结果保留 `scientific` 字段，Forge 只写 `unassessed`，不在 Forge 内作科学判定。`dry_run` 必须由请求显式指定，不能从已有日志推断 `skipped`。`run_many(skip_completed=True)` 保留为 legacy composite helper，不得被 typed service 复用为状态协议。
 - **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 验收的稳定能力。
 
 ## 2. 本地开发与验证

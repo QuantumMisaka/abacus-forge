@@ -3,6 +3,9 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 import json
+import signal
+import stat
+import sys
 import threading
 import time
 
@@ -42,6 +45,43 @@ def test_typed_execute_does_not_infer_skip_from_normal_end(tmp_path: Path) -> No
 
     assert isinstance(result, OperationOutcome)
     assert result.status.execution == "completed"
+
+
+@pytest.mark.parametrize(
+    ("behavior", "expected_failure", "expected_termination", "expected_returncode", "operation_suffix"),
+    [
+        ("print('zero')", "none", "exited", 0, "030"),
+        ("print('bad'); raise SystemExit(7)", "nonzero_exit", "exited", 7, "031"),
+        ("import time; time.sleep(0.25)", "timeout", "timeout", 124, "032"),
+        ("import os, signal; os.kill(os.getpid(), signal.SIGTERM)", "signal", "signal", -signal.SIGTERM, "033"),
+    ],
+)
+def test_typed_execute_real_local_runner_preserves_process_termination_facts(
+    tmp_path: Path,
+    behavior: str,
+    expected_failure: str,
+    expected_termination: str,
+    expected_returncode: int,
+    operation_suffix: str,
+) -> None:
+    executable = tmp_path / "runner.py"
+    executable.write_text(f"#!{sys.executable}\n{behavior}\n", encoding="utf-8")
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    request = ScfExecuteRequest(
+        operation_id=f"123e4567-e89b-42d3-a456-426614174{operation_suffix}",
+        workspace_rel="scf",
+    )
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable), timeout_seconds=0.05 if expected_failure == "timeout" else None),
+    ).execute_scf(request)
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["failure_class"] == expected_failure
+    assert result.envelope.diagnostics["termination"] == expected_termination
+    assert result.envelope.metrics[0].value == expected_returncode
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} >= {"outputs/stdout.log", "outputs/stderr.log"}
+    event = json.loads((tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json").read_text())
+    assert event["payload"] == result.to_dict()
 
 
 def test_typed_execute_dry_run_does_not_start_runner(tmp_path: Path) -> None:
@@ -473,6 +513,49 @@ def test_unexpected_runner_exception_before_start_is_internal_error(tmp_path: Pa
     )
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "internal.failure"
+
+
+def test_unexpected_collector_value_error_is_internal_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken_collect(workspace):
+        raise ValueError("parser bug, not a malformed request")
+
+    services_module = __import__("abacus_forge.services", fromlist=["services"])
+    monkeypatch.setattr(services_module, "collect", broken_collect)
+    result = ForgeServices.default(workspace_root=tmp_path).collect_scf(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174107", workspace_rel="scf")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+
+
+def test_prepare_rejects_symlink_target_outside_workspace(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    outside = tmp_path / "outside.STRU"
+    outside.write_text("external", encoding="utf-8")
+    (workspace.inputs_dir / "external.STRU").symlink_to(outside)
+    source = workspace.root / "source.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nSi 28.085500 Si.upf\n\nLATTICE_CONSTANT\n1.0\n"
+        "LATTICE_CONSTANT_UNIT\nAngstrom\n\nLATTICE_VECTORS\n4 0 0\n0 4 0\n0 0 4\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0 m 1 1 1\n", encoding="utf-8"
+    )
+    result = ForgeServices.default(workspace_root=tmp_path).prepare_scf(
+        ScfPrepareRequest(operation_id="123e4567-e89b-42d3-a456-426614174108", workspace_rel="scf", structure_path_rel="source.STRU")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+
+
+def test_modify_rejects_symlink_target_outside_workspace(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    outside = tmp_path / "outside.INPUT"
+    outside.write_text("ecutwfc 80\n", encoding="utf-8")
+    (workspace.inputs_dir / "INPUT").symlink_to(outside)
+    result = ForgeServices.default(workspace_root=tmp_path).modify_scf(
+        ScfModifyRequest(operation_id="123e4567-e89b-42d3-a456-426614174109", workspace_rel="scf", input_updates={"ecutwfc": 90})
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
 
 
 def test_collect_delivers_false_convergence_without_scientific_projection(tmp_path: Path) -> None:

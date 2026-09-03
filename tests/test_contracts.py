@@ -226,6 +226,17 @@ def test_error_envelope_round_trips_with_known_request_identity() -> None:
     assert contracts.ForgeErrorEnvelope.from_dict(error.to_dict()).to_dict() == error.to_dict()
 
 
+def test_error_envelope_rejects_error_classes_outside_frozen_v1_set() -> None:
+    allowed = {
+        "request.invalid", "request.schema", "request.path", "operation.conflict",
+        "precondition.missing", "persistence.failure", "internal.failure",
+    }
+    for error_class in sorted(allowed):
+        contracts.ForgeErrorEnvelope(error_class=error_class, message="bad", affected_fields=("request",))
+    with pytest.raises(ValueError, match="error_class"):
+        contracts.ForgeErrorEnvelope(error_class="request.unknown", message="bad", affected_fields=("request",))
+
+
 def test_error_envelope_requires_affected_fields_and_strictly_decodes_error() -> None:
     with pytest.raises(TypeError, match="affected_fields"):
         contracts.ForgeErrorEnvelope(error_class="request.path", message="bad")
