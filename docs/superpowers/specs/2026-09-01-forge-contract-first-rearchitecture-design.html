@@ -135,7 +135,7 @@ OperationOutcome ──► ForgeResultEnvelope + observations
           <tr><td>admission 前 request/schema/path 错误</td><td>不写 event；返回 class 2 error。</td><td>调用方修正请求并使用新 operation ID。</td></tr>
           <tr><td>admission 后、进程启动前的输入资产或 executable 缺失</td><td>返回 class 3 error；保留 admission，不伪造 execution fact。</td><td>调用方修复前置条件并使用新 operation ID。</td></tr>
           <tr><td>进程启动后的 timeout / 非零退出 / 信号终止</td><td>返回带 <code>execution=failed</code> 的 operation outcome 并保留 stdout、stderr 与 execution event。</td><td>调用方决定是否以新 operation ID 再次执行。</td></tr>
-          <tr><td>event/manifest 持久化或 Forge 内部失败</td><td>返回 class 5 error并保留 admission tombstone；其优先级高于普通执行失败。</td><td>不得以同一 ID 自动重放；调用方检查诊断后使用新 ID。</td></tr>
+          <tr><td>event/manifest 持久化或 Forge 内部失败</td><td>返回 class 5 error，并保留 admission tombstone；其优先级高于普通执行失败。</td><td>不得以同一 ID 自动重放；调用方检查诊断后使用新 ID。</td></tr>
           <tr><td>正常结束但收敛观察为否/缺失</td><td>execution completed；保留原始日志、观察和可用 artifact，不生成科学结论。</td><td>上层根据观察决定修改、重复执行、续算或接受。</td></tr>
           <tr><td>输出缺失或解析不完整</td><td>collection_status 为 partial/missing-output；返回可确认 artifact 与 parser diagnostics。</td><td>补充输出、指定 log 或升级 parser；不得伪装为 completed。</td></tr>
         </tbody>
