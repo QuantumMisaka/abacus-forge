@@ -387,6 +387,54 @@ def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_p
     assert [event["id"] for event in manifest["events"]].count(request.operation_id) == 1
 
 
+def test_typed_execute_concurrent_same_id_admits_only_first_runner(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    first_started = threading.Event()
+    second_invoked = threading.Event()
+    release_first = threading.Event()
+    calls = 0
+
+    class BlockingRunner(LocalRunner):
+        def run(self, workspace, check=False):
+            nonlocal calls
+            calls += 1
+            first_started.set()
+            assert release_first.wait(timeout=5)
+            return super().run(workspace, check=check)
+
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=BlockingRunner(executable=str(executable)),
+    )
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174027")
+    results: list[ForgeResultEnvelope | ForgeErrorEnvelope] = []
+    first = threading.Thread(target=lambda: results.append(services.execute_scf(request)))
+
+    def invoke_second() -> None:
+        second_invoked.set()
+        results.append(services.execute_scf(request))
+
+    second = threading.Thread(target=invoke_second)
+    first.start()
+    assert first_started.wait(timeout=5)
+    second.start()
+    assert second_invoked.wait(timeout=5)
+    assert calls == 1
+    assert second.is_alive()
+
+    release_first.set()
+    first.join(timeout=5)
+    second.join(timeout=5)
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert calls == 1
+    assert len(results) == 2
+    assert sum(isinstance(result, ForgeResultEnvelope) for result in results) == 1
+    conflicts = [result for result in results if isinstance(result, ForgeErrorEnvelope)]
+    assert len(conflicts) == 1
+    assert conflicts[0].error_class == "operation.conflict"
+
+
 def test_typed_execute_stale_admission_blocks_runner_and_domain_writes(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "scf")
     workspace.ensure_layout()
@@ -477,6 +525,36 @@ def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
 
     assert isinstance(first, ForgeErrorEnvelope)
     assert first.error_class == "persistence.failure"
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+
+
+def test_typed_service_event_failure_is_class_5_and_keeps_id_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    original = Workspace._write_json_atomic
+
+    def fail_event(path: Path, payload: dict) -> None:
+        if path.parent.name == "events":
+            raise OSError("injected event failure")
+        original(path, payload)
+
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_event))
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    )
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174028")
+
+    first = services.execute_scf(request)
+    claim_path = tmp_path / "scf" / "reports" / "claims" / f"{request.operation_id}.json"
+    second = services.execute_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "persistence.failure"
+    assert claim_path.exists()
+    assert not (tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json").exists()
     assert isinstance(second, ForgeErrorEnvelope)
     assert second.error_class == "operation.conflict"
 

@@ -81,5 +81,36 @@ Output: `237 passed, 2 skipped in 16.10s`.
 
 ## Commit
 
-`9de79c7 fix: prevent typed operation replay`
+`0efb2b0 fix: prevent typed operation replay`
 
+## Review fix round 1
+
+The review identified two missing regression scenarios. The pre-fix test
+command for the new tests was run against `0efb2b0`; both cases passed because
+the implementation already provided the required behavior. This is recorded
+as a GREEN-before-test-expansion result rather than claiming a production
+failure that was not observed.
+
+Focused command and output:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py -k 'concurrent_same_id or event_failure'
+2 passed, 41 deselected in 0.76s
+```
+
+Added regressions:
+
+- A first same-ID service call blocks inside the supplied runner sentinel;
+  the concurrently entered second call cannot reach the runner or write a
+  domain result, and returns `operation.conflict` after the first commits.
+- Event-file write injection (separate from manifest injection) returns
+  `persistence.failure`, leaves the admission tombstone, and makes a second
+  same-ID call return `operation.conflict`.
+
+Post-fix focused/compatibility output:
+
+```text
+127 passed in 5.26s
+```
+
+The new test-only fix is committed in the follow-up commit recorded below.
