@@ -434,11 +434,33 @@ def test_started_runner_failures_return_failed_operation_outcome(tmp_path: Path,
 
 
 def test_missing_executable_is_precondition_error_not_failed_result(tmp_path: Path) -> None:
-    result = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable="does-not-exist" )).execute_scf(
-        ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174103", workspace_rel="scf")
-    )
+    request = ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174103", workspace_rel="scf")
+    services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable="does-not-exist"))
+
+    result = services.execute_scf(request)
+
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "precondition.missing"
+    event_path = tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json"
+    claim_path = tmp_path / "scf" / "reports" / "claims" / f"{request.operation_id}.json"
+    assert not event_path.exists()
+    assert claim_path.exists()
+    conflict = services.execute_scf(request)
+    assert isinstance(conflict, ForgeErrorEnvelope)
+    assert conflict.error_class == "operation.conflict"
+
+
+@pytest.mark.parametrize("runner_error", [FileNotFoundError("runner fixture"), OSError("runner fixture")])
+def test_unknown_prestart_runner_errors_are_internal(tmp_path: Path, runner_error: Exception) -> None:
+    class BrokenRunner:
+        def run(self, workspace):
+            raise runner_error
+
+    result = ForgeServices.default(workspace_root=tmp_path, runner=BrokenRunner()).execute_scf(
+        ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174106", workspace_rel="scf")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
 
 
 def test_unexpected_runner_exception_before_start_is_internal_error(tmp_path: Path) -> None:

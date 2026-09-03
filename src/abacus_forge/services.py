@@ -218,10 +218,6 @@ class ForgeServices:
             error_class = "precondition.missing"
         elif isinstance(error, ForgeInternalError):
             error_class = "internal.failure"
-        elif isinstance(error, FileNotFoundError):
-            error_class = "precondition.missing"
-        elif isinstance(error, OSError):
-            error_class = "persistence.failure"
         elif isinstance(error, (TypeError, ValueError)):
             error_class = "request.invalid"
         else:
