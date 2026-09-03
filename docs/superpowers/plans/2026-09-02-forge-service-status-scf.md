@@ -336,6 +336,8 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
 
   Round-trip `OperationOutcome`, assert its observations and operation ID survive serialization, assert the embedded result key set is unchanged, and reject non-JSON observations. Assert typed request schemas contain no `policy_id`. Cover execute nonzero, timeout/signal, missing executable, and an unexpected pre-start runner exception: started failures return outcome with execution facts; recognized missing executable is `precondition.missing`; unexpected pre-start failure is `internal.failure`. Cover collect with false/unavailable convergence without any accepted/guarded/rejected projection.
 
+  The nonzero, timeout, and signal cases must include real `LocalRunner` subprocess coverage; hand-built `RunResult` diagnostics alone are insufficient. Add prepare/modify artifact regressions proving a symlink whose resolved target escapes the workspace is rejected. Freeze `ForgeErrorEnvelope.error_class` to the SPEC enum and prove unexpected parser/collector `ValueError` is `internal.failure`, not a request error.
+
 - [ ] **Step 2: Run RED**
 
   Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_service_status.py tests/test_result_contract.py`
@@ -373,3 +375,4 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
 - **Scope discipline:** v1 CLI and Paimon adapter are deferred because both must consume, not shape, the stable Forge operation contract.
 - **Type consistency:** services consume Task 1 requests, persist via Task 2, and return Task 3 facts without a Forge scientific policy layer.
 - **Review revisions (2026-09-04):** the first review/fix wave was not accepted as complete. Tasks 6–7 replace late duplicate rejection and stale-claim reclaim, require owner proof and same-workspace serialization, distinguish persistence failures by type, freeze `OperationOutcome` as the Agent-visible observation carrier, remove typed-service scientific policy, and add the missing failure matrix. These are contract corrections, not new workflow, recovery, scheduling, or scientific responsibilities.
+- **Final-review closure (2026-09-04):** before integration, Task 7 also closes strict public error-class validation, explicit request-error conversion, real `LocalRunner` signal/timeout/nonzero evidence, symlink resolved-target containment for prepare/modify evidence, stale policy wording in README/AGENTS/test guidance, and removal of unused facade state. These enforce already-approved contracts; they do not expand Forge's role.
