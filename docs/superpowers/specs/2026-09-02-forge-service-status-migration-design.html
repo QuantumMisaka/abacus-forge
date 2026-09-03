@@ -207,7 +207,7 @@
           <thead><tr><th>ID</th><th>需求</th><th>验收信号</th></tr></thead>
           <tbody>
             <tr><td>R1</td><td>稳定 Python API 与 CLI 都接收/产生版本化 typed request/result；CLI 只是 service/API 的命令行适配层。</td><td>同一 fixture 经 API 与 CLI 调用后产生等价 envelope、状态和 artifact refs。</td></tr>
-            <tr><td>R2</td><td>所有新 operation request 带 <code>schema_version</code>、UUIDv4 <code>operation_id</code>、workspace reference 和 operation-specific 字段；对应 admission/event 使用同一 <code>operation_id</code>。service 必须在任何 workspace、兼容文件或外部进程副作用前原子受理该 ID；任何 admission 或 event 已存在都拒绝重复 ID，崩溃遗留 admission 不得自动回收。</td><td>contract/persistence tests round-trip 每一种 request，拒绝未知 operation、未知 schema_version、越界路径、缺字段、重复/非法 ID 和非 JSON 值；并发、崩溃遗留与 event 持久化失败测试证明 runner 和领域写入都不会以同一 ID 重放。</td></tr>
+            <tr><td>R2</td><td>所有新 operation request 带 <code>schema_version</code>、UUIDv4 <code>operation_id</code>、workspace reference 和 operation-specific 字段；对应 admission/event 使用同一 <code>operation_id</code>。service 必须在任何领域文件、兼容结果文件或外部进程副作用前原子受理该 ID；为取得锁和写 admission 而创建 <code>reports/</code>、lock、manifest 等审计基础设施不算领域副作用。任何 admission 或 event 已存在都拒绝重复 ID，崩溃遗留 admission 不得自动回收。</td><td>contract/persistence tests round-trip 每一种 request，拒绝未知 operation、未知 schema_version、越界路径、缺字段、重复/非法 ID 和非 JSON 值；并发、崩溃遗留与 event 持久化失败测试证明 runner 和领域写入都不会以同一 ID 重放。</td></tr>
             <tr><td>R3</td><td>新增 v1 机器路径 CLI 接受 request-file/stdin；默认 stdout 为单个 JSON <code>OperationOutcome</code> 或 <code>ForgeErrorEnvelope</code>，stderr 承载诊断；文本渲染不改变 operation 行为。legacy 命令的默认输出保持不变。可选 TUI 通过同一 API 或结构化 envelope 调用。</td><td>process tests 验证核心 CLI 无隐式 prompt/TTY 分支、默认 stdout 可解析且完整携带 observations，exit class 稳定；TUI adapter tests 验证只做输入收集与结果投影；legacy <code>--json</code> 和文本行为保持兼容。</td></tr>
             <tr><td>R4</td><td>capability/task pack 有显式 descriptor 与 stable/experimental 成熟度，不要求数字 Task-ID。</td><td>discovery/schema tests 可列出 capability、operation、输入、artifact、engine 和 maturity。</td></tr>
             <tr><td>R5</td><td>状态只表达 execution 与 collection；normal_end、convergence、parser completeness 等保留为 observations/checks。</td><td>状态与观察覆盖正常结束、未收敛、非零退出、超时、缺 executable、缺输出和 dry-run；Forge 不生成科学接受结论。</td></tr>
@@ -385,10 +385,10 @@ ExportService.export(ExportRequest) -&gt; OperationOutcome | ForgeErrorEnvelope<
         <li><strong>contract：</strong>每一种 typed request、capability descriptor、status、OperationOutcome/error envelope 的 round-trip；UUIDv4 operation_id/admission/event identity、未知字段、路径 containment、JSON-safe、跨 operation artifact ref 与外部路径拒绝。</li>
         <li><strong>API/CLI parity：</strong>同一 request 经稳定 Python API 与 CLI 产生等价的 envelope、状态、checks 和 artifact refs；CLI 不能拥有独立业务实现。</li>
         <li><strong>CLI process：</strong>v1 机器路径 operation CLI 的 stdout 恰含一个 JSON outcome/error 文档，stderr 是诊断；分别断言 0/2/3/4/5 exit class；无隐式 prompt、无 TTY 协议分支、text/pretty renderer 只改变显示。legacy command 的默认 stdout 与 <code>--json</code> 回归独立保持。</li>
-        <li><strong>operation/observation matrix：</strong>逐项覆盖 prepare、modify、execute、collect、postprocess、export、dry-run、缺 executable、timeout、非零退出、normal_end 缺失、收敛观察、缺输出和 parser partial；不测试 Forge 的科学接受判断。</li>
+        <li><strong>operation/observation matrix：</strong>逐项覆盖 prepare、modify、execute、collect、postprocess、export、dry-run、缺 executable、timeout、非零退出、signal termination、normal_end 缺失、收敛观察、缺输出和 parser partial；execute 的零退出、非零、timeout 与 signal 至少由真实 <code>LocalRunner</code> 子进程测试验证，不以手工构造 diagnostics 替代；不测试 Forge 的科学接受判断。</li>
         <li><strong>protocol：</strong>fake runner/engine/collector 验证 service 只消费窄接口；engine、TUI adapter 与 Tool adapter 不得把 ATP/MCP、AiiDA、scheduler、平台或旧运行时包泄漏进 Forge core。TUI adapter 只能调用 API 或结构化 CLI envelope。</li>
         <li><strong>compat：</strong>现有 <code>tests/test_contracts.py</code>、<code>tests/test_workspace.py</code>、<code>tests/test_result_contract.py</code>、<code>tests/test_units.py</code> 与 CLI/API 回归保持通过；旧 <code>to_dict()</code>、文件字节和目录布局不变。</li>
-        <li><strong>artifact/event：</strong>调用追加、跨操作引用、外部 artifact 拒绝、失败保留日志、同 workspace operation serialization、并发同 ID 拒绝、崩溃 admission 不回收、owner token 校验，以及 event/manifest 失败后不重放副作用。</li>
+        <li><strong>artifact/event：</strong>调用追加、跨操作引用、词法路径与 symlink resolved target 的 workspace containment、外部 artifact 拒绝、失败保留日志、同 workspace operation serialization、并发同 ID 拒绝、崩溃 admission 不回收、owner token 校验，以及 event/manifest 失败后不重放副作用。</li>
         <li><strong>offline gate：</strong>默认测试不访问真实集群；benchmark 和 real_smoke 仍需显式启用。它们只证明操作、解析和兼容性，不替代人类/Agent 的科学判断。</li>
       </ul>
       <h3>计划阶段的最低验证命令</h3>
@@ -431,6 +431,6 @@ rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" \
     </section>
   </main>
 
-  <footer>本地 SPEC 是规范源；远程审阅副本如有，仅为非规范镜像。未获本 SPEC 批准前，不执行本设计对应的 API、CLI、Service/Status 或 adapter 生产重构。</footer>
+  <footer>本地 SPEC 是唯一规范源；远程审阅副本如有，仅为非规范镜像。实现与变更必须通过本 SPEC 派生的 PLAN 和验证门禁。</footer>
 </body>
 </html>
