@@ -23,7 +23,7 @@
     <div class="meta">
       <p><strong>状态：</strong>Approved — 2026-09-01 user confirmation</p>
       <p><strong>Owner：</strong>ABACUS-Forge / Paimon v1.3 maintainers</p>
-      <p><strong>更新：</strong>2026-09-01</p>
+      <p><strong>更新：</strong>2026-09-03（补充 TUI 薄壳边界）</p>
     </div>
   </header>
 
@@ -46,26 +46,26 @@
   <main>
     <section id="summary">
       <h2>摘要</h2>
-      <p>ABACUS-Forge 是 Paimon v1.3 的协议无关科学计算后端，也是科研用户与 AI 开发者可直接消费的 ABACUS CLI/Python 工具箱。当前实现已经摆脱 AiiDA 运行时依赖，具备输入准备、局部修改、本地执行、结果收集与部分 task pack；但其公共请求、结果、artifact、workspace 和状态语义尚未收敛，不能直接视为稳定的 v1.3 后端协议。</p>
+      <p>ABACUS-Forge 是 Paimon v1.3 的协议无关 ABACUS 单元操作基座，也是人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）可直接消费的 CLI/Python 快捷消费面。当前实现已经摆脱 AiiDA 运行时依赖，具备输入准备、局部修改、本地执行、结果收集与部分 task pack；但其公共请求、结果、artifact、workspace 和状态语义尚未收敛，不能直接视为稳定的 v1.3 后端协议。</p>
       <p>本设计采用<strong>契约优先、渐进替换</strong>：保留已验证的结构、输入、执行和解析实现；先建立版本化的协议无关 contracts 与 workspace manifest，再将现有 API、CLI、sequence 与 task pack 逐步迁移到这些 contracts。Paimon ATP Tool 保持在 Forge 外部，以薄 adapter 将 Forge 事实映射为 <code>@tool_io</code>、result evidence 与平台报告。</p>
-      <div class="decision"><p><strong>结论：</strong>重构公共边界和内部层次，不重写科学算法，不重新引入 AiiDA、ATP/MCP、调度器、平台状态或 TUI 逻辑。</p></div>
+      <div class="decision"><p><strong>职责结论：</strong>Forge 只忠实完成 <code>prepare / modify / execute / collect / export</code> 等 ABACUS 单元操作，返回执行事实、解析观察和产物引用。科学判断、任务编排、重试/续算以及平台和调度选择全部由人类或 Agent/上层 workflow 负责。Forge 不重写科学算法，也不重新引入 AiiDA、ATP/MCP、调度器、平台状态或 TUI 逻辑。</p></div>
     </section>
 
     <section id="goals">
       <h2>目标与非目标</h2>
       <h3>目标</h3>
       <ul>
-        <li>定义可由 Paimon v1.3、独立 CLI、Python 开发者和其他 Agent 共同消费的版本化 Forge 契约。</li>
-        <li>使 <code>prepare → modify → execute → collect → export</code> 成为唯一的核心语义链；任务快捷方式只能建立在该链之上。</li>
-        <li>提供显式、非交互、可发现、结构化、可重试的 Agent-first CLI；人类快捷命令与未来 TUI 复用同一契约。</li>
+        <li>定义可由人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）共同消费的版本化 Forge 契约。</li>
+        <li>使 <code>prepare → modify → execute → collect → export</code> 成为唯一的核心语义链；任务快捷方式只能建立在该链之上。（<code>postprocess</code> 是 2026-09-02 Service/Status SPEC 在该链之上引入的独立 typed 扩展操作，其定位与兼容边界以该 SPEC 为准。）</li>
+        <li>提供显式、结构化、可脚本化的 Agent-first CLI；默认支持 request-file/stdin 的非交互机器路径；未来 TUI 可基于同一 Python API 或结构化 CLI envelope 提供人类交互体验。</li>
         <li>将 workspace 变成可审计的单元：输入、运行、结果与 artifact 都能稳定引用并保留来源。</li>
-        <li>在解除 <code>abacus-agent-tools</code> 和 <code>abacustest</code> 运行时依赖的前提下，以 benchmark 和真实 ABACUS smoke 达成迁移验收。</li>
+        <li>在解除 <code>abacus-agent-tools</code> 和 <code>abacustest</code> 运行时依赖的前提下，以 benchmark 和真实 ABACUS smoke 达成操作/解析兼容迁移验收。</li>
       </ul>
       <h3>非目标</h3>
       <ul>
         <li>不在 Forge 中实现 ATP/MCP 编解码、AsterFire Tool 生命周期、资源选择、平台报告或 <code>tool_data</code>。</li>
         <li>不在 Forge 中实现 Slurm、Bohrium、DPDispatcher、数据库、站点策略或恢复式 workflow。</li>
-        <li>不把数字 Task-ID、交互菜单或 prompt 当作能力协议；TUI 不是本轮交付物。</li>
+        <li>不把数字 Task-ID、交互菜单或 prompt 当作能力协议；允许 TUI 作为 Python API/CLI 之上的交互壳，但不在本轮要求实现。</li>
         <li>不因重构重写已验证的 ABACUS 输入/输出解析、结构变换或 PyATB 文件映射。</li>
         <li>不把仅有 mock/fixture 证据的 property pack 暴露为 Paimon v1.3 稳定能力。</li>
       </ul>
@@ -79,11 +79,11 @@
           <tr><td>R1</td><td>Forge 运行时保持 AiiDA、ATP/MCP、平台、调度器、<code>abacus-agent-tools</code> 与 <code>abacustest</code> 无依赖。</td><td>安装与 import 检查不需要上述包；依赖扫描和迁移测试通过。</td></tr>
           <tr><td>R2</td><td>建立 <code>forge.request/v1</code>、<code>forge.result/v1</code>、<code>forge.workspace/v1</code> 三类版本化、JSON-safe 契约。</td><td>每个核心 CLI 操作可输出 schema_version；契约测试拒绝未知/越界字段和不可序列化值。</td></tr>
           <tr><td>R3</td><td>result 使用 typed artifact 和 metric records，而不是仅有路径/任意字典。</td><td>artifact 至少具备 id、path_rel、role、stage、availability；metric 至少具备 name、value、unit、kind、source。</td></tr>
-          <tr><td>R4</td><td>执行、科学接受、收集完整性分离建模。</td><td>正常结束未收敛、MD 正常结束、缺输出、超时、缺 executable 都有稳定且 task-aware 的状态与诊断。</td></tr>
+          <tr><td>R4</td><td>执行事实、解析观察与收集完整性分离建模。</td><td>正常结束、收敛标志、缺输出、超时、缺 executable 都有稳定且可追溯的观察与诊断；Forge 不生成科学接受结论。</td></tr>
           <tr><td>R5</td><td>workspace manifest 记录输入快照、step event、artifact、来源与覆盖策略。</td><td>同一 workspace 的 prepare/modify/execute/collect 不覆盖彼此证据；相对路径不得逃逸 workspace root。</td></tr>
           <tr><td>R6</td><td>将现有 <code>UnitSpec</code> 拆为 prepare、modify、execution、collect、postprocess 请求；旧 API 只作为兼容层。</td><td>新 services 不依赖单一 God Object；旧 CLI/API 的受支持行为仍有兼容回归。</td></tr>
           <tr><td>R7</td><td>ABACUS 与 PyATB 以 engine adapter 形式接入，runner 通过稳定 protocol 消费 execution request。</td><td>LocalRunner 不承载 task/plot/postprocess 语义；PyATB 相关依赖不污染纯输入/收集核心。</td></tr>
-          <tr><td>R8</td><td>CLI 提供语义化命令、请求文件/stdin、机器可读成功与错误 envelope、稳定 exit class 与 schema discovery。</td><td>子进程测试验证 stdout JSON、stderr diagnostics、无 prompt、错误可由 Agent 分类处理。</td></tr>
+          <tr><td>R8</td><td>机器路径 CLI 提供语义化命令、请求文件/stdin、机器可读 operation outcome 与错误 envelope、稳定 exit class 与 schema discovery；人类 TUI 若实现则复用同一 API/envelope。具体载体由后继 Service/Status SPEC 冻结。</td><td>子进程测试验证核心 CLI stdout JSON、stderr diagnostics、无隐式 prompt/TTY 协议切换、错误可由 Agent 分类处理；TUI adapter 不改变 service 行为。</td></tr>
           <tr><td>R9</td><td>Paimon adapter 只做路径解析、资源环境、ATP 输出和报告投影；Forge 只返回协议无关事实。</td><td>ATP contract tests 能从 Forge result 生成正式 <code>@tool_io</code> 输出和 result evidence，且 Forge 不 import ATP 包。</td></tr>
           <tr><td>R10</td><td>定义稳定能力面与实验能力面。</td><td>稳定 core 的真实 smoke 与 benchmark 证据齐全；property pack 未达标时持续标记 experimental。</td></tr>
           <tr><td>R11</td><td>开发/发布测试按 deterministic、compat、benchmark、real_smoke 分层。</td><td>默认 pytest 离线确定；benchmark 与 real smoke 显式启用；测试门禁不以覆盖率数字替代行为证据。</td></tr>
@@ -95,15 +95,15 @@
     <section id="decisions">
       <h2>设计决策</h2>
       <div class="decision"><p><strong>决策 1：渐进替换，而非推倒重写。</strong>现有解析器、结构处理和测试是可迁移资产。先添加新 contracts 与 adapter，再把旧 API 收敛为 shim；这避免在物理逻辑和接口迁移中同时引入不确定性。</p><p><strong>替代方案：</strong>全新仓库或一次性重写会降低历史耦合，却会丢失当前回归资产并使 benchmark 归因困难，因此不采用。</p></div>
-      <div class="decision"><p><strong>决策 2：Forge schema 与 ATP evidence 同构但不相同。</strong>Forge 负责可验证的科学事实；ATP adapter 负责平台端的 producer、路径发布、报告与展示投影。Forge schema 不出现 Tool、task_id、AiiDA、MCP 或站点字段。</p><p><strong>替代方案：</strong>让 Forge 直接产出 ATP evidence 会缩短首轮接入，但会永久污染其独立 CLI/Python 边界，因此不采用。</p></div>
-      <div class="decision"><p><strong>决策 3：核心 API 是显式动词与 request/result，不是 task number。</strong>核心操作为 prepare、modify、execute、collect、export；<code>scf</code>、<code>relax</code>、band/DOS sequence 与 pack 是具名 convenience layer。人类可获快捷命令；Agent 始终消费显式 schema 和路径。</p><p><strong>替代方案：</strong>借鉴 VASPKIT/AbacusCopilot 的 Task-ID/TUI 有利于人工导航，却不利于程序发现、组合和重试，因此只作为未来 UX 参考。</p></div>
-      <div class="decision"><p><strong>决策 4：单工作目录原子，跨目录编排在 Forge 外。</strong>Forge 可提供本地 convenience sequence，但不得把跨步骤依赖、调度恢复或平台资源策略伪装为核心能力。SCF→NSCF 通过 artifact manifest 与明确 source reference 完成。</p></div>
+      <div class="decision"><p><strong>决策 2：Forge schema 与 ATP evidence 同构但不相同。</strong>Forge 负责可追溯的计算事实、解析观察和产物引用；ATP adapter 负责平台端的 producer、路径发布、报告与展示投影。Forge schema 不出现 Tool、task_id、AiiDA、MCP、科学接受结论或站点字段。</p><p><strong>替代方案：</strong>让 Forge 直接产出 ATP evidence 会污染其独立 CLI/Python 边界，因此不采用。</p></div>
+      <div class="decision"><p><strong>决策 3：核心 API 是显式动词与 request/result，不是 task number。</strong>核心操作为 prepare、modify、execute、collect、export；<code>scf</code>、<code>relax</code>、band/DOS sequence 与 pack 是具名 convenience layer。机器调用始终消费显式 schema 和路径；人类可通过快捷命令或 TUI 获得导航、提问和结果展示。</p><p><strong>替代方案：</strong>借鉴 VASPKIT/AbacusCopilot 的菜单和 Task-ID 作为人类 UX 是合理的，但它们不成为 Forge 的能力协议；TUI 必须套在 Python API 或结构化 CLI envelope 之上，不复制执行、收集或状态语义。</p></div>
+      <div class="decision"><p><strong>决策 4：单工作目录原子，跨目录编排在 Forge 外。</strong>Forge 可提供本地 convenience sequence，但不得承载跨步骤依赖、重试/恢复编排、调度或平台资源策略。SCF→NSCF 等链路由上层以 artifact manifest 和明确 source reference 串联。</p></div>
     </section>
 
     <section id="architecture">
       <h2>架构与数据流</h2>
-      <pre>用户 / Codex / Agent
-        │ semantic CLI 或 Python request
+      <pre>人类 CLI / 可选 TUI / Codex / Agent
+        │ TUI 只收集输入并调用 API/结构化 CLI；机器路径使用 semantic CLI 或 Python request
         ▼
 Forge contracts ──► services (prepare / modify / execute / collect / export)
         │                         │
@@ -111,29 +111,29 @@ Forge contracts ──► services (prepare / modify / execute / collect / expor
         │                         ├── engines (ABACUS, PyATB)
         │                         └── workspace manifest + artifact store
         ▼
-forge.result/v1 ──► Paimon ATP thin adapter ──► @tool_io / evidence / report</pre>
+forge.result/v1 ──► 上层 Agent / Paimon thin adapter ──► 报告、编排与平台适配</pre>
       <p>建议目录职责：</p>
       <ul>
         <li><code>contracts/</code>：版本化 request/result/workspace/artifact/status 模型与 JSON validation。</li>
         <li><code>core/</code>：结构、ABACUS 文本、资产归一化；不依赖 runner 或平台。</li>
         <li><code>services/</code>：以单一 request/result 调用 core、engine 和 workspace。</li>
         <li><code>engines/</code>：ABACUS、PyATB 等程序特定桥接；不决定上层流程。</li>
-        <li><code>packs/</code>：stable 与 experimental task pack，必须声明所需 artifact 和真实验收等级。</li>
+        <li><code>packs/</code>：stable 与 experimental task pack，必须声明所需 artifact 和真实运行证据等级。</li>
         <li><code>cli/</code>：只做参数/JSON 解码、服务调度、JSON 输出和 exit mapping。</li>
       </ul>
-      <p>核心结果的最低形态为：<code>schema_version</code>、operation、workspace manifest reference、execution/scientific/collection status、artifact records、metric records、checks、warnings、diagnostics。所有 artifact 路径以 workspace-relative POSIX path 表示；绝对路径只可作为本机诊断信息，不能是可移植协议字段。</p>
+      <p>核心结果的最低形态为：<code>schema_version</code>、operation、workspace reference（<code>workspace_rel</code>）、execution/collection status、artifact records、metric records、observations/checks、warnings、diagnostics。所有 artifact 路径以 workspace-relative POSIX path 表示；绝对路径只可作为本机诊断信息，不能是可移植协议字段。</p>
     </section>
 
     <section id="errors">
       <h2>错误与状态</h2>
-      <p>CLI 成功与失败均输出 JSON envelope；人类可读摘要放 stderr 或由上层 adapter 渲染。禁止依赖 stdout 中的自然语言、目录名或前一次调用的隐式状态。</p>
+      <p>v1 机器路径 CLI 的 operation outcome 与错误均输出单个 JSON 文档；人类可读摘要放 stderr 或由显式 text renderer/上层 adapter 渲染。禁止依赖 stdout 中的自然语言、目录名或前一次调用的隐式状态。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>类别</th><th>Forge 行为</th><th>恢复方式</th></tr></thead>
         <tbody>
           <tr><td>request/schema 错误</td><td>不写入或只写入失败 event；返回 validation error class。</td><td>调用方修正请求后重试。</td></tr>
           <tr><td>缺输入/越界路径</td><td>拒绝访问并给出受影响的 request field。</td><td>显式提供受 workspace policy 允许的路径。</td></tr>
           <tr><td>缺 executable / timeout / 非零退出</td><td>保留 stdout、stderr、execution event；execution_status 为 failed。</td><td>修复运行环境或资源后以新 attempt 重试，不覆盖旧 event。</td></tr>
-          <tr><td>正常结束但未科学收敛</td><td>execution completed；scientific_status 为 guarded/rejected；保留可用 artifact。</td><td>上层根据 checks 决定修改、续算或接受。</td></tr>
+          <tr><td>正常结束但收敛观察为否/缺失</td><td>execution completed；保留原始日志、观察和可用 artifact，不生成科学结论。</td><td>上层根据观察决定修改、重复执行、续算或接受。</td></tr>
           <tr><td>输出缺失或解析不完整</td><td>collection_status 为 partial/missing-output；返回可确认 artifact 与 parser diagnostics。</td><td>补充输出、指定 log 或升级 parser；不得伪装为 completed。</td></tr>
         </tbody>
       </table></div>
@@ -142,12 +142,12 @@ forge.result/v1 ──► Paimon ATP thin adapter ──► @tool_io / evidence 
     <section id="testing">
       <h2>测试与证据</h2>
       <ul>
-        <li>contracts：request/result/artifact/status 的 JSON round-trip、版本和路径 containment。</li>
+        <li>contracts：request/result/artifact/status 的 JSON round-trip、版本和路径 containment；状态只覆盖 execution/collection，观察字段保持原始来源。</li>
         <li>core：INPUT/STRU/KPT、结构与解析器 fixture；保留 ABACUS 固定宽度原始日志。</li>
         <li>services/CLI：prepare/modify/execute/collect 的行为、stdout/stderr、exit class、幂等与覆盖策略。</li>
         <li>compat：与 ABACUS/abacustest 的参考 fixture 比对，不形成运行时依赖。</li>
         <li>adapter contract：Forge result 到 Paimon ATP typed outputs/result evidence 的投影测试。</li>
-        <li>benchmark 与 real_smoke：显式运行；稳定能力的发布前提，不能由 mock/fixture 替代。</li>
+        <li>benchmark 与 real_smoke：显式运行；用于确认操作、解析和兼容性，不能替代人类/Agent 的科学判断。</li>
       </ul>
       <p>默认回归保持离线确定性。真实 ABACUS/PyATB 证据按任务矩阵保存；property pack 在逐项真实 smoke 通过前持续为 experimental。</p>
     </section>
@@ -158,8 +158,8 @@ forge.result/v1 ──► Paimon ATP thin adapter ──► @tool_io / evidence 
         <li><strong>Phase 0 — Freeze：</strong>批准本 SPEC，建立能力矩阵与当前 API 兼容边界；不改变物理行为。</li>
         <li><strong>Phase 1 — Contracts：</strong>引入 v1 request/result/workspace contracts、manifest 和 contract tests；旧 dataclass/CLI 保持 shim。</li>
         <li><strong>Phase 2 — Services：</strong>拆分 API、runner、collector、CLI；移除覆盖式 <code>forge-result.json</code> 作为唯一记录的依赖。</li>
-        <li><strong>Phase 3 — Adapter：</strong>Paimon ATP 新建薄 adapter，逐项替换旧 prepare/execute/collect 消费，并运行迁移 benchmark。</li>
-        <li><strong>Phase 4 — Acceptance：</strong>稳定核心完成真实 smoke；property pack 按证据逐项晋升；发布前执行安装、离线回归、benchmark 和 smoke 门禁。</li>
+        <li><strong>Phase 3 — Adapter：</strong>上层 Paimon/Agent 新建薄 adapter，逐项替换旧 prepare/execute/collect 消费，并运行迁移 benchmark。</li>
+        <li><strong>Phase 4 — Release evidence：</strong>稳定操作和解析能力完成真实 smoke；property pack 按操作证据逐项晋升；发布前执行安装、离线回归、benchmark 和 smoke 门禁。科学结果的接受与解释由上层完成。</li>
       </ol>
       <p>v1.3 首批稳定面应以 prepare/modify/execute/collect 的 SCF、relax、cell-relax、MD 为核心；band、DOS、PyATB 与 property pack 仅在各自真实证据满足后进入稳定 adapter 面。旧 public API 的废弃须有版本、迁移文档和兼容测试，不能静默删除。</p>
     </section>
@@ -170,7 +170,7 @@ forge.result/v1 ──► Paimon ATP thin adapter ──► @tool_io / evidence 
       <ul>
         <li><strong>README.md</strong>：面向科研用户和调用者，说明能力、成熟度、安装与稳定使用方式。</li>
         <li><strong>AGENTS.md</strong>：面向人类与 AI 开发者，说明边界、测试、文档层级和 L1/L2/L3 路由。</li>
-        <li><strong>SPEC</strong>：公共 API/schema、workspace、迁移或跨仓边界的唯一规范源；批准前不执行对应生产重构。</li>
+        <li><strong>SPEC</strong>：公共 API/schema、workspace、迁移或跨仓边界的规范源；多个已批准 SPEC 按其明确范围共同生效，后继细化 SPEC 仅在所声明的细化范围内优先。批准前不执行对应生产重构。</li>
         <li><strong>PLAN</strong>：从已批准 SPEC 推导的可执行任务清单；不反向改变 SPEC。</li>
       </ul>
       <p>该治理模式遵循当前 Superpowers：L1 小改直接验证；L2 行为变更以测试先行；L3α 先设计澄清和 SPEC，L3β 在用户已拍板时直接写 PLAN。所有完成声明必须有命令输出和 diff，而非自评。</p>
@@ -179,7 +179,7 @@ forge.result/v1 ──► Paimon ATP thin adapter ──► @tool_io / evidence 
     <section id="risks">
       <h2>风险与开放项</h2>
       <div class="decision open">
-        <p><strong>风险：</strong>旧 API/CLI 的宽公共面会放大兼容成本；缓解方式是以 adapter contract、兼容 fixture 与明确 deprecation 窗口逐步收敛。真实 ABACUS/PyATB 环境的可用性会限制科学验收；缓解方式是将 smoke 与 deterministic regression 分层，而非伪造稳定声明。</p>
+        <p><strong>风险：</strong>旧 API/CLI 的宽公共面会放大兼容成本；缓解方式是以 adapter contract、兼容 fixture 与明确 deprecation 窗口逐步收敛。真实 ABACUS/PyATB 环境会影响操作和解析证据；smoke 与 deterministic regression 分层记录，科学判断不在 Forge 内完成。</p>
         <p><strong>非阻塞开放项：</strong>具体 schema 的字段命名、首个稳定能力集中的 band/DOS/PyATB 范围、首个发布版本号由后续实现 PLAN 固化；它们不得改变本 SPEC 的边界和数据流。</p>
       </div>
     </section>
