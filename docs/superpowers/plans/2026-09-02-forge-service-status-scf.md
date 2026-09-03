@@ -14,7 +14,7 @@
 
 - No AiiDA, ATP/MCP, scheduler, platform, `abacus-agent-tools`, or `abacustest` runtime dependencies.
 - Preserve legacy signatures, `to_dict()` key sets, CLI defaults, `forge-unit.json`, `forge-result.json`, and layout.
-- A typed request has a lowercase UUIDv4 `operation_id`; it correlates the request, admission, event, and artifacts only. Before any domain write or runner start, an atomic admission tombstone consumes the ID. It is not an idempotency, retry, recovery, or workflow key, and a stale admission is never automatically reclaimed.
+- A typed request has a lowercase UUIDv4 `operation_id`; it correlates the request, admission, event, and artifacts and provides one-time admission conflict detection. Before any domain write or runner start, an atomic admission tombstone consumes the ID. It does not provide cached/idempotent results, retry, recovery, or workflow semantics, and a stale admission is never automatically reclaimed.
 - New typed results expose execution/collection state and raw observations. If a legacy projection still has `scientific`, Forge writes only `unassessed`; acceptance/interpretation is produced outside Forge.
 - New service success uses a serializable `OperationOutcome` carrying `operation_id`, the unchanged `ForgeResultEnvelope`, and observations. The embedded `forge.result/v1` key set remains frozen.
 - No typed request, service, result, or diagnostic accepts `policy_id`; no scientific policy registry participates in Forge service execution.

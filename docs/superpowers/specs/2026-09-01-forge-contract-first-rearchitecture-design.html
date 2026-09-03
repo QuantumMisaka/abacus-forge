@@ -56,7 +56,7 @@
       <h3>目标</h3>
       <ul>
         <li>定义可由人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）共同消费的版本化 Forge 契约。</li>
-        <li>使 <code>prepare → modify → execute → collect → export</code> 成为唯一的核心语义链；任务快捷方式只能建立在该链之上。（<code>postprocess</code> 是 2026-09-02 Service/Status SPEC 在该链之上引入的独立 typed 扩展操作，其定位与兼容边界以该 SPEC 为准。）</li>
+        <li>以 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、<code>export</code> 作为彼此独立的核心单元操作；具名快捷入口只封装单次 operation 的参数与调用，不在 Forge 内串联多 operation。（<code>postprocess</code> 是 2026-09-02 Service/Status SPEC 引入的独立 typed 扩展操作，其定位与兼容边界以该 SPEC 为准。）</li>
         <li>提供显式、结构化、可脚本化的 Agent-first CLI；默认支持 request-file/stdin 的非交互机器路径；未来 TUI 可基于同一 Python API 或结构化 CLI envelope 提供人类交互体验。</li>
         <li>将 workspace 变成可审计的单元：输入、运行、结果与 artifact 都能稳定引用并保留来源。</li>
         <li>在解除 <code>abacus-agent-tools</code> 和 <code>abacustest</code> 运行时依赖的前提下，以 benchmark 和真实 ABACUS smoke 达成操作/解析兼容迁移验收。</li>
@@ -96,8 +96,8 @@
       <h2>设计决策</h2>
       <div class="decision"><p><strong>决策 1：渐进替换，而非推倒重写。</strong>现有解析器、结构处理和测试是可迁移资产。先添加新 contracts 与 adapter，再把旧 API 收敛为 shim；这避免在物理逻辑和接口迁移中同时引入不确定性。</p><p><strong>替代方案：</strong>全新仓库或一次性重写会降低历史耦合，却会丢失当前回归资产并使 benchmark 归因困难，因此不采用。</p></div>
       <div class="decision"><p><strong>决策 2：Forge schema 与 ATP evidence 同构但不相同。</strong>Forge 负责可追溯的计算事实、解析观察和产物引用；ATP adapter 负责平台端的 producer、路径发布、报告与展示投影。Forge schema 不出现 Tool、task_id、AiiDA、MCP、科学接受结论或站点字段。</p><p><strong>替代方案：</strong>让 Forge 直接产出 ATP evidence 会污染其独立 CLI/Python 边界，因此不采用。</p></div>
-      <div class="decision"><p><strong>决策 3：核心 API 是显式动词与 request/result，不是 task number。</strong>核心操作为 prepare、modify、execute、collect、export；<code>scf</code>、<code>relax</code>、band/DOS sequence 与 pack 是具名 convenience layer。机器调用始终消费显式 schema 和路径；人类可通过快捷命令或 TUI 获得导航、提问和结果展示。</p><p><strong>替代方案：</strong>借鉴 VASPKIT/AbacusCopilot 的菜单和 Task-ID 作为人类 UX 是合理的，但它们不成为 Forge 的能力协议；TUI 必须套在 Python API 或结构化 CLI envelope 之上，不复制执行、收集或状态语义。</p></div>
-      <div class="decision"><p><strong>决策 4：单工作目录原子，跨目录编排在 Forge 外。</strong>Forge 可提供本地 convenience sequence，但不得承载跨步骤依赖、重试/恢复编排、调度或平台资源策略。SCF→NSCF 等链路由上层以 artifact manifest 和明确 source reference 串联。</p></div>
+      <div class="decision"><p><strong>决策 3：核心 API 是显式动词与 request/result，不是 task number。</strong>核心操作为 prepare、modify、execute、collect、export；<code>scf</code>、<code>relax</code>、band/DOS 与 pack 只能提供具名单元操作和参数便利封装。机器调用始终消费显式 schema 和路径；人类可通过快捷命令或 TUI 获得导航、提问和结果展示。</p><p><strong>替代方案：</strong>借鉴 VASPKIT/AbacusCopilot 的菜单和 Task-ID 作为人类 UX 是合理的，但它们不成为 Forge 的能力协议；TUI 必须套在 Python API 或结构化 CLI envelope 之上，不复制执行、收集或状态语义。</p></div>
+      <div class="decision"><p><strong>决策 4：单工作目录操作一致性，全部多步编排在 Forge 外。</strong>Forge 不提供把多个 operation 串起来的 sequence。operation 的顺序、依赖、重试、续算以及 SCF→NSCF 等链路由人类/Agent/上层 workflow 以 artifact reference 显式执行；Forge 的 workspace 锁只保护本地文件和审计一致性。</p></div>
     </section>
 
     <section id="architecture">
@@ -111,7 +111,9 @@ Forge contracts ──► services (prepare / modify / execute / collect / expor
         │                         ├── engines (ABACUS, PyATB)
         │                         └── workspace manifest + artifact store
         ▼
-forge.result/v1 ──► 上层 Agent / Paimon thin adapter ──► 报告、编排与平台适配</pre>
+OperationOutcome ──► ForgeResultEnvelope + observations
+        │
+        └──────────► 上层 Agent / Paimon thin adapter ──► 报告、编排与平台适配</pre>
       <p>建议目录职责：</p>
       <ul>
         <li><code>contracts/</code>：版本化 request/result/workspace/artifact/status 模型与 JSON validation。</li>
@@ -121,7 +123,7 @@ forge.result/v1 ──► 上层 Agent / Paimon thin adapter ──► 报告、
         <li><code>packs/</code>：stable 与 experimental task pack，必须声明所需 artifact 和真实运行证据等级。</li>
         <li><code>cli/</code>：只做参数/JSON 解码、服务调度、JSON 输出和 exit mapping。</li>
       </ul>
-      <p>核心结果的最低形态为：<code>schema_version</code>、operation、workspace reference（<code>workspace_rel</code>）、execution/collection status、artifact records、metric records、observations/checks、warnings、diagnostics。所有 artifact 路径以 workspace-relative POSIX path 表示；绝对路径只可作为本机诊断信息，不能是可移植协议字段。</p>
+      <p>新 operation outcome 的最低形态为：<code>schema_version</code>、<code>operation_id</code>、内嵌的 <code>ForgeResultEnvelope</code> 与 observations。内嵌 result 保持既有 <code>forge.result/v1</code> key set，只承载 operation、workspace reference（<code>workspace_rel</code>）、execution/collection status、artifact records、metric/check records、warnings 与 diagnostics；observations 由外层 outcome 携带。所有 artifact 路径以 workspace-relative POSIX path 表示；绝对路径只可作为本机诊断信息，不能是可移植协议字段。具体字段以 2026-09-02 Service/Status SPEC 为准。</p>
     </section>
 
     <section id="errors">
@@ -130,9 +132,10 @@ forge.result/v1 ──► 上层 Agent / Paimon thin adapter ──► 报告、
       <div class="table-wrap"><table>
         <thead><tr><th>类别</th><th>Forge 行为</th><th>恢复方式</th></tr></thead>
         <tbody>
-          <tr><td>request/schema 错误</td><td>不写入或只写入失败 event；返回 validation error class。</td><td>调用方修正请求后重试。</td></tr>
-          <tr><td>缺输入/越界路径</td><td>拒绝访问并给出受影响的 request field。</td><td>显式提供受 workspace policy 允许的路径。</td></tr>
-          <tr><td>缺 executable / timeout / 非零退出</td><td>保留 stdout、stderr、execution event；execution_status 为 failed。</td><td>修复运行环境或资源后以新 attempt 重试，不覆盖旧 event。</td></tr>
+          <tr><td>admission 前 request/schema/path 错误</td><td>不写 event；返回 class 2 error。</td><td>调用方修正请求并使用新 operation ID。</td></tr>
+          <tr><td>admission 后、进程启动前的输入资产或 executable 缺失</td><td>返回 class 3 error；保留 admission，不伪造 execution fact。</td><td>调用方修复前置条件并使用新 operation ID。</td></tr>
+          <tr><td>进程启动后的 timeout / 非零退出 / 信号终止</td><td>返回带 <code>execution=failed</code> 的 operation outcome 并保留 stdout、stderr 与 execution event。</td><td>调用方决定是否以新 operation ID 再次执行。</td></tr>
+          <tr><td>event/manifest 持久化或 Forge 内部失败</td><td>返回 class 5 error并保留 admission tombstone；其优先级高于普通执行失败。</td><td>不得以同一 ID 自动重放；调用方检查诊断后使用新 ID。</td></tr>
           <tr><td>正常结束但收敛观察为否/缺失</td><td>execution completed；保留原始日志、观察和可用 artifact，不生成科学结论。</td><td>上层根据观察决定修改、重复执行、续算或接受。</td></tr>
           <tr><td>输出缺失或解析不完整</td><td>collection_status 为 partial/missing-output；返回可确认 artifact 与 parser diagnostics。</td><td>补充输出、指定 log 或升级 parser；不得伪装为 completed。</td></tr>
         </tbody>
