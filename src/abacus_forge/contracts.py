@@ -14,6 +14,7 @@ JSONValue: TypeAlias = None | bool | int | float | str | list["JSONValue"] | dic
 
 REQUEST_SCHEMA_VERSION = "forge.request/v1"
 RESULT_SCHEMA_VERSION = "forge.result/v1"
+OPERATION_OUTCOME_SCHEMA_VERSION = "forge.operation-outcome/v1"
 WORKSPACE_SCHEMA_VERSION = "forge.workspace/v1"
 ERROR_SCHEMA_VERSION = "forge.error/v1"
 
@@ -250,6 +251,27 @@ class CheckRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class Observation:
+    """One factual observation emitted by a Forge operation."""
+
+    name: str
+    value: JSONValue
+    source: Literal["log", "file", "parser", "runtime"]
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.name, "name")
+        _require_literal(self.source, frozenset({"log", "file", "parser", "runtime"}), "source")
+        object.__setattr__(self, "value", _freeze_json(_json_round_trip(self.value)))
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {"name": self.name, "value": _thaw_json(self.value), "source": self.source}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> Observation:
+        return _construct_strict(cls, payload, "observation")
+
+
+@dataclass(frozen=True, slots=True)
 class OperationStatus:
     execution: Literal["not_run", "completed", "failed", "skipped"]
     scientific: Literal["unassessed", "accepted", "guarded", "rejected"]
@@ -324,12 +346,10 @@ class OperationRef:
 class _ScfRequest(OperationRef):
     """Shared validation for the narrow, typed SCF request variants."""
 
-    policy_id: str
     schema_version: str = REQUEST_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
         OperationRef.__post_init__(self)
-        _require_nonempty_string(self.policy_id, "policy_id")
         _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
 
     def to_dict(self) -> dict[str, JSONValue]:
@@ -338,7 +358,6 @@ class _ScfRequest(OperationRef):
             "operation": self.operation,
             "operation_id": self.operation_id,
             "workspace_rel": self.workspace_rel,
-            "policy_id": self.policy_id,
         }
 
     @classmethod
@@ -352,7 +371,7 @@ class _ScfRequest(OperationRef):
 
 @dataclass(frozen=True, slots=True)
 class ScfPrepareRequest(_ScfRequest):
-    """Typed request for preparing one SCF workspace under an explicit policy."""
+    """Typed request for preparing one SCF workspace."""
 
     # A preparation is only useful when it has a structure to normalize.  The
     # empty sentinel keeps dataclass inheritance ergonomic while __post_init__
@@ -396,7 +415,7 @@ class ScfPrepareRequest(_ScfRequest):
 
 @dataclass(frozen=True, slots=True)
 class ScfModifyRequest(_ScfRequest):
-    """Typed request for modifying one SCF workspace under an explicit policy."""
+    """Typed request for modifying one SCF workspace."""
 
     # Keep modification input-specific: this maps directly to the existing
     # INPUT key editing primitive without exposing UnitModifySpec itself.
@@ -442,7 +461,7 @@ class ScfModifyRequest(_ScfRequest):
 
 @dataclass(frozen=True, slots=True)
 class ScfExecuteRequest(_ScfRequest):
-    """Typed request for executing one SCF workspace under an explicit policy."""
+    """Typed request for executing one SCF workspace."""
 
     dry_run: bool = False
 
@@ -467,7 +486,7 @@ class ScfExecuteRequest(_ScfRequest):
 
 @dataclass(frozen=True, slots=True)
 class ScfCollectRequest(_ScfRequest):
-    """Typed request for collecting one SCF workspace under an explicit policy."""
+    """Typed request for collecting one SCF workspace."""
 
     @property
     def operation(self) -> Literal["collect"]:
@@ -619,3 +638,51 @@ class ForgeResultEnvelope:
             return cls(**values)  # type: ignore[arg-type]
         except (TypeError, KeyError) as error:
             raise ValueError("result envelope contains invalid fields") from error
+
+
+@dataclass(frozen=True, slots=True)
+class OperationOutcome:
+    """Stable typed success carrier for an admitted Forge operation."""
+
+    operation_id: str
+    envelope: ForgeResultEnvelope
+    observations: Sequence[Observation] = ()
+    schema_version: str = OPERATION_OUTCOME_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        _require_uuid4(self.operation_id)
+        _require_schema_version(self.schema_version, OPERATION_OUTCOME_SCHEMA_VERSION)
+        if not isinstance(self.envelope, ForgeResultEnvelope):
+            raise ValueError("envelope must be a ForgeResultEnvelope")
+        observations = tuple(self.observations)
+        if not all(isinstance(observation, Observation) for observation in observations):
+            raise ValueError("observations must contain Observation values")
+        object.__setattr__(self, "observations", observations)
+        _json_round_trip(self.to_dict())
+
+    @property
+    def status(self) -> OperationStatus:
+        """Delegate status access to the embedded compatibility envelope."""
+
+        return self.envelope.status
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload: dict[str, JSONValue] = {
+            "schema_version": self.schema_version,
+            "operation_id": self.operation_id,
+            "envelope": self.envelope.to_dict(),
+            "observations": [observation.to_dict() for observation in self.observations],
+        }
+        return _json_round_trip(payload)  # type: ignore[return-value]
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> OperationOutcome:
+        values = _mapping_payload(payload, "operation outcome")
+        try:
+            values["envelope"] = ForgeResultEnvelope.from_dict(values["envelope"])  # type: ignore[arg-type]
+            values["observations"] = tuple(
+                Observation.from_dict(item) for item in values.get("observations", ())  # type: ignore[arg-type]
+            )
+        except (KeyError, TypeError, AttributeError) as error:
+            raise ValueError("operation outcome must contain valid envelope and observations") from error
+        return _construct_strict(cls, values, "operation outcome")

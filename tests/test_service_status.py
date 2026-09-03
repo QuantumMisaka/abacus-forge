@@ -3,146 +3,14 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 import json
-import importlib
 import threading
 import time
 
 import abacus_forge
-from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner, Workspace
-from abacus_forge.contracts import CheckRecord, ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner, OperationOutcome, Workspace
+from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from abacus_forge.result import RunResult
 from tests.support.fake_executables import write_fake_abacus
-
-
-def _check(name: str, status: str) -> CheckRecord:
-    return CheckRecord(name=name, status=status)  # type: ignore[arg-type]
-
-
-def _evaluate(
-    *,
-    execution: str = "completed",
-    collection: str = "complete",
-    normal_end: str = "passed",
-    convergence: str = "passed",
-    parser_complete: str = "passed",
-    required_artifacts_present: bool = True,
-):
-    return abacus_forge.evaluate_abacus_scf_v1(
-        execution=execution,
-        collection=collection,
-        normal_end=_check("normal_end", normal_end),
-        convergence=_check("scf_convergence", convergence),
-        parser_complete=_check("parser_complete", parser_complete),
-        required_artifacts_present=required_artifacts_present,
-    )
-
-
-def test_scf_policy_accepts_only_complete_positive_evidence() -> None:
-    status, checks = abacus_forge.evaluate_abacus_scf_v1(
-        execution="completed",
-        collection="complete",
-        normal_end=_check("normal_end", "passed"),
-        convergence=_check("scf_convergence", "passed"),
-        parser_complete=_check("parser_complete", "passed"),
-        required_artifacts_present=True,
-    )
-
-    assert status.to_dict() == {"execution": "completed", "scientific": "accepted", "collection": "complete"}
-    assert [check.name for check in checks] == ["normal_end", "scf_convergence", "parser_complete"]
-
-
-def test_scf_policy_rejects_explicit_nonconvergence() -> None:
-    status, _ = abacus_forge.evaluate_abacus_scf_v1(
-        execution="completed",
-        collection="complete",
-        normal_end=_check("normal_end", "passed"),
-        convergence=_check("scf_convergence", "failed"),
-        parser_complete=_check("parser_complete", "passed"),
-        required_artifacts_present=True,
-    )
-
-    assert status.scientific == "rejected"
-
-
-def test_scf_policy_keeps_missing_evidence_unassessed() -> None:
-    status, _ = abacus_forge.evaluate_abacus_scf_v1(
-        execution="not_run",
-        collection="missing_output",
-        normal_end=_check("normal_end", "unavailable"),
-        convergence=_check("scf_convergence", "unavailable"),
-        parser_complete=_check("parser_complete", "unavailable"),
-        required_artifacts_present=False,
-    )
-
-    assert status.scientific == "unassessed"
-
-
-@pytest.mark.parametrize("execution", ["completed", "not_run"])
-def test_scf_policy_preserves_valid_execution_fact(execution: str) -> None:
-    status, _ = _evaluate(execution=execution)
-
-    assert status.execution == execution
-    assert status.scientific == "accepted"
-
-
-@pytest.mark.parametrize("execution", ["not_run", "completed", "failed", "skipped"])
-def test_scf_policy_keeps_execution_independent_from_scientific_assessment(execution: str) -> None:
-    status, _ = _evaluate(execution=execution)
-
-    assert status.execution == execution
-    assert status.scientific == "accepted"
-
-
-@pytest.mark.parametrize("collection", ["not_collected", "missing_output"])
-def test_scf_policy_keeps_absent_collection_unassessed(collection: str) -> None:
-    status, _ = _evaluate(collection=collection, required_artifacts_present=False)
-
-    assert status.collection == collection
-    assert status.scientific == "unassessed"
-
-
-def test_scf_policy_guards_partial_collection_with_usable_evidence() -> None:
-    status, _ = _evaluate(collection="partial")
-
-    assert status.scientific == "guarded"
-
-
-def test_scf_policy_keeps_missing_required_artifacts_unassessed() -> None:
-    status, _ = _evaluate(required_artifacts_present=False)
-
-    assert status.scientific == "unassessed"
-
-
-@pytest.mark.parametrize("status_name", ["failed", "warning", "unavailable"])
-def test_scf_policy_guards_nonpassing_normal_end(status_name: str) -> None:
-    status, _ = _evaluate(normal_end=status_name)
-
-    assert status.scientific == "guarded"
-
-
-@pytest.mark.parametrize("status_name", ["warning", "unavailable"])
-def test_scf_policy_guards_uncertain_convergence(status_name: str) -> None:
-    status, _ = _evaluate(convergence=status_name)
-
-    assert status.scientific == "guarded"
-
-
-@pytest.mark.parametrize("status_name", ["warning", "unavailable"])
-def test_scf_policy_guards_degraded_parser_evidence(status_name: str) -> None:
-    status, _ = _evaluate(parser_complete=status_name)
-
-    assert status.scientific == "guarded"
-
-
-def test_scf_policy_keeps_failed_parser_evidence_unassessed() -> None:
-    status, _ = _evaluate(parser_complete="failed")
-
-    assert status.scientific == "unassessed"
-
-
-def test_scf_policy_rejects_explicit_nonconvergence_with_complete_parse() -> None:
-    status, _ = _evaluate(convergence="failed")
-
-    assert status.scientific == "rejected"
 
 
 def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
@@ -172,7 +40,7 @@ def test_typed_execute_does_not_infer_skip_from_normal_end(tmp_path: Path) -> No
         )
     )
 
-    assert isinstance(result, ForgeResultEnvelope)
+    assert isinstance(result, OperationOutcome)
     assert result.status.execution == "completed"
 
 
@@ -189,7 +57,7 @@ def test_typed_execute_dry_run_does_not_start_runner(tmp_path: Path) -> None:
         )
     )
 
-    assert isinstance(result, ForgeResultEnvelope)
+    assert isinstance(result, OperationOutcome)
     assert result.status.execution == "skipped"
 
 
@@ -211,53 +79,14 @@ def test_legacy_run_many_skip_completed_remains_available(tmp_path: Path) -> Non
     assert calls == 0
 
 
-def test_scf_policy_does_not_turn_missing_collection_into_rejection() -> None:
-    status, _ = _evaluate(collection="missing_output", convergence="failed", required_artifacts_present=False)
-
-    assert status.scientific == "unassessed"
+def _request(request_type, workspace: str, operation_id: str, **kwargs):
+    return request_type(operation_id=operation_id, workspace_rel=workspace, **kwargs)
 
 
-@pytest.mark.parametrize(
-    ("field", "wrong_name"),
-    [("normal_end", "completion"), ("convergence", "converged"), ("parser_complete", "parse")],
-)
-def test_scf_policy_requires_exact_check_names(field: str, wrong_name: str) -> None:
-    checks = {
-        "normal_end": _check("normal_end", "passed"),
-        "convergence": _check("scf_convergence", "passed"),
-        "parser_complete": _check("parser_complete", "passed"),
-    }
-    checks[field] = _check(wrong_name, "passed")
-
-    with pytest.raises(ValueError, match=field):
-        abacus_forge.evaluate_abacus_scf_v1(
-            execution="completed",
-            collection="complete",
-            normal_end=checks["normal_end"],
-            convergence=checks["convergence"],
-            parser_complete=checks["parser_complete"],
-            required_artifacts_present=True,
-        )
-
-
-def test_scf_policy_rejects_invalid_execution() -> None:
-    with pytest.raises(ValueError, match="execution"):
-        _evaluate(execution="done")
-
-
-def test_scf_policy_rejects_invalid_collection() -> None:
-    with pytest.raises(ValueError, match="collection"):
-        _evaluate(collection="unknown")
-
-
-def _request(request_type, workspace: str, operation_id: str, policy_id: str = "abacus.scf/v1", **kwargs):
-    return request_type(operation_id=operation_id, workspace_rel=workspace, policy_id=policy_id, **kwargs)
-
-
-def test_typed_scf_services_persist_request_ids_and_apply_policy(
+def test_typed_scf_services_persist_request_ids_and_facts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    services_module = importlib.import_module("abacus_forge.services")
+    services_module = __import__("abacus_forge.services", fromlist=["services"])
     calls = {name: 0 for name in ("prepare_unit", "modify_unit", "execute", "collect")}
     for name in calls:
         original = getattr(services_module, name)
@@ -305,15 +134,15 @@ def test_typed_scf_services_persist_request_ids_and_apply_policy(
     executed = services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
     collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
 
-    assert isinstance(prepared, ForgeResultEnvelope)
-    assert isinstance(modified, ForgeResultEnvelope)
-    assert isinstance(executed, ForgeResultEnvelope)
-    assert isinstance(collected, ForgeResultEnvelope)
-    assert collected.status.scientific == "accepted"
+    assert isinstance(prepared, OperationOutcome)
+    assert isinstance(modified, OperationOutcome)
+    assert isinstance(executed, OperationOutcome)
+    assert isinstance(collected, OperationOutcome)
+    assert collected.status.scientific == "unassessed"
     manifest = json.loads((tmp_path / "scf" / "reports" / "forge-workspace.json").read_text())
     assert [event["id"] for event in manifest["events"]] == [prepare_id, modify_id, execute_id, collect_id]
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
-    assert isinstance(modified, ForgeResultEnvelope)
+    assert isinstance(modified, OperationOutcome)
     assert modified.status.execution == "not_run"
     # Typed execution calls LocalRunner.run directly; the legacy ``execute``
     # API remains imported for compatibility but is not part of this path.
@@ -355,15 +184,8 @@ def test_collect_has_operation_local_not_run_execution_even_after_execute(tmp_pa
     collect_id = "123e4567-e89b-42d3-a456-426614174010"
     services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
     collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
-    assert isinstance(collected, ForgeResultEnvelope)
+    assert isinstance(collected, OperationOutcome)
     assert collected.status.execution == "not_run"
-
-
-def test_typed_services_reject_unknown_policy(tmp_path: Path) -> None:
-    services = ForgeServices.default(workspace_root=tmp_path)
-    result = services.execute_scf(_request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174011", policy_id="garbage"))
-    assert isinstance(result, ForgeErrorEnvelope)
-    assert result.error_class == "request.policy"
 
 
 def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_path: Path) -> None:
@@ -379,7 +201,7 @@ def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_p
     request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174012")
     first = services.execute_scf(request)
     second = services.execute_scf(request)
-    assert isinstance(first, ForgeResultEnvelope)
+    assert isinstance(first, OperationOutcome)
     assert isinstance(second, ForgeErrorEnvelope)
     assert second.error_class == "operation.conflict"
     assert calls == 1
@@ -429,7 +251,7 @@ def test_typed_execute_concurrent_same_id_admits_only_first_runner(tmp_path: Pat
     assert not second.is_alive()
     assert calls == 1
     assert len(results) == 2
-    assert sum(isinstance(result, ForgeResultEnvelope) for result in results) == 1
+    assert sum(isinstance(result, OperationOutcome) for result in results) == 1
     conflicts = [result for result in results if isinstance(result, ForgeErrorEnvelope)]
     assert len(conflicts) == 1
     assert conflicts[0].error_class == "operation.conflict"
@@ -499,7 +321,7 @@ def test_typed_services_serialize_different_ids_for_one_workspace(tmp_path: Path
         assert not thread.is_alive()
 
     assert len(results) == 2
-    assert all(isinstance(result, ForgeResultEnvelope) for result in results)
+    assert all(isinstance(result, OperationOutcome) for result in results)
 
 
 def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
@@ -570,9 +392,73 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
     )
     prepared = services.prepare_scf(_request(ScfPrepareRequest, "scf", "123e4567-e89b-42d3-a456-426614174013", structure_path_rel="source.STRU"))
     modified = services.modify_scf(_request(ScfModifyRequest, "scf", "123e4567-e89b-42d3-a456-426614174014", input_updates={"ecutwfc": 90}))
-    assert isinstance(prepared, ForgeResultEnvelope)
-    assert {artifact.path_rel for artifact in prepared.artifacts} >= {"inputs/INPUT", "inputs/STRU", "inputs/KPT", "forge-unit.json"}
-    assert isinstance(modified, ForgeResultEnvelope)
-    assert modified.diagnostics["changes"]["INPUT"]["updates"] == {"ecutwfc": 90}
-    assert "input_snapshot_before" in modified.diagnostics
-    assert "input_snapshot_after" in modified.diagnostics
+    assert isinstance(prepared, OperationOutcome)
+    assert {artifact.path_rel for artifact in prepared.envelope.artifacts} >= {"inputs/INPUT", "inputs/STRU", "inputs/KPT", "forge-unit.json"}
+    assert isinstance(modified, OperationOutcome)
+    assert modified.envelope.diagnostics["changes"]["INPUT"]["updates"] == {"ecutwfc": 90}
+    assert "input_snapshot_before" in modified.envelope.diagnostics
+    assert "input_snapshot_after" in modified.envelope.diagnostics
+
+
+def test_typed_services_return_operation_outcome_and_event_carries_same_facts(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["SCF CONVERGED", "NORMAL END"])
+    services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable)))
+    request = ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174101", workspace_rel="scf")
+
+    result = services.execute_scf(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.operation_id == request.operation_id
+    assert any(observation.name == "returncode" for observation in result.observations)
+    event = json.loads((tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json").read_text())
+    assert event["payload"] == result.to_dict()
+
+
+@pytest.mark.parametrize("diagnostics", [{"failure_class": "nonzero_exit"}, {"failure_class": "timeout"}, {"failure_class": "signal"}])
+def test_started_runner_failures_return_failed_operation_outcome(tmp_path: Path, diagnostics: dict[str, str]) -> None:
+    class StartedFailureRunner:
+        def run(self, workspace):
+            workspace.ensure_layout()
+            stdout = workspace.outputs_dir / "stdout.log"
+            stderr = workspace.outputs_dir / "stderr.log"
+            stdout.write_text("started\n", encoding="utf-8")
+            stderr.write_text("failed\n", encoding="utf-8")
+            return RunResult(workspace.root, ["fake-abacus"], 1, "failed", stdout, stderr, 1, diagnostics)
+
+    result = ForgeServices.default(workspace_root=tmp_path, runner=StartedFailureRunner()).execute_scf(
+        ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174102", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "failed"
+    assert result.envelope.diagnostics["failure_class"] == diagnostics["failure_class"]
+
+
+def test_missing_executable_is_precondition_error_not_failed_result(tmp_path: Path) -> None:
+    result = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable="does-not-exist" )).execute_scf(
+        ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174103", workspace_rel="scf")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+
+
+def test_unexpected_runner_exception_before_start_is_internal_error(tmp_path: Path) -> None:
+    class BrokenRunner:
+        def run(self, workspace):
+            raise RuntimeError("opaque runner failure")
+
+    result = ForgeServices.default(workspace_root=tmp_path, runner=BrokenRunner()).execute_scf(
+        ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174104", workspace_rel="scf")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+
+
+def test_collect_delivers_false_convergence_without_scientific_projection(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    (workspace.outputs_dir / "stdout.log").write_text("SCF NOT CONVERGED\n", encoding="utf-8")
+    result = ForgeServices.default(workspace_root=tmp_path).collect_scf(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174105", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.scientific == "unassessed"
+    assert all(observation.value not in ("accepted", "guarded", "rejected") for observation in result.observations)

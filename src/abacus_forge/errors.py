@@ -11,10 +11,6 @@ class ForgeSchemaError(ForgeRequestError):
     """The request has an invalid schema or field value."""
 
 
-class ForgePolicyError(ForgeRequestError):
-    """A legacy typed request names an unsupported policy."""
-
-
 class ForgePathError(ForgeRequestError):
     """A request path is invalid or escapes its declared workspace."""
 

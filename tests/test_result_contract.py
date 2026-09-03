@@ -98,6 +98,11 @@ def test_task_sequence_artifacts_have_unique_deterministic_ids(tmp_path: Path) -
     assert len(ids) == len(set(ids)) == 2
 
 
+def test_legacy_task_result_never_derives_scientific_assessment(tmp_path: Path) -> None:
+    envelope = TaskResult("scf", tmp_path, "completed").to_envelope()
+    assert envelope.status.scientific == "unassessed"
+
+
 def test_run_and_task_external_artifacts_are_reported_in_diagnostics(tmp_path: Path) -> None:
     outside = tmp_path.parent / "outside.log"
     outside.write_text("x", encoding="utf-8")

@@ -74,7 +74,9 @@ class TaskResult:
         diagnostics, warnings = _diagnostics(self.diagnostics)
         dry_run = self.diagnostics.get("dry_run") is True
         execution = "skipped" if dry_run else ("completed" if self.status in {"completed", "prepared"} else "failed")
-        scientific = "unassessed" if dry_run else ("accepted" if self.status == "completed" else "guarded")
+        # Legacy result envelopes retain the historical field for decoding,
+        # but Forge never derives a scientific assessment from task status.
+        scientific = "unassessed"
         collection = "not_collected" if dry_run else ("complete" if self.status == "completed" else "partial")
         artifacts = _workspace_artifact_records(self.workspace, self.artifacts)
         warnings += _outside_artifact_warnings(self.workspace, self.artifacts)
