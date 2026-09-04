@@ -55,9 +55,59 @@ Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 才能产生
 并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
 给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
 
-该阶段的 typed service 仍是 Forge 内部 Python API；Agent-first CLI 与独立
-`paimon-v3` adapter/benchmark 仓库在 SCF contract 稳定后再推进。当前
+该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
+
+## Agent-first CLI
+
+Stage 3 的 machine surface 目前只提供 `scf`，成熟度为 `experimental`。它固定
+暴露三个顶层命令：`operation`（执行 `prepare`、`modify`、`execute`、`collect`，以及
+结构上可识别但当前未实现的 `postprocess`、`export`）、`schema`（读取请求 schema）和
+`capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
+运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
+
+请求可以来自文件：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "operation": "execute",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174010",
+  "workspace_rel": ".",
+  "dry_run": true
+}
+```
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.json
+```
+
+也可以从 stdin 传入请求：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "operation": "execute",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174011",
+  "workspace_rel": ".",
+  "dry_run": true
+}
+```
+
+```bash
+cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute --stdin
+```
+
+`capabilities` 和 `schema scf <operation>` 返回确定性的 JSON 文档。成功的
+`operation` 在 stdout 输出一个 JSON envelope；请求错误、前置条件错误和执行失败也
+使用 JSON error/envelope 输出，诊断信息只写入 stderr。退出码分别为 `0`（无执行失败）、
+`2`（请求或路径错误）、`3`（前置条件缺失）、`4`（进程已启动但执行失败）和 `5`（持久化
+或内部错误）。`--pretty` 只改变 JSON 空白，`--format text` 是同一 envelope 的文字
+投影。
+
+相对路径均以调用进程的当前工作目录（cwd）为 workspace root；CLI 不提示、不猜测科学
+结论，也不负责多操作编排、重试、调度或平台提交。科学判断、workflow/orchestration
+和 scheduling 由调用方负责。
 
 ### 原子 unit API
 
