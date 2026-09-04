@@ -20,6 +20,8 @@
 - No typed request, service, result, or diagnostic accepts `policy_id`; no scientific policy registry participates in Forge service execution.
 - Default tests are offline/deterministic. No new v1 CLI command, TUI, or Paimon adapter is implemented here; a future TUI is an optional thin shell over the stable API/structured CLI envelope.
 
+**Delivery status (2026-09-04):** Tasks 1–8 are implemented and task-review clean, but the branch is not integration-ready. Task 9 remains open because event-directory creation and lock release can still escape as raw `OSError` and be misreported as `internal.failure` instead of the frozen `persistence.failure` class.
+
 ## File map
 
 | Path | Responsibility |
@@ -34,6 +36,7 @@
 | `tests/test_result_contract.py`, `tests/test_units.py` | Legacy compatibility regression. |
 | `src/abacus_forge/__init__.py` | Re-export typed contracts and service entry points (Tasks 1/4). |
 | `tests/conftest.py`, `tests/README.md` | Marker registration for new test files and test-layering documentation (Tasks 3/5). |
+| `README.md` | Current machine-readable workspace/event contract and typed-service maturity. |
 
 ### Task 1: Add immutable typed service and error contracts
 
@@ -399,6 +402,51 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
     git add src/abacus_forge/services.py tests/test_service_status.py
     git commit -m "fix: classify primitive defects as internal"
 
+### Task 9: Complete the audit persistence boundary
+
+**Decision source:** The 2026-09-04 Task 8 whole-branch fix re-review reproduced two remaining raw filesystem exits: `reports/events` directory creation and `flock(..., LOCK_UN)` release. The user authorized this follow-up phase. This task completes the existing class-5 persistence contract; it does not add recovery, rollback, retry, or workflow behavior.
+
+**Files:**
+- Modify: `src/abacus_forge/workspace.py`
+- Modify: `tests/test_workspace.py`
+- Modify: `tests/test_service_status.py`
+- Modify: `README.md`
+
+**Test strategy:** Exercise the public service path when `reports/events` is occupied by a regular file. The first call must return `ForgeErrorEnvelope(error_class="persistence.failure")`, retain an admission tombstone, append no success event, and make the same ID conflict on reuse. Independently inject `OSError` from `fcntl.flock(..., LOCK_UN)` for both workspace lock context managers and require `ForgePersistenceError`; on the typed service path, a release failure after a durable event commit returns `persistence.failure`, and the same ID remains non-replayable through the committed event even if the admission was already finalized.
+
+**Interfaces and invariants:** All audit-infrastructure `OSError` values raised by reports/claims/events directory creation, lock open/acquire/release, event write, manifest write, and admission finalization cross the Workspace boundary as `ForgePersistenceError`. Preserve `OperationConflictError` and other existing typed errors. A release failure after event+manifest commit must not fabricate rollback or recreate a removed claim; the durable event itself blocks reuse. Legacy `append_operation_event()` keeps its historical raw persistence behavior except for shared lock-boundary typing already established by Task 6.
+
+- [ ] **Step 1: Write RED regressions**
+
+  Extend `test_audit_infrastructure_io_is_persistence_error` with `("reports/events", "file")` and assert the claim remains, the event does not exist, and reuse returns `operation.conflict`. Add a table-driven `tests/test_workspace.py` case that patches `fcntl.flock` to raise `OSError("injected unlock failure")` only for `LOCK_UN`, exercises `_manifest_lock()` and `_operation_lock()`, and expects `ForgePersistenceError` matching the corresponding lock. Add one typed dry-run service regression proving an unlock failure after durable commit returns `persistence.failure`, leaves the event readable, and makes the same ID conflict on reuse.
+
+- [ ] **Step 2: Run RED**
+
+  Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_workspace.py tests/test_service_status.py -k 'events or unlock_failure'`
+
+  Expected: FAIL because event-directory `mkdir()` and both lock-release calls currently expose raw `OSError`.
+
+- [ ] **Step 3: Implement the narrow persistence conversion**
+
+  Wrap event-directory creation in `ForgePersistenceError("unable to create operation events directory")`. Centralize lock release in one narrow helper that converts only release-time `OSError` to `ForgePersistenceError` with the lock-specific message; do not catch body exceptions, change lock ordering, reclaim tombstones, or add filesystem rollback.
+
+- [ ] **Step 4: Run GREEN and regression**
+
+  Run the RED command, then:
+
+    conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_workspace.py tests/test_service_status.py tests/test_contracts.py tests/test_result_contract.py tests/test_units.py
+
+  Expected: all pass without warning noise.
+
+- [ ] **Step 5: Correct current contract documentation**
+
+  In `README.md`, state that typed operation event payloads use `forge.operation-outcome/v1` with an embedded unchanged `forge.result/v1` envelope. Do not imply that bare `forge.result/v1` is the complete typed event payload.
+
+- [ ] **Step 6: Commit**
+
+    git add src/abacus_forge/workspace.py tests/test_workspace.py tests/test_service_status.py README.md
+    git commit -m "fix: complete workspace persistence boundary"
+
 ## Deliberately deferred plans
 
 1. Agent-first CLI: operation, schema, capabilities, and JSON error/exit mapping consume Forge facts without adding scientific policy.
@@ -408,10 +456,11 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
 
 ## Plan self-review
 
-- **Spec coverage:** Tasks 1–2 establish typed requests and additive event identity; Task 3 defines factual status/observations; Tasks 4–5 build the SCF slice and explicit execution control; Tasks 6–7 close the post-implementation review gaps in pre-side-effect admission, typed failure mapping, machine observation transport, and scientific-policy removal; Task 8 closes the last reproduced primitive-error classification defect.
+- **Spec coverage:** Tasks 1–2 establish typed requests and additive event identity; Task 3 defines factual status/observations; Tasks 4–5 build the SCF slice and explicit execution control; Tasks 6–7 close the post-implementation review gaps in pre-side-effect admission, typed failure mapping, machine observation transport, and scientific-policy removal; Task 8 closes primitive-error classification; Task 9 completes the remaining audit persistence boundary and corrects the current event-payload documentation.
 - **Scope discipline:** v1 CLI and Paimon adapter are deferred because both must consume, not shape, the stable Forge operation contract.
 - **Type consistency:** services consume Task 1 requests, persist via Task 2, and return Task 3 facts without a Forge scientific policy layer.
 - **Review revisions (2026-09-04):** the first review/fix wave was not accepted as complete. Tasks 6–7 replace late duplicate rejection and stale-claim reclaim, require owner proof and same-workspace serialization, distinguish persistence failures by type, freeze `OperationOutcome` as the Agent-visible observation carrier, remove typed-service scientific policy, and add the missing failure matrix. These are contract corrections, not new workflow, recovery, scheduling, or scientific responsibilities.
 - **Final-review closure (2026-09-04):** before integration, Task 7 also closes strict public error-class validation, explicit request-error conversion, real `LocalRunner` signal/timeout/nonzero evidence, symlink resolved-target containment for prepare/modify evidence, stale policy wording in README/AGENTS/test guidance, and removal of unused facade state. These enforce already-approved contracts; they do not expand Forge's role.
 - **Authorized follow-up (2026-09-04):** the Task 7 final-fix re-review left one load-bearing defect at the prepare/modify primitive boundary. The user confirmed a new follow-up phase; Task 8 removes that broad exception wrapper and requires its own task review before a new whole-branch review.
 - **Task 8 whole-branch closure (2026-09-04):** the new whole-branch review found four remaining implementation gaps governed by existing requirements: prepare asset existence checks must occur after admission while pure containment remains before it; launcher executables require the same pre-start classification as the engine executable; admission/lock filesystem failures are persistence failures; execute artifacts, metrics, termination, and observations must carry unambiguous runtime/execute provenance. They are handled together by the one permitted final fix wave.
+- **Authorized Task 9 follow-up (2026-09-04):** the Task 8 final-fix re-review closed the four findings above but reproduced raw `OSError` exits from event-directory creation and lock release. Task 9 owns only those persistence conversions, their public service regressions, and the stale README event-payload sentence. The plan remains open until Task 9 passes task review and a new whole-branch review.
