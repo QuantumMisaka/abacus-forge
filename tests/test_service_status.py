@@ -11,7 +11,19 @@ import threading
 import time
 
 import abacus_forge
-from abacus_forge import ForgeErrorEnvelope, ForgeResultEnvelope, ForgeServices, LocalRunner, OperationOutcome, Workspace
+from abacus_forge import (
+    CollectService,
+    ExecuteService,
+    ForgeErrorEnvelope,
+    ForgeResultEnvelope,
+    ForgeServices,
+    LocalRunner,
+    ModifyService,
+    OperationOutcome,
+    PrepareService,
+    ScfServiceSet,
+    Workspace,
+)
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from abacus_forge.result import RunResult
 from tests.support.fake_executables import write_fake_abacus
@@ -28,6 +40,83 @@ def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
 def _write_prepared_inputs(workspace: Workspace) -> None:
     for input_name in ("INPUT", "STRU", "KPT"):
         (workspace.inputs_dir / input_name).write_text("prepared\n", encoding="utf-8")
+
+
+class _RecordingRunnerFactory:
+    def __init__(self, executable: Path) -> None:
+        self.executable = executable
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(self, **kwargs: object) -> LocalRunner:
+        self.calls.append(dict(kwargs))
+        # Avoid requiring an MPI installation while still exercising the
+        # request's mpi_ranks mapping.
+        return LocalRunner(launcher=("true",), **kwargs)  # type: ignore[arg-type]
+
+
+def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    factory = _RecordingRunnerFactory(executable)
+    services = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+
+    assert isinstance(services.prepare, PrepareService)
+    assert isinstance(services.modify, ModifyService)
+    assert isinstance(services.execute, ExecuteService)
+    assert isinstance(services.collect, CollectService)
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174117",
+        workspace_rel="scf",
+        executable=str(executable),
+        mpi_ranks=3,
+        omp_threads=5,
+        timeout_seconds=12.5,
+    )
+
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert factory.calls == [{
+        "executable": str(executable),
+        "mpi_ranks": 3,
+        "omp_threads": 5,
+        "timeout_seconds": 12.5,
+    }]
+
+
+def test_legacy_forge_services_is_a_serialization_equivalent_shim(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    direct_root = tmp_path / "direct"
+    facade_root = tmp_path / "facade"
+    for root in (direct_root, facade_root):
+        _write_prepared_inputs(Workspace(root / "scf").ensure_layout())
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174118", workspace_rel="scf", executable=str(executable)
+    )
+
+    direct = ScfServiceSet.default(workspace_root=direct_root).execute.execute(request)
+    facade = ForgeServices.default(
+        workspace_root=facade_root, runner=LocalRunner(executable=str(executable))
+    ).execute_scf(request)
+
+    assert isinstance(direct, OperationOutcome)
+    assert isinstance(facade, OperationOutcome)
+    assert direct.to_dict() == facade.to_dict()
+
+
+def test_outcome_contains_each_artifact_ref_once(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    (workspace.outputs_dir / "stdout.log").write_text("NORMAL END\n", encoding="utf-8")
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174119", workspace_rel="scf")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    refs = result.envelope.to_dict()["diagnostics"]["artifact_refs"]
+    keys = [(ref["operation_id"], ref["artifact_id"]) for ref in refs]
+    assert len(keys) == len(set(keys))
 
 
 class _FailIfCalled:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import TypeVar
+from typing import Callable, Protocol, TypeVar, runtime_checkable
 
 from abacus_forge.api import UnitModifySpec, UnitSpec, collect, modify_unit, prepare_unit, execute, suppress_legacy_events
 from abacus_forge.contracts import (
@@ -33,149 +33,38 @@ from abacus_forge.workspace import Workspace
 
 
 RequestT = TypeVar("RequestT")
+ServiceResult = OperationOutcome | ForgeErrorEnvelope
+RunnerFactory = Callable[..., object]
 
 
-class ForgeServices:
-    """Narrow typed SCF facade that preserves the existing primitive API.
+@runtime_checkable
+class PrepareService(Protocol):
+    def prepare(self, request: ScfPrepareRequest) -> ServiceResult: ...
 
-    ``workspace_rel`` is resolved below ``workspace_root``.  The typed
-    request deliberately has no broad UnitSpec payload yet; the first SCF
-    vertical slice therefore uses the legacy SCF defaults and lets later
-    contract work add operation-specific inputs.
-    """
 
-    def __init__(self, *, workspace_root: str | Path = ".", runner: LocalRunner | None = None) -> None:
+@runtime_checkable
+class ModifyService(Protocol):
+    def modify(self, request: ScfModifyRequest) -> ServiceResult: ...
+
+
+@runtime_checkable
+class ExecuteService(Protocol):
+    def execute(self, request: ScfExecuteRequest) -> ServiceResult: ...
+
+
+@runtime_checkable
+class CollectService(Protocol):
+    def collect(self, request: ScfCollectRequest) -> ServiceResult: ...
+
+
+class _ScfServiceContext:
+    """Private shared context for typed SCF operation services."""
+
+    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
         self.workspace_root = Path(workspace_root).resolve()
-        self.runner = runner or LocalRunner()
+        self.runner_factory = runner_factory
 
-    @classmethod
-    def default(
-        cls, *, workspace_root: str | Path = ".", runner: LocalRunner | None = None
-    ) -> "ForgeServices":
-        return cls(workspace_root=workspace_root, runner=runner)
-
-    def prepare_scf(self, request: ScfPrepareRequest) -> OperationOutcome | ForgeErrorEnvelope:
-        if not isinstance(request, ScfPrepareRequest):
-            return self._error("request.invalid", "expected ScfPrepareRequest", None)
-        try:
-            workspace = self._workspace(request.workspace_rel)
-            # Resolve and validate containment before admission.  Existence and
-            # file type are operation preconditions and must be checked after
-            # the ID is durably admitted, so a failed request cannot replay.
-            structure_path = self._workspace_path(workspace, request.structure_path_rel, "structure_path_rel")
-            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
-                self._require_file(structure_path, request.structure_path_rel, "structure_path_rel")
-                with suppress_legacy_events():
-                    result = prepare_unit(
-                        UnitSpec(
-                            task="scf", workdir=workspace.root, structure=structure_path,
-                            structure_format=request.structure_format, parameters=dict(request.parameters),
-                        )
-                    )
-                envelope = ForgeResultEnvelope(
-                    operation="prepare", workspace_rel=request.workspace_rel,
-                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-                    artifacts=_prepare_artifacts(workspace),
-                    diagnostics={"task": result.task, "unit": result.unit,
-                                 "prepare_manifest": "forge-unit.json"},
-                )
-                return self._persist(workspace, request, envelope, owner_token=owner_token)
-        except Exception as error:
-            return self._error_from_exception(error, request)
-
-    def modify_scf(self, request: ScfModifyRequest) -> OperationOutcome | ForgeErrorEnvelope:
-        if not isinstance(request, ScfModifyRequest):
-            return self._error("request.invalid", "expected ScfModifyRequest", None)
-        try:
-            workspace = self._workspace(request.workspace_rel)
-            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
-                self._require_file(workspace.inputs_dir / "INPUT", "inputs/INPUT", "inputs/INPUT")
-                before = _input_snapshot(workspace)
-                with suppress_legacy_events():
-                    result = modify_unit(UnitModifySpec(
-                        task="scf", workdir=workspace.root,
-                        input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
-                    ))
-                after = _input_snapshot(workspace)
-                artifacts = tuple(
-                    ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
-                    for name in result.modified_files if (workspace.inputs_dir / name).is_file()
-                )
-                envelope = ForgeResultEnvelope(
-                    operation="modify", workspace_rel=request.workspace_rel,
-                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-                    artifacts=artifacts,
-                    diagnostics={"task": result.task, "unit": result.unit,
-                                 "modified_files": result.modified_files, "changes": result.changes,
-                                 "input_snapshot_before": before, "input_snapshot_after": after},
-                )
-                return self._persist(workspace, request, envelope, owner_token=owner_token)
-        except Exception as error:
-            return self._error_from_exception(error, request)
-
-    def execute_scf(self, request: ScfExecuteRequest) -> OperationOutcome | ForgeErrorEnvelope:
-        if not isinstance(request, ScfExecuteRequest):
-            return self._error("request.invalid", "expected ScfExecuteRequest", None)
-        try:
-            workspace = self._workspace(request.workspace_rel)
-            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
-                if request.dry_run:
-                    # Dry-run is an explicit typed-service fact.  Do not inspect
-                    # existing logs or invoke the runner.
-                    workspace.ensure_layout()
-                    workspace.write_json(
-                        "forge-result.json",
-                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
-                         "status": "skipped", "returncode": None, "command": [], "dry_run": True},
-                    )
-                    envelope = ForgeResultEnvelope(
-                        operation="execute", workspace_rel=request.workspace_rel,
-                        status=OperationStatus(execution="skipped", scientific="unassessed", collection="not_collected"),
-                        diagnostics={"dry_run": True},
-                    )
-                else:
-                    # Typed services use only this invocation's runner result;
-                    # legacy log-based skip behavior is not part of this path.
-                    for input_name in ("INPUT", "STRU", "KPT"):
-                        self._require_file(
-                            workspace.inputs_dir / input_name,
-                            f"inputs/{input_name}",
-                            f"inputs/{input_name}",
-                        )
-                    preflight = getattr(self.runner, "preflight", None)
-                    if callable(preflight):
-                        try:
-                            preflight(workspace)
-                        except FileNotFoundError as error:
-                            raise ForgePreconditionError(str(error)) from error
-                    result = self.runner.run(workspace)
-                    if result.diagnostics.get("failure_class") == "missing_executable":
-                        raise ForgePreconditionError("configured executable is missing or not executable")
-                    workspace.write_json(
-                        "forge-result.json",
-                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
-                         "status": result.status, "returncode": result.returncode, "command": result.command},
-                    )
-                    envelope = _with_workspace(result.to_envelope(), request.workspace_rel,
-                                               operation_id=request.operation_id)
-                return self._persist(workspace, request, envelope, owner_token=owner_token)
-        except Exception as error:
-            return self._error_from_exception(error, request)
-
-    def collect_scf(self, request: ScfCollectRequest) -> OperationOutcome | ForgeErrorEnvelope:
-        if not isinstance(request, ScfCollectRequest):
-            return self._error("request.invalid", "expected ScfCollectRequest", None)
-        try:
-            workspace = self._workspace(request.workspace_rel)
-            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
-                result = collect(workspace)
-                envelope = _with_workspace(result.to_envelope(), request.workspace_rel,
-                                           operation_id=request.operation_id)
-                return self._persist(workspace, request, envelope, owner_token=owner_token)
-        except Exception as error:
-            return self._error_from_exception(error, request)
-
-    def _workspace(self, workspace_rel: str) -> Workspace:
+    def workspace(self, workspace_rel: str) -> Workspace:
         candidate = (self.workspace_root / workspace_rel).resolve()
         try:
             candidate.relative_to(self.workspace_root)
@@ -184,7 +73,7 @@ class ForgeServices:
         return Workspace(candidate)
 
     @staticmethod
-    def _workspace_path(workspace: Workspace, path_rel: str, field_name: str) -> Path:
+    def workspace_path(workspace: Workspace, path_rel: str, field_name: str) -> Path:
         candidate = (workspace.root / path_rel).resolve()
         try:
             candidate.relative_to(workspace.root)
@@ -193,12 +82,14 @@ class ForgeServices:
         return candidate
 
     @staticmethod
-    def _require_file(candidate: Path, path_rel: str, field_name: str) -> Path:
+    def require_file(candidate: Path, path_rel: str, field_name: str) -> Path:
         if not candidate.is_file():
             raise ForgePreconditionError(f"{field_name} file not found: {path_rel}")
         return candidate
 
-    def _persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope, *, owner_token: str) -> OperationOutcome:
+    def persist(self, workspace: Workspace, request: RequestT, envelope: ForgeResultEnvelope, *, owner_token: str) -> OperationOutcome:
+        # Artifact references are operation-scoped and are injected once, at
+        # the boundary where the serializable outcome is assembled.
         envelope = _with_artifact_refs(envelope, request.operation_id)  # type: ignore[attr-defined]
         outcome = OperationOutcome(
             operation_id=request.operation_id,  # type: ignore[attr-defined]
@@ -211,7 +102,7 @@ class ForgeServices:
         return outcome
 
     @staticmethod
-    def _error(error_class: str, message: str, request: object) -> ForgeErrorEnvelope:
+    def error(error_class: str, message: str, request: object) -> ForgeErrorEnvelope:
         operation_id = getattr(request, "operation_id", None)
         workspace_rel = getattr(request, "workspace_rel", None)
         if not isinstance(operation_id, str):
@@ -226,7 +117,7 @@ class ForgeServices:
             workspace_rel=workspace_rel,
         )
 
-    def _error_from_exception(self, error: Exception, request: object) -> ForgeErrorEnvelope:
+    def error_from_exception(self, error: Exception, request: object) -> ForgeErrorEnvelope:
         if isinstance(error, OperationConflictError):
             error_class = "operation.conflict"
         elif isinstance(error, ForgeSchemaError):
@@ -249,7 +140,7 @@ class ForgeServices:
             "persistence.failure": ("workspace_rel",),
             "precondition.missing": ("request",),
         }.get(error_class, ("request",))
-        result = self._error(error_class, str(error), request)
+        result = self.error(error_class, str(error), request)
         return ForgeErrorEnvelope(
             error_class=result.error_class,
             message=result.message,
@@ -259,10 +150,200 @@ class ForgeServices:
         )
 
 
-def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str, *, operation_id: str | None = None) -> ForgeResultEnvelope:
+class ScfPrepareService:
+    def __init__(self, context: _ScfServiceContext) -> None:
+        self._context = context
+
+    def prepare(self, request: ScfPrepareRequest) -> ServiceResult:
+        if not isinstance(request, ScfPrepareRequest):
+            return self._context.error("request.invalid", "expected ScfPrepareRequest", None)
+        try:
+            workspace = self._context.workspace(request.workspace_rel)
+            # Resolve and validate containment before admission.  Existence and
+            # file type are operation preconditions and must be checked after
+            # the ID is durably admitted, so a failed request cannot replay.
+            structure_path = self._context.workspace_path(workspace, request.structure_path_rel, "structure_path_rel")
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                self._context.require_file(structure_path, request.structure_path_rel, "structure_path_rel")
+                with suppress_legacy_events():
+                    result = prepare_unit(
+                        UnitSpec(
+                            task="scf", workdir=workspace.root, structure=structure_path,
+                            structure_format=request.structure_format, parameters=dict(request.parameters),
+                        )
+                    )
+                envelope = ForgeResultEnvelope(
+                    operation="prepare", workspace_rel=request.workspace_rel,
+                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+                    artifacts=_prepare_artifacts(workspace),
+                    diagnostics={"task": result.task, "unit": result.unit,
+                                 "prepare_manifest": "forge-unit.json"},
+                )
+                return self._context.persist(workspace, request, envelope, owner_token=owner_token)
+        except Exception as error:
+            return self._context.error_from_exception(error, request)
+
+
+class ScfModifyService:
+    def __init__(self, context: _ScfServiceContext) -> None:
+        self._context = context
+
+    def modify(self, request: ScfModifyRequest) -> ServiceResult:
+        if not isinstance(request, ScfModifyRequest):
+            return self._context.error("request.invalid", "expected ScfModifyRequest", None)
+        try:
+            workspace = self._context.workspace(request.workspace_rel)
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                self._context.require_file(workspace.inputs_dir / "INPUT", "inputs/INPUT", "inputs/INPUT")
+                before = _input_snapshot(workspace)
+                with suppress_legacy_events():
+                    result = modify_unit(UnitModifySpec(
+                        task="scf", workdir=workspace.root,
+                        input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
+                    ))
+                after = _input_snapshot(workspace)
+                artifacts = tuple(
+                    ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
+                    for name in result.modified_files if (workspace.inputs_dir / name).is_file()
+                )
+                envelope = ForgeResultEnvelope(
+                    operation="modify", workspace_rel=request.workspace_rel,
+                    status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+                    artifacts=artifacts,
+                    diagnostics={"task": result.task, "unit": result.unit,
+                                 "modified_files": result.modified_files, "changes": result.changes,
+                                 "input_snapshot_before": before, "input_snapshot_after": after},
+                )
+                return self._context.persist(workspace, request, envelope, owner_token=owner_token)
+        except Exception as error:
+            return self._context.error_from_exception(error, request)
+
+
+class ScfExecuteService:
+    def __init__(self, context: _ScfServiceContext) -> None:
+        self._context = context
+
+    def execute(self, request: ScfExecuteRequest) -> ServiceResult:
+        if not isinstance(request, ScfExecuteRequest):
+            return self._context.error("request.invalid", "expected ScfExecuteRequest", None)
+        try:
+            workspace = self._context.workspace(request.workspace_rel)
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                if request.dry_run:
+                    # Dry-run is an explicit typed-service fact.  Do not inspect
+                    # existing logs or invoke the runner.
+                    workspace.ensure_layout()
+                    workspace.write_json(
+                        "forge-result.json",
+                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
+                         "status": "skipped", "returncode": None, "command": [], "dry_run": True},
+                    )
+                    envelope = ForgeResultEnvelope(
+                        operation="execute", workspace_rel=request.workspace_rel,
+                        status=OperationStatus(execution="skipped", scientific="unassessed", collection="not_collected"),
+                        diagnostics={"dry_run": True},
+                    )
+                else:
+                    for input_name in ("INPUT", "STRU", "KPT"):
+                        self._context.require_file(
+                            workspace.inputs_dir / input_name,
+                            f"inputs/{input_name}",
+                            f"inputs/{input_name}",
+                        )
+                    # Build each default runner from this request.  The factory
+                    # hook is only for integration/test doubles; request fields
+                    # remain the sole configuration source for normal callers.
+                    runner = self._context.runner_factory(
+                        executable=request.executable,
+                        mpi_ranks=request.mpi_ranks,
+                        omp_threads=request.omp_threads,
+                        timeout_seconds=request.timeout_seconds,
+                    )
+                    preflight = getattr(runner, "preflight", None)
+                    if callable(preflight):
+                        try:
+                            preflight(workspace)
+                        except FileNotFoundError as error:
+                            raise ForgePreconditionError(str(error)) from error
+                    runner_result = runner.run(workspace)
+                    if runner_result.diagnostics.get("failure_class") == "missing_executable":
+                        raise ForgePreconditionError("configured executable is missing or not executable")
+                    workspace.write_json(
+                        "forge-result.json",
+                        {"step": "execute", "task": "scf", "unit": "default", "engine": "abacus",
+                         "status": runner_result.status, "returncode": runner_result.returncode, "command": runner_result.command},
+                    )
+                    envelope = _with_workspace(runner_result.to_envelope(), request.workspace_rel)
+                return self._context.persist(workspace, request, envelope, owner_token=owner_token)
+        except Exception as error:
+            return self._context.error_from_exception(error, request)
+
+
+class ScfCollectService:
+    def __init__(self, context: _ScfServiceContext) -> None:
+        self._context = context
+
+    def collect(self, request: ScfCollectRequest) -> ServiceResult:
+        if not isinstance(request, ScfCollectRequest):
+            return self._context.error("request.invalid", "expected ScfCollectRequest", None)
+        try:
+            workspace = self._context.workspace(request.workspace_rel)
+            with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                result = collect(workspace)
+                envelope = _with_workspace(result.to_envelope(), request.workspace_rel)
+                return self._context.persist(workspace, request, envelope, owner_token=owner_token)
+        except Exception as error:
+            return self._context.error_from_exception(error, request)
+
+
+class ScfServiceSet:
+    """Per-operation SCF services sharing one private execution context."""
+
+    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
+        context = _ScfServiceContext(workspace_root=workspace_root, runner_factory=runner_factory)
+        self.prepare: PrepareService = ScfPrepareService(context)
+        self.modify: ModifyService = ScfModifyService(context)
+        self.execute: ExecuteService = ScfExecuteService(context)
+        self.collect: CollectService = ScfCollectService(context)
+
+    @classmethod
+    def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> "ScfServiceSet":
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+
+
+class ForgeServices:
+    """Source-compatible facade delegating to :class:`ScfServiceSet`."""
+
+    def __init__(self, *, workspace_root: str | Path = ".", runner: object | None = None) -> None:
+        self.workspace_root = Path(workspace_root).resolve()
+        self.runner = runner or LocalRunner()
+        if runner is None:
+            runner_factory: RunnerFactory = LocalRunner
+        else:
+            runner_factory = lambda **_: self.runner
+        self._service_set = ScfServiceSet.default(workspace_root=self.workspace_root, runner_factory=runner_factory)
+
+    @classmethod
+    def default(
+        cls, *, workspace_root: str | Path = ".", runner: object | None = None
+    ) -> "ForgeServices":
+        return cls(workspace_root=workspace_root, runner=runner)
+
+    def prepare_scf(self, request: ScfPrepareRequest) -> ServiceResult:
+        return self._service_set.prepare.prepare(request)
+
+    def modify_scf(self, request: ScfModifyRequest) -> ServiceResult:
+        return self._service_set.modify.modify(request)
+
+    def execute_scf(self, request: ScfExecuteRequest) -> ServiceResult:
+        return self._service_set.execute.execute(request)
+
+    def collect_scf(self, request: ScfCollectRequest) -> ServiceResult:
+        return self._service_set.collect.collect(request)
+
+
+def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str) -> ForgeResultEnvelope:
     diagnostics = dict(envelope.to_dict()["diagnostics"])  # type: ignore[arg-type]
-    if operation_id is not None:
-        diagnostics["artifact_refs"] = [ArtifactRef(operation_id, artifact.id).to_dict() for artifact in envelope.artifacts]
     return ForgeResultEnvelope(
         operation=envelope.operation,
         workspace_rel=workspace_rel,
