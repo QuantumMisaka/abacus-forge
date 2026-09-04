@@ -98,9 +98,10 @@ PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.js
 cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute --stdin
 ```
 
-`capabilities` 和 `schema scf <operation>` 返回确定性的 JSON 文档。成功的
-`operation` 在 stdout 输出一个 JSON envelope；请求错误、前置条件错误和执行失败也
-使用 JSON error/envelope 输出，诊断信息只写入 stderr。退出码分别为 `0`（无执行失败）、
+`capabilities` 和 `schema scf <operation>` 返回确定性的 JSON 文档。对于 `operation`，
+stdout 始终输出恰好一个完整的 JSON outcome/error envelope（包含错误消息与结果
+diagnostics）。stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
+`0`（无执行失败）、
 `2`（请求或路径错误）、`3`（前置条件缺失）、`4`（进程已启动但执行失败）和 `5`（持久化
 或内部错误）。`--pretty` 只改变 JSON 空白，`--format text` 是同一 envelope 的文字
 投影。

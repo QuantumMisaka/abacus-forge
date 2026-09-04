@@ -121,6 +121,8 @@ def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) 
     section = section_match.group("section")
     assert "operation execute --request request.json" in section
     assert "operation execute --stdin" in section
+    assert "对于 `operation`，\nstdout 始终输出恰好一个完整的 JSON outcome/error envelope" in section
+    assert "stderr 仅保留给受控诊断，当前覆盖路径为空" in section
 
     examples = re.findall(r"```json\n(?P<payload>\{.*?\})\n```", section, flags=re.DOTALL)
     assert len(examples) == 2

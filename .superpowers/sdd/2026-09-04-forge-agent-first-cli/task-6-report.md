@@ -85,3 +85,29 @@ six frozen operation names.
   dry-run requests, so the contract test remains deterministic and offline.
 - Legacy top-level help remains untouched; the new command help is documented
   separately as required.
+
+## Review fix
+
+The task-scoped review identified an imprecise README sentence that could be
+read as placing the operation outcome/error envelope on stderr. The adapter
+behavior was already correct and was not changed. README now states that
+machine stdout always contains exactly one JSON document, that operation output
+is the complete outcome/error envelope including message and result
+diagnostics, and that stderr is reserved for controlled diagnostics and is
+empty on currently covered paths. The architecture documentation test asserts
+these two channel rules, while the existing real subprocess examples continue
+to assert JSON stdout and empty stderr.
+
+Post-fix verification:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_architecture.py tests/test_contracts.py tests/test_service_status.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_cli.py
+207 passed
+
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider
+344 passed, 2 skipped
+```
+
+The final wording pass made the `operation` qualification explicit: its
+stdout document is the single complete JSON outcome/error envelope, while
+`capabilities` and `schema` remain single JSON discovery documents.
