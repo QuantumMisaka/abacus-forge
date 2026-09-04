@@ -18,6 +18,7 @@ RESULT_SCHEMA_VERSION = "forge.result/v1"
 OPERATION_OUTCOME_SCHEMA_VERSION = "forge.operation-outcome/v1"
 WORKSPACE_SCHEMA_VERSION = "forge.workspace/v1"
 ERROR_SCHEMA_VERSION = "forge.error/v1"
+CAPABILITY_SCHEMA_VERSION = "forge.capability/v1"
 ERROR_CLASSES = frozenset({
     "request.invalid",
     "request.schema",
@@ -34,6 +35,7 @@ _SCIENTIFIC_STATUSES = frozenset({"unassessed", "accepted", "guarded", "rejected
 _COLLECTION_STATUSES = frozenset({"not_collected", "complete", "partial", "missing_output"})
 _CHECK_STATUSES = frozenset({"passed", "failed", "warning", "unavailable"})
 _METRIC_KINDS = frozenset({"reported", "derived", "runtime"})
+_CAPABILITY_MATURITIES = frozenset({"experimental", "stable"})
 
 
 def _json_round_trip(value: object) -> JSONValue:
@@ -76,6 +78,18 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
     if not valid:
         allowed_values = ", ".join(sorted(allowed))
         raise ValueError(f"{field_name} must be one of: {allowed_values}")
+
+
+def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
+    if isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must contain non-empty strings")
+    try:
+        values = tuple(value)  # type: ignore[arg-type]
+    except TypeError as error:
+        raise ValueError(f"{field_name} must contain non-empty strings") from error
+    if not all(isinstance(item, str) and item for item in values):
+        raise ValueError(f"{field_name} must contain non-empty strings")
+    return values
 
 
 def _require_schema_version(value: str, expected: str) -> None:
@@ -147,6 +161,62 @@ def canonical_relative_path(value: str) -> str:
     ):
         raise ValueError("path_rel must be a canonical relative POSIX path")
     return path.as_posix()
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilityDescriptor:
+    """Versioned description of one capability exposed by Forge discovery."""
+
+    name: str
+    maturity: Literal["experimental", "stable"]
+    engine: str
+    operations: Sequence[str]
+    inputs: Mapping[str, Sequence[str]]
+    artifact_roles: Sequence[str]
+    optional_dependencies: Sequence[str]
+    schema_version: str = CAPABILITY_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.name, "name")
+        _require_literal(self.maturity, _CAPABILITY_MATURITIES, "maturity")
+        _require_nonempty_string(self.engine, "engine")
+        operations = _string_sequence(self.operations, "operations")
+        if not operations or len(set(operations)) != len(operations):
+            raise ValueError("operations must contain unique non-empty strings")
+        if not isinstance(self.inputs, Mapping):
+            raise ValueError("inputs must be a mapping")
+        input_values: dict[str, tuple[str, ...]] = {}
+        for operation, input_names in self.inputs.items():
+            if not isinstance(operation, str) or not operation:
+                raise ValueError("inputs keys must be non-empty strings")
+            input_values[operation] = _string_sequence(input_names, f"inputs[{operation!r}]")
+        if set(input_values) != set(operations):
+            raise ValueError("inputs must describe every advertised operation")
+        artifact_roles = _string_sequence(self.artifact_roles, "artifact_roles")
+        if not artifact_roles or len(set(artifact_roles)) != len(artifact_roles):
+            raise ValueError("artifact_roles must contain unique non-empty strings")
+        optional_dependencies = _string_sequence(self.optional_dependencies, "optional_dependencies")
+        _require_schema_version(self.schema_version, CAPABILITY_SCHEMA_VERSION)
+        object.__setattr__(self, "operations", operations)
+        object.__setattr__(self, "inputs", _freeze_json(input_values))
+        object.__setattr__(self, "artifact_roles", artifact_roles)
+        object.__setattr__(self, "optional_dependencies", optional_dependencies)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": self.schema_version,
+            "name": self.name,
+            "maturity": self.maturity,
+            "engine": self.engine,
+            "operations": list(self.operations),
+            "inputs": _thaw_json(self.inputs),
+            "artifact_roles": list(self.artifact_roles),
+            "optional_dependencies": list(self.optional_dependencies),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> CapabilityDescriptor:
+        return _construct_strict(cls, payload, "capability descriptor")
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 
 import pytest
@@ -20,7 +21,14 @@ from abacus_forge.contracts import (
     ScfExecuteRequest,
     ScfModifyRequest,
     ScfPrepareRequest,
+    CapabilityDescriptor,
 )
+from abacus_forge.discovery import (
+    SCF_REQUEST_TYPES,
+    capabilities_document,
+    request_schema_document,
+)
+from abacus_forge.errors import ForgeRequestError
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
@@ -337,6 +345,98 @@ def test_contract_records_reject_wrong_schema_versions_and_status_values() -> No
         ForgeRequest(operation="prepare", workspace_rel=".", payload={}, schema_version="forge.request/v2")
     with pytest.raises(ValueError, match="execution"):
         OperationStatus(execution="running", scientific="unassessed", collection="not_collected")  # type: ignore[arg-type]
+
+
+def test_capability_descriptor_round_trips_strictly() -> None:
+    descriptor = CapabilityDescriptor(
+        name="scf",
+        maturity="experimental",
+        engine="abacus",
+        operations=("prepare", "modify", "execute", "collect"),
+        inputs={
+            "prepare": ("structure",),
+            "modify": ("prepared_workspace",),
+            "execute": ("prepared_workspace",),
+            "collect": ("workspace_outputs",),
+        },
+        artifact_roles=("input", "provenance_manifest", "output"),
+        optional_dependencies=(),
+    )
+    payload = descriptor.to_dict()
+    assert payload["schema_version"] == "forge.capability/v1"
+    assert CapabilityDescriptor.from_dict(json.loads(json.dumps(payload))) == descriptor
+    with pytest.raises(ValueError, match="unknown"):
+        CapabilityDescriptor.from_dict({**payload, "extra": True})
+
+
+def test_capability_descriptor_rejects_invalid_values() -> None:
+    kwargs = dict(
+        name="scf",
+        maturity="experimental",
+        engine="abacus",
+        operations=("prepare",),
+        inputs={"prepare": ("structure",)},
+        artifact_roles=("input",),
+        optional_dependencies=(),
+    )
+    with pytest.raises(ValueError, match="maturity"):
+        CapabilityDescriptor(**{**kwargs, "maturity": "stable-ish"})
+    with pytest.raises(ValueError, match="operations"):
+        CapabilityDescriptor(**{**kwargs, "operations": ()})
+    with pytest.raises(ValueError, match="schema_version"):
+        CapabilityDescriptor(**{**kwargs, "schema_version": "forge.capability/v2"})
+
+
+def test_capabilities_document_is_fresh_and_advertises_only_scf() -> None:
+    payload = capabilities_document()
+    assert payload["schema_version"] == "forge.capabilities/v1"
+    assert [item["name"] for item in payload["capabilities"]] == ["scf"]
+    assert payload["capabilities"][0]["maturity"] == "experimental"
+    assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    payload["capabilities"][0]["operations"].append("export")
+    payload["capabilities"][0]["inputs"]["prepare"].append("mutated")
+    assert capabilities_document()["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert capabilities_document()["capabilities"][0]["inputs"]["prepare"] == ["structure"]
+
+
+def _discovery_request(operation: str):
+    kwargs = {"operation_id": OPERATION_ID, "workspace_rel": "."}
+    if operation == "prepare":
+        kwargs["structure_path_rel"] = "source.STRU"
+    return SCF_REQUEST_TYPES[operation](**kwargs)
+
+
+@pytest.mark.parametrize("operation", ["prepare", "modify", "execute", "collect"])
+def test_request_schema_matches_contract_fields_and_wire_keys(operation: str) -> None:
+    document = request_schema_document("scf", operation)
+    schema = document["request_schema"]
+    request_type = SCF_REQUEST_TYPES[operation]
+    field_keys = {item.name for item in dataclasses.fields(request_type)} | {"operation"}
+    assert schema["additionalProperties"] is False
+    assert set(schema["properties"]) == field_keys
+    assert set(schema["properties"]) == set(_discovery_request(operation).to_dict())
+
+
+@pytest.mark.parametrize("operation", ["prepare", "modify", "execute", "collect"])
+def test_request_schema_freezes_required_constants_and_bounds(operation: str) -> None:
+    schema = request_schema_document("scf", operation)["request_schema"]
+    required = {"schema_version", "operation", "operation_id", "workspace_rel"}
+    if operation == "prepare":
+        required.add("structure_path_rel")
+    assert set(schema["required"]) == required
+    assert schema["properties"]["schema_version"]["const"] == "forge.request/v1"
+    assert schema["properties"]["operation"]["const"] == operation
+    if operation == "execute":
+        assert schema["properties"]["mpi_ranks"]["minimum"] == 1
+        assert schema["properties"]["omp_threads"]["minimum"] == 1
+        assert schema["properties"]["timeout_seconds"]["exclusiveMinimum"] == 0
+
+
+@pytest.mark.parametrize("capability,operation", [("relax", "prepare"), ("scf", "postprocess")])
+def test_unknown_schema_selector_raises_request_error(capability: str, operation: str) -> None:
+    with pytest.raises(ForgeRequestError):
+        request_schema_document(capability, operation)
 
 
 def test_result_envelope_rejects_duplicate_artifacts_and_missing_metric_sources() -> None:
