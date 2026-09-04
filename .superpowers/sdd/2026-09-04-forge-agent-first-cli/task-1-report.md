@@ -48,3 +48,11 @@ Result: `269 passed, 2 skipped`.
 ## Concerns
 
 The brief mentions rejecting empty argv entries, but the specified interface explicitly excludes argv/extra args. No argv field was introduced; empty executable values are rejected.
+
+## Review fix evidence
+
+Review identified missing direct coverage for negative values and wrong/non-JSON types in the newly added fields. Added parametrized cases covering negative `mpi_ranks`, `omp_threads`, and `timeout_seconds`, plus list/dict executable values and string/list-like numeric values.
+
+Focused verification after the fix: `112 passed`.
+
+Full-suite verification after the fix: `278 passed, 2 skipped`.

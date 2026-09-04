@@ -136,13 +136,22 @@ def test_scf_execute_request_round_trips_local_runner_configuration() -> None:
     "field,value",
     [
         ("executable", ""),
+        ("executable", ["abacus"]),
+        ("executable", {"path": "abacus"}),
         ("mpi_ranks", 0),
+        ("mpi_ranks", -1),
         ("mpi_ranks", True),
+        ("mpi_ranks", "4"),
         ("omp_threads", 0),
+        ("omp_threads", -1),
         ("omp_threads", True),
+        ("omp_threads", "2"),
         ("timeout_seconds", 0.0),
+        ("timeout_seconds", -1.0),
         ("timeout_seconds", float("inf")),
         ("timeout_seconds", float("nan")),
+        ("timeout_seconds", "120"),
+        ("timeout_seconds", {"seconds": 120}),
     ],
 )
 def test_scf_execute_request_rejects_invalid_runner_configuration(field: str, value: object) -> None:
