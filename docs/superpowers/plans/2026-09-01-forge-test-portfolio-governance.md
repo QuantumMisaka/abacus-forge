@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将 `abacus-forge` 的现有测试治理为分层、可解释、可复现的质量门禁，保留真实科学计算契约，补齐 Agent-first CLI 与迁移兼容证据，并把真实 ABACUS smoke/benchmark 从默认离线回归中明确隔离。
+**Goal:** 将 `abacus-forge` 的现有测试治理为分层、可解释、可复现的质量门禁，保留真实 ABACUS 输入/输出操作契约，补齐 Agent-first CLI 与迁移兼容证据，并把真实 ABACUS smoke/benchmark 从默认离线回归中明确隔离。
 
 **Spec:** none - requirements supplied directly by the user and constrained by `../AGENTS.md` plus this repository's `AGENTS.md`; the user explicitly confirmed large-scale test governance and requested TDD plus subagent-driven execution.
 
@@ -15,7 +15,7 @@
 - Forge 运行时不得重新依赖 `abacus-agent-tools`、`abacus-test`、AiiDA、Bohrium、DPDispatcher 或 Slurm；参考 fixture 只能作为测试数据。
 - `prepare`、`modify-*`、`execute`、`collect`、`export` 的既有 Python API、目录布局、结果字段和默认 CLI 用法保持向后兼容；新增 `prepare --json` 必须不改变未传该选项时的路径输出。
 - 默认 `pytest -q` 不得访问网络、调度器、真实集群或用户工作目录；真实计算只能由 `--run-real-smoke` 与显式环境变量启用。
-- 只有经过真实 ABACUS smoke 的能力才可以被标记为稳定科学能力；仅有 mock/fixture 的 property pack 保持 `experimental`，不得进入 Paimon v1.3 稳定能力面。
+- 只有经过真实 ABACUS smoke 的能力才可以被标记为稳定操作能力；仅有 mock/fixture 的 property pack 保持 `experimental`，不得进入 Paimon v1.3 稳定能力面。科学结果是否可接受不由 Forge 或本计划判断。
 - 保留 ABACUS 固定宽度输出 fixture 的原始字节（包括行尾空格）；fixture 不进入安装后的 `abacus_forge` 包。
 - 新增或改变生产可观察行为必须记录 RED、GREEN、REFACTOR；纯测试移动/抽取/标记不伪造生产 RED，但必须先保存基线、逐批回归，并对删除/合并项执行真实 mutation 检查。
 - 测试预期值必须来自手工核对或独立 fixture，不得调用被测实现来计算 expected；不得保留只验证源码文本、测试 mock 存在或覆盖率数字的断言。

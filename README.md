@@ -2,14 +2,14 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 执行基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及实验性 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用。`run` 仍作为 `execute` 的兼容别名保留。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 快捷消费基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及实验性 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）。`run` 仍作为 `execute` 的兼容别名保留。
 
 ## 当前定位
 
 - 面向单个工作目录的输入准备、输入编辑、程序拉起与结果收集。
 - 保持轻量边界：不处理 Slurm/Bohrium/DPDispatcher 等调度与平台编排。
-- 作为协议与平台无关的科学计算内核，同时被 ABACUS Agent（Paimon）v1.3 适配层、其他 workflow/agent 和独立 CLI 用户消费。
-- CLI 优先保持非交互式、参数显式与结果结构化；TUI 和数字 Task-ID 不定义核心能力协议。
+- 作为协议与平台无关的 ABACUS 单元操作基座，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）；其他 workflow/agent 通过同一契约消费并自行完成科学判断。
+- CLI 提供参数显式、结果结构化的非交互机器路径；可选 TUI 可以基于 Python API 或结构化 CLI envelope 套壳，提供 VASPKIT/AbacusCopilot 风格的人类导航，但 TUI 和数字 Task-ID 不定义核心能力协议。
 
 ## 成熟度与文档入口
 
@@ -19,7 +19,7 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 
 - 科研用户与调用者：阅读本文、[ROADMAP.md](./ROADMAP.md) 和 CLI `--help`，按成熟度选择能力。
 - 人类与 AI 开发者：先阅读 [AGENTS.md](./AGENTS.md)；其中定义边界、测试和开发路由。
-- 架构与 Paimon v1.3 迁移规范：阅读 [契约优先重构 SPEC](./docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。
+- 架构与 Paimon v1.3 迁移规范：先阅读 [契约优先重构 SPEC](./docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)，再阅读其 [Service/Status 细化 SPEC](./docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html)。
 - 实施前的文档先行流程：阅读 [开发治理入口](./docs/superpowers/README.md)。
 
 ## 当前已实现能力
@@ -102,7 +102,7 @@ Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 才能产生
 
 ### 本地 property pack
 
-> **成熟度：实验性。** 以下能力已具备 API/CLI 和 mock/fixture 回归，但尚未逐项完成真实 ABACUS 计算验收；不应视为 PAIMON v1.3 已稳定暴露的能力。
+> **成熟度：实验性。** 以下能力已具备 API/CLI 和 mock/fixture 回归，但尚未逐项完成真实 ABACUS 操作/解析验收；不应视为 PAIMON v1.3 已稳定暴露的能力。
 
 - `abacus-forge convergence prepare|run|post`
 - `abacus-forge charge-density prepare|run|post`
@@ -366,7 +366,7 @@ runs/<run_id>/
       <event-id>-<operation>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个事件文件保存事件 ID、操作名和 v1 结果 envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；请求文件 CLI、扩展状态策略、ATP 集成和真实计算验收不属于本说明的保证范围。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；请求文件 CLI、扩展状态策略、ATP 集成和真实操作/解析验收不属于本说明的保证范围。
 
 事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
 

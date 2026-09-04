@@ -5,11 +5,10 @@
 
 ## 1. 开发者快速入口
 - **先看顺序**：`AGENTS.md -> README.md -> tests/`
-- **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算内核，同时服务 ABACUS Agent（Paimon）v1.3 适配层和独立 CLI 用户。
+- **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算快捷消费基座，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）。
 - **工作模式**：作为纯 Python 库和 Agent-first CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
 - **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`export` 的职责边界；`run` 仅作为兼容别名。
-- **typed SCF 状态边界**：`ForgeServices` 的 typed SCF 路径只交付 execution/collection 事实与 observations；若兼容结果保留 `scientific` 字段，Forge 只写 `unassessed`，不在 Forge 内作科学判定。`dry_run` 必须由请求显式指定，不能从已有日志推断 `skipped`。`run_many(skip_completed=True)` 保留为 legacy composite helper，不得被 typed service 复用为状态协议。
-- **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 验收的稳定能力。
+- **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 运行验证的稳定操作能力；科学结果是否可接受由上层人类/Agent 判断。
 
 ## 2. 本地开发与验证
 - **CLI 开发态运行**：
@@ -22,7 +21,7 @@
 - 默认回归不得访问真实集群；`real_smoke` 与 `benchmark` 只能通过显式 pytest 选项运行。
 - 删除或合并测试前必须记录真实 mutation 及剩余测试的失败证据；不得以测试数量或覆盖率替代行为证据。
 - 第三方 warning 只能按精确模块与消息过滤；项目自身 warning 应修复，不得静默。
-- `compat`/`benchmark` 是迁移证据，`real_smoke` 是发布证据；以上任何一类测试单独都不能证明物理收敛或 HPC 调度器正确性。
+- `compat`/`benchmark` 是迁移证据，`real_smoke` 是操作发布证据；以上测试不承担科学结论或 HPC 调度器判断。
 - New Forge artifacts exposed across an operation boundary require a v1 `ArtifactRecord` and a regression asserting a workspace-relative path.
 - `reports/forge-workspace.json` and `reports/events/*.json` are append-only audit records; do not replace them with a mutable last-result file.
 - Run `tests/test_contracts.py`, `tests/test_workspace.py`, and the owning API/result tests whenever contracts or workspace persistence change.
@@ -35,7 +34,7 @@
 - **禁止依赖云服务编排**：严禁引入 Bohrium、DPDispatcher 等外部平台依赖。
 - **禁止处理上层协议**：严禁包含 MCP、ATP 等协议编解码逻辑。
 - **禁止耦合 AiiDA 语义**：严禁在 Forge 中处理 AiiDA Group、Node UUID、特定命名策略等上层语义。
-- **禁止前端逻辑**：严禁引入页面状态管理或 UI 强耦合交付物渲染逻辑。
+- **核心禁止前端耦合**：Forge core 严禁引入页面状态管理或 UI 强耦合交付物渲染逻辑；若实现本地 TUI，只能作为 Python API/结构化 CLI envelope 之上的可选薄壳。
 - **禁止原样照搬 Legacy workflow**：从 `abacus-test` 等旧库提取能力时，必须剥离厚工作流，只保留输入归一化、指标解析等底层能力。
 
 ## 4. 核心契约抽象原则
@@ -54,9 +53,7 @@
 
 按当前 Superpowers 路由开发：L1 局部可逆修改做最小验证；L2 行为变更先建立回归证据，适用时使用 TDD；L3α（设计未定的公共边界）先 `brainstorming` 和 SPEC，L3β（用户已拍板的多步骤工作）先 `writing-plans`。L3 的 SPEC/PLAN 必须存入 `docs/superpowers/`；实施前应取得对应设计/计划批准。完成声明只认 diff 与命令输出。
 
-当前 Paimon v1.3 迁移的设计基线是 [契约优先重构 SPEC](docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。在它获批前，不得以重构名义修改公共 CLI、结果 schema、workspace 持久化语义或 ATP adapter 边界。
-
-当前阶段的 typed SCF service 仅负责 Forge 内部契约与本地 runner 边界；Agent-first CLI、真实 ABACUS/PyATB 验收以及独立 `paimon-v3` adapter/benchmark 仓库均延后到 typed 输出稳定后推进。
+当前 Paimon v1.3 迁移的设计基线由 [契约优先重构 SPEC](docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 与其 [Service/Status 细化 SPEC](docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html) 共同构成；后者在 operation identity、执行/收集状态、v1 CLI/error 协议与兼容迁移范围内优先。实施不得绕过其中任一 SPEC 修改公共 CLI、结果 schema、workspace 持久化语义或 ATP adapter 边界。
 
 ## 6. 跨项目联动说明
 在进行实质性开发前，应核对工作区当前产品边界：

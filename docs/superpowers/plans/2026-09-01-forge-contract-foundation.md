@@ -1,12 +1,16 @@
 # ABACUS-Forge Contract Foundation Implementation Plan
 
+> **边界修订（2026-09-03）**：本文记录早期契约基础实现。当前规范不再把 scientific policy/acceptance 作为 Forge 责任；后续实现以 `2026-09-02-forge-service-status-migration-design.html` 及其更新后的 PLAN 为准。
+>
+> **二次修订（2026-09-03 跨模型设计审查）**：正文 `OperationStatus.scientific` 样例恢复为已交付的四值类型（保留对历史 `accepted`/`guarded`/`rejected` 事件的 round-trip 能力）；Forge 新写入恒为 `unassessed`，且实现不得收窄该类型。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the versioned, protocol-neutral request/result/workspace contract foundation required before Forge services, CLI, and Paimon v1.3 adapters can migrate.
 
 **Spec:** `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html` (approved 2026-09-01; implement R1, R2, R3, R5 and the Phase 1 portion of the rollout section)
 
-**Architecture:** Keep the current `prepare`, `modify`, `execute`, `collect`, `export`, `RunResult`, `CollectionResult`, workspace layout, and `forge-result.json` behavior compatible. Add a small `contracts.py` module and append-only workspace records under `reports/`; existing services expose v1 envelopes in parallel rather than changing their legacy `to_dict()` payloads. A later plan will introduce typed per-operation requests, service extraction, status policy, CLI request-file support, and the ATP adapter.
+**Architecture:** Keep the current `prepare`, `modify`, `execute`, `collect`, `export`, `RunResult`, `CollectionResult`, workspace layout, and `forge-result.json` behavior compatible. Add a small `contracts.py` module and append-only workspace records under `reports/`; existing services expose v1 envelopes in parallel rather than changing their legacy `to_dict()` payloads. A later plan will introduce typed per-operation requests, factual execution/collection status, CLI request-file support, and the ATP adapter.
 
 **Tech Stack:** Python 3.10+, standard-library dataclasses/json/hashlib/tempfile/uuid, existing pytest suite, Hatchling package layout.
 
@@ -71,7 +75,7 @@ def test_result_envelope_round_trips_with_relative_artifacts() -> None:
     result = ForgeResultEnvelope(
         operation="collect",
         workspace_rel=".",
-        status=OperationStatus(execution="completed", scientific="accepted", collection="complete"),
+        status=OperationStatus(execution="completed", scientific="unassessed", collection="complete"),
         artifacts=[ArtifactRecord(id="runtime_log", path_rel="outputs/stdout.log", role="runtime_log", stage="abacus")],
         metrics=[MetricRecord(name="total_energy", value=-5.0, unit="eV", kind="reported", source_artifact_id="runtime_log")],
     )
@@ -159,7 +163,7 @@ class CheckRecord:
 @dataclass(frozen=True, slots=True)
 class OperationStatus:
     execution: Literal["not_run", "completed", "failed", "skipped"]
-    scientific: Literal["unassessed", "accepted", "guarded", "rejected"]
+    scientific: Literal["unassessed", "accepted", "guarded", "rejected"]  # four-value type retained for historical event round-trip; new Forge writes are always unassessed
     collection: Literal["not_collected", "complete", "partial", "missing_output"]
 
 
@@ -384,7 +388,7 @@ def _collection_envelope(self: CollectionResult) -> ForgeResultEnvelope:
         workspace_rel=".",
         status=OperationStatus(
             execution="not_run",
-            scientific="accepted" if converged else "guarded",
+            scientific="unassessed",
             collection=_collection_state(self.status),
         ),
         artifacts=artifacts,
@@ -397,7 +401,7 @@ def _collection_envelope(self: CollectionResult) -> ForgeResultEnvelope:
 
 Bind `_collection_envelope` as `CollectionResult.to_envelope`; implement equivalent `RunResult.to_envelope` and `TaskResult.to_envelope` with the same helper functions. `_workspace_artifact_records(workspace, artifacts)` must use deterministic IDs `stdout_log`, `stderr_log`, and `artifact-<sha256-of-path_rel[:12]>` for unnamed collected files. For an existing artifact path outside the workspace root, omit it and append a warning; do not serialize an absolute path as a portable artifact. `_scalar_metric_records` returns named records only for `None`, bool, int, float, and str values; it retains JSON-safe nested legacy metrics in `diagnostics["legacy_metrics"]` until the later metric-schema migration.
 
-In `api.py`, after each successful `prepare_unit`, `modify_unit`, `execute_unit`, and `collect_unit`, call `_record_operation_event()` with the relevant v1 envelope. Preserve the existing `forge-unit.json` and `forge-result.json` writes exactly for compatibility. For `prepare_unit`, construct a prepared envelope with execution `not_run`, scientific `unassessed`, collection `not_collected`; include `forge-unit.json` as a `provenance_manifest` artifact when it exists.
+In `api.py`, after each successful `prepare_unit`, `modify_unit`, `execute_unit`, and `collect_unit`, call `_record_operation_event()` with the relevant v1 envelope. Preserve the existing `forge-unit.json` and `forge-result.json` writes exactly for compatibility. For `prepare_unit`, construct a prepared envelope with execution `not_run`, scientific `unassessed`, collection `not_collected`; include `forge-unit.json` as a `provenance_manifest` artifact when it exists. Keep all scientific acceptance and interpretation outside Forge.
 
 - [ ] **Step 4: Run the owning suites and full deterministic regression**
 
@@ -473,9 +477,9 @@ This plan covers SPEC requirements R1, R2, R3, R5, R11, and R12 at the contract-
 
 After this plan is verified, create the following plans in order:
 
-1. **Service and status migration:** typed per-operation requests; task-aware execution/scientific/collection status policy; runner/engine protocol; legacy `UnitSpec` compatibility shim.
+1. **Service and status migration:** typed per-operation requests; factual execution/collection status and observations; runner/engine protocol; legacy `UnitSpec` compatibility shim.
 2. **Agent-first CLI migration:** request-file/stdin input, schema discovery, JSON error envelope, stable exit classes, and process tests.
-3. **Paimon thin adapter and acceptance:** ATP output/evidence projection, legacy-runtime dependency removal, benchmark parity, and real ABACUS/PyATB smoke matrix.
+3. **Paimon thin adapter and upper-layer acceptance:** ATP output/evidence projection, legacy-runtime dependency removal, benchmark parity, and real ABACUS/PyATB operation smoke matrix; scientific acceptance remains in the upper layer.
 
 ## Plan self-review
 

@@ -32,13 +32,14 @@ artifacts must run the offline contract gate below, together with any owning
 API/result tests:
 
 ```bash
-conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py tests/test_service_status.py
 ```
 
 `tests/test_contracts.py` owns record validation, `tests/test_workspace.py`
 owns the append-only manifest and event paths, and
 `tests/test_result_contract.py` plus `tests/test_units.py` own result/API
-projections. The v1 workspace manifest and event records are additive; legacy
+projections, and `tests/test_service_status.py` owns the typed service's public
+error and observation mapping. The v1 workspace manifest and event records are additive; legacy
 `forge-unit.json` and `forge-result.json` compatibility outputs remain covered
 by the unit tests.
 
