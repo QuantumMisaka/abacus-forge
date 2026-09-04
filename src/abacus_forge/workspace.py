@@ -465,8 +465,6 @@ class Workspace:
                     event_path, {"id": operation_id, "operation": operation, "payload": normalized_payload}
                 )
             except OSError as error:
-                if claim_token is None:
-                    raise
                 raise ForgePersistenceError("unable to persist operation event") from error
             event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
             manifest["events"].append({"id": operation_id, "operation": operation, "path_rel": event_rel})
@@ -475,8 +473,6 @@ class Workspace:
             except OSError as error:
                 # Leave both the immutable event and the admission tombstone:
                 # the event can be reconciled, while the ID cannot be replayed.
-                if claim_token is None:
-                    raise
                 raise ForgePersistenceError("unable to persist workspace manifest") from error
             if claim_token is not None:
                 try:

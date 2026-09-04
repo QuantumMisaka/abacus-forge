@@ -56,7 +56,7 @@ class ForgeServices:
 
     def prepare_scf(self, request: ScfPrepareRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfPrepareRequest):
-            return self._error("request.invalid", "expected ScfPrepareRequest", request)
+            return self._error("request.invalid", "expected ScfPrepareRequest", None)
         try:
             workspace = self._workspace(request.workspace_rel)
             # Resolve and validate containment before admission.  Existence and
@@ -85,10 +85,11 @@ class ForgeServices:
 
     def modify_scf(self, request: ScfModifyRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfModifyRequest):
-            return self._error("request.invalid", "expected ScfModifyRequest", request)
+            return self._error("request.invalid", "expected ScfModifyRequest", None)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                self._require_file(workspace.inputs_dir / "INPUT", "inputs/INPUT", "inputs/INPUT")
                 before = _input_snapshot(workspace)
                 with suppress_legacy_events():
                     result = modify_unit(UnitModifySpec(
@@ -114,7 +115,7 @@ class ForgeServices:
 
     def execute_scf(self, request: ScfExecuteRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfExecuteRequest):
-            return self._error("request.invalid", "expected ScfExecuteRequest", request)
+            return self._error("request.invalid", "expected ScfExecuteRequest", None)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
@@ -135,6 +136,12 @@ class ForgeServices:
                 else:
                     # Typed services use only this invocation's runner result;
                     # legacy log-based skip behavior is not part of this path.
+                    for input_name in ("INPUT", "STRU", "KPT"):
+                        self._require_file(
+                            workspace.inputs_dir / input_name,
+                            f"inputs/{input_name}",
+                            f"inputs/{input_name}",
+                        )
                     preflight = getattr(self.runner, "preflight", None)
                     if callable(preflight):
                         try:
@@ -157,7 +164,7 @@ class ForgeServices:
 
     def collect_scf(self, request: ScfCollectRequest) -> OperationOutcome | ForgeErrorEnvelope:
         if not isinstance(request, ScfCollectRequest):
-            return self._error("request.invalid", "expected ScfCollectRequest", request)
+            return self._error("request.invalid", "expected ScfCollectRequest", None)
         try:
             workspace = self._workspace(request.workspace_rel)
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:

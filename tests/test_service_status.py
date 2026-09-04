@@ -20,8 +20,14 @@ from tests.support.fake_executables import write_fake_abacus
 def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
     workspace = Workspace(tmp_path / "scf")
     workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
     (workspace.outputs_dir / "stdout.log").write_text(content + "\n", encoding="utf-8")
     return workspace.root
+
+
+def _write_prepared_inputs(workspace: Workspace) -> None:
+    for input_name in ("INPUT", "STRU", "KPT"):
+        (workspace.inputs_dir / input_name).write_text("prepared\n", encoding="utf-8")
 
 
 class _FailIfCalled:
@@ -65,6 +71,7 @@ def test_typed_execute_real_local_runner_preserves_process_termination_facts(
     expected_returncode: int,
     operation_suffix: str,
 ) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = tmp_path / "runner.py"
     executable.write_text(f"#!{sys.executable}\n{behavior}\n", encoding="utf-8")
     executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
@@ -198,12 +205,122 @@ def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path
     assert result.workspace_rel is None
 
 
+@pytest.mark.parametrize(
+    "method_name",
+    [
+        "prepare_scf",
+        "modify_scf",
+        "execute_scf",
+        "collect_scf",
+    ],
+)
+def test_typed_scf_services_do_not_copy_context_from_wrong_request_type(
+    tmp_path: Path,
+    method_name: str,
+) -> None:
+    class ForeignRequest:
+        operation_id = "bad"
+        workspace_rel = "../bad"
+
+    result = getattr(ForgeServices.default(workspace_root=tmp_path), method_name)(ForeignRequest())
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    assert result.operation_id is None
+    assert result.workspace_rel is None
+
+
+@pytest.mark.parametrize(
+    ("method_name", "typed_request", "missing_path", "operation_id"),
+    [
+        (
+            "modify_scf",
+            ScfModifyRequest(
+                operation_id="123e4567-e89b-42d3-a456-426614174211",
+                workspace_rel="scf",
+                input_updates={"ecutwfc": 90},
+            ),
+            "inputs/INPUT",
+            "123e4567-e89b-42d3-a456-426614174211",
+        ),
+        (
+            "execute_scf",
+            ScfExecuteRequest(
+                operation_id="123e4567-e89b-42d3-a456-426614174212",
+                workspace_rel="scf",
+            ),
+            "inputs/INPUT",
+            "123e4567-e89b-42d3-a456-426614174212",
+        ),
+        (
+            "execute_scf",
+            ScfExecuteRequest(
+                operation_id="123e4567-e89b-42d3-a456-426614174213",
+                workspace_rel="scf",
+            ),
+            "inputs/STRU",
+            "123e4567-e89b-42d3-a456-426614174213",
+        ),
+        (
+            "execute_scf",
+            ScfExecuteRequest(
+                operation_id="123e4567-e89b-42d3-a456-426614174214",
+                workspace_rel="scf",
+            ),
+            "inputs/KPT",
+            "123e4567-e89b-42d3-a456-426614174214",
+        ),
+    ],
+)
+def test_typed_scf_missing_inputs_are_admitted_preconditions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method_name: str,
+    typed_request: ScfModifyRequest | ScfExecuteRequest,
+    missing_path: str,
+    operation_id: str,
+) -> None:
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    for relative_path in ("inputs/INPUT", "inputs/STRU", "inputs/KPT"):
+        if relative_path != missing_path:
+            (workspace.root / relative_path).write_text("prepared\n", encoding="utf-8")
+
+    services_module = __import__("abacus_forge.services", fromlist=["services"])
+
+    def fail_modify(*args, **kwargs):
+        raise AssertionError("missing-input precondition must stop before modify primitive")
+
+    monkeypatch.setattr(services_module, "modify_unit", fail_modify)
+
+    class FailRunner:
+        def preflight(self, workspace):
+            raise AssertionError("missing-input precondition must stop before runner preflight")
+
+        def run(self, workspace):
+            raise AssertionError("missing-input precondition must stop before runner")
+
+    services = ForgeServices.default(workspace_root=tmp_path, runner=FailRunner())  # type: ignore[arg-type]
+    first = getattr(services, method_name)(typed_request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "precondition.missing"
+    assert (workspace.reports_dir / "claims" / f"{operation_id}.json").exists()
+    assert not list((workspace.reports_dir / "events").glob(f"{operation_id}-*.json"))
+
+    second = getattr(services, method_name)(typed_request)
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+
+
 def test_typed_scf_internal_failure_returns_error_without_caller_event(tmp_path: Path) -> None:
     class FailingRunner:
         def run(self, workspace):
             raise RuntimeError("runner fixture failed")
 
     workspace = abacus_forge.Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
     workspace.append_operation_event("legacy", {"status": "completed"})
     operation_id = "123e4567-e89b-42d3-a456-426614174006"
     services = ForgeServices.default(workspace_root=tmp_path, runner=FailingRunner())  # type: ignore[arg-type]
@@ -220,6 +337,7 @@ def test_collect_has_operation_local_not_run_execution_even_after_execute(tmp_pa
     services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable)))
     workspace = Workspace(tmp_path / "scf")
     workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
     (workspace.outputs_dir / "running_scf.log").write_text("SCF CONVERGED\nNORMAL END\n", encoding="utf-8")
     execute_id = "123e4567-e89b-42d3-a456-426614174009"
     collect_id = "123e4567-e89b-42d3-a456-426614174010"
@@ -230,6 +348,7 @@ def test_collect_has_operation_local_not_run_execution_even_after_execute(tmp_pa
 
 
 def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     calls = 0
     class CountingRunner(LocalRunner):
@@ -251,6 +370,7 @@ def test_typed_execute_duplicate_request_id_runs_once_and_returns_conflict(tmp_p
 
 
 def test_typed_execute_concurrent_same_id_admits_only_first_runner(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     first_started = threading.Event()
     second_invoked = threading.Event()
@@ -328,6 +448,7 @@ def test_typed_execute_stale_admission_blocks_runner_and_domain_writes(tmp_path:
 
 
 def test_typed_services_serialize_different_ids_for_one_workspace(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     first_started = threading.Event()
     release_first = threading.Event()
@@ -368,6 +489,7 @@ def test_typed_services_serialize_different_ids_for_one_workspace(tmp_path: Path
 def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     original = Workspace._write_json_atomic
 
@@ -395,6 +517,7 @@ def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
 def test_typed_service_event_failure_is_class_5_and_keeps_id_blocked(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     original = Workspace._write_json_atomic
 
@@ -519,6 +642,7 @@ def test_primitive_internal_error_is_not_request_error(
     monkeypatch.setattr(services_module, primitive_name, broken_primitive)
     workspace = Workspace(tmp_path / "scf")
     workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
     structure = workspace.root / "source.STRU"
     structure.write_text("not used by broken primitive", encoding="utf-8")
     operation_id = "123e4567-e89b-42d3-a456-426614174115"
@@ -543,6 +667,7 @@ def test_primitive_internal_error_is_not_request_error(
 
 
 def test_typed_services_return_operation_outcome_and_event_carries_same_facts(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["SCF CONVERGED", "NORMAL END"])
     services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable)))
     request = ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174101", workspace_rel="scf")
@@ -558,6 +683,7 @@ def test_typed_services_return_operation_outcome_and_event_carries_same_facts(tm
 
 @pytest.mark.parametrize("diagnostics", [{"failure_class": "nonzero_exit"}, {"failure_class": "timeout"}, {"failure_class": "signal"}])
 def test_started_runner_failures_return_failed_operation_outcome(tmp_path: Path, diagnostics: dict[str, str]) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     class StartedFailureRunner:
         def run(self, workspace):
             workspace.ensure_layout()
@@ -576,6 +702,7 @@ def test_started_runner_failures_return_failed_operation_outcome(tmp_path: Path,
 
 
 def test_missing_executable_is_precondition_error_not_failed_result(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     request = ScfExecuteRequest(operation_id="123e4567-e89b-42d3-a456-426614174103", workspace_rel="scf")
     services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable="does-not-exist"))
 
@@ -594,6 +721,7 @@ def test_missing_executable_is_precondition_error_not_failed_result(tmp_path: Pa
 
 @pytest.mark.parametrize("runner_error", [FileNotFoundError("runner fixture"), OSError("runner fixture")])
 def test_unknown_prestart_runner_errors_are_internal(tmp_path: Path, runner_error: Exception) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     class BrokenRunner:
         def run(self, workspace):
             raise runner_error
@@ -606,6 +734,7 @@ def test_unknown_prestart_runner_errors_are_internal(tmp_path: Path, runner_erro
 
 
 def test_unexpected_runner_exception_before_start_is_internal_error(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     class BrokenRunner:
         def run(self, workspace):
             raise RuntimeError("opaque runner failure")
@@ -690,6 +819,7 @@ def test_missing_prepare_structure_is_admitted_before_precondition_check(tmp_pat
 
 
 def test_missing_explicit_launcher_is_precondition_before_process_start(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     services = ForgeServices.default(
         workspace_root=tmp_path,
@@ -712,6 +842,7 @@ def test_missing_explicit_launcher_is_precondition_before_process_start(tmp_path
 def test_missing_generated_mpirun_is_precondition_before_process_start(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     runner_module = __import__("abacus_forge.runner", fromlist=["runner"])
     original_which = runner_module.shutil.which
@@ -769,6 +900,7 @@ def test_audit_infrastructure_io_is_persistence_error(
 
 
 def test_execute_provenance_has_unique_runtime_facts(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     request = ScfExecuteRequest(
         operation_id="123e4567-e89b-42d3-a456-426614174124", workspace_rel="scf"

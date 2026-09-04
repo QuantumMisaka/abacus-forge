@@ -166,7 +166,7 @@ def test_v1_event_reconciles_after_manifest_write_failure(tmp_path: Path, monkey
         original(path, payload)
 
     monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_manifest))
-    with pytest.raises(OSError, match="simulated"):
+    with pytest.raises(ForgePersistenceError, match="unable to persist workspace manifest"):
         workspace.append_v1_operation_event(
             "123e4567-e89b-42d3-a456-426614174000", "collect", {"status": "complete"}
         )
@@ -177,6 +177,25 @@ def test_v1_event_reconciles_after_manifest_write_failure(tmp_path: Path, monkey
     manifest = json.loads((workspace.reports_dir / "forge-workspace.json").read_text())
     assert manifest["events"][-1]["id"] == "123e4567-e89b-42d3-a456-426614174000"
     assert manifest["events"][-1]["path_rel"] == events[0].relative_to(workspace.root).as_posix()
+
+
+def test_v1_event_file_failure_is_typed_and_leaves_no_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = Workspace(tmp_path / "v1-event-failure")
+    original = Workspace._write_json_atomic
+
+    def fail_event(path: Path, payload: dict) -> None:
+        if path.parent.name == "events":
+            raise OSError("simulated event failure")
+        original(path, payload)
+
+    monkeypatch.setattr(Workspace, "_write_json_atomic", staticmethod(fail_event))
+    with pytest.raises(ForgePersistenceError, match="unable to persist operation event"):
+        workspace.append_v1_operation_event(
+            "123e4567-e89b-42d3-a456-426614174000", "collect", {"status": "complete"}
+        )
+    assert not list((workspace.reports_dir / "events").glob("*.json"))
 
 
 def test_legacy_event_ids_remain_random_uuid4(tmp_path: Path) -> None:
