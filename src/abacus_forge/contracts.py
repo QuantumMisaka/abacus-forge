@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import uuid
 from dataclasses import dataclass, field, fields
 from pathlib import PurePosixPath
@@ -17,6 +18,7 @@ RESULT_SCHEMA_VERSION = "forge.result/v1"
 OPERATION_OUTCOME_SCHEMA_VERSION = "forge.operation-outcome/v1"
 WORKSPACE_SCHEMA_VERSION = "forge.workspace/v1"
 ERROR_SCHEMA_VERSION = "forge.error/v1"
+CAPABILITY_SCHEMA_VERSION = "forge.capability/v1"
 ERROR_CLASSES = frozenset({
     "request.invalid",
     "request.schema",
@@ -33,6 +35,7 @@ _SCIENTIFIC_STATUSES = frozenset({"unassessed", "accepted", "guarded", "rejected
 _COLLECTION_STATUSES = frozenset({"not_collected", "complete", "partial", "missing_output"})
 _CHECK_STATUSES = frozenset({"passed", "failed", "warning", "unavailable"})
 _METRIC_KINDS = frozenset({"reported", "derived", "runtime"})
+_CAPABILITY_MATURITIES = frozenset({"experimental", "stable"})
 
 
 def _json_round_trip(value: object) -> JSONValue:
@@ -75,6 +78,18 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
     if not valid:
         allowed_values = ", ".join(sorted(allowed))
         raise ValueError(f"{field_name} must be one of: {allowed_values}")
+
+
+def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
+    if isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must contain non-empty strings")
+    try:
+        values = tuple(value)  # type: ignore[arg-type]
+    except TypeError as error:
+        raise ValueError(f"{field_name} must contain non-empty strings") from error
+    if not all(isinstance(item, str) and item for item in values):
+        raise ValueError(f"{field_name} must contain non-empty strings")
+    return values
 
 
 def _require_schema_version(value: str, expected: str) -> None:
@@ -146,6 +161,65 @@ def canonical_relative_path(value: str) -> str:
     ):
         raise ValueError("path_rel must be a canonical relative POSIX path")
     return path.as_posix()
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilityDescriptor:
+    """Versioned description of one capability exposed by Forge discovery."""
+
+    name: str
+    maturity: Literal["experimental", "stable"]
+    engine: str
+    operations: Sequence[str]
+    inputs: Mapping[str, Sequence[str]]
+    artifact_roles: Sequence[str]
+    optional_dependencies: Sequence[str]
+    schema_version: str = CAPABILITY_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.name, "name")
+        _require_literal(self.maturity, _CAPABILITY_MATURITIES, "maturity")
+        _require_nonempty_string(self.engine, "engine")
+        operations = _string_sequence(self.operations, "operations")
+        if not operations or len(set(operations)) != len(operations):
+            raise ValueError("operations must contain unique non-empty strings")
+        if not isinstance(self.inputs, Mapping):
+            raise ValueError("inputs must be a mapping")
+        input_values: dict[str, tuple[str, ...]] = {}
+        for operation, input_names in self.inputs.items():
+            if not isinstance(operation, str) or not operation:
+                raise ValueError("inputs keys must be non-empty strings")
+            input_values[operation] = _string_sequence(input_names, f"inputs[{operation!r}]")
+        if set(input_values) != set(operations):
+            raise ValueError("inputs must describe every advertised operation")
+        artifact_roles = _string_sequence(self.artifact_roles, "artifact_roles")
+        if not artifact_roles or len(set(artifact_roles)) != len(artifact_roles):
+            raise ValueError("artifact_roles must contain unique non-empty strings")
+        optional_dependencies = _string_sequence(self.optional_dependencies, "optional_dependencies")
+        _require_schema_version(self.schema_version, CAPABILITY_SCHEMA_VERSION)
+        object.__setattr__(self, "operations", operations)
+        object.__setattr__(self, "inputs", _freeze_json(input_values))
+        object.__setattr__(self, "artifact_roles", artifact_roles)
+        object.__setattr__(self, "optional_dependencies", optional_dependencies)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": self.schema_version,
+            "name": self.name,
+            "maturity": self.maturity,
+            "engine": self.engine,
+            "operations": list(self.operations),
+            "inputs": _thaw_json(self.inputs),
+            "artifact_roles": list(self.artifact_roles),
+            "optional_dependencies": list(self.optional_dependencies),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> CapabilityDescriptor:
+        values = _mapping_payload(payload, "capability descriptor")
+        if "schema_version" not in values:
+            raise ValueError("capability descriptor requires schema_version")
+        return _construct_strict(cls, values, "capability descriptor")
 
 
 @dataclass(frozen=True, slots=True)
@@ -472,16 +546,37 @@ class ScfModifyRequest(_ScfRequest):
 class ScfExecuteRequest(_ScfRequest):
     """Typed request for executing one SCF workspace."""
 
+    executable: str = "abacus"
+    mpi_ranks: int = 1
+    omp_threads: int = 1
+    timeout_seconds: float | None = None
     dry_run: bool = False
 
     def __post_init__(self) -> None:
         _ScfRequest.__post_init__(self)
+        _require_nonempty_string(self.executable, "executable")
+        for value, field_name in ((self.mpi_ranks, "mpi_ranks"), (self.omp_threads, "omp_threads")):
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{field_name} must be a positive integer")
+        if self.timeout_seconds is not None:
+            if isinstance(self.timeout_seconds, bool) or not isinstance(self.timeout_seconds, (int, float)):
+                raise ValueError("timeout_seconds must be a positive finite number or None")
+            if self.timeout_seconds <= 0 or not math.isfinite(self.timeout_seconds):
+                raise ValueError("timeout_seconds must be a positive finite number or None")
         if not isinstance(self.dry_run, bool):
             raise ValueError("dry_run must be a boolean")
 
     def to_dict(self) -> dict[str, JSONValue]:
         payload = _ScfRequest.to_dict(self)
-        payload["dry_run"] = self.dry_run
+        payload.update(
+            {
+                "executable": self.executable,
+                "mpi_ranks": self.mpi_ranks,
+                "omp_threads": self.omp_threads,
+                "timeout_seconds": self.timeout_seconds,
+                "dry_run": self.dry_run,
+            }
+        )
         return payload
 
     @property

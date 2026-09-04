@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -50,6 +51,7 @@ from abacus_forge.composite import (
     run_workfunc,
 )
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
+from abacus_forge.machine_cli import run_machine_cli
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
@@ -232,6 +234,16 @@ def _print_prepared_workspace(workspace: Workspace, *, as_json: bool) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments, dispatch to a Forge primitive, and return an exit code."""
+    effective_argv = list(sys.argv[1:] if argv is None else argv)
+    if effective_argv and effective_argv[0] in {"operation", "schema", "capabilities"}:
+        return run_machine_cli(
+            effective_argv,
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=Path.cwd(),
+        )
+
     parser = build_parser()
     args = parser.parse_args(argv)
 

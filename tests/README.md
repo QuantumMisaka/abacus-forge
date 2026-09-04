@@ -5,7 +5,7 @@ not implementation ownership:
 
 | Marker | Evidence boundary | Release role |
 | --- | --- | --- |
-| `core` | INPUT/STRU/KPT, structures, transformations, DOS data | required PR gate |
+| `core` | INPUT/STRU/KPT, structures, transformations, DOS data, source import boundaries | required PR gate |
 | `integration` | prepare/execute/collect/unit/task boundaries | required PR gate |
 | `cli` | CLI dispatch and process contracts | required PR gate |
 | `compat` | ABACUS/abacustest output compatibility | required migration gate |
@@ -42,6 +42,14 @@ projections, and `tests/test_service_status.py` owns the typed service's public
 error and observation mapping. The v1 workspace manifest and event records are additive; legacy
 `forge-unit.json` and `forge-result.json` compatibility outputs remain covered
 by the unit tests.
+
+`tests/test_machine_cli.py` owns the in-process machine decoder, discovery,
+rendering, and service-dispatch contracts. `tests/test_cli_process.py` owns
+subprocess stdout/stderr/exit behavior and API/process parity. The two suites
+are the machine-path unit and process gates and should be run together for
+transport changes. `tests/test_architecture.py` owns the AST-only production
+import boundary and the current machine-surface documentation contracts; it
+is registered as `core`.
 
 The typed SCF service tests additionally own the migration boundary:
 `ForgeServices` returns execution/collection facts and observations, and any
