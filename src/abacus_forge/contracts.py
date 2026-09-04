@@ -216,7 +216,10 @@ class CapabilityDescriptor:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> CapabilityDescriptor:
-        return _construct_strict(cls, payload, "capability descriptor")
+        values = _mapping_payload(payload, "capability descriptor")
+        if "schema_version" not in values:
+            raise ValueError("capability descriptor requires schema_version")
+        return _construct_strict(cls, values, "capability descriptor")
 
 
 @dataclass(frozen=True, slots=True)

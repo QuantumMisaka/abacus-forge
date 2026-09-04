@@ -96,3 +96,30 @@ Task 4 still owns converting discovery `ForgeRequestError` instances into a
 `forge.error/v1` envelope and exit code 2; this task intentionally leaves that
 adapter behavior untouched. JSON Schema is descriptive only and is not used as
 the runtime validator.
+
+## Review fix evidence
+
+Review identified two contract gaps. First, the descriptive schemas did not
+carry the canonical-relative path rules enforced by the typed requests. Added
+anchored path patterns that allow `workspace_rel="."` but reject absolute,
+traversal, dot-segment, duplicate-separator, and backslash paths; the prepare
+structure path pattern additionally rejects `.`. Second, descriptor decoding
+could omit `schema_version` and silently use its constructor default. The
+strict decoder now requires the serialized version key explicitly.
+
+### Review RED
+
+The added regressions failed before the fixes: omitted descriptor version did
+not raise, and path schema properties had no `pattern` key (`10 failed, 77
+passed`).
+
+### Review GREEN
+
+Focused review-fix gate:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py
+```
+
+Result: `87 passed`.

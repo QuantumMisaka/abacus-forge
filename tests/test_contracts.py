@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import re
 
 import pytest
 
@@ -367,6 +368,10 @@ def test_capability_descriptor_round_trips_strictly() -> None:
     assert CapabilityDescriptor.from_dict(json.loads(json.dumps(payload))) == descriptor
     with pytest.raises(ValueError, match="unknown"):
         CapabilityDescriptor.from_dict({**payload, "extra": True})
+    with pytest.raises(ValueError, match="schema_version"):
+        missing_version = dict(payload)
+        missing_version.pop("schema_version")
+        CapabilityDescriptor.from_dict(missing_version)
 
 
 def test_capability_descriptor_rejects_invalid_values() -> None:
@@ -431,6 +436,20 @@ def test_request_schema_freezes_required_constants_and_bounds(operation: str) ->
         assert schema["properties"]["mpi_ranks"]["minimum"] == 1
         assert schema["properties"]["omp_threads"]["minimum"] == 1
         assert schema["properties"]["timeout_seconds"]["exclusiveMinimum"] == 0
+
+
+@pytest.mark.parametrize("path_value", ["/tmp", "a/../b", "a/./b", "a//b", "a\\b"])
+def test_request_schema_describes_canonical_workspace_paths(path_value: str) -> None:
+    schema = request_schema_document("scf", "execute")["request_schema"]
+    pattern = schema["properties"]["workspace_rel"]["pattern"]
+    assert re.fullmatch(pattern, path_value) is None
+
+
+@pytest.mark.parametrize("path_value", [".", "/tmp/STRU", "a/../STRU", "a/./STRU"])
+def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> None:
+    schema = request_schema_document("scf", "prepare")["request_schema"]
+    pattern = schema["properties"]["structure_path_rel"]["pattern"]
+    assert re.fullmatch(pattern, path_value) is None
 
 
 @pytest.mark.parametrize("capability,operation", [("relax", "prepare"), ("scf", "postprocess")])

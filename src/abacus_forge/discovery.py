@@ -55,7 +55,15 @@ _OPERATION_IDS = {
     "format": "uuid",
     "pattern": r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
 }
-_WORKSPACE_REL = {"type": "string", "minLength": 1}
+_CANONICAL_WORKSPACE_PATTERN = (
+    r"^(?:\.(?=$)|(?!(?:\.{1,2})(?:/|$))[^/\\]+"
+    r"(?:/(?!\.{1,2}(?:/|$))[^/\\]+)*)$"
+)
+_CANONICAL_FILE_PATTERN = (
+    r"^(?:(?!\.{1,2}(?:/|$))[^/\\]+)"
+    r"(?:/(?!\.{1,2}(?:/|$))[^/\\]+)*$"
+)
+_WORKSPACE_REL = {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN}
 _JSON_OBJECT = {"type": "object"}
 
 
@@ -73,7 +81,11 @@ def _request_properties(operation: str) -> dict[str, JSONValue]:
     if operation == "prepare":
         properties.update(
             {
-                "structure_path_rel": {"type": "string", "minLength": 1},
+                "structure_path_rel": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": _CANONICAL_FILE_PATTERN,
+                },
                 "structure_format": {"type": ["string", "null"], "minLength": 1, "default": None},
                 "parameters": dict(_JSON_OBJECT, **{"propertyNames": {"type": "string"}, "default": {}}),
             }
