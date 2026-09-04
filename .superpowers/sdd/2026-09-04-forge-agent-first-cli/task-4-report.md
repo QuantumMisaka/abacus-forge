@@ -102,3 +102,42 @@ Additional checks:
   need every field should consume the default JSON document.
 - Real subprocess/process-parity checks and top-level `cli.py` routing remain
   Task 5 scope.
+
+## Review fix evidence
+
+Addressed the Task 4 review’s two Important coverage gaps:
+
+- Added a parametrized test for each `prepare`, `modify`, `execute`, and
+  `collect` request. Each uses a matching valid typed request, records exactly
+  one invocation on the matching narrow service, and asserts no other service
+  call occurred.
+- Added JSON-reader tests proving a second JSON document is rejected as
+  `request.invalid`/exit 2 without dispatch, while trailing whitespace is
+  accepted and dispatches once.
+
+Focused adapter suite after the fixes:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider tests/test_machine_cli.py
+```
+
+Result: `27 passed`.
+
+Adapter/service regression after the fixes:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider tests/test_machine_cli.py tests/test_service_status.py
+```
+
+Result: `82 passed`.
+
+Full offline suite after the fixes:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider
+```
+
+Result: `334 passed, 2 skipped`.

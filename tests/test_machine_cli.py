@@ -14,6 +14,9 @@ from abacus_forge.contracts import (
     OperationOutcome,
     OperationStatus,
     ScfCollectRequest,
+    ScfExecuteRequest,
+    ScfModifyRequest,
+    ScfPrepareRequest,
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_scf_request, exit_code_for, run_machine_cli
@@ -33,14 +36,18 @@ def _request() -> dict[str, object]:
 
 
 def _outcome(*, execution: str = "completed") -> OperationOutcome:
+    return _outcome_for("collect", OPERATION_ID, execution=execution)
+
+
+def _outcome_for(operation: str, operation_id: str, *, execution: str = "completed") -> OperationOutcome:
     envelope = ForgeResultEnvelope(
-        operation="collect",
+        operation=operation,
         workspace_rel=".",
         status=OperationStatus(execution=execution, scientific="unassessed", collection="complete"),
-        artifacts=(ArtifactRecord(id="stdout", path_rel="outputs/stdout.log", role="output", stage="collect"),),
+        artifacts=(ArtifactRecord(id="stdout", path_rel="outputs/stdout.log", role="output", stage=operation),),
         metrics=(MetricRecord(name="returncode", value=0, unit=None, kind="runtime"),),
     )
-    return OperationOutcome(operation_id=OPERATION_ID, envelope=envelope)
+    return OperationOutcome(operation_id=operation_id, envelope=envelope)
 
 
 class _RecordingServices:
@@ -60,6 +67,31 @@ class _RecordingCollectService:
     def collect(self, request: object) -> object:
         self.owner.calls.append(("collect", request))
         return self.owner.result
+
+
+class _RecordingOperationService:
+    def __init__(self, owner: "_AllRecordingServices", operation: str) -> None:
+        self.owner = owner
+        self.operation = operation
+
+    def __getattr__(self, name: str):
+        if name != self.operation:
+            raise AttributeError(name)
+        return self._call
+
+    def _call(self, request: object) -> object:
+        self.owner.calls.append((self.operation, request))
+        return self.owner.results[self.operation]
+
+
+class _AllRecordingServices:
+    def __init__(self, results: dict[str, object]) -> None:
+        self.results = results
+        self.calls: list[tuple[str, object]] = []
+        self.prepare = _RecordingOperationService(self, "prepare")
+        self.modify = _RecordingOperationService(self, "modify")
+        self.execute = _RecordingOperationService(self, "execute")
+        self.collect = _RecordingOperationService(self, "collect")
 
 
 def _invoke(argv: list[str], *, request_text: str = "", services: object | None = None):
@@ -101,6 +133,61 @@ def test_machine_adapter_calls_one_service_and_writes_one_json_document() -> Non
     assert isinstance(services.calls[0][1], ScfCollectRequest)
 
 
+@pytest.mark.parametrize(
+    ("operation", "payload", "request_type"),
+    [
+        (
+            "prepare",
+            {
+                "schema_version": "forge.request/v1",
+                "operation": "prepare",
+                "operation_id": "123e4567-e89b-42d3-a456-426614174010",
+                "workspace_rel": ".",
+                "structure_path_rel": "source.STRU",
+            },
+            ScfPrepareRequest,
+        ),
+        (
+            "modify",
+            {
+                "schema_version": "forge.request/v1",
+                "operation": "modify",
+                "operation_id": "123e4567-e89b-42d3-a456-426614174011",
+                "workspace_rel": ".",
+            },
+            ScfModifyRequest,
+        ),
+        (
+            "execute",
+            {
+                "schema_version": "forge.request/v1",
+                "operation": "execute",
+                "operation_id": "123e4567-e89b-42d3-a456-426614174012",
+                "workspace_rel": ".",
+            },
+            ScfExecuteRequest,
+        ),
+        ("collect", _request(), ScfCollectRequest),
+    ],
+)
+def test_machine_dispatches_each_narrow_service_exactly_once(
+    operation: str, payload: dict[str, object], request_type: type[object]
+) -> None:
+    operation_id = payload["operation_id"]
+    assert isinstance(operation_id, str)
+    results = {name: _outcome_for(name, operation_id) for name in ("prepare", "modify", "execute", "collect")}
+    services = _AllRecordingServices(results)
+    code, output, diagnostics = _invoke(
+        ["operation", operation, "--stdin"], request_text=json.dumps(payload), services=services
+    )
+    assert code == 0
+    assert json.loads(output) == results[operation].to_dict()
+    assert diagnostics == ""
+    assert len(services.calls) == 1
+    assert services.calls[0][0] == operation
+    assert isinstance(services.calls[0][1], request_type)
+
+
 def test_machine_request_file_and_stdin_are_mutually_exclusive(tmp_path: Path) -> None:
     request_file = tmp_path / "request.json"
     request_file.write_text(json.dumps(_request()), encoding="utf-8")
@@ -139,6 +226,24 @@ def test_machine_decoding_maps_distinct_request_phases(payload: str, error_class
     code, output, _ = _invoke(["operation", "collect", "--stdin"], request_text=payload)
     assert code == 2
     assert json.loads(output)["error"]["class"] == error_class
+
+
+def test_machine_json_reader_rejects_a_second_document() -> None:
+    services = _RecordingServices(_outcome())
+    request_text = json.dumps(_request()) + "\n" + json.dumps(_request())
+    code, output, _ = _invoke(["operation", "collect", "--stdin"], request_text=request_text, services=services)
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    assert services.calls == []
+
+
+def test_machine_json_reader_accepts_trailing_whitespace() -> None:
+    services = _RecordingServices(_outcome())
+    request_text = json.dumps(_request()) + " \t\n"
+    code, output, _ = _invoke(["operation", "collect", "--stdin"], request_text=request_text, services=services)
+    assert code == 0
+    assert json.loads(output) == _outcome().to_dict()
+    assert len(services.calls) == 1
 
 
 def test_machine_schema_unknown_selector_is_one_request_invalid_document() -> None:
