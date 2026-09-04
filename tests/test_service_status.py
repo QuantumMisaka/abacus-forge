@@ -448,12 +448,8 @@ def test_typed_service_event_directory_failure_is_class_5_and_keeps_id_blocked(
 def test_typed_service_unlock_failure_after_commit_is_class_5_and_event_blocks_replay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
-    services = ForgeServices.default(
-        workspace_root=tmp_path,
-        runner=LocalRunner(executable=str(executable)),
-    )
-    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174030")
+    services = ForgeServices.default(workspace_root=tmp_path)
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174030", dry_run=True)
     original_flock = fcntl.flock
     unlock_calls = 0
 
