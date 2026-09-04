@@ -177,10 +177,20 @@ class Workspace:
         """Serialize manifest read-modify-write operations across processes."""
         import fcntl
 
-        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
         lock_path = self.resolve_relative(Path("reports") / ".forge-workspace.lock")
-        with lock_path.open("a+", encoding="utf-8") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            lock = lock_path.open("a+", encoding="utf-8")
+        except OSError as error:
+            raise ForgePersistenceError("unable to acquire workspace manifest lock") from error
+        with lock:
+            try:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            except OSError as error:
+                raise ForgePersistenceError("unable to acquire workspace manifest lock") from error
             try:
                 yield
             finally:
@@ -194,16 +204,26 @@ class Workspace:
         closes the same-process/thread gap in which ``flock`` is not a useful
         mutual exclusion primitive.
         """
-        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
         key = str(self.root.resolve())
         with self._operation_locks_guard:
             lock = self._operation_locks.setdefault(key, threading.Lock())
         with lock:
             lock_path = self.resolve_relative(Path("reports") / ".forge-operation.lock")
-            with lock_path.open("a+", encoding="utf-8") as operation_lock:
+            try:
+                operation_lock = lock_path.open("a+", encoding="utf-8")
+            except OSError as error:
+                raise ForgePersistenceError("unable to acquire operation lock") from error
+            with operation_lock:
                 import fcntl
 
-                fcntl.flock(operation_lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    fcntl.flock(operation_lock.fileno(), fcntl.LOCK_EX)
+                except OSError as error:
+                    raise ForgePersistenceError("unable to acquire operation lock") from error
                 try:
                     yield
                 finally:
@@ -241,13 +261,19 @@ class Workspace:
             return self._ensure_manifest_unlocked()
 
     def _ensure_manifest_unlocked(self) -> Path:
-        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
         path = self.resolve_relative(Path("reports") / "forge-workspace.json")
         if not path.exists():
-            self._write_json_atomic(
-                path,
-                {"schema_version": WORKSPACE_SCHEMA_VERSION, "workspace_rel": ".", "events": []},
-            )
+            try:
+                self._write_json_atomic(
+                    path,
+                    {"schema_version": WORKSPACE_SCHEMA_VERSION, "workspace_rel": ".", "events": []},
+                )
+            except OSError as error:
+                raise ForgePersistenceError("unable to persist workspace manifest") from error
         self._reconcile_events_unlocked(path)
         return path
 
@@ -279,7 +305,10 @@ class Workspace:
                     continue
         if additions:
             manifest["events"].extend(additions)
-            self._write_json_atomic(manifest_path, manifest)
+            try:
+                self._write_json_atomic(manifest_path, manifest)
+            except OSError as error:
+                raise ForgePersistenceError("unable to reconcile workspace manifest") from error
 
     def append_operation_event(self, operation: str, payload: Mapping[str, JSONValue]) -> Path:
         """Atomically write an operation event and append its manifest reference."""
@@ -350,7 +379,10 @@ class Workspace:
             if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
                 raise OperationConflictError("operation_id already exists in workspace manifest")
 
-            claims_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                claims_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                raise ForgePersistenceError("unable to create operation claims directory") from error
             owner_token = secrets.token_urlsafe(32)
             try:
                 with claim_path.open("x", encoding="utf-8") as claim:

@@ -614,3 +614,122 @@ def test_collect_delivers_false_convergence_without_scientific_projection(tmp_pa
     assert isinstance(result, OperationOutcome)
     assert result.status.scientific == "unassessed"
     assert all(observation.value not in ("accepted", "guarded", "rejected") for observation in result.observations)
+
+
+def test_missing_prepare_structure_is_admitted_before_precondition_check(tmp_path: Path) -> None:
+    services = ForgeServices.default(workspace_root=tmp_path)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174120",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+    )
+
+    first = services.prepare_scf(request)
+    second = services.prepare_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "precondition.missing"
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+    assert list((tmp_path / "scf" / "reports" / "events").glob("*.json")) == []
+
+
+def test_missing_explicit_launcher_is_precondition_before_process_start(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable), launcher=("missing-launcher",)),
+    )
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174121", workspace_rel="scf"
+    )
+
+    first = services.execute_scf(request)
+    second = services.execute_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "precondition.missing"
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+    assert not (tmp_path / "scf" / "forge-result.json").exists()
+
+
+def test_missing_generated_mpirun_is_precondition_before_process_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    runner_module = __import__("abacus_forge.runner", fromlist=["runner"])
+    original_which = runner_module.shutil.which
+    monkeypatch.setattr(
+        runner_module.shutil,
+        "which",
+        lambda name: None if name == "mpirun" else original_which(name),
+    )
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable), mpi_ranks=2),
+    )
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174122", workspace_rel="scf"
+    )
+
+    result = services.execute_scf(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert (tmp_path / "scf" / "reports" / "claims" / f"{request.operation_id}.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("blocked_name", "blocked_kind"),
+    [("reports", "file"), ("reports/.forge-operation.lock", "directory"), ("reports/claims", "file")],
+)
+def test_audit_infrastructure_io_is_persistence_error(
+    tmp_path: Path, blocked_name: str, blocked_kind: str
+) -> None:
+    workspace_root = tmp_path / "scf"
+    workspace_root.mkdir()
+    blocked = workspace_root / blocked_name
+    if blocked_kind == "directory":
+        blocked.mkdir(parents=True)
+    else:
+        blocked.parent.mkdir(parents=True, exist_ok=True)
+        blocked.write_text("blocked", encoding="utf-8")
+
+    result = ForgeServices.default(workspace_root=tmp_path).execute_scf(
+        ScfExecuteRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174123",
+            workspace_rel="scf",
+            dry_run=True,
+        )
+    )
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "persistence.failure"
+
+
+def test_execute_provenance_has_unique_runtime_facts(tmp_path: Path) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174124", workspace_rel="scf"
+    )
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable), omp_threads=4),
+    ).execute_scf(request)
+
+    assert isinstance(result, OperationOutcome)
+    stages = {artifact.path_rel: artifact.stage for artifact in result.envelope.artifacts}
+    assert stages["outputs/stdout.log"] == "execute"
+    assert stages["outputs/stderr.log"] == "execute"
+    metric_kinds = {metric.name: metric.kind for metric in result.envelope.metrics}
+    assert metric_kinds["returncode"] == "runtime"
+    assert metric_kinds["omp_threads"] == "runtime"
+    observations_by_name = {observation.name: observation for observation in result.observations}
+    assert len(observations_by_name) == len(result.observations)
+    assert observations_by_name["returncode"].source == "runtime"
+    assert sum(observation.name == "returncode" for observation in result.observations) == 1
+    event = json.loads(
+        (tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json").read_text()
+    )
+    assert event["payload"] == result.to_dict()

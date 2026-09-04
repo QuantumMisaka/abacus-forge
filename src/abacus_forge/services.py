@@ -59,8 +59,12 @@ class ForgeServices:
             return self._error("request.invalid", "expected ScfPrepareRequest", request)
         try:
             workspace = self._workspace(request.workspace_rel)
-            structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
+            # Resolve and validate containment before admission.  Existence and
+            # file type are operation preconditions and must be checked after
+            # the ID is durably admitted, so a failed request cannot replay.
+            structure_path = self._workspace_path(workspace, request.structure_path_rel, "structure_path_rel")
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+                self._require_file(structure_path, request.structure_path_rel, "structure_path_rel")
                 with suppress_legacy_events():
                     result = prepare_unit(
                         UnitSpec(
@@ -131,6 +135,12 @@ class ForgeServices:
                 else:
                     # Typed services use only this invocation's runner result;
                     # legacy log-based skip behavior is not part of this path.
+                    preflight = getattr(self.runner, "preflight", None)
+                    if callable(preflight):
+                        try:
+                            preflight(workspace)
+                        except FileNotFoundError as error:
+                            raise ForgePreconditionError(str(error)) from error
                     result = self.runner.run(workspace)
                     if result.diagnostics.get("failure_class") == "missing_executable":
                         raise ForgePreconditionError("configured executable is missing or not executable")
@@ -167,12 +177,16 @@ class ForgeServices:
         return Workspace(candidate)
 
     @staticmethod
-    def _workspace_file(workspace: Workspace, path_rel: str, field_name: str) -> Path:
+    def _workspace_path(workspace: Workspace, path_rel: str, field_name: str) -> Path:
         candidate = (workspace.root / path_rel).resolve()
         try:
             candidate.relative_to(workspace.root)
         except ValueError as error:
             raise ForgePathError(f"{field_name} must remain under workspace_rel") from error
+        return candidate
+
+    @staticmethod
+    def _require_file(candidate: Path, path_rel: str, field_name: str) -> Path:
         if not candidate.is_file():
             raise ForgePreconditionError(f"{field_name} file not found: {path_rel}")
         return candidate
@@ -257,17 +271,24 @@ def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str, *, operat
 def _observations(envelope: ForgeResultEnvelope) -> tuple[Observation, ...]:
     """Expose engine/parser facts without deriving scientific conclusions."""
     observations: list[Observation] = []
+    seen: set[str] = set()
+
+    def add(observation: Observation) -> None:
+        if observation.name not in seen:
+            seen.add(observation.name)
+            observations.append(observation)
+
     for metric in envelope.metrics:
         source = "runtime" if metric.kind == "runtime" or metric.name in {"returncode", "omp_threads"} else "parser"
-        observations.append(Observation(name=metric.name, value=metric.value, source=source))
+        add(Observation(name=metric.name, value=metric.value, source=source))
     for check in envelope.checks:
-        observations.append(Observation(name=check.name, value=check.status, source="parser"))
+        add(Observation(name=check.name, value=check.status, source="parser"))
     diagnostics = envelope.to_dict()["diagnostics"]
     if isinstance(diagnostics, dict):
         for name in ("failure_class", "dry_run", "normal_end", "converged", "termination"):
             if name in diagnostics:
                 source = "runtime" if name in {"failure_class", "dry_run", "termination"} else "parser"
-                observations.append(Observation(name=name, value=diagnostics[name], source=source))
+                add(Observation(name=name, value=diagnostics[name], source=source))
     return tuple(observations)
 
 

@@ -47,17 +47,31 @@ class LocalRunner:
         }
 
     def _resolve_executable(self) -> str:
-        candidate = Path(self.executable)
+        return self._resolve_program(self.executable, role="engine")
+
+    @staticmethod
+    def _resolve_program(program: str, *, role: str) -> str:
+        candidate = Path(program)
         if candidate.parent != Path():
             resolved = candidate if candidate.is_absolute() else candidate.resolve()
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
-            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
 
-        resolved = shutil.which(self.executable)
+        resolved = shutil.which(program)
         if resolved is None:
-            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         return resolved
+
+    def preflight(self, workspace: Workspace) -> None:
+        """Verify every program required before starting the local process."""
+
+        command = self.build_command(workspace)
+        if self.launcher:
+            self._resolve_program(str(command[0]), role="launcher")
+        elif self.mpi_ranks > 1:
+            self._resolve_program("mpirun", role="launcher")
+        self._resolve_executable()
 
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
@@ -73,7 +87,7 @@ class LocalRunner:
             "env_overrides": dict(self.env_overrides),
         }
         try:
-            self._resolve_executable()
+            self.preflight(workspace)
         except FileNotFoundError as exc:
             stdout_path.write_text("", encoding="utf-8")
             stderr_path.write_text(str(exc) + "\n", encoding="utf-8")
