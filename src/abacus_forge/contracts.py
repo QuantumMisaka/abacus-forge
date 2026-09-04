@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import uuid
 from dataclasses import dataclass, field, fields
 from pathlib import PurePosixPath
@@ -472,16 +473,37 @@ class ScfModifyRequest(_ScfRequest):
 class ScfExecuteRequest(_ScfRequest):
     """Typed request for executing one SCF workspace."""
 
+    executable: str = "abacus"
+    mpi_ranks: int = 1
+    omp_threads: int = 1
+    timeout_seconds: float | None = None
     dry_run: bool = False
 
     def __post_init__(self) -> None:
         _ScfRequest.__post_init__(self)
+        _require_nonempty_string(self.executable, "executable")
+        for value, field_name in ((self.mpi_ranks, "mpi_ranks"), (self.omp_threads, "omp_threads")):
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{field_name} must be a positive integer")
+        if self.timeout_seconds is not None:
+            if isinstance(self.timeout_seconds, bool) or not isinstance(self.timeout_seconds, (int, float)):
+                raise ValueError("timeout_seconds must be a positive finite number or None")
+            if self.timeout_seconds <= 0 or not math.isfinite(self.timeout_seconds):
+                raise ValueError("timeout_seconds must be a positive finite number or None")
         if not isinstance(self.dry_run, bool):
             raise ValueError("dry_run must be a boolean")
 
     def to_dict(self) -> dict[str, JSONValue]:
         payload = _ScfRequest.to_dict(self)
-        payload["dry_run"] = self.dry_run
+        payload.update(
+            {
+                "executable": self.executable,
+                "mpi_ranks": self.mpi_ranks,
+                "omp_threads": self.omp_threads,
+                "timeout_seconds": self.timeout_seconds,
+                "dry_run": self.dry_run,
+            }
+        )
         return payload
 
     @property

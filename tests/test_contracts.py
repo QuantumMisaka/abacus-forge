@@ -116,6 +116,49 @@ def test_scf_collect_request_requires_lowercase_uuid4_and_round_trips() -> None:
     assert contracts.ScfCollectRequest.from_dict(request.to_dict()).to_dict() == request.to_dict()
 
 
+def _valid_execute_request_dict() -> dict[str, object]:
+    return ScfExecuteRequest(operation_id=OPERATION_ID, workspace_rel="scf").to_dict()
+
+
+def test_scf_execute_request_round_trips_local_runner_configuration() -> None:
+    request = ScfExecuteRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="scf",
+        executable="/opt/abacus/bin/abacus",
+        mpi_ranks=4,
+        omp_threads=2,
+        timeout_seconds=120.0,
+    )
+    assert ScfExecuteRequest.from_dict(request.to_dict()) == request
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("executable", ""),
+        ("mpi_ranks", 0),
+        ("mpi_ranks", True),
+        ("omp_threads", 0),
+        ("omp_threads", True),
+        ("timeout_seconds", 0.0),
+        ("timeout_seconds", float("inf")),
+        ("timeout_seconds", float("nan")),
+    ],
+)
+def test_scf_execute_request_rejects_invalid_runner_configuration(field: str, value: object) -> None:
+    payload = _valid_execute_request_dict()
+    payload[field] = value
+    with pytest.raises(ValueError):
+        ScfExecuteRequest.from_dict(payload)
+
+
+def test_scf_execute_request_rejects_unknown_runner_fields() -> None:
+    payload = _valid_execute_request_dict()
+    payload["launcher"] = "mpirun"
+    with pytest.raises(ValueError, match="unknown"):
+        ScfExecuteRequest.from_dict(payload)
+
+
 @pytest.mark.parametrize(
     "operation_id",
     [
