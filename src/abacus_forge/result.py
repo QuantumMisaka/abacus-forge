@@ -40,9 +40,8 @@ class RunResult:
         return ForgeResultEnvelope(
             operation="execute", workspace_rel=".",
             status=OperationStatus(execution=execution, scientific="unassessed", collection="not_collected"),
-            artifacts=_workspace_artifact_records(self.workspace, {"stdout_log": str(self.stdout_path), "stderr_log": str(self.stderr_path)}),
-            metrics=_scalar_metric_records({"returncode": self.returncode, "omp_threads": self.omp_threads})[0],
-            checks=(CheckRecord(name="returncode", status="passed" if self.returncode == 0 else "failed"),),
+            artifacts=_workspace_artifact_records(self.workspace, {"stdout_log": str(self.stdout_path), "stderr_log": str(self.stderr_path)}, stage="execute"),
+            metrics=_scalar_metric_records({"returncode": self.returncode, "omp_threads": self.omp_threads}, kind="runtime")[0],
             warnings=warnings, diagnostics=diagnostics,
         )
 
@@ -74,7 +73,9 @@ class TaskResult:
         diagnostics, warnings = _diagnostics(self.diagnostics)
         dry_run = self.diagnostics.get("dry_run") is True
         execution = "skipped" if dry_run else ("completed" if self.status in {"completed", "prepared"} else "failed")
-        scientific = "unassessed" if dry_run else ("accepted" if self.status == "completed" else "guarded")
+        # Legacy result envelopes retain the historical field for decoding,
+        # but Forge never derives a scientific assessment from task status.
+        scientific = "unassessed"
         collection = "not_collected" if dry_run else ("complete" if self.status == "completed" else "partial")
         artifacts = _workspace_artifact_records(self.workspace, self.artifacts)
         warnings += _outside_artifact_warnings(self.workspace, self.artifacts)
@@ -122,7 +123,9 @@ class CollectionResult:
         diagnostics["legacy_metrics"] = legacy_metrics
         return ForgeResultEnvelope(
             operation="collect", workspace_rel=".",
-            status=OperationStatus(execution="skipped" if dry_run else "not_run", scientific="unassessed" if dry_run else ("accepted" if converged else "guarded"), collection="not_collected" if dry_run else _collection_state(self.status)),
+            # Collection is an observation-only legacy projection.  It has no
+            # policy context, so even a convergence marker is not acceptance.
+            status=OperationStatus(execution="skipped" if dry_run else "not_run", scientific="unassessed", collection="not_collected" if dry_run else _collection_state(self.status)),
             artifacts=artifacts, metrics=metrics,
             checks=(CheckRecord(name="converged", status="passed" if converged else "warning"),),
             warnings=warnings, diagnostics=diagnostics,
@@ -149,18 +152,18 @@ def _diagnostics(value: Any) -> tuple[dict[str, Any], tuple[str, ...]]:
     return diagnostics, warnings
 
 
-def _scalar_metric_records(values: dict[str, Any]) -> tuple[tuple[MetricRecord, ...], dict[str, Any]]:
+def _scalar_metric_records(values: dict[str, Any], *, kind: str = "reported") -> tuple[tuple[MetricRecord, ...], dict[str, Any]]:
     metrics: list[MetricRecord] = []
     legacy: dict[str, Any] = {}
     for name, value in values.items():
         if value is None or isinstance(value, (bool, int, float, str)):
-            metrics.append(MetricRecord(name=str(name), value=value, unit=None, kind="reported"))
+            metrics.append(MetricRecord(name=str(name), value=value, unit=None, kind=kind))
         else:
             legacy[str(name)] = _json_mapping(value).get("value", value)
     return tuple(metrics), legacy
 
 
-def _workspace_artifact_records(workspace: Path, artifacts: dict[str, str]) -> tuple[ArtifactRecord, ...]:
+def _workspace_artifact_records(workspace: Path, artifacts: dict[str, str], *, stage: str = "collect") -> tuple[ArtifactRecord, ...]:
     root = Path(workspace).resolve()
     records: list[ArtifactRecord] = []
     alias_counts: dict[str, int] = {}
@@ -183,7 +186,7 @@ def _workspace_artifact_records(workspace: Path, artifacts: dict[str, str]) -> t
         digest = None
         if resolved.is_file():
             digest = __import__('hashlib').sha256(resolved.read_bytes()).hexdigest()
-        records.append(ArtifactRecord(id=artifact_id, path_rel=rel, role="output", stage="collect", sha256=digest, size_bytes=size))
+        records.append(ArtifactRecord(id=artifact_id, path_rel=rel, role="output", stage=stage, sha256=digest, size_bytes=size))
     return tuple(records)
 
 

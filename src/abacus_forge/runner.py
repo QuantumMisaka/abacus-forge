@@ -47,17 +47,31 @@ class LocalRunner:
         }
 
     def _resolve_executable(self) -> str:
-        candidate = Path(self.executable)
+        return self._resolve_program(self.executable, role="engine")
+
+    @staticmethod
+    def _resolve_program(program: str, *, role: str) -> str:
+        candidate = Path(program)
         if candidate.parent != Path():
             resolved = candidate if candidate.is_absolute() else candidate.resolve()
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
-            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
 
-        resolved = shutil.which(self.executable)
+        resolved = shutil.which(program)
         if resolved is None:
-            raise FileNotFoundError(f"Executable not found or not executable: {self.executable}")
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         return resolved
+
+    def preflight(self, workspace: Workspace) -> None:
+        """Verify every program required before starting the local process."""
+
+        command = self.build_command(workspace)
+        if self.launcher:
+            self._resolve_program(str(command[0]), role="launcher")
+        elif self.mpi_ranks > 1:
+            self._resolve_program("mpirun", role="launcher")
+        self._resolve_executable()
 
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
@@ -73,13 +87,14 @@ class LocalRunner:
             "env_overrides": dict(self.env_overrides),
         }
         try:
-            self._resolve_executable()
+            self.preflight(workspace)
         except FileNotFoundError as exc:
             stdout_path.write_text("", encoding="utf-8")
             stderr_path.write_text(str(exc) + "\n", encoding="utf-8")
             diagnostics.update(
                 {
                     "failure_class": "missing_executable",
+                    "termination": "not_started",
                     "stderr_tail": str(exc),
                     "stdout_tail": "",
                 }
@@ -110,18 +125,25 @@ class LocalRunner:
             stdout = completed.stdout
             stderr = completed.stderr
             returncode = completed.returncode
-            failure_class = "none" if returncode == 0 else "nonzero_exit"
+            if returncode < 0:
+                failure_class = "signal"
+                termination = "signal"
+            else:
+                failure_class = "none" if returncode == 0 else "nonzero_exit"
+                termination = "exited"
         except subprocess.TimeoutExpired as exc:
             stdout = _coerce_output(exc.stdout)
             stderr = _coerce_output(exc.stderr) or f"Command timed out after {self.timeout_seconds} seconds\n"
             returncode = 124
             failure_class = "timeout"
+            termination = "timeout"
 
         stdout_path.write_text(stdout, encoding="utf-8")
         stderr_path.write_text(stderr, encoding="utf-8")
         diagnostics.update(
             {
                 "failure_class": failure_class,
+                "termination": termination,
                 "stdout_tail": _tail(stdout),
                 "stderr_tail": _tail(stderr),
             }
@@ -159,7 +181,12 @@ def run_many(
     max_workers: int = 1,
     skip_completed: bool = True,
 ) -> list[RunResult]:
-    """Run several local workspaces without introducing scheduler semantics."""
+    """Run several local workspaces using the legacy skip policy.
+
+    This compatibility helper may infer ``skipped`` from existing output when
+    ``skip_completed`` is true.  Typed v1 services must call ``LocalRunner.run``
+    directly and use an explicit request-level dry-run instead.
+    """
 
     local_runner = runner or LocalRunner()
     normalized = [item if isinstance(item, Workspace) else Workspace(Path(item)) for item in workspaces]

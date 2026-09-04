@@ -2,13 +2,14 @@
 
 from abacus_forge.api import UnitModifyResult, UnitModifySpec, UnitPrepareResult, UnitSpec, collect, collect_unit, execute, execute_unit, export, modify_unit, prepare, prepare_unit, run
 from abacus_forge.band_data import BandData
-from abacus_forge.contracts import ArtifactRecord, CheckRecord, ForgeRequest, ForgeResultEnvelope, MetricRecord, OperationStatus
+from abacus_forge.contracts import ArtifactRecord, ArtifactRef, CheckRecord, ForgeErrorEnvelope, ForgeRequest, ForgeResultEnvelope, MetricRecord, Observation, OperationOutcome, OperationRef, OperationStatus, ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
 from abacus_forge.perturbation import perturb_structure
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
+from abacus_forge.services import ForgeServices
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.tasks import run_band, run_band_sequence, run_cell_relax, run_dos, run_dos_sequence, run_md, run_relax, run_scf, run_task
@@ -17,6 +18,7 @@ from abacus_forge.workspace import Workspace
 __all__ = [
     "AbacusStructure",
     "ArtifactRecord",
+    "ArtifactRef",
     "BandData",
     "CollectionResult",
     "CheckRecord",
@@ -24,13 +26,22 @@ __all__ = [
     "DOSData",
     "DOSFamilyData",
     "ForgeRequest",
+    "ForgeErrorEnvelope",
     "ForgeResultEnvelope",
+    "ForgeServices",
     "LocalDOSData",
     "LocalRunner",
     "MetricRecord",
+    "Observation",
+    "OperationOutcome",
+    "OperationRef",
     "OperationStatus",
     "PDOSData",
     "RunResult",
+    "ScfCollectRequest",
+    "ScfExecuteRequest",
+    "ScfModifyRequest",
+    "ScfPrepareRequest",
     "TaskResult",
     "UnitModifyResult",
     "UnitModifySpec",

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -22,6 +24,18 @@ from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
 from abacus_forge.validation import validate_inputs
+
+
+_SUPPRESS_LEGACY_EVENTS: ContextVar[bool] = ContextVar("suppress_legacy_events", default=False)
+
+
+@contextmanager
+def suppress_legacy_events():
+    token = _SUPPRESS_LEGACY_EVENTS.set(True)
+    try:
+        yield
+    finally:
+        _SUPPRESS_LEGACY_EVENTS.reset(token)
 
 
 @dataclass(slots=True)
@@ -311,12 +325,13 @@ def prepare_unit(spec: UnitSpec) -> UnitPrepareResult:
     manifest = _unit_manifest(spec, task=task, unit=unit, engine=engine, prepared=True)
     workspace.write_json("forge-unit.json", manifest)
     result = UnitPrepareResult(workspace=workspace, task=task, unit=unit, engine=engine, manifest=manifest)
-    _record_operation_event(workspace, ForgeResultEnvelope(
-        operation="prepare", workspace_rel=".",
-        status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
-        artifacts=_manifest_artifact(workspace, "forge-unit.json"),
-        diagnostics={"task": task, "unit": unit, "engine": engine},
-    ))
+    if not _SUPPRESS_LEGACY_EVENTS.get():
+        _record_operation_event(workspace, ForgeResultEnvelope(
+            operation="prepare", workspace_rel=".",
+            status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
+            artifacts=_manifest_artifact(workspace, "forge-unit.json"),
+            diagnostics={"task": task, "unit": unit, "engine": engine},
+        ))
     return result
 
 
@@ -456,15 +471,16 @@ def modify_unit(spec: UnitModifySpec) -> UnitModifyResult:
             **result.to_dict(),
         },
     )
-    _record_operation_event(ws, ForgeResultEnvelope(
-        operation="modify", workspace_rel=".",
-        status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
-        artifacts=tuple(
-            ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
-            for name in modified_files if (ws.inputs_dir / name).is_file()
-        ),
-        diagnostics={"task": task, "unit": unit, "engine": engine, "modified_files": modified_files},
-    ))
+    if not _SUPPRESS_LEGACY_EVENTS.get():
+        _record_operation_event(ws, ForgeResultEnvelope(
+            operation="modify", workspace_rel=".",
+            status=OperationStatus(execution="completed", scientific="unassessed", collection="not_collected"),
+            artifacts=tuple(
+                ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")
+                for name in modified_files if (ws.inputs_dir / name).is_file()
+            ),
+            diagnostics={"task": task, "unit": unit, "engine": engine, "modified_files": modified_files},
+        ))
     return result
 
 

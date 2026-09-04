@@ -3,15 +3,78 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
+import secrets
 import tempfile
+import threading
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, Mapping
+from typing import Any, ClassVar, Iterator, Mapping
 
 from .contracts import JSONValue, WORKSPACE_SCHEMA_VERSION, canonical_relative_path
+from .errors import ForgePathError, ForgePersistenceError, ForgeSchemaError, OperationConflictError
+
+
+_V1_OPERATION_PATTERN = re.compile(r"[a-z][a-z0-9_]*\Z")
+
+
+def _validate_v1_json_value(value: object, *, active: set[int]) -> JSONValue:
+    """Validate and normalize a JSON value for a v1 event payload."""
+    if value is None or isinstance(value, (bool, int, str)):
+        return value  # type: ignore[return-value]
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("payload must contain only finite JSON values")
+        return value
+
+    value_id = id(value)
+    if isinstance(value, Mapping):
+        if value_id in active:
+            raise ValueError("payload must not contain circular references")
+        active.add(value_id)
+        try:
+            normalized: dict[str, JSONValue] = {}
+            try:
+                items = value.items()
+                for key, item in items:
+                    if not isinstance(key, str):
+                        raise ValueError("payload object keys must be strings")
+                    normalized[key] = _validate_v1_json_value(item, active=active)
+            except ValueError:
+                raise
+            except (TypeError, AttributeError, RuntimeError) as error:
+                raise ValueError("payload must contain only JSON values") from error
+            return normalized
+        finally:
+            active.remove(value_id)
+
+    if isinstance(value, list):
+        if value_id in active:
+            raise ValueError("payload must not contain circular references")
+        active.add(value_id)
+        try:
+            try:
+                return [_validate_v1_json_value(item, active=active) for item in value]
+            except ValueError:
+                raise
+            except (TypeError, RuntimeError) as error:
+                raise ValueError("payload must contain only JSON values") from error
+        finally:
+            active.remove(value_id)
+
+    raise ValueError("payload must contain only JSON values")
+
+
+def _validate_v1_payload(payload: object) -> dict[str, JSONValue]:
+    if not isinstance(payload, Mapping):
+        raise ValueError("payload must be a mapping of JSON values")
+    normalized = _validate_v1_json_value(payload, active=set())
+    # The Mapping check above and helper guarantee this cast at runtime.
+    return normalized  # type: ignore[return-value]
 
 
 @dataclass(slots=True)
@@ -19,6 +82,8 @@ class Workspace:
     """Encapsulate the on-disk layout for one run workspace."""
 
     root: Path
+    _operation_locks: ClassVar[dict[str, threading.Lock]] = {}
+    _operation_locks_guard: ClassVar[threading.Lock] = threading.Lock()
 
     def __post_init__(self) -> None:
         self.root = Path(self.root)
@@ -52,18 +117,18 @@ class Workspace:
         try:
             candidate.relative_to(root)
         except ValueError as error:
-            raise ValueError("path must remain under the workspace root") from error
+            raise ForgePathError("path must remain under the workspace root") from error
         return candidate
 
     def _resolve_owned_path(self, relative_path: str | Path) -> Path:
         raw = os.fspath(relative_path)
         if not isinstance(raw, str) or raw == ".":
-            raise ValueError("path must be a canonical relative path under the workspace root")
+            raise ForgePathError("path must be a canonical relative path under the workspace root")
         # Validate the spelling before Path.resolve() can normalize it.
         try:
             canonical_relative_path(raw)
         except ValueError as error:
-            raise ValueError("path must remain under the workspace root and be canonical") from error
+            raise ForgePathError("path must remain under the workspace root and be canonical") from error
         return self.resolve_relative(relative_path)
 
     @staticmethod
@@ -107,19 +172,86 @@ class Workspace:
         finally:
             os.close(descriptor)
 
+    @staticmethod
+    def _release_lock(fd: int, message: str) -> None:
+        """Release an audit lock, typing only release-time filesystem errors."""
+        import fcntl
+
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError as error:
+            raise ForgePersistenceError(message) from error
+
     @contextmanager
     def _manifest_lock(self) -> Iterator[None]:
         """Serialize manifest read-modify-write operations across processes."""
         import fcntl
 
-        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
         lock_path = self.resolve_relative(Path("reports") / ".forge-workspace.lock")
-        with lock_path.open("a+", encoding="utf-8") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            lock = lock_path.open("a+", encoding="utf-8")
+        except OSError as error:
+            raise ForgePersistenceError("unable to acquire workspace manifest lock") from error
+        with lock:
+            try:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            except OSError as error:
+                raise ForgePersistenceError("unable to acquire workspace manifest lock") from error
             try:
                 yield
             finally:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                self._release_lock(lock.fileno(), "unable to release workspace manifest lock")
+
+    @contextmanager
+    def _operation_lock(self) -> Iterator[None]:
+        """Serialize all operations mutating or auditing this workspace.
+
+        ``flock`` protects separate Forge processes; the keyed threading lock
+        closes the same-process/thread gap in which ``flock`` is not a useful
+        mutual exclusion primitive.
+        """
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
+        key = str(self.root.resolve())
+        with self._operation_locks_guard:
+            lock = self._operation_locks.setdefault(key, threading.Lock())
+        with lock:
+            lock_path = self.resolve_relative(Path("reports") / ".forge-operation.lock")
+            try:
+                operation_lock = lock_path.open("a+", encoding="utf-8")
+            except OSError as error:
+                raise ForgePersistenceError("unable to acquire operation lock") from error
+            with operation_lock:
+                import fcntl
+
+                try:
+                    fcntl.flock(operation_lock.fileno(), fcntl.LOCK_EX)
+                except OSError as error:
+                    raise ForgePersistenceError("unable to acquire operation lock") from error
+                try:
+                    yield
+                finally:
+                    self._release_lock(operation_lock.fileno(), "unable to release operation lock")
+
+    @contextmanager
+    def operation_guard(self, operation_id: str, operation: str) -> Iterator[str]:
+        """Admit one operation and hold the workspace lock to its commit.
+
+        The returned opaque token is required by
+        :meth:`append_claimed_v1_operation_event`.  Admission files are
+        durable tombstones: they are removed only by a successful event and
+        manifest commit owned by this token.
+        """
+        self._validate_v1_identity(operation_id, operation)
+        with self._operation_lock():
+            owner_token = self._admit_v1_operation(operation_id, operation)
+            yield owner_token
 
     def write_text(self, relative_path: str | Path, content: str) -> Path:
         path = self._resolve_owned_path(relative_path)
@@ -139,13 +271,19 @@ class Workspace:
             return self._ensure_manifest_unlocked()
 
     def _ensure_manifest_unlocked(self) -> Path:
-        self.reports_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.reports_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise ForgePersistenceError("unable to create reports directory") from error
         path = self.resolve_relative(Path("reports") / "forge-workspace.json")
         if not path.exists():
-            self._write_json_atomic(
-                path,
-                {"schema_version": WORKSPACE_SCHEMA_VERSION, "workspace_rel": ".", "events": []},
-            )
+            try:
+                self._write_json_atomic(
+                    path,
+                    {"schema_version": WORKSPACE_SCHEMA_VERSION, "workspace_rel": ".", "events": []},
+                )
+            except OSError as error:
+                raise ForgePersistenceError("unable to persist workspace manifest") from error
         self._reconcile_events_unlocked(path)
         return path
 
@@ -154,9 +292,9 @@ class Workspace:
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
-            raise ValueError("workspace manifest is not valid JSON") from error
+            raise ForgePersistenceError("workspace manifest is not valid JSON") from error
         if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
-            raise ValueError("workspace manifest has invalid events")
+            raise ForgePersistenceError("workspace manifest has invalid events")
         indexed = {item.get("id") for item in manifest["events"] if isinstance(item, dict)}
         additions = []
         events_dir = self.resolve_relative(Path("reports") / "events")
@@ -177,7 +315,10 @@ class Workspace:
                     continue
         if additions:
             manifest["events"].extend(additions)
-            self._write_json_atomic(manifest_path, manifest)
+            try:
+                self._write_json_atomic(manifest_path, manifest)
+            except OSError as error:
+                raise ForgePersistenceError("unable to reconcile workspace manifest") from error
 
     def append_operation_event(self, operation: str, payload: Mapping[str, JSONValue]) -> Path:
         """Atomically write an operation event and append its manifest reference."""
@@ -203,6 +344,142 @@ class Workspace:
             # Event file is authoritative if this replacement fails; the next
             # locked workspace access reconciles it into the index.
             self._write_json_atomic(manifest_path, manifest)
+        return event_path
+
+    def append_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue]) -> Path:
+        """Append one v1 event whose identity is supplied by its typed request."""
+        return self._append_v1_operation_event(operation_id, operation, payload, claim_token=None)
+
+    @contextmanager
+    def claim_v1_operation(self, operation_id: str, operation: str) -> Iterator[str]:
+        """Compatibility name for the full operation guard."""
+        with self.operation_guard(operation_id, operation) as owner_token:
+            yield owner_token
+
+    @staticmethod
+    def _validate_v1_identity(operation_id: str, operation: str) -> None:
+        if not isinstance(operation_id, str):
+            raise ForgeSchemaError("operation_id must be a lowercase UUIDv4")
+        try:
+            parsed_id = uuid.UUID(operation_id)
+        except (AttributeError, ValueError) as error:
+            raise ForgeSchemaError("operation_id must be a lowercase UUIDv4") from error
+        if parsed_id.version != 4 or str(parsed_id) != operation_id:
+            raise ForgeSchemaError("operation_id must be a lowercase UUIDv4")
+        if not isinstance(operation, str) or _V1_OPERATION_PATTERN.fullmatch(operation) is None:
+            raise ForgeSchemaError("operation must match [a-z][a-z0-9_]*")
+
+    def _admit_v1_operation(self, operation_id: str, operation: str) -> str:
+        with self._manifest_lock():
+            claims_dir = self.resolve_relative(Path("reports") / "claims")
+            claim_path = claims_dir / f"{operation_id}.json"
+            event_path = self.resolve_relative(Path("reports") / "events" / f"{operation_id}-{operation}.json")
+            # Check durable identity markers before any manifest reconciliation.
+            # A stale claim or an event left by a crash is never silently
+            # reclaimed, even if the manifest itself also needs repair.
+            if claim_path.exists() or event_path.exists():
+                raise OperationConflictError("operation_id is already admitted")
+            manifest_path = self._ensure_manifest_unlocked()
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as error:
+                raise ForgePersistenceError("workspace manifest is not readable") from error
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                raise ForgePersistenceError("workspace manifest has invalid events")
+            if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
+                raise OperationConflictError("operation_id already exists in workspace manifest")
+
+            try:
+                claims_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                raise ForgePersistenceError("unable to create operation claims directory") from error
+            owner_token = secrets.token_urlsafe(32)
+            try:
+                with claim_path.open("x", encoding="utf-8") as claim:
+                    json.dump(
+                        {"operation_id": operation_id, "operation": operation, "owner_token": owner_token},
+                        claim,
+                        sort_keys=True,
+                    )
+                    claim.flush()
+                    os.fsync(claim.fileno())
+                self._fsync_directory(claims_dir)
+            except FileExistsError as error:
+                raise OperationConflictError("operation_id is already admitted") from error
+            except OSError as error:
+                raise ForgePersistenceError("unable to persist operation admission") from error
+            return owner_token
+
+    def append_claimed_v1_operation_event(
+        self,
+        operation_id: str,
+        operation: str,
+        payload: Mapping[str, JSONValue],
+        *,
+        owner_token: str,
+    ) -> Path:
+        """Durably commit an admitted event and then remove its admission."""
+        return self._append_v1_operation_event(operation_id, operation, payload, claim_token=owner_token)
+
+    def _append_v1_operation_event(self, operation_id: str, operation: str, payload: Mapping[str, JSONValue], *, claim_token: str | None) -> Path:
+        self._validate_v1_identity(operation_id, operation)
+        normalized_payload = _validate_v1_payload(payload)
+
+        with self._manifest_lock():
+            try:
+                manifest_path = self._ensure_manifest_unlocked()
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, ForgePersistenceError) as error:
+                raise ForgePersistenceError("unable to read workspace manifest") from error
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("events"), list):
+                raise ForgePersistenceError("workspace manifest has invalid events")
+            if any(isinstance(event, dict) and event.get("id") == operation_id for event in manifest["events"]):
+                raise OperationConflictError("operation_id already exists in workspace manifest")
+            claim_path = self.resolve_relative(Path("reports") / "claims" / f"{operation_id}.json")
+            if claim_token is None:
+                if claim_path.exists():
+                    raise OperationConflictError("operation_id is already admitted")
+            else:
+                try:
+                    claim = json.loads(claim_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as error:
+                    raise ForgePersistenceError("operation admission is not readable") from error
+                if (
+                    not isinstance(claim, dict)
+                    or claim.get("operation_id") != operation_id
+                    or claim.get("operation") != operation
+                    or claim.get("owner_token") != claim_token
+                ):
+                    raise OperationConflictError("operation admission owner mismatch")
+
+            events_dir = self.resolve_relative(Path("reports") / "events")
+            try:
+                events_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                raise ForgePersistenceError("unable to create operation events directory") from error
+            event_path = events_dir / f"{operation_id}-{operation}.json"
+            if event_path.exists():
+                raise OperationConflictError("operation_id already exists in workspace events")
+            try:
+                self._write_json_atomic(
+                    event_path, {"id": operation_id, "operation": operation, "payload": normalized_payload}
+                )
+            except OSError as error:
+                raise ForgePersistenceError("unable to persist operation event") from error
+            event_rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
+            manifest["events"].append({"id": operation_id, "operation": operation, "path_rel": event_rel})
+            try:
+                self._write_json_atomic(manifest_path, manifest)
+            except OSError as error:
+                # Leave both the immutable event and the admission tombstone:
+                # the event can be reconciled, while the ID cannot be replayed.
+                raise ForgePersistenceError("unable to persist workspace manifest") from error
+            if claim_token is not None:
+                try:
+                    claim_path.unlink()
+                    self._fsync_directory(claim_path.parent)
+                except OSError as error:
+                    raise ForgePersistenceError("unable to finalize operation admission") from error
         return event_path
 
     def record_metadata(self, payload: dict[str, Any]) -> Path:

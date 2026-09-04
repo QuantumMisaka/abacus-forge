@@ -71,6 +71,8 @@ def test_collection_result_projects_a_v1_result_envelope(tmp_path: Path) -> None
     payload = envelope.to_dict()
     assert payload["schema_version"] == "forge.result/v1"
     assert payload["status"]["collection"] == "complete"
+    assert payload["status"]["scientific"] == "unassessed"
+    assert payload["checks"] == [{"name": "converged", "status": "passed", "message": None}]
     assert any(item["id"] == "stdout_log" and item["path_rel"] == "outputs/stdout.log" for item in payload["artifacts"])
 
 
@@ -94,6 +96,11 @@ def test_task_sequence_artifacts_have_unique_deterministic_ids(tmp_path: Path) -
     envelope = TaskResult("sequence", tmp_path, "completed", artifacts={"a": str(first), "b": str(second)}).to_envelope()
     ids = [item.id for item in envelope.artifacts]
     assert len(ids) == len(set(ids)) == 2
+
+
+def test_legacy_task_result_never_derives_scientific_assessment(tmp_path: Path) -> None:
+    envelope = TaskResult("scf", tmp_path, "completed").to_envelope()
+    assert envelope.status.scientific == "unassessed"
 
 
 def test_run_and_task_external_artifacts_are_reported_in_diagnostics(tmp_path: Path) -> None:
