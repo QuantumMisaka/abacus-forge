@@ -835,6 +835,45 @@ def test_unexpected_runner_exception_before_start_is_internal_error(tmp_path: Pa
     assert result.error_class == "internal.failure"
 
 
+def test_empty_runner_exception_message_is_normalized_to_internal_error(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+
+    def empty_runner_factory(**kwargs: object) -> object:
+        del kwargs
+        raise RuntimeError()
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174105", workspace_rel="scf"
+    )
+    result = ScfServiceSet.default(
+        workspace_root=tmp_path,
+        runner_factory=empty_runner_factory,
+    ).execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+    assert result.message
+
+
+def test_nonempty_runner_exception_message_is_preserved(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+
+    class FailureRunner:
+        def run(self, workspace):
+            raise RuntimeError("runner detail")
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174105", workspace_rel="scf"
+    )
+    result = ScfServiceSet.default(
+        workspace_root=tmp_path,
+        runner_factory=lambda **_: FailureRunner(),
+    ).execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.message == "runner detail"
+
+
 def test_unexpected_collector_value_error_is_internal_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def broken_collect(workspace):
         raise ValueError("parser bug, not a malformed request")

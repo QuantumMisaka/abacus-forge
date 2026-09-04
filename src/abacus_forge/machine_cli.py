@@ -28,6 +28,7 @@ from abacus_forge.errors import (
     ForgePreconditionError,
     ForgeRequestError,
     ForgeSchemaError,
+    normalize_error_message,
     OperationConflictError,
 )
 from abacus_forge.services import ScfServiceSet, ServiceResult
@@ -186,7 +187,7 @@ def _error(
 ) -> ForgeErrorEnvelope:
     return ForgeErrorEnvelope(
         error_class=error_class,
-        message=message,
+        message=normalize_error_message(error_class, message),
         affected_fields=affected_fields,
         operation_id=_safe_operation_id(payload),
         workspace_rel=_safe_workspace_rel(payload),

@@ -20,7 +20,13 @@ from abacus_forge.contracts import (
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_scf_request, exit_code_for, run_machine_cli
-from abacus_forge.errors import ForgePathError, ForgeRequestError, ForgeSchemaError
+from abacus_forge.errors import (
+    ForgeInternalError,
+    ForgePathError,
+    ForgePreconditionError,
+    ForgeRequestError,
+    ForgeSchemaError,
+)
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
@@ -67,6 +73,19 @@ class _RecordingCollectService:
     def collect(self, request: object) -> object:
         self.owner.calls.append(("collect", request))
         return self.owner.result
+
+
+class _RaisingCollectService:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def collect(self, request: object) -> object:
+        raise self.error
+
+
+class _RaisingServices:
+    def __init__(self, error: Exception) -> None:
+        self.collect = _RaisingCollectService(error)
 
 
 class _RecordingOperationService:
@@ -306,6 +325,30 @@ def test_machine_error_envelope_rendering_preserves_context_and_exit() -> None:
     )
     assert code == 3
     assert json.loads(output) == error.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("error", "error_class", "exit_code"),
+    [
+        (ForgeInternalError(), "internal.failure", 5),
+        (ForgePreconditionError(), "precondition.missing", 3),
+    ],
+)
+def test_machine_empty_exception_message_still_renders_one_error_envelope(
+    error: Exception, error_class: str, exit_code: int
+) -> None:
+    code, output, diagnostics = _invoke(
+        ["operation", "collect", "--stdin"],
+        request_text=json.dumps(_request()),
+        services=_RaisingServices(error),
+    )
+
+    assert code == exit_code
+    payload = json.loads(output)
+    assert payload["schema_version"] == "forge.error/v1"
+    assert payload["error"]["class"] == error_class
+    assert payload["error"]["message"]
+    assert diagnostics == ""
 
 
 @pytest.mark.parametrize(

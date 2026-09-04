@@ -27,6 +27,7 @@ from abacus_forge.errors import (
     ForgePreconditionError,
     ForgeRequestError,
     ForgeSchemaError,
+    normalize_error_message,
     OperationConflictError,
 )
 from abacus_forge.workspace import Workspace
@@ -111,7 +112,7 @@ class _ScfServiceContext:
             workspace_rel = None
         return ForgeErrorEnvelope(
             error_class=error_class,
-            message=message,
+            message=normalize_error_message(error_class, message),
             affected_fields=("request",),
             operation_id=operation_id,
             workspace_rel=workspace_rel,
