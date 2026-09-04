@@ -56,3 +56,11 @@ Review identified missing direct coverage for negative values and wrong/non-JSON
 Focused verification after the fix: `112 passed`.
 
 Full-suite verification after the fix: `278 passed, 2 skipped`.
+
+## Review fix-round-1 evidence
+
+Added direct constructor coverage for non-JSON `object()` values supplied to each new execute configuration field (`executable`, `mpi_ranks`, `omp_threads`, and `timeout_seconds`). Each is rejected with `ValueError` before any serialization step.
+
+Focused verification: `116 passed`.
+
+Full-suite verification: `282 passed, 2 skipped`.

@@ -161,6 +161,13 @@ def test_scf_execute_request_rejects_invalid_runner_configuration(field: str, va
         ScfExecuteRequest.from_dict(payload)
 
 
+@pytest.mark.parametrize("field", ["executable", "mpi_ranks", "omp_threads", "timeout_seconds"])
+def test_scf_execute_request_rejects_non_json_runner_values_at_constructor(field: str) -> None:
+    kwargs = {field: object()}
+    with pytest.raises(ValueError):
+        ScfExecuteRequest(operation_id=OPERATION_ID, workspace_rel="scf", **kwargs)
+
+
 def test_scf_execute_request_rejects_unknown_runner_fields() -> None:
     payload = _valid_execute_request_dict()
     payload["launcher"] = "mpirun"
