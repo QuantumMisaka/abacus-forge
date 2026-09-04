@@ -62,15 +62,12 @@ class ForgeServices:
             structure_path = self._workspace_file(workspace, request.structure_path_rel, "structure_path_rel")
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 with suppress_legacy_events():
-                    try:
-                        result = prepare_unit(
-                            UnitSpec(
-                                task="scf", workdir=workspace.root, structure=structure_path,
-                                structure_format=request.structure_format, parameters=dict(request.parameters),
-                            )
+                    result = prepare_unit(
+                        UnitSpec(
+                            task="scf", workdir=workspace.root, structure=structure_path,
+                            structure_format=request.structure_format, parameters=dict(request.parameters),
                         )
-                    except (TypeError, ValueError) as error:
-                        raise ForgeRequestError(str(error)) from error
+                    )
                 envelope = ForgeResultEnvelope(
                     operation="prepare", workspace_rel=request.workspace_rel,
                     status=OperationStatus(execution="not_run", scientific="unassessed", collection="not_collected"),
@@ -90,13 +87,10 @@ class ForgeServices:
             with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
                 before = _input_snapshot(workspace)
                 with suppress_legacy_events():
-                    try:
-                        result = modify_unit(UnitModifySpec(
-                            task="scf", workdir=workspace.root,
-                            input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
-                        ))
-                    except (TypeError, ValueError) as error:
-                        raise ForgeRequestError(str(error)) from error
+                    result = modify_unit(UnitModifySpec(
+                        task="scf", workdir=workspace.root,
+                        input_updates=dict(request.input_updates), remove_parameters=request.remove_parameters,
+                    ))
                 after = _input_snapshot(workspace)
                 artifacts = tuple(
                     ArtifactRecord(id=f"artifact-{name.lower()}", path_rel=f"inputs/{name}", role="input", stage="modify")

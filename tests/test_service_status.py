@@ -440,6 +440,53 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
     assert "input_snapshot_after" in modified.envelope.diagnostics
 
 
+@pytest.mark.parametrize(
+    ("operation", "primitive_name", "error_type"),
+    [
+        ("prepare", "prepare_unit", TypeError),
+        ("prepare", "prepare_unit", ValueError),
+        ("modify", "modify_unit", TypeError),
+        ("modify", "modify_unit", ValueError),
+    ],
+)
+def test_primitive_internal_error_is_not_request_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    primitive_name: str,
+    error_type: type[Exception],
+) -> None:
+    services_module = __import__("abacus_forge.services", fromlist=["services"])
+
+    def broken_primitive(*args, **kwargs):
+        raise error_type("unexpected primitive defect")
+
+    monkeypatch.setattr(services_module, primitive_name, broken_primitive)
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    structure = workspace.root / "source.STRU"
+    structure.write_text("not used by broken primitive", encoding="utf-8")
+    operation_id = "123e4567-e89b-42d3-a456-426614174115"
+    services = ForgeServices.default(workspace_root=tmp_path)
+    request = (
+        ScfPrepareRequest(operation_id=operation_id, workspace_rel="scf", structure_path_rel="source.STRU")
+        if operation == "prepare"
+        else ScfModifyRequest(operation_id=operation_id, workspace_rel="scf", input_updates={"ecutwfc": 90})
+    )
+
+    result = getattr(services, f"{operation}_scf")(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+    event_paths = list((workspace.reports_dir / "events").glob(f"{operation_id}-*.json"))
+    assert event_paths == []
+    claim_path = workspace.reports_dir / "claims" / f"{operation_id}.json"
+    assert claim_path.exists()
+    conflict = getattr(services, f"{operation}_scf")(request)
+    assert isinstance(conflict, ForgeErrorEnvelope)
+    assert conflict.error_class == "operation.conflict"
+
+
 def test_typed_services_return_operation_outcome_and_event_carries_same_facts(tmp_path: Path) -> None:
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["SCF CONVERGED", "NORMAL END"])
     services = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable)))
