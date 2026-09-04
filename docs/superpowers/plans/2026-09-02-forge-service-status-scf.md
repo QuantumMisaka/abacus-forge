@@ -362,6 +362,43 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
     git add src/abacus_forge tests README.md AGENTS.md
     git commit -m "feat: expose factual operation outcomes"
 
+### Task 8: Close primitive exception classification
+
+**Decision source:** 2026-09-04 final-fix scoped re-review reproduced that `prepare_unit()` and `modify_unit()` internal `ValueError` exceptions are still exposed as `request.invalid`; the user explicitly authorized a new follow-up phase. This task is a bounded correction to the frozen error matrix, not a new final-review fix wave.
+
+**Files:**
+- Modify: `src/abacus_forge/services.py`
+- Modify: `tests/test_service_status.py`
+
+**Test strategy:** Inject unexpected `TypeError` and `ValueError` independently at the prepare and modify primitive boundaries. Every case must return `ForgeErrorEnvelope(error_class="internal.failure")`, retain the admission tombstone, append no success event, and make the same operation ID conflict on reuse. Existing explicit request type/path/schema tests must continue to return their frozen request classes before primitive invocation.
+
+- [ ] **Step 1: Write RED regression tests**
+
+  Add a table-driven regression for prepare/modify × `TypeError`/`ValueError`. Assert error class, no event, retained admission, and same-ID conflict. Do not assert implementation source text.
+
+- [ ] **Step 2: Run RED**
+
+  Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py -k 'primitive_internal_error'`
+
+  Expected: FAIL because prepare/modify currently wrap primitive `TypeError`/`ValueError` as `ForgeRequestError`.
+
+- [ ] **Step 3: Implement the narrow exception boundary**
+
+  Remove the broad primitive exception wrappers. Only explicit `ForgeRequestError` subclasses created by typed request/path/schema validation may map to request errors; untyped primitive/parser/runner exceptions fall through to `internal.failure`. Do not parse exception messages and do not change success, admission, outcome, legacy API/CLI, or scientific boundaries.
+
+- [ ] **Step 4: Run GREEN and regression**
+
+  Run the RED command, then:
+
+    conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py
+
+  Expected: all pass without warning noise.
+
+- [ ] **Step 5: Commit**
+
+    git add src/abacus_forge/services.py tests/test_service_status.py
+    git commit -m "fix: classify primitive defects as internal"
+
 ## Deliberately deferred plans
 
 1. Agent-first CLI: operation, schema, capabilities, and JSON error/exit mapping consume Forge facts without adding scientific policy.
@@ -371,8 +408,9 @@ Expected: whitespace and pytest exit 0; legacy help exits 0; scan finds no runti
 
 ## Plan self-review
 
-- **Spec coverage:** Tasks 1–2 establish typed requests and additive event identity; Task 3 defines factual status/observations; Tasks 4–5 build the SCF slice and explicit execution control; Tasks 6–7 close the post-implementation review gaps in pre-side-effect admission, typed failure mapping, machine observation transport, and scientific-policy removal.
+- **Spec coverage:** Tasks 1–2 establish typed requests and additive event identity; Task 3 defines factual status/observations; Tasks 4–5 build the SCF slice and explicit execution control; Tasks 6–7 close the post-implementation review gaps in pre-side-effect admission, typed failure mapping, machine observation transport, and scientific-policy removal; Task 8 closes the last reproduced primitive-error classification defect.
 - **Scope discipline:** v1 CLI and Paimon adapter are deferred because both must consume, not shape, the stable Forge operation contract.
 - **Type consistency:** services consume Task 1 requests, persist via Task 2, and return Task 3 facts without a Forge scientific policy layer.
 - **Review revisions (2026-09-04):** the first review/fix wave was not accepted as complete. Tasks 6–7 replace late duplicate rejection and stale-claim reclaim, require owner proof and same-workspace serialization, distinguish persistence failures by type, freeze `OperationOutcome` as the Agent-visible observation carrier, remove typed-service scientific policy, and add the missing failure matrix. These are contract corrections, not new workflow, recovery, scheduling, or scientific responsibilities.
 - **Final-review closure (2026-09-04):** before integration, Task 7 also closes strict public error-class validation, explicit request-error conversion, real `LocalRunner` signal/timeout/nonzero evidence, symlink resolved-target containment for prepare/modify evidence, stale policy wording in README/AGENTS/test guidance, and removal of unused facade state. These enforce already-approved contracts; they do not expand Forge's role.
+- **Authorized follow-up (2026-09-04):** the Task 7 final-fix re-review left one load-bearing defect at the prepare/modify primitive boundary. The user confirmed a new follow-up phase; Task 8 removes that broad exception wrapper and requires its own task review before a new whole-branch review.
