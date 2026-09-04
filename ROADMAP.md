@@ -11,7 +11,7 @@
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
 - 已初步实现 Forge-level 实验性 property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
-- property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
+- property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 操作/解析验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 
@@ -33,8 +33,14 @@
 - 在保持单工作目录原子语义的前提下优化本地执行体验。
 - 当 property pack 经过真实 smoke 后，再由上层 adapter/workflow 选择成熟 Forge API 进行编排；Forge 本体仍不承接 provenance 存储、站点策略或恢复式工作流。
 
+## 工程清理触发点
+- Stage 3 的 Agent-first CLI 门禁加入源码 AST forbidden-import 检查，防止 Forge 运行时重新依赖 AiiDA、ATP/MCP、平台调度或 legacy 工具包。
+- Stage 4 开始前按 SPEC 将首个 SCF `ForgeServices` facade 收敛为 per-operation protocol；届时把 `artifact_refs` 归一到单一注入点。
+- 下次实质修改 workspace admission 接口时，先扫描外部使用，再收敛仅作兼容入口的 `claim_v1_operation` 别名。
+- Stage 5 在全新干净环境执行安装与 import 验证，作为解除 `abacus-agent-tools`、`abacustest` 等 legacy 运行时依赖的发布门禁。
+
 ## 明确延后项
 - `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
-- 不在 Forge 中引入平台化 UI 或任务管理逻辑。
+- 不在 Forge core 中引入平台化 UI 或任务管理逻辑；本地 TUI 若实现，只作为 Python API/结构化 CLI envelope 之上的可选薄壳。
 - 新增 property pack 不自动进入 PAIMON v1.3 能力面；进入 Agent/协议适配层前需要另行评估契约、用户体验与真实运行门禁。

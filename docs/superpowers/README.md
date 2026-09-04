@@ -12,7 +12,7 @@
 | `plans/*.md` | 实施者 | 从 SPEC 推导出的可执行任务、测试和提交检查点 | 否 |
 | `../archive/` | 回溯者 | 已结项或已取代的历史材料 | 否 |
 
-当前重构规范为 [契约优先重构 SPEC](./specs/2026-09-01-forge-contract-first-rearchitecture-design.html)。它已经于 2026-09-01 获本人确认，现为对应重构的唯一规范源。
+重构规范由两份已批准的本地 SPEC 共同构成：[契约优先重构 SPEC](./specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 定义产品边界与 contract-first 总体迁移；[Service/Status 细化 SPEC](./specs/2026-09-02-forge-service-status-migration-design.html) 冻结 operation identity、执行/收集状态、v1 CLI/error 协议与兼容迁移。后者仅在其细化范围内优先；未覆盖的边界仍以 2026-09-01 SPEC 为准。
 
 ## 路由
 
@@ -30,7 +30,7 @@
 - 开始前：阅读 `AGENTS.md`、相关 README、最近 SPEC/PLAN 与拥有该行为的测试。
 - 修改可观察行为：先写会失败的回归或验收证据；只改文档/测试治理时记录基线和受影响门禁。
 - 提交前：运行 `git diff --check`、最小充分 pytest 命令、相关 CLI `--help` 或进程契约检查；默认回归不得访问网络、调度器、真实集群或用户工作目录。
-- 宣称稳定科学能力前：除确定性测试外，必须有对应的 real smoke 证据；benchmark 和 fixture 不替代真实物理验收。
+- 宣称稳定操作/解析能力前：除确定性测试外，必须有对应的 real smoke 证据；benchmark 和 fixture 不替代真实运行证据，科学判断由上层人类/Agent 完成。
 - 完成时：在 PR/提交说明或 PLAN 中写明命令和输出；不以覆盖率、测试数量或自评替代行为证据。
 
 ## 写作与生命周期
@@ -42,6 +42,6 @@
 
 ## Forge 特有红线
 
-- Forge 不承载 ATP/MCP/AiiDA/平台/调度器/UI 语义；Paimon adapter 只在上层消费 Forge 的协议无关事实。
+- Forge 核心不承载 ATP/MCP/AiiDA/平台/调度器/UI 语义；可选 TUI 若实现，只能作为 Python API 或结构化 CLI envelope 之上的薄壳，Paimon adapter 只在上层消费 Forge 的协议无关事实。
 - 数字 Task-ID 与交互菜单不得成为核心 API/CLI 协议。
 - `abacus-agent-tools`、`abacustest`、`abacuslab`、`abacuscopilot`、PyATB 与 VASPKIT 是能力、兼容性或 UX 参考，不能成为绕过 Forge 边界的运行时捷径。
