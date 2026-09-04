@@ -15,7 +15,7 @@
 
 本 README 描述当前可用实现，不把所有现有 Python API 都承诺为 Paimon v1.3 的最终后端协议。Forge 正在以契约优先方式收敛请求、workspace、结果和 artifact 语义；在此期间，稳定使用应优先采用本文列出的显式 CLI 与核心基元，实验性能力见下文明确标记。
 
-workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现有兼容文件，继续按既有格式写出；它们不会被 v1 记录替换。需要机器读取操作历史或跨操作 artifact 引用时，应读取新增的 `reports/forge-workspace.json` 及其 `reports/events/*.json` 记录。当前 v1 workspace manifest 的 schema version 是 `forge.workspace/v1`，事件 payload 使用 `forge.result/v1` envelope；`ArtifactRecord.path_rel` 始终指向 workspace 内的相对路径。该记录层是追加式兼容扩展，不改变现有 CLI 命令示例或旧文件消费者。
+workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现有兼容文件，继续按既有格式写出；它们不会被 v1 记录替换。需要机器读取操作历史或跨操作 artifact 引用时，应读取新增的 `reports/forge-workspace.json` 及其 `reports/events/*.json` 记录。当前 v1 workspace manifest 的 schema version 是 `forge.workspace/v1`，typed operation event payload 使用 `forge.operation-outcome/v1`，并嵌入未改变的 `forge.result/v1` envelope；`ArtifactRecord.path_rel` 始终指向 workspace 内的相对路径。该记录层是追加式兼容扩展，不改变现有 CLI 命令示例或旧文件消费者。
 
 - 科研用户与调用者：阅读本文、[ROADMAP.md](./ROADMAP.md) 和 CLI `--help`，按成熟度选择能力。
 - 人类与 AI 开发者：先阅读 [AGENTS.md](./AGENTS.md)；其中定义边界、测试和开发路由。

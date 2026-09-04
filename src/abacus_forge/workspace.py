@@ -172,6 +172,16 @@ class Workspace:
         finally:
             os.close(descriptor)
 
+    @staticmethod
+    def _release_lock(fd: int, message: str) -> None:
+        """Release an audit lock, typing only release-time filesystem errors."""
+        import fcntl
+
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError as error:
+            raise ForgePersistenceError(message) from error
+
     @contextmanager
     def _manifest_lock(self) -> Iterator[None]:
         """Serialize manifest read-modify-write operations across processes."""
@@ -194,7 +204,7 @@ class Workspace:
             try:
                 yield
             finally:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                self._release_lock(lock.fileno(), "unable to release workspace manifest lock")
 
     @contextmanager
     def _operation_lock(self) -> Iterator[None]:
@@ -227,7 +237,7 @@ class Workspace:
                 try:
                     yield
                 finally:
-                    fcntl.flock(operation_lock.fileno(), fcntl.LOCK_UN)
+                    self._release_lock(operation_lock.fileno(), "unable to release operation lock")
 
     @contextmanager
     def operation_guard(self, operation_id: str, operation: str) -> Iterator[str]:
@@ -443,7 +453,10 @@ class Workspace:
                     raise OperationConflictError("operation admission owner mismatch")
 
             events_dir = self.resolve_relative(Path("reports") / "events")
-            events_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                events_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                raise ForgePersistenceError("unable to create operation events directory") from error
             event_path = events_dir / f"{operation_id}-{operation}.json"
             if event_path.exists():
                 raise OperationConflictError("operation_id already exists in workspace events")

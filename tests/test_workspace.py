@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import multiprocessing
 import threading
 import time
@@ -231,6 +232,30 @@ def test_public_manifest_initialization_waits_for_append_lock(tmp_path: Path) ->
     workspace.append_operation_event("prepare", {"status": "prepared"})
     manifest = json.loads((root / "reports" / "forge-workspace.json").read_text(encoding="utf-8"))
     assert len(manifest["events"]) == 1
+
+
+@pytest.mark.parametrize(
+    ("lock_name", "message"),
+    [
+        ("_manifest_lock", "unable to release workspace manifest lock"),
+        ("_operation_lock", "unable to release operation lock"),
+    ],
+)
+def test_workspace_lock_unlock_failure_is_persistence_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, lock_name: str, message: str
+) -> None:
+    workspace = Workspace(tmp_path / "unlock-failure")
+    original_flock = fcntl.flock
+
+    def fail_unlock(fd: int, operation: int) -> None:
+        if operation == fcntl.LOCK_UN:
+            raise OSError("injected unlock failure")
+        original_flock(fd, operation)
+
+    monkeypatch.setattr(fcntl, "flock", fail_unlock)
+    with pytest.raises(ForgePersistenceError, match=message):
+        with getattr(workspace, lock_name)():
+            pass
 
 
 def test_v1_admission_does_not_reclaim_dead_claim(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+import fcntl
 from pathlib import Path
 import json
 import signal
@@ -421,6 +422,64 @@ def test_typed_service_event_failure_is_class_5_and_keeps_id_blocked(
     assert second.error_class == "operation.conflict"
 
 
+def test_typed_service_event_directory_failure_is_class_5_and_keeps_id_blocked(
+    tmp_path: Path,
+) -> None:
+    workspace_root = tmp_path / "scf"
+    events_dir = workspace_root / "reports" / "events"
+    events_dir.parent.mkdir(parents=True)
+    events_dir.write_text("blocked", encoding="utf-8")
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174029", dry_run=True)
+    services = ForgeServices.default(workspace_root=tmp_path)
+
+    first = services.execute_scf(request)
+    claim_path = workspace_root / "reports" / "claims" / f"{request.operation_id}.json"
+    second = services.execute_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "persistence.failure"
+    assert claim_path.exists()
+    assert events_dir.is_file()
+    assert not (events_dir / f"{request.operation_id}-execute.json").exists()
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+
+
+def test_typed_service_unlock_failure_after_commit_is_class_5_and_event_blocks_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    )
+    request = _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174030")
+    original_flock = fcntl.flock
+    unlock_calls = 0
+
+    def fail_commit_unlock(fd: int, operation: int) -> None:
+        nonlocal unlock_calls
+        if operation == fcntl.LOCK_UN:
+            unlock_calls += 1
+            if unlock_calls == 2:
+                raise OSError("injected unlock failure")
+        original_flock(fd, operation)
+
+    monkeypatch.setattr(fcntl, "flock", fail_commit_unlock)
+    first = services.execute_scf(request)
+    monkeypatch.setattr(fcntl, "flock", original_flock)
+    event_path = tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json"
+    claim_path = tmp_path / "scf" / "reports" / "claims" / f"{request.operation_id}.json"
+    second = services.execute_scf(request)
+
+    assert isinstance(first, ForgeErrorEnvelope)
+    assert first.error_class == "persistence.failure"
+    assert json.loads(event_path.read_text(encoding="utf-8"))["id"] == request.operation_id
+    assert not claim_path.exists()
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+
+
 def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) -> None:
     services = ForgeServices.default(workspace_root=tmp_path)
     structure = tmp_path / "scf" / "source.STRU"
@@ -682,7 +741,12 @@ def test_missing_generated_mpirun_is_precondition_before_process_start(
 
 @pytest.mark.parametrize(
     ("blocked_name", "blocked_kind"),
-    [("reports", "file"), ("reports/.forge-operation.lock", "directory"), ("reports/claims", "file")],
+    [
+        ("reports", "file"),
+        ("reports/.forge-operation.lock", "directory"),
+        ("reports/claims", "file"),
+        ("reports/events", "file"),
+    ],
 )
 def test_audit_infrastructure_io_is_persistence_error(
     tmp_path: Path, blocked_name: str, blocked_kind: str
