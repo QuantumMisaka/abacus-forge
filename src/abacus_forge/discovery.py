@@ -16,6 +16,12 @@ from abacus_forge.contracts import (
     ScfPrepareRequest,
 )
 from abacus_forge.errors import ForgeRequestError
+from abacus_forge.relax_contracts import (
+    RelaxCollectRequest,
+    RelaxExecuteRequest,
+    RelaxModifyRequest,
+    RelaxPrepareRequest,
+)
 
 
 CAPABILITIES_SCHEMA_VERSION = "forge.capabilities/v1"
@@ -26,6 +32,19 @@ SCF_REQUEST_TYPES = {
     "modify": ScfModifyRequest,
     "execute": ScfExecuteRequest,
     "collect": ScfCollectRequest,
+}
+
+RELAX_REQUEST_TYPES = {
+    "prepare": RelaxPrepareRequest,
+    "modify": RelaxModifyRequest,
+    "execute": RelaxExecuteRequest,
+    "collect": RelaxCollectRequest,
+}
+
+REQUEST_TYPES_BY_CAPABILITY = {
+    "scf": SCF_REQUEST_TYPES,
+    "relax": RELAX_REQUEST_TYPES,
+    "cell-relax": RELAX_REQUEST_TYPES,
 }
 
 REQUIRED_WIRE_FIELDS = {
@@ -50,6 +69,30 @@ _SCF_DESCRIPTOR = CapabilityDescriptor(
     optional_dependencies=(),
 )
 
+
+def _relax_descriptor(name: str) -> CapabilityDescriptor:
+    return CapabilityDescriptor(
+        name=name,
+        maturity="experimental",
+        engine="abacus",
+        operations=("prepare", "modify", "execute", "collect"),
+        inputs={
+            "prepare": ("structure",),
+            "modify": ("prepared_workspace",),
+            "execute": ("prepared_workspace",),
+            "collect": ("workspace_outputs",),
+        },
+        artifact_roles=("input", "provenance_manifest", "output"),
+        optional_dependencies=(),
+    )
+
+
+_CAPABILITY_DESCRIPTORS = (
+    _SCF_DESCRIPTOR,
+    _relax_descriptor("relax"),
+    _relax_descriptor("cell-relax"),
+)
+
 _OPERATION_IDS = {
     "type": "string",
     "format": "uuid",
@@ -64,9 +107,6 @@ _CANONICAL_FILE_PATTERN = (
     r"(?:/(?!\.{1,2}(?:/|$))[^/\\]+)*$"
 )
 _WORKSPACE_REL = {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN}
-_JSON_OBJECT = {"type": "object"}
-
-
 def _base_properties(operation: str) -> dict[str, JSONValue]:
     return {
         "schema_version": {"type": "string", "const": REQUEST_SCHEMA_VERSION},
@@ -76,9 +116,20 @@ def _base_properties(operation: str) -> dict[str, JSONValue]:
     }
 
 
-def _request_properties(operation: str) -> dict[str, JSONValue]:
+def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]:
     properties = _base_properties(operation)
+    if capability != "scf":
+        properties["capability"] = {"type": "string", "const": capability}
     if operation == "prepare":
+        parameters: dict[str, JSONValue] = {
+            "type": "object",
+            "propertyNames": {"type": "string"},
+            "default": {},
+        }
+        if capability != "scf":
+            parameters["properties"] = {
+                "calculation": {"type": "string", "const": capability}
+            }
         properties.update(
             {
                 "structure_path_rel": {
@@ -87,16 +138,27 @@ def _request_properties(operation: str) -> dict[str, JSONValue]:
                     "pattern": _CANONICAL_FILE_PATTERN,
                 },
                 "structure_format": {"type": ["string", "null"], "minLength": 1, "default": None},
-                "parameters": dict(_JSON_OBJECT, **{"propertyNames": {"type": "string"}, "default": {}}),
+                "parameters": parameters,
             }
         )
     elif operation == "modify":
+        input_updates: dict[str, JSONValue] = {
+            "type": "object",
+            "propertyNames": {"minLength": 1},
+            "default": {},
+        }
+        remove_item: dict[str, JSONValue] = {"type": "string", "minLength": 1}
+        if capability != "scf":
+            input_updates["properties"] = {
+                "calculation": {"type": "string", "const": capability}
+            }
+            remove_item["not"] = {"const": "calculation"}
         properties.update(
             {
-                "input_updates": dict(_JSON_OBJECT, **{"propertyNames": {"minLength": 1}, "default": {}}),
+                "input_updates": input_updates,
                 "remove_parameters": {
                     "type": "array",
-                    "items": {"type": "string", "minLength": 1},
+                    "items": remove_item,
                     "default": [],
                 },
             }
@@ -118,20 +180,22 @@ def _request_properties(operation: str) -> dict[str, JSONValue]:
     return properties
 
 
-def _representative_request(operation: str) -> Any:
-    request_type = SCF_REQUEST_TYPES[operation]
+def _representative_request(capability: str, operation: str) -> Any:
+    request_type = REQUEST_TYPES_BY_CAPABILITY[capability][operation]
     kwargs: dict[str, Any] = {
         "operation_id": "123e4567-e89b-42d3-a456-426614174000",
         "workspace_rel": ".",
     }
     if operation == "prepare":
         kwargs["structure_path_rel"] = "source.STRU"
+    if capability != "scf":
+        kwargs["capability"] = capability
     return request_type(**kwargs)
 
 
-def _schema_for(operation: str) -> dict[str, JSONValue]:
-    request_type = SCF_REQUEST_TYPES[operation]
-    request = _representative_request(operation)
+def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
+    request_type = REQUEST_TYPES_BY_CAPABILITY[capability][operation]
+    request = _representative_request(capability, operation)
     field_names = {record_field.name for record_field in dataclasses.fields(request_type)} | {"operation"}
     wire_names = set(request.to_dict())
     if field_names != wire_names:
@@ -139,13 +203,25 @@ def _schema_for(operation: str) -> dict[str, JSONValue]:
             f"{request_type.__name__} dataclass fields and wire serialization drifted: "
             f"fields={sorted(field_names)} wire={sorted(wire_names)}"
         )
-    properties = _request_properties(operation)
+    properties = _request_properties(capability, operation)
     if set(properties) != field_names:
         raise RuntimeError(
             f"static schema properties and {request_type.__name__} fields drifted: "
             f"schema={sorted(properties)} fields={sorted(field_names)}"
         )
-    required = [name for name in ("schema_version", "operation", "operation_id", "workspace_rel", "structure_path_rel") if name in REQUIRED_WIRE_FIELDS[operation]]
+    required = [
+        name
+        for name in (
+            "schema_version",
+            "operation",
+            "operation_id",
+            "workspace_rel",
+            "structure_path_rel",
+            "capability",
+        )
+        if name in REQUIRED_WIRE_FIELDS[operation]
+        or (name == "capability" and capability != "scf")
+    ]
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": request_type.__name__,
@@ -166,20 +242,21 @@ def capabilities_document() -> dict[str, JSONValue]:
     return _fresh(
         {
             "schema_version": CAPABILITIES_SCHEMA_VERSION,
-            "capabilities": [_SCF_DESCRIPTOR.to_dict()],
+            "capabilities": [descriptor.to_dict() for descriptor in _CAPABILITY_DESCRIPTORS],
         }
     )
 
 
 def request_schema_document(capability: str, operation: str) -> dict[str, JSONValue]:
     """Return a static request schema, rejecting unsupported selectors."""
-    if capability != _SCF_DESCRIPTOR.name or operation not in SCF_REQUEST_TYPES:
+    request_types = REQUEST_TYPES_BY_CAPABILITY.get(capability)
+    if request_types is None or operation not in request_types:
         raise ForgeRequestError(f"unknown capability or operation: {capability!r}/{operation!r}")
     return _fresh(
         {
             "schema_version": SCHEMA_DISCOVERY_VERSION,
             "capability": capability,
             "operation": operation,
-            "request_schema": _schema_for(operation),
+            "request_schema": _schema_for(capability, operation),
         }
     )

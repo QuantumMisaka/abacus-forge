@@ -31,7 +31,13 @@ from abacus_forge.errors import (
     normalize_error_message,
     OperationConflictError,
 )
-from abacus_forge.services import ScfServiceSet, ServiceResult
+from abacus_forge.relax_contracts import (
+    RelaxCollectRequest,
+    RelaxExecuteRequest,
+    RelaxModifyRequest,
+    RelaxPrepareRequest,
+)
+from abacus_forge.services import RelaxServiceSet, ScfServiceSet, ServiceResult
 
 
 _SCF_DECODERS = {
@@ -40,6 +46,23 @@ _SCF_DECODERS = {
     "execute": ScfExecuteRequest.from_dict,
     "collect": ScfCollectRequest.from_dict,
 }
+_RELAX_DECODERS = {
+    "prepare": RelaxPrepareRequest.from_dict,
+    "modify": RelaxModifyRequest.from_dict,
+    "execute": RelaxExecuteRequest.from_dict,
+    "collect": RelaxCollectRequest.from_dict,
+}
+_CAPABILITY_DECODERS = {
+    "scf": _SCF_DECODERS,
+    "relax": _RELAX_DECODERS,
+    "cell-relax": _RELAX_DECODERS,
+}
+_RELAX_REQUEST_TYPES = (
+    RelaxPrepareRequest,
+    RelaxModifyRequest,
+    RelaxExecuteRequest,
+    RelaxCollectRequest,
+)
 _MACHINE_OPERATIONS = ("prepare", "modify", "execute", "collect", "postprocess", "export")
 _ERROR_EXIT_CODES = {
     "request.invalid": 2,
@@ -225,6 +248,23 @@ def decode_scf_request(operation: str, payload: object):
         raise ForgeSchemaError("request fields do not match the operation schema") from error
 
 
+def decode_operation_request(operation: str, payload: object):
+    """Decode one request using an explicit capability registry."""
+    _preflight(operation, payload)
+    capability = payload.get("capability", "scf")  # type: ignore[union-attr]
+    if not isinstance(capability, str) or capability not in _CAPABILITY_DECODERS:
+        raise ForgeRequestError("unknown capability")
+    decoder = _CAPABILITY_DECODERS[capability].get(operation)
+    if decoder is None:
+        raise ForgeRequestError("operation is not implemented by the v1 machine adapter")
+    try:
+        return decoder(payload)  # type: ignore[arg-type]
+    except (ForgeRequestError, ForgePathError, ForgeSchemaError):
+        raise
+    except (TypeError, ValueError, KeyError) as error:
+        raise ForgeSchemaError("request fields do not match the operation schema") from error
+
+
 def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelope:
     if isinstance(error, ForgePathError):
         return _error("request.path", str(error), payload, affected_fields=("workspace_rel",))
@@ -243,7 +283,11 @@ def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelo
     return _error("internal.failure", "unexpected Forge machine adapter failure", payload)
 
 
-def _dispatch(operation: str, request: object, services: ScfServiceSet) -> ServiceResult:
+def _dispatch(
+    operation: str,
+    request: object,
+    services: ScfServiceSet | RelaxServiceSet,
+) -> ServiceResult:
     service = getattr(services, operation)
     method = getattr(service, operation)
     return method(request)
@@ -330,7 +374,7 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
     parser = build_machine_parser()
@@ -371,14 +415,19 @@ def run_machine_cli(
         payload = _read_request(args, stdin=stdin, cwd=Path(cwd))
         if args.operation in {"postprocess", "export"}:
             raise ForgeRequestError("operation is not implemented by the v1 machine adapter")
-        request = decode_scf_request(args.operation, payload)
+        request = decode_operation_request(args.operation, payload)
     except (ForgeRequestError, ForgePathError, ForgeSchemaError) as error:
         result = _error_from_exception(error, payload)
         stdout.write(_render(result, output_format=args.output_format, pretty=args.pretty))
         return exit_code_for(result)
 
     try:
-        service_set = services if services is not None else ScfServiceSet.default(workspace_root=Path(cwd))
+        if services is not None:
+            service_set = services
+        elif isinstance(request, _RELAX_REQUEST_TYPES):
+            service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
+        else:
+            service_set = ScfServiceSet.default(workspace_root=Path(cwd))
         result = _dispatch(args.operation, request, service_set)
         if not isinstance(result, (OperationOutcome, ForgeErrorEnvelope)):
             raise TypeError("service returned an unsupported result")
@@ -391,6 +440,7 @@ def run_machine_cli(
 
 __all__ = [
     "build_machine_parser",
+    "decode_operation_request",
     "decode_scf_request",
     "exit_code_for",
     "render_json",

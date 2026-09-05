@@ -425,10 +425,10 @@ def test_capability_descriptor_rejects_invalid_values() -> None:
         CapabilityDescriptor(**{**kwargs, "schema_version": "forge.capability/v2"})
 
 
-def test_capabilities_document_is_fresh_and_advertises_only_scf() -> None:
+def test_capabilities_document_is_fresh_and_advertises_exact_capabilities() -> None:
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
-    assert [item["name"] for item in payload["capabilities"]] == ["scf"]
+    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax"]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
@@ -485,7 +485,7 @@ def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> 
     assert re.fullmatch(pattern, path_value) is None
 
 
-@pytest.mark.parametrize("capability,operation", [("relax", "prepare"), ("scf", "postprocess")])
+@pytest.mark.parametrize("capability,operation", [("md", "prepare"), ("scf", "postprocess")])
 def test_unknown_schema_selector_raises_request_error(capability: str, operation: str) -> None:
     with pytest.raises(ForgeRequestError):
         request_schema_document(capability, operation)
