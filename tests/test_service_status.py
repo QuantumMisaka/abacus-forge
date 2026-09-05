@@ -413,6 +413,12 @@ def test_typed_execute_dry_run_does_not_start_runner(tmp_path: Path) -> None:
 
     assert isinstance(result, OperationOutcome)
     assert result.status.execution == "skipped"
+    expected_diagnostics = {"dry_run": True, "artifact_refs": []}
+    assert result.envelope.to_dict()["diagnostics"] == expected_diagnostics
+    event = json.loads(
+        (tmp_path / "scf" / "reports" / "events" / f"{result.operation_id}-execute.json").read_text()
+    )
+    assert event["payload"]["envelope"]["diagnostics"] == expected_diagnostics
 
 
 def test_legacy_run_many_skip_completed_remains_available(tmp_path: Path) -> None:
@@ -1563,6 +1569,24 @@ def test_relax_collection_ambiguous_log_or_final_structure_is_partial(tmp_path: 
     assert isinstance(ambiguous_structure, OperationOutcome)
     assert ambiguous_structure.status.collection == "partial"
     assert ambiguous_structure.envelope.diagnostics["final_structure_selection_ambiguous"] is True
+
+
+def test_relax_collection_duplicate_final_structure_basename_is_partial(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path)
+    primary = workspace.outputs_dir / "OUT.ABACUS" / "STRU_ION_D"
+    duplicate = workspace.outputs_dir / "other" / "STRU_ION_D"
+    duplicate.parent.mkdir(parents=True)
+    duplicate.write_text(primary.read_text(encoding="utf-8"), encoding="utf-8")
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174147",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "partial"
 
 
 def test_relax_collection_parse_failure_and_escaped_final_symlink_are_partial(

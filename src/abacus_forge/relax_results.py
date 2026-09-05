@@ -16,6 +16,7 @@ from abacus_forge.result import CollectionResult
 
 _LEGACY_CONVERGENCE_NAMES = frozenset({"converged", "converge"})
 _ELECTRONIC_CONVERGENCE_NAME = "electronic_convergence"
+_FINAL_STRUCTURE_SUFFIXES = ("STRU_ION_D", "STRU_NOW.cif", "STRU.cif", "STRU")
 
 
 def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeResultEnvelope:
@@ -183,27 +184,24 @@ def _projection_diagnostics(
 
 
 def _final_structure_selection_is_ambiguous(result: CollectionResult) -> bool:
-    """Ignore the initial ``inputs/STRU`` when evaluating final candidates."""
-    candidates = result.diagnostics.get("final_structure_candidates")
-    if not isinstance(candidates, (list, tuple)):
-        return result.diagnostics.get("final_structure_selection_ambiguous") is True
+    """Ignore the initial ``inputs/STRU`` and count every indexed output."""
+    artifact_candidates = _final_structure_artifact_candidates(result)
+    if artifact_candidates:
+        return len(artifact_candidates) > 1
+    return result.diagnostics.get("final_structure_selection_ambiguous") is True
 
-    root = Path(result.workspace).resolve()
-    final_candidates: list[str] = []
-    for raw_path in candidates:
-        if not isinstance(raw_path, str):
+
+def _final_structure_artifact_candidates(result: CollectionResult) -> tuple[str, ...]:
+    candidates: set[str] = set()
+    for relative in result.artifacts:
+        if not isinstance(relative, str):
             continue
-        candidate = Path(raw_path)
-        if not candidate.is_absolute():
-            candidate = root / candidate
-        try:
-            relative = candidate.resolve().relative_to(root).as_posix()
-        except (OSError, RuntimeError, ValueError):
-            relative = ""
-        if relative == "inputs/STRU" or relative.startswith("inputs/"):
+        normalized = relative.replace("\\", "/")
+        if normalized.startswith("inputs/"):
             continue
-        final_candidates.append(raw_path)
-    return len(final_candidates) > 1
+        if normalized.endswith(_FINAL_STRUCTURE_SUFFIXES):
+            candidates.add(normalized)
+    return tuple(sorted(candidates))
 
 
 def _final_structure_artifact_is_contained(

@@ -391,7 +391,10 @@ class _ExecuteService:
                         status=OperationStatus(
                             execution="skipped", scientific="unassessed", collection="not_collected"
                         ),
-                        diagnostics={"dry_run": True, "task": task},
+                        diagnostics={
+                            "dry_run": True,
+                            **({"task": task} if self._request_type is RelaxExecuteRequest else {}),
+                        },
                     )
                 else:
                     for input_name in ("INPUT", "STRU", "KPT"):
