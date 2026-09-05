@@ -46,22 +46,26 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
 
-### Typed SCF service boundary
+### Typed operation service boundary
 
-`ForgeServices` 提供 typed SCF 路径，交付 execution/collection 事实与
-observations；若兼容结果保留 `scientific` 字段，Forge 只写 `unassessed`，不在
-Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 才能产生
+`ScfServiceSet` 与 `RelaxServiceSet` 提供 typed SCF、relax 和 cell-relax 路径，交付
+execution/collection 事实与 observations；若兼容结果保留 `scientific` 字段，Forge
+只写 `unassessed`，不在 Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 或
+对应的 `RelaxExecuteRequest(dry_run=True)` 才能产生
 `execution=skipped`；typed execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，
 并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
 给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
+Relax collection 还会把已解析的力、应力、relax 指标和初始/最终结构作为事实
+observations；它不把电子或离子收敛转换为科学接受结论。
 
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
 
 ## Agent-first CLI
 
-Stage 3 的 machine surface 目前只提供 `scf`，成熟度为 `experimental`。它固定
-暴露三个顶层命令：`operation`（执行 `prepare`、`modify`、`execute`、`collect`，以及
+Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax` 和 `cell-relax`，
+三者成熟度均为 `experimental`。它固定暴露三个顶层命令：`operation`（执行
+`prepare`、`modify`、`execute`、`collect`，以及
 结构上可识别但当前未实现的 `postprocess`、`export`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
@@ -98,7 +102,9 @@ PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.js
 cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute --stdin
 ```
 
-`capabilities` 和 `schema scf <operation>` 返回确定性的 JSON 文档。默认格式下，
+`capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前
+发现的 capability 为 `scf`、`relax`、`cell-relax`，每个 capability 支持
+`prepare`、`modify`、`execute`、`collect` 四个操作。默认格式下，
 `operation` 在 stdout 输出恰好一个完整的 JSON outcome/error envelope，其中包含错误消息与
 结果 diagnostics；stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
 `0`（无执行失败）、
@@ -336,6 +342,67 @@ PYTHONPATH=src python -m abacus_forge.cli workfunc prepare runs/slab --vacuum-ax
 PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis c --json
 ```
 
+## Typed Relax operations
+
+`RelaxPrepareRequest`、`RelaxModifyRequest`、`RelaxExecuteRequest` 和
+`RelaxCollectRequest` 是带显式 `capability` 的四个 typed 请求。`capability` 只能是
+`relax` 或 `cell-relax`；它决定对应 ABACUS `calculation` profile，但不会隐式串联
+多个 operation。每次 machine CLI 调用只执行一个请求，调用方负责在阶段之间传递
+workspace。
+
+```python
+from abacus_forge import RelaxPrepareRequest
+
+request = RelaxPrepareRequest(
+    operation_id="123e4567-e89b-42d3-a456-426614174012",
+    workspace_rel="runs/Si_relax",
+    capability="relax",
+    structure_path_rel="source.STRU",
+    parameters={"calculation": "relax", "ecutwfc": 70},
+)
+```
+
+四个 operation 的边界和输出事实如下：
+
+| operation | typed request | phase boundary and factual result |
+| --- | --- | --- |
+| `prepare` | `RelaxPrepareRequest` | 将结构和参数写入一个 `relax`/`cell-relax` workspace；返回输入与 provenance artifact。 |
+| `modify` | `RelaxModifyRequest` | 只编辑已准备 workspace 的 `INPUT` 参数；返回修改前后 snapshot。 |
+| `execute` | `RelaxExecuteRequest` | 只拉起一次本地 ABACUS process；返回 execution、returncode、runtime log artifact。 |
+| `collect` | `RelaxCollectRequest` | 只解析现有输出；返回能量、可用力/应力/relax 指标、电子收敛观察，以及 workspace-relative 最终结构 artifact。 |
+
+Machine 请求必须带显式 capability，例如：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "operation": "execute",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174013",
+  "workspace_rel": "runs/Si_cell_relax",
+  "capability": "cell-relax",
+  "executable": "abacus",
+  "mpi_ranks": 1,
+  "omp_threads": 1,
+  "dry_run": false
+}
+```
+
+将上述 JSON 作为 `request.json` 后执行单个 machine operation：
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.json
+```
+
+Relax discovery 和 schema 当前保持 `experimental`；只有 mock/fixture 与离线
+machine/API parity 已验证。可选的 `real_smoke` 会在复制的用户准备 workspace 上验证
+execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；没有真实证据
+时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析
+不完整只反映 collection 状态。
+
+这只是 Stage 4 的首批 relax/cell-relax 交付。后续 Stage 4 批次仍包括 typed MD、独立
+`postprocess`/`export` operation、PyATB engine boundary 和更多真实 property-pack
+smoke；Stage 5 的 legacy 依赖解除与稳定发布门禁也尚未完成。
+
 ## 作为 Python 库使用
 
 ```python
@@ -417,7 +484,7 @@ runs/<run_id>/
       <event-id>-<operation>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；请求文件 CLI、扩展状态策略、ATP 集成和真实操作/解析验收不属于本说明的保证范围。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；postprocess/export、扩展状态策略、ATP 集成和 capability-specific 真实操作/解析验收仍不属于稳定发布保证范围。
 
 事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
 

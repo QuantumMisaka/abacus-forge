@@ -12,7 +12,7 @@ not implementation ownership:
 | `pyatb` | PyATB mapping and collection | required when PyATB bridge is enabled |
 | `composite` | local composite pack wiring | deterministic regression, not physics proof |
 | `experimental` | mock/fixture-only property packs | non-stable evidence |
-| `real_smoke` | supplied real ABACUS workspace | opt-in release evidence |
+| `real_smoke` | supplied real ABACUS workspace, including typed Relax machine execute/collect | opt-in release evidence |
 | `benchmark` | normalized migration projections | opt-in migration evidence |
 
 Commands:
@@ -24,6 +24,28 @@ conda run -n paimon python -m pytest -q -m experimental
 conda run -n paimon python -m pytest -q --run-benchmark -m benchmark
 conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 ```
+
+The typed Relax smoke is opt-in and uses only the machine CLI. It copies a
+prepared workspace before running one `execute` and one `collect` request with
+different operation IDs. Set the shared executable and the Relax-specific
+workspace; `ABACUS_FORGE_RELAX_SMOKE_CAPABILITY` defaults to `relax` and accepts
+only `relax` or `cell-relax`:
+
+```bash
+export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/absolute/path/to/prepared-workspace
+export ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/absolute/path/to/prepared-relax-workspace
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+export ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=relax
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_relax
+```
+
+`ABACUS_FORGE_REAL_SMOKE_WORKSPACE` remains the module-level real-smoke gate;
+it may point to the same prepared directory when only the typed Relax test is
+selected. Missing Relax-specific inputs skip with a precise reason; supplied
+invalid paths, capabilities, or executables fail. The test records serialized
+outcome/event/artifact facts only and does not assess physical convergence.
 
 ## Contract and workspace gate
 
@@ -51,10 +73,12 @@ transport changes. `tests/test_architecture.py` owns the AST-only production
 import boundary and the current machine-surface documentation contracts; it
 is registered as `core`.
 
-The typed SCF service tests additionally own the migration boundary:
-`ForgeServices` returns execution/collection facts and observations, and any
-legacy `scientific` projection remains `unassessed`. `dry_run` is explicit, and
-typed execution never infers a skip from an existing `NORMAL END` log.
+The typed SCF and Relax service tests additionally own the migration boundary:
+`ForgeServices`/`RelaxServiceSet` return execution/collection facts and
+observations, and any legacy `scientific` projection remains `unassessed`.
+`dry_run` is explicit, and typed execution never infers a skip from an existing
+`NORMAL END` log. Relax collection keeps parser/file facts separate from
+scientific acceptance.
 `run_many(skip_completed=True)` remains covered as a legacy compatibility helper
 for composite tasks and is intentionally not part of the typed status protocol.
 

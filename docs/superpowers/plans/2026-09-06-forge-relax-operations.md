@@ -198,3 +198,10 @@ Each task gets an independent spec/quality review and revision-bound verificatio
 - SPEC requirements R1–R4: Tasks 1–3; R5–R8 factual projection, runner/admission and compatibility: Task 2 and process coverage in Task 3; R9–R10 upper-layer and dependency boundary remain unchanged and are covered by existing architecture gate.
 - Interfaces: Task 1 produces four phase request classes; Task 2 consumes them and produces RelaxServiceSet; Task 3 binds exactly that set and those classes; Task 4 documents and exercises the public machine path.
 - Stage 4 remaining batches and Stage 5 release work are explicit in the inventory; this plan implements the authorized first batch. No task introduces an implicit operation sequence into production.
+
+## Task 4 completion record
+
+- Scope delivered from base `e4e72f4`: public Relax API/machine-CLI usage documentation, opt-in typed Relax real-smoke harness, test-layer evidence guidance, and roadmap/status updates.
+- The smoke copies `ABACUS_FORGE_RELAX_SMOKE_WORKSPACE` into `tmp_path`, runs separate machine `execute` and `collect` requests with distinct IDs, and checks serialized outcomes, append-only events, numeric energy, contained final-structure artifacts, and `scientific=unassessed`. It does not assess physical convergence or call legacy unit APIs for the typed path.
+- Verification and raw command locations, final implementation revision, exact commit, and unavailable real-run evidence are recorded in `.superpowers/sdd/2026-09-06-forge-relax-operations/task-4-report.md`.
+- The opt-in capability remains `experimental`; this record does not mark all Stage 4 batches complete or establish stable-release evidence. Independent Task 4 and whole-branch review remain pending.
