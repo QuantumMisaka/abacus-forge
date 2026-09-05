@@ -22,6 +22,7 @@ from abacus_forge.services import (
     ScfModifyService,
     ScfPrepareService,
     ScfServiceSet,
+    RelaxServiceSet,
 )
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
@@ -60,6 +61,7 @@ __all__ = [
     "RelaxExecuteRequest",
     "RelaxModifyRequest",
     "RelaxPrepareRequest",
+    "RelaxServiceSet",
     "ScfCollectRequest",
     "ScfExecuteRequest",
     "ScfModifyRequest",
