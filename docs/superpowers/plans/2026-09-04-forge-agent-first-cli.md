@@ -10,6 +10,8 @@
 
 **Tech Stack:** Python 3.10+, standard-library `argparse`, `dataclasses`, `json`, `pathlib`, `typing.Protocol`; existing Forge contracts/services/runner; pytest process tests.
 
+**Completion record (2026-09-06 reconciliation):** Tasks 1–6 were implemented and independently reviewed, then merged as `a800b64`; merge-time documentation and its behavioral example test were reconciled in `b1b6a8b` and `c6b7dbf`. Fresh verification of that baseline in the Stage 4 worktree: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider` → exit 0, `348 passed, 2 skipped`. Historical step checkboxes below retain the original execution template; this completion record identifies delivered work without claiming a fresh replay of historical RED runs. The two opt-in gates were skipped, not passed. Remaining maintenance: direct narrow prepare/modify success coverage and injected-runner precedence regression when services are next touched; path-specific API/CLI parity normalization when process tests are next touched. README default-JSON wording was resolved during merge.
+
 ## Global Constraints
 
 - Preserve legacy command names, arguments, stdout/stderr, exit behavior, `--json`, Python API, compatibility files, and task-pack behavior. Do not silently wrap legacy results in v1 envelopes.

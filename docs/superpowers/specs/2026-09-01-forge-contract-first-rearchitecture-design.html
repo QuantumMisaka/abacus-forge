@@ -147,7 +147,7 @@ OperationOutcome ──► ForgeResultEnvelope + observations
       <ul>
         <li>contracts：request/result/artifact/status 的 JSON round-trip、版本和路径 containment；状态只覆盖 execution/collection，观察字段保持原始来源。</li>
         <li>core：INPUT/STRU/KPT、结构与解析器 fixture；保留 ABACUS 固定宽度原始日志。</li>
-        <li>services/CLI：prepare/modify/execute/collect 的行为、stdout/stderr、exit class、幂等与覆盖策略。</li>
+        <li>services/CLI：prepare/modify/execute/collect 的行为、stdout/stderr、exit class、重复 operation ID 拒绝与追加事件。</li>
         <li>compat：与 ABACUS/abacustest 的参考 fixture 比对，不形成运行时依赖。</li>
         <li>adapter contract：Forge result 到 Paimon ATP typed outputs/result evidence 的投影测试。</li>
         <li>benchmark 与 real_smoke：显式运行；用于确认操作、解析和兼容性，不能替代人类/Agent 的科学判断。</li>
