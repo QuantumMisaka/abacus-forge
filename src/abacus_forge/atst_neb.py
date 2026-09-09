@@ -98,6 +98,8 @@ class AtstNebPrepareService:
             logs = {workspace.root / "reports/atst" / f"{request.operation_id}-{stream}.log" for stream in ("stdout", "stderr")}
             if any(path.resolve() in {item.resolve() for item in logs} for path in (init, final, chain)):
                 return _ScfServiceContext.error("request.invalid", "prepare path collides with operation log", request)
+            if chain.resolve() in {init.resolve(), final.resolve()}:
+                return _ScfServiceContext.error("request.invalid", "chain path collides with structure input", request)
             with workspace.operation_guard(request.operation_id, "prepare") as token:
                 self._context.require_file(init, request.init_structure_path_rel, "init_structure_path_rel")
                 self._context.require_file(final, request.final_structure_path_rel, "final_structure_path_rel")
@@ -188,6 +190,7 @@ class AtstNebPostprocessService:
                     for flag, value in (("--plot", request.plot), ("--energy-profile", request.energy_profile), ("--vib-analysis", request.vib_analysis), ("--strict-band", request.strict_band)):
                         if value: post_cmd.append(flag)
                     plot_prefix = self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label")
+                    plot_prefix.parent.mkdir(parents=True, exist_ok=True)
                     if request.plot: post_cmd += ["--plot-label", str(plot_prefix)]
                     if request.plot_label:
                         plot_prefix.parent.mkdir(parents=True, exist_ok=True)
@@ -214,7 +217,7 @@ class AtstNebPostprocessService:
                             if self._context.matches_prefix(key, item.resolve()):
                                 changed_outputs[item.resolve()].append(key)
                 artifacts = self._context.artifacts(workspace, entries)
-                required = [self._context.suffixed(prefix, ".cif"), self._context.suffixed(prefix, ".stru")]
+                required = [self._context.suffixed(prefix, ".cif")]
                 if request.write_latest: required += [workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"]
                 if request.write_neb_init_chain: required.append(workspace.root / "outputs/atst/neb-init-chain.traj")
                 if request.plot: required.append(self._context.suffixed(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"), ".pdf"))
