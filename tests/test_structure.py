@@ -5,8 +5,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from ase import Atoms
+from ase.constraints import FixAtoms
 from ase.io import write as ase_write
 
+from abacus_forge.errors import ForgeRequestError
 from abacus_forge.structure import BOHR_TO_ANG, AbacusStructure, _read_stru
 from abacus_forge.structure_recognition import detect_structure_format, detect_vacuum_info
 
@@ -371,3 +373,75 @@ def test_structure_primitive_conversion_raises_clear_error_without_pymatgen(monk
         structure.primitive_to_conventional()
     with pytest.raises(RuntimeError, match="pymatgen is required"):
         structure.conventional_to_primitive()
+
+
+@pytest.fixture
+def silicon_cells() -> dict[str, Atoms]:
+    # Diamond Si: the primitive fcc cell contains two atoms; its cubic cell eight.
+    primitive = Atoms(
+        "Si2", scaled_positions=[[0, 0, 0], [0.25, 0.25, 0.25]],
+        cell=[[0, 2.715, 2.715], [2.715, 0, 2.715], [2.715, 2.715, 0]], pbc=True,
+    )
+    conventional = Atoms(
+        "Si8", cell=[5.43, 5.43, 5.43], pbc=True,
+        scaled_positions=[
+            [0, 0, 0], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0],
+            [0.25, 0.25, 0.25], [0.25, 0.75, 0.75],
+            [0.75, 0.25, 0.75], [0.75, 0.75, 0.25],
+        ],
+    )
+    return {"primitive_to_conventional": primitive, "conventional_to_primitive": conventional}
+
+
+@pytest.mark.parametrize(
+    ("conversion", "count", "length", "angle", "volume"),
+    [
+        ("primitive_to_conventional", 8, 5.43, 90.0, 160.103007),
+        ("conventional_to_primitive", 2, 3.839589821843, 60.0, 40.02575175),
+    ],
+)
+def test_standardization_preserves_uniform_species_metadata(
+    silicon_cells, conversion, count, length, angle, volume,
+) -> None:
+    atoms = silicon_cells[conversion]
+    atoms.set_masses([30.0] * len(atoms))
+    atoms.set_initial_magnetic_moments([1.5] * len(atoms))
+    atoms.info["abacus_species_meta"] = {"Si": {"mass": 30.0, "pp": "Si.upf", "orb": "Si.orb"}}
+    atoms.info["abacus_move_flags"] = [[1, 1, 1] for _ in atoms]
+    structure = AbacusStructure.from_input(atoms, structure_format="stru")
+
+    converted = getattr(structure, conversion)()
+
+    assert converted.source_format == "stru"
+    assert converted.atoms.get_chemical_symbols() == ["Si"] * count
+    assert converted.atoms.cell.lengths() == pytest.approx([length] * 3)
+    assert converted.atoms.cell.angles() == pytest.approx([angle] * 3)
+    assert converted.atoms.get_volume() == pytest.approx(volume)
+    distances = converted.atoms.get_all_distances(mic=True)
+    assert np.min(distances[distances > 0]) == pytest.approx(2.351258971274)
+    assert converted.atoms.get_masses() == pytest.approx([30.0] * count)
+    assert converted.atoms.get_initial_magnetic_moments() == pytest.approx([1.5] * count)
+    assert converted.atoms.info["abacus_species_meta"] == {
+        "Si": {"mass": 30.0, "pp": "Si.upf", "orb": "Si.orb"},
+    }
+    assert converted.atoms.info["abacus_move_flags"] == [[1, 1, 1]] * count
+    # Standardization must not change the original, or share mutable metadata.
+    converted.atoms.info["abacus_species_meta"]["Si"]["pp"] = "changed.upf"
+    assert structure.atoms.info["abacus_species_meta"]["Si"]["pp"] == "Si.upf"
+
+
+@pytest.mark.parametrize("conversion", ["primitive_to_conventional", "conventional_to_primitive"])
+@pytest.mark.parametrize("property_name", ["masses", "magnetic moments", "move flags", "ASE constraints"])
+def test_standardization_rejects_site_metadata_it_cannot_preserve(silicon_cells, conversion, property_name) -> None:
+    atoms = silicon_cells[conversion]
+    if property_name == "masses":
+        atoms.set_masses([29.0] + [30.0] * (len(atoms) - 1))
+    elif property_name == "magnetic moments":
+        atoms.set_initial_magnetic_moments([-2.0] + [2.0] * (len(atoms) - 1))
+    elif property_name == "move flags":
+        atoms.info["abacus_move_flags"] = [[0, 1, 1]] + [[1, 1, 1]] * (len(atoms) - 1)
+    else:
+        atoms.set_constraint(FixAtoms(indices=[0]))
+
+    with pytest.raises(ForgeRequestError, match=property_name):
+        getattr(AbacusStructure.from_input(atoms), conversion)()

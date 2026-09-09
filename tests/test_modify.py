@@ -146,3 +146,35 @@ def test_modify_stru_explicit_magmoms_override_element_defaults_and_afm() -> Non
     )
 
     assert modified.atoms.get_initial_magnetic_moments().tolist() == pytest.approx([1.0, 1.5, -0.2])
+
+
+def test_modify_stru_standardization_keeps_distinct_species_resources(tmp_path) -> None:
+    # Conventional rocksalt NiO has four fcc sites of each species.
+    atoms = Atoms(
+        "Ni4O4", cell=[4.2, 4.2, 4.2], pbc=True,
+        scaled_positions=[
+            [0, 0, 0], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0],
+            [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0, 0.5], [0, 0.5, 0],
+        ],
+    )
+    atoms.set_masses([60.0] * 4 + [17.0] * 4)
+    atoms.set_initial_magnetic_moments([2.0] * 4 + [0.5] * 4)
+    atoms.info["abacus_species_meta"] = {
+        "Ni": {"mass": 60.0, "pp": "Ni.upf", "orb": "Ni.orb"},
+        "O": {"mass": 17.0, "pp": "O.upf", "orb": "O.orb"},
+    }
+    destination = tmp_path / "STRU.primitive"
+
+    modify_stru(atoms, standardization="primitive", destination=destination)
+    recovered = AbacusStructure.from_input(destination, structure_format="stru")
+
+    assert recovered.atoms.get_chemical_symbols() == ["O", "Ni"]
+    assert recovered.atoms.get_volume() == pytest.approx(18.522)
+    assert recovered.atoms.get_distance(0, 1, mic=True) == pytest.approx(2.1)
+    assert recovered.atoms.get_masses() == pytest.approx([17.0, 60.0])
+    assert recovered.atoms.get_initial_magnetic_moments() == pytest.approx([0.5, 2.0])
+    assert recovered.atoms.info["abacus_species_meta"] == {
+        "O": {"mass": 17.0, "pp": "O.upf", "orb": "O.orb"},
+        "Ni": {"mass": 60.0, "pp": "Ni.upf", "orb": "Ni.orb"},
+    }
+    assert recovered.atoms.info["abacus_move_flags"] == [[1, 1, 1], [1, 1, 1]]

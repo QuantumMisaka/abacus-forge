@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -93,28 +94,30 @@ class AbacusStructure:
         return AbacusStructure(boxed, source_format=self.source_format)
 
     def primitive_to_conventional(self, symprec: float = 1e-3) -> "AbacusStructure":
-        try:
-            from pymatgen.io.ase import AseAtomsAdaptor
-            from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-        except Exception as exc:
-            raise RuntimeError("pymatgen is required for primitive/conventional conversion") from exc
-        structure = AseAtomsAdaptor.get_structure(self.atoms)
-        analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
-        converted = AseAtomsAdaptor.get_atoms(analyzer.get_conventional_standard_structure())
-        return AbacusStructure(converted, source_format=self.source_format)
+        return self._standardize(symprec, conventional=True)
 
     def conventional_to_primitive(self, symprec: float = 1e-3) -> "AbacusStructure":
+        return self._standardize(symprec, conventional=False)
+
+    def _standardize(self, symprec: float, *, conventional: bool) -> "AbacusStructure":
         try:
             from pymatgen.io.ase import AseAtomsAdaptor
             from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         except Exception as exc:
             raise RuntimeError("pymatgen is required for primitive/conventional conversion") from exc
+        _validate_standardization_metadata(self.atoms)
         structure = AseAtomsAdaptor.get_structure(self.atoms)
         analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
-        primitive = analyzer.find_primitive()
-        if primitive is None:
-            return AbacusStructure(self.atoms.copy(), source_format=self.source_format)
-        return AbacusStructure(AseAtomsAdaptor.get_atoms(primitive), source_format=self.source_format)
+        standardized = (
+            analyzer.get_conventional_standard_structure(keep_site_properties=True)
+            if conventional
+            else analyzer.find_primitive(keep_site_properties=True)
+        )
+        converted = self.atoms.copy() if standardized is None else AseAtomsAdaptor.get_atoms(standardized)
+        # Pymatgen retains site arrays but standardization discards Structure.properties.
+        converted.info["abacus_species_meta"] = deepcopy(_species_metadata(self.atoms))
+        converted.info["abacus_move_flags"] = [[1, 1, 1] for _ in converted]
+        return AbacusStructure(converted, source_format=self.source_format)
 
     def swap_axes(self, axis_a: int, axis_b: int) -> "AbacusStructure":
         if axis_a == axis_b:
@@ -221,6 +224,31 @@ class AbacusStructure:
                     extras.append(f"mag {float(magmoms[idx]):.8f}")
                 lines.append(f"{coords} {' '.join(extras)}")
         return "\n".join(lines) + "\n"
+
+
+def _validate_standardization_metadata(atoms: Atoms) -> None:
+    """Reject metadata that geometric symmetry may merge or rotate ambiguously."""
+    if atoms.constraints:
+        raise ForgeRequestError("standardization cannot preserve ASE constraints")
+    move_flags = atoms.info.get("abacus_move_flags")
+    if move_flags is not None:
+        flags = np.asarray(move_flags)
+        if flags.shape != (len(atoms), 3) or not np.all(flags == 1):
+            raise ForgeRequestError("standardization requires all-movable move flags")
+
+    symbols = np.asarray(atoms.get_chemical_symbols())
+    for name, values in (
+        ("masses", atoms.get_masses()),
+        ("magnetic moments", atoms.get_initial_magnetic_moments()),
+    ):
+        for symbol in dict.fromkeys(symbols):
+            species_values = values[symbols == symbol]
+            # Pymatgen chooses one representative per species, even for AFM input.
+            # Exact equality avoids silently rounding away supplied site differences.
+            if not np.all(species_values == species_values[0]):
+                raise ForgeRequestError(
+                    f"standardization cannot preserve different {name} for species {symbol}"
+                )
 
 
 def _species_metadata(atoms: Atoms) -> dict[str, Mapping[str, str | float]]:
