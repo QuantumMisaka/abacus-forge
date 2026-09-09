@@ -23,7 +23,7 @@
 
 - **Ruling:** Land the PBE default now as an explicit profile value rather than relying on ABACUS's implicit default. **Why:** this makes Forge's reproducible input policy visible while preserving caller overrides. **Cost if wrong:** generated INPUT snapshots gain one explicit line and any consumer comparing raw text must account for that additive default.
 - **Ruling:** Do not add an atst-tools runtime dependency or NEB public request schema in this change. **Why:** the dependency is not installed in the current Forge environment and the exact adapter contract needs a dedicated real-smoke plan. **Cost if wrong:** NEB support starts one planned slice later; adding an unverified adapter now would risk coupling core contracts to an unstable external surface.
-- **Ruling:** Treat atst-tools as the NEB workflow engine, not as Forge's scheduler. **Why:** its documented `atst run`/API handles YAML-driven workflow execution and image-level parallelism, while site launch and Slurm remain external. **Cost if wrong:** the future adapter boundary would need to be reworked, but the current core remains unaffected.
+- **Ruling:** Treat atst-tools as the NEB image/workflow orchestration engine, not as Forge's site scheduler. **Why:** its documented `atst run`/API handles YAML-driven workflow execution and image-level parallelism, while the outer site launcher and Slurm remain external. **Cost if wrong:** the future adapter boundary would need to be reworked, but the current core remains unaffected.
 
 ### Task 1: Record the approved defaults and delegated ATST boundary
 

@@ -143,7 +143,7 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 - `prepare_pyatb_band(...)` / `run_pyatb(...)` / `collect_pyatb(...)` 可作为独立 PyATB 原语使用
 - sequence API 只作为兼容 helper 管理本地子目录；新的可组合入口是 `prepare_unit / execute_unit / collect_unit`
 
-NEB 的后续扩展可通过可选的 atst-tools engine adapter 暴露 Forge 的 `prepare`、`execute`、`postprocess` 单元；外部 `atst neb post` 对应 Forge 的 `postprocess`，而 NEB 图像工作流由 atst-tools 负责。Forge 不承接 Slurm/站点调度、重试编排或科学结果判定；该适配器须在独立计划中锁定版本、API 和真实 smoke 证据后再进入 capability discovery。
+NEB 的后续扩展可通过可选的 atst-tools engine adapter 暴露 Forge 的 `prepare`、`execute`、`postprocess` 单元；外部 `atst neb post` 对应 Forge 的 `postprocess`，NEB 图像/链路编排及并行执行由 atst-tools 负责。Forge 不承接 Slurm/站点启动、重试编排或科学结果判定；该适配器须在独立计划中锁定版本、API 和真实 smoke 证据后再进入 capability discovery。
 
 ### 本地 composite task pack
 

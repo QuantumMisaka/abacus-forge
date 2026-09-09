@@ -25,7 +25,7 @@
 - 固化 SCF->NSCF artifact handoff 规则：电荷、矩阵、最终结构、DOS/PyATB 后处理所需文件要有明确 manifest，而不是只依赖目录名约定。
 - 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
-- 设计并实现可选的 atst-tools NEB engine adapter：以 Forge 的 `prepare -> execute -> postprocess` 单元承接配置、图像执行事实、链路日志和后处理产物；NEB 图像工作流委托 atst-tools，不在 Forge 内实现 Slurm/站点调度、重试/恢复或科学判断；版本/API 锁定与真实 smoke 单独设门禁。
+- 设计并实现可选的 atst-tools NEB engine adapter：以 Forge 的 `prepare -> execute -> postprocess` 单元承接配置、图像执行事实、链路日志和后处理产物；NEB 图像/链路编排及并行执行委托 atst-tools，不在 Forge 内实现 Slurm/站点启动、重试/恢复或科学判断；版本/API 锁定与真实 smoke 单独设门禁。
 - 为 cube family 补齐更严格的 artifact manifest：明确 charge cube、spin cube、potential cube、ELF cube、Bader 输出和后处理派生产物的来源。
 - 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录。
 
@@ -44,6 +44,6 @@
 ## 明确延后项
 - `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
-- atst-tools 只作为可选 NEB engine adapter：其图像工作流与执行语义由 atst-tools 负责，Forge 不把它变成核心依赖，也不承接 Slurm/站点启动或上层编排。
+- atst-tools 只作为可选 NEB engine adapter：其图像/链路编排与执行语义由 atst-tools 负责，Forge 不把它变成核心依赖，也不承接 Slurm/站点启动或上层编排。
 - 不在 Forge core 中引入平台化 UI 或任务管理逻辑；本地 TUI 若实现，只作为 Python API/结构化 CLI envelope 之上的可选薄壳。
 - 新增 property pack 不自动进入 PAIMON v1.3 能力面；进入 Agent/协议适配层前需要另行评估契约、用户体验与真实运行门禁。

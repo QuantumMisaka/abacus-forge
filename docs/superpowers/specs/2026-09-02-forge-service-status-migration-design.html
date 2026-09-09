@@ -339,7 +339,7 @@ Paimon Tool adapter ──┤
         <li><strong>services：</strong>接收 typed request，调用 core/engine/runner/collector，产生 execution/collection envelope 和事件。</li>
         <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；不依赖 runner、平台或 scheduler。</li>
         <li><strong>runner：</strong>只执行明确 command，返回 returncode、termination、timeout、stdout/stderr 和 runtime diagnostics。</li>
-        <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；未来可选的 atst-tools 适配器只委托 NEB 图像工作流的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。</li>
+        <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；未来可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
         <li><strong>packs：</strong>以具名 capability 暴露 SCF、relax、band、DOS、PyATB 与 property 等快捷入口；未来可扩展可选的 atst-tools NEB capability；每项声明 maturity、supported operations、artifact、engine 和可选依赖。</li>
         <li><strong>compat：</strong>把 <code>UnitSpec</code>、旧 result 对象和旧文件投影到新 service；新代码不得反向依赖旧 God Object。</li>
@@ -411,7 +411,7 @@ rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" \
         <li><strong>Stage 1 — Request/API：</strong>新增 per-operation request、UUIDv4 event mapping、artifact-ref validator 与稳定 Python API；不改变旧 API/CLI，补齐 operation/observation matrix 和 API contract tests。</li>
         <li><strong>Stage 2 — SCF vertical slice：</strong>以 SCF prepare → modify → execute → collect 贯通 service、ABACUS engine、runner、collector、workspace event 与 API；移除 v1 对日志片段的静默 skip，确认旧输出兼容。</li>
         <li><strong>Stage 3 — Agent-first CLI：</strong>加入 request-file/stdin、capability/schema discovery、默认 JSON stdout/error envelope、exit class 与 process parity tests；legacy CLI 维持兼容。</li>
-        <li><strong>Stage 4 — Relax/MD/postprocess/PyATB/optional ATST NEB：</strong>按真实证据迁移单元操作和解析能力；可选 atst-tools NEB 适配器只复用 Forge 的 prepare/execute/postprocess operation，并把图像工作流委托给 atst-tools；各 capability 只声明自己实际支持的输入、命令和产物，Slurm 与站点调度保持在 Forge 外。</li>
+        <li><strong>Stage 4 — Relax/MD/postprocess/PyATB/optional ATST NEB：</strong>按真实证据迁移单元操作和解析能力；可选 atst-tools NEB 适配器只复用 Forge 的 prepare/execute/postprocess operation，并把图像/链路编排及并行执行委托给 atst-tools；各 capability 只声明自己实际支持的输入、命令和产物，Slurm 与站点调度保持在 Forge 外。</li>
         <li><strong>Stage 5 — Adapter/UX/上层验收：</strong>在新的独立 <code>paimon-v3</code> 仓实现 Paimon thin adapter；TUI 在稳定 API/CLI 之后按需实现；由上层完成科学判断、编排与平台适配，并完成 compat、benchmark、real_smoke 与 shim hardening。</li>
       </ol>
       <p>每个 Stage 都是独立可审查的计划和提交。Stage 2 之前不得将 Paimon v1.2 切换为新后端；任何能力只有在 compat、benchmark 和 real_smoke 证据满足后才进入 Paimon v1.3 稳定面。<code>paimon-v3</code> 是独立于 Forge 的 Agent/adapter/benchmark 发布源；当前 <code>app-tools/toolbox/ABACUS</code> 继续维护 v1.2，并只在受控部署时消费 v3 产物，不复制 Forge 或 Paimon 核心逻辑。已结项 <code>paimon/</code> 保持历史证据库，不作为 v1.3 开发基线。TUI 不是 v1.3 后端切换门槛。</p>
