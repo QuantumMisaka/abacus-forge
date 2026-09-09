@@ -3,6 +3,7 @@ import stat
 import uuid
 from pathlib import Path
 from abacus_forge import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest, AtstNebServiceSet, ForgeErrorEnvelope, OperationOutcome
+from abacus_forge.discovery import request_schema_document
 
 def _id() -> str: return str(uuid.uuid4())
 
@@ -76,3 +77,10 @@ def test_postprocess_rejects_trajectory_operation_log_collision(tmp_path: Path) 
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").postprocess.postprocess(
         AtstNebPostprocessRequest(operation_id=op_id, workspace_rel=".", trajectory_path_rel=log_rel))
     assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
+
+def test_discovery_plot_label_condition_has_three_validated_branches() -> None:
+    schema = request_schema_document("atst-neb", "postprocess")
+    condition = schema["request_schema"]["allOf"][0]
+    assert condition["if"]["required"] == ["plot_label"]
+    assert condition["if"]["properties"]["plot_label"]["type"] == "string"
+    assert condition["then"]["properties"]["plot"]["const"] is True
