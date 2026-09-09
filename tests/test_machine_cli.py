@@ -188,7 +188,9 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
 
 def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
-    assert [descriptor["name"] for descriptor in descriptors] == ["scf", "relax", "cell-relax", "atst-neb"]
+    assert [descriptor["name"] for descriptor in descriptors] == [
+        "scf", "relax", "cell-relax", "atst-neb", "md",
+    ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"
         assert descriptor["engine"] == "abacus"
@@ -198,6 +200,10 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[3]["engine"] == "atst-tools"
     assert descriptors[3]["operations"] == ["prepare", "execute", "postprocess"]
     assert descriptors[3]["artifact_roles"] == ["input", "output"]
+    assert descriptors[4]["maturity"] == "experimental"
+    assert descriptors[4]["engine"] == "abacus"
+    assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert descriptors[4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
 
 
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
@@ -367,7 +373,7 @@ def test_machine_json_reader_accepts_trailing_whitespace() -> None:
 
 @pytest.mark.parametrize(
     ("capability", "operation"),
-    [("md", "execute"), ("relax", "postprocess"), ("pyatb", "prepare")],
+    [("unknown", "execute"), ("relax", "postprocess"), ("pyatb", "prepare")],
 )
 def test_machine_schema_unknown_selector_is_one_request_invalid_document(
     capability: str, operation: str
@@ -547,7 +553,7 @@ def test_decode_operation_request_routes_relax_capabilities_to_typed_requests(
 @pytest.mark.parametrize(
     ("payload_update", "error_type"),
     [
-        ({"capability": "md"}, ForgeRequestError),
+        ({"capability": "unknown"}, ForgeRequestError),
         ({"capability": None}, ForgeRequestError),
         ({"capability": 1}, ForgeRequestError),
         ({"capability": "scf"}, ForgeSchemaError),
