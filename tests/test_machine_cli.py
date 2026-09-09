@@ -17,9 +17,12 @@ from abacus_forge.contracts import (
     ScfExecuteRequest,
     ScfModifyRequest,
     ScfPrepareRequest,
+    AtstNebPrepareRequest,
+    AtstNebExecuteRequest,
+    AtstNebPostprocessRequest,
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
-from abacus_forge.machine_cli import decode_scf_request, exit_code_for, run_machine_cli
+from abacus_forge.machine_cli import decode_atst_neb_request, decode_scf_request, exit_code_for, run_machine_cli
 from abacus_forge.errors import (
     ForgeInternalError,
     ForgePathError,
@@ -113,7 +116,35 @@ class _AllRecordingServices:
         self.collect = _RecordingOperationService(self, "collect")
 
 
-def _invoke(argv: list[str], *, request_text: str = "", services: object | None = None):
+def _atst_payload(operation: str, operation_id: str = OPERATION_ID) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "schema_version": "forge.request/v1",
+        "capability": "atst-neb",
+        "operation": operation,
+        "operation_id": operation_id,
+        "workspace_rel": ".",
+    }
+    if operation == "prepare":
+        payload.update({"init_structure_path_rel": "init.stru", "final_structure_path_rel": "final.stru"})
+    elif operation == "execute":
+        payload["config_path_rel"] = "workflow.yaml"
+    elif operation == "postprocess":
+        payload["trajectory_path_rel"] = "neb.traj"
+    return payload
+
+
+class _AllRecordingAtstServices:
+    def __init__(self, result: object) -> None:
+        self.calls: list[tuple[str, object]] = []
+        self.results = {name: result for name in ("prepare", "execute", "postprocess")}
+        self.prepare = _RecordingOperationService(self, "prepare")
+        self.execute = _RecordingOperationService(self, "execute")
+        self.postprocess = _RecordingOperationService(self, "postprocess")
+
+
+def _invoke(
+    argv: list[str], *, request_text: str = "", services: object | None = None, atst_services: object | None = None
+):
     stdout = io.StringIO()
     stderr = io.StringIO()
     code = run_machine_cli(
@@ -123,6 +154,7 @@ def _invoke(argv: list[str], *, request_text: str = "", services: object | None 
         stderr=stderr,
         cwd=Path("/tmp/forge-machine-test"),
         services=services,  # type: ignore[arg-type]
+        atst_services=atst_services,  # type: ignore[arg-type]
     )
     return code, stdout.getvalue(), stderr.getvalue()
 
@@ -373,3 +405,39 @@ def test_decode_scf_request_uses_strict_typed_decoder() -> None:
         decode_scf_request("postprocess", _request())
     with pytest.raises(ForgePathError):
         decode_scf_request("collect", {**_request(), "workspace_rel": "../escape"})
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_type"),
+    [("prepare", AtstNebPrepareRequest), ("execute", AtstNebExecuteRequest), ("postprocess", AtstNebPostprocessRequest)],
+)
+def test_machine_routes_atst_neb_capability_to_injected_typed_service(
+    operation: str, request_type: type[object]
+) -> None:
+    services = _AllRecordingAtstServices(_outcome_for(operation, OPERATION_ID))
+    code, output, diagnostics = _invoke(
+        ["operation", operation, "--stdin"], request_text=json.dumps(_atst_payload(operation)), atst_services=services
+    )
+    # The test helper passes ATST services through the dedicated injection point.
+    assert code == 0
+    assert diagnostics == ""
+    assert services.calls[0][0] == operation
+    assert isinstance(services.calls[0][1], request_type)
+    assert json.loads(output)["envelope"]["operation"] == operation
+
+
+def test_machine_rejects_unknown_capability_and_capabilityless_postprocess() -> None:
+    unknown = {**_atst_payload("prepare"), "capability": "unknown"}
+    code, output, _ = _invoke(["operation", "prepare", "--stdin"], request_text=json.dumps(unknown))
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    code, output, _ = _invoke(
+        ["operation", "postprocess", "--stdin"], request_text=json.dumps(_request())
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+
+
+def test_decode_atst_neb_request_requires_explicit_capability() -> None:
+    with pytest.raises(ForgeRequestError):
+        decode_atst_neb_request("prepare", _atst_payload("prepare", OPERATION_ID) | {"capability": "scf"})
