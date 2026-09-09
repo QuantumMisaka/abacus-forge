@@ -41,15 +41,15 @@
 - Consumes: frozen operation/status/artifact contracts in the two approved SPECs.
 - Produces: a concise decision record and roadmap entry naming the future adapter's prepare/execute/postprocess shape and its optional dependency boundary.
 
-- [ ] **Step 1: Add the minimal normative decision text**
+- [x] **Step 1: Add the minimal normative decision text**
 
   Add one PBE default statement to the architecture/input-policy portion of the 09-01 SPEC, and one short ATST delegation statement to the engine/rollout portion of the 09-02 SPEC. Do not duplicate the full Copilot or ATST feature lists.
 
-- [ ] **Step 2: Align user-facing docs**
+- [x] **Step 2: Align user-facing docs**
 
   State in `README.md` that generated ABACUS INPUT profiles explicitly default to `dft_functional=pbe`, while parameters can override it. Add a ROADMAP item for the optional ATST NEB adapter and retain the existing explicit Slurm exclusion.
 
-- [ ] **Step 3: Verify the documentation boundary**
+- [x] **Step 3: Verify the documentation boundary**
 
   Run:
 
@@ -62,7 +62,7 @@
 
   Expected: PBE, delegated ATST NEB, Forge `postprocess`, and the Slurm exclusion are each stated without adding a `post` core operation or scheduler implementation claim.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   ```bash
   git add docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html \
@@ -85,11 +85,11 @@
 - Consumes: `build_task_parameters()` and `prepare()`'s existing merge order.
 - Produces: the same returned workspace and INPUT snapshots, with one explicit default parameter.
 
-- [ ] **Step 1: Write the failing regression**
+- [x] **Step 1: Write the failing regression**
 
   Add tests that prepare representative `scf`, `relax`, `md`, `band`, and `dos` workspaces and assert `INPUT["dft_functional"] == "pbe"`; add one test proving an explicit `parameters={"dft_functional": "pbesol"}` value survives.
 
-- [ ] **Step 2: Run the focused tests to verify the gap**
+- [x] **Step 2: Run the focused tests to verify the gap**
 
   ```bash
   conda run -n paimon python -m pytest tests/test_api.py -q
@@ -97,11 +97,11 @@
 
   Expected before implementation: the new default assertions fail because current profiles omit `dft_functional`.
 
-- [ ] **Step 3: Implement the smallest profile change**
+- [x] **Step 3: Implement the smallest profile change**
 
   Add the shared explicit `dft_functional: "pbe"` default to the existing task-profile merge without changing the caller override order or legacy execution path.
 
-- [ ] **Step 4: Run the focused tests again**
+- [x] **Step 4: Run the focused tests again**
 
   ```bash
   conda run -n paimon python -m pytest tests/test_api.py -q
@@ -109,7 +109,7 @@
 
   Expected: PASS, including the explicit PBEsol override case.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add src/abacus_forge/prepare_profiles.py tests/test_api.py
@@ -129,7 +129,7 @@
 - Consumes: Tasks 1–2 changes.
 - Produces: revision-bound test and boundary evidence for the next dedicated ATST adapter plan.
 
-- [ ] **Step 1: Run boundary scans**
+- [x] **Step 1: Run boundary scans**
 
   ```bash
   rg -n "from atst_tools|import atst_tools|slurm|DPDispatcher|Bohrium|post\b" src/abacus_forge pyproject.toml
@@ -137,7 +137,7 @@
 
   Expected: no new core import, required dependency, scheduler integration, or Forge top-level `post` operation.
 
-- [ ] **Step 2: Run the complete offline suite**
+- [x] **Step 2: Run the complete offline suite**
 
   ```bash
   conda run -n paimon python -m pytest -q
@@ -145,7 +145,7 @@
 
   Expected: all existing tests pass, with only the repository's documented skips.
 
-- [ ] **Step 3: Check diff hygiene**
+- [x] **Step 3: Check diff hygiene**
 
   ```bash
   git diff --check
@@ -154,7 +154,7 @@
 
   Expected: no whitespace errors; only the intended commits are present and the worktree is clean.
 
-- [ ] **Step 4: Commit the verification record if needed**
+- [x] **Step 4: Commit the verification record if needed**
 
   No source commit is required for a clean verification. The next ATST implementation must start from a dedicated plan that pins a tested atst-tools version, selects documented stable APIs, and supplies real-smoke evidence before discovery promotion.
 
@@ -164,3 +164,11 @@
 - Confirmed current baseline before edits: `conda run -n paimon python -m pytest -q` → `348 passed, 2 skipped`.
 - Confirmed atst-tools maintained docs expose `atst_tools.api.run_workflow`, `validate_config`, the API runner, and lightweight `atst neb make/post/summary`; the docs also keep site launch/scheduler concerns outside the package.
 - No unresolved public-field decision is needed for this documentation/PBE slice. Exact `AtstNeb*Request` fields remain intentionally outside this plan and must be settled in the dedicated implementation plan described in Task 3.
+
+## Execution evidence (2026-09-09)
+
+- Documentation boundary grep completed; the only `post` matches in `src/abacus_forge/cli.py` are the pre-existing composite/property task-pack commands, not a new core operation.
+- RED focused run: `conda run -n paimon python -m pytest tests/test_api.py -q` reported 5 new PBE assertions failing with `KeyError` and 19 existing tests passing.
+- GREEN focused run: the same command reported `24 passed`.
+- Full offline run: `conda run -n paimon python -m pytest -q` reported `354 passed, 2 skipped`.
+- `git diff --check` completed without errors; the implementation is isolated on branch `forge-copilot-neb` and has not been merged to `main`.
