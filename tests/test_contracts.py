@@ -25,6 +25,7 @@ from abacus_forge.contracts import (
     CapabilityDescriptor,
 )
 from abacus_forge.discovery import (
+    ATST_NEB_REQUEST_TYPES,
     SCF_REQUEST_TYPES,
     capabilities_document,
     request_schema_document,
@@ -435,6 +436,35 @@ def test_atst_neb_request_rejects_wrong_capability_and_invalid_options() -> None
         AtstNebPostprocessRequest(operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel="../neb.traj")
 
 
+def test_atst_neb_contracts_validate_paths_and_positive_timeouts() -> None:
+    from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest
+    for path in ("../a.cif", "/tmp/a.cif", "a/../b.cif", "a//b.cif", "a\\b.cif"):
+        with pytest.raises(ValueError):
+            AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel=path, final_structure_path_rel="b.cif")
+        with pytest.raises(ValueError):
+            AtstNebPostprocessRequest(operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel=path)
+    for field in ("check_input_timeout", "timeout_seconds"):
+        with pytest.raises(ValueError):
+            AtstNebExecuteRequest(operation_id=OPERATION_ID, workspace_rel=".", config_path_rel="workflow.yaml", **{field: 0})
+        with pytest.raises(ValueError):
+            AtstNebExecuteRequest(operation_id=OPERATION_ID, workspace_rel=".", config_path_rel="workflow.yaml", **{field: -1})
+
+
+def test_atst_neb_postprocess_serializes_every_output_flag() -> None:
+    from abacus_forge.contracts import AtstNebPostprocessRequest
+    request = AtstNebPostprocessRequest(
+        operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel="neb.traj", n_max=5,
+        summary_path_rel="reports/summary.json", output_prefix="outputs/neb-ts", write_latest=True,
+        write_neb_init_chain=True, plot=True, plot_label="test", energy_profile=True, vib_analysis=True,
+        vib_thr=0.02, strict_band=True,
+    )
+    payload = request.to_dict()
+    assert all(payload[name] == value for name, value in {
+        "write_latest": True, "write_neb_init_chain": True, "plot": True, "plot_label": "test",
+        "energy_profile": True, "vib_analysis": True, "vib_thr": 0.02, "strict_band": True,
+    }.items())
+
+
 def _discovery_request(operation: str):
     kwargs = {"operation_id": OPERATION_ID, "workspace_rel": "."}
     if operation == "prepare":
@@ -451,6 +481,28 @@ def test_request_schema_matches_contract_fields_and_wire_keys(operation: str) ->
     assert schema["additionalProperties"] is False
     assert set(schema["properties"]) == field_keys
     assert set(schema["properties"]) == set(_discovery_request(operation).to_dict())
+
+
+@pytest.mark.parametrize("operation", ["prepare", "execute", "postprocess"])
+def test_atst_neb_request_schema_matches_contract_fields_and_required_paths(operation: str) -> None:
+    document = request_schema_document("atst-neb", operation)
+    schema = document["request_schema"]
+    request_type = ATST_NEB_REQUEST_TYPES[operation]
+    kwargs = {"operation_id": OPERATION_ID, "workspace_rel": "."}
+    kwargs.update({"init_structure_path_rel": "a.cif", "final_structure_path_rel": "b.cif"} if operation == "prepare" else {})
+    kwargs.update({"config_path_rel": "workflow.yaml"} if operation == "execute" else {})
+    kwargs.update({"trajectory_path_rel": "neb.traj"} if operation == "postprocess" else {})
+    request = request_type(**kwargs)
+    assert set(schema["properties"]) == {field.name for field in dataclasses.fields(request_type)} | {"operation", "capability"}
+    assert set(schema["properties"]) == set(request.to_dict())
+    assert set(schema["required"]) >= {"schema_version", "capability", "operation", "operation_id", "workspace_rel"}
+
+
+def test_atst_neb_execute_schema_freezes_check_input_dry_run_dependency() -> None:
+    schema = request_schema_document("atst-neb", "execute")["request_schema"]
+    dependency = schema["allOf"][0]
+    assert dependency["if"]["properties"]["check_input"]["const"] is True
+    assert dependency["then"]["properties"]["dry_run"]["const"] is True
 
 
 @pytest.mark.parametrize("operation", ["prepare", "modify", "execute", "collect"])

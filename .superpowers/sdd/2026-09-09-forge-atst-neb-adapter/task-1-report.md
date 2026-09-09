@@ -18,3 +18,10 @@ Result: `122 passed`.
 ## Scope
 
 No ATST executable invocation, service implementation, or machine CLI routing was added; those remain in later tasks.
+
+## Review follow-up
+
+- Added an explicit JSON Schema conditional requiring `dry_run=true` whenever `check_input=true`, matching constructor validation.
+- Added regression coverage for path containment, positive timeout enforcement, all postprocess output flags, and ATST schema parity.
+
+Follow-up verification: `128 passed` in the focused contract/discovery/architecture suite.

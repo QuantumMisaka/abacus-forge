@@ -240,8 +240,14 @@ def _atst_schema_for(operation: str) -> dict[str, JSONValue]:
         raise RuntimeError(f"static schema properties and {request_type.__name__} fields drifted")
     required = [name for name in ("schema_version", "capability", "operation", "operation_id", "workspace_rel",
                                   "init_structure_path_rel", "final_structure_path_rel", "config_path_rel", "trajectory_path_rel") if name in field_names or name in {"capability", "operation"}]
-    return {"$schema": "https://json-schema.org/draft/2020-12/schema", "title": request_type.__name__, "type": "object",
+    schema = {"$schema": "https://json-schema.org/draft/2020-12/schema", "title": request_type.__name__, "type": "object",
             "additionalProperties": False, "properties": properties, "required": required}
+    if operation == "execute":
+        schema["allOf"] = [{
+            "if": {"required": ["check_input"], "properties": {"check_input": {"const": True}}},
+            "then": {"required": ["dry_run"], "properties": {"dry_run": {"const": True}}},
+        }]
+    return schema
 
 
 def _fresh(value: Mapping[str, JSONValue]) -> dict[str, JSONValue]:
