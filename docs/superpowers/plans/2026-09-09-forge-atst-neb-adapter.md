@@ -1,0 +1,106 @@
+# Forge ATST-NEB Adapter Implementation Plan
+
+> For agentic workers: use the subagent-driven-development or executing-plans workflow for each task, with a failing test before implementation and a focused verification command after each change.
+
+Goal: Add an experimental, optional ATST-NEB capability to abacus-forge. The capability must expose typed prepare/execute/postprocess operations through the same machine CLI envelope used by SCF, while leaving task orchestration, site scheduling, and scientific assessment to the human or Agent caller.
+
+Spec basis: docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html, docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html, and docs/superpowers/plans/2026-09-09-forge-default-pbe-and-atst-neb-boundary.md. The user has authorized implementation of a future ATST-based prepare/execute/post path; this plan freezes only the smallest adapter contract needed for that slice.
+
+Architecture: typed request records and a capability descriptor are added to the existing contract/discovery layer. The adapter calls an external atst executable in a contained Forge workspace and records factual process/artifact information. It does not import atst_tools, mirror the full ATST YAML schema, submit to Slurm, launch site-specific resources, orchestrate image tasks outside the ATST command, or judge scientific correctness.
+
+Tech stack: Python dataclasses, subprocess, existing workspace/result/error helpers, JSON-safe envelopes, and pytest. atst-tools remains an optional external installation; it is not a required dependency or a version-pinned extra in this slice.
+
+## Global constraints
+
+1. Preserve the existing SCF operations, legacy CLI, frozen seven error classes, result envelope versions, and _OPERATIONS set. Typed postprocess remains a machine operation but is only valid for the atst-neb capability in this slice.
+2. Keep the request surface portable: workspace-relative paths, explicit operation/capability, no launcher, scheduler, shell, arbitrary environment, retry, or restart injection fields.
+3. Keep ATST YAML opaque. Forge validates path containment and process preconditions, but ATST remains the authority for YAML syntax and workflow semantics.
+4. Use one JSON document on stdout, diagnostics on stderr, no prompt/TTY branch, and the existing exit mapping: request errors 2, missing preconditions 3, process failure/timeout 4, internal failure 5.
+5. Capability maturity is experimental; discovery must describe only behavior implemented and tested in this slice. Artifact roles are input, provenance_manifest, and output.
+6. All operations use the existing workspace admission/operation guard and persist the returned factual outcome. Scientific status remains unassessed.
+7. Do not add a top-level legacy post command, Slurm integration, a required ATST Python import, or a scientific validation gate.
+
+## Rulings frozen by this plan
+
+- The capability name is atst-neb; its engine is atst-tools; its optional dependency is advertised in discovery only.
+- Requests use explicit capability plus operation. SCF requests remain unchanged and continue to route without a capability field.
+- Prepare creates an NEB chain with atst neb make; execute runs an opaque YAML with atst run; postprocess first obtains JSON summary data with atst neb summary and then invokes atst neb post for requested derived artifacts.
+- The adapter owns only the local command invocation and factual result capture. ATST owns NEB image/chain semantics; the caller owns outer orchestration, scheduling, and scientific interpretation.
+- The optional dependency/version and clean-environment real-smoke test are release evidence, not a required-dependency change in this implementation slice.
+
+## Task 1: Add typed ATST-NEB request contracts and discovery
+
+Files: src/abacus_forge/contracts.py, src/abacus_forge/discovery.py, src/abacus_forge/__init__.py, tests/test_contracts.py, tests/test_machine_cli.py, tests/test_architecture.py.
+
+1. Write failing tests for strict round-trip decoding and rejection of unknown fields, wrong capability, non-contained paths, invalid image counts/methods, execute check-input invariants, and postprocess output options.
+2. Add _AtstNebRequest and three dataclass requests:
+   - AtstNebPrepareRequest: init/final structure relative paths, n_images >= 1, chain output path default, method IDPP or linear, and no_align.
+   - AtstNebExecuteRequest: config relative path, dry_run, check_input, positive check-input timeout, optional executable, and optional positive process timeout; enforce check_input implies dry_run.
+   - AtstNebPostprocessRequest: trajectory relative path, non-negative n_max, summary/output paths, and explicit typed flags for plotting, energy profile, vibration analysis/threshold, strict band, latest-chain and init-chain output.
+   Every request serializes capability: atst-neb, its operation, schema version, workspace identity, and only portable fields. Required fields use the existing sentinel pattern so inherited dataclasses stay strict.
+3. Extend discovery with an experimental atst-neb descriptor and per-operation static schemas. Derive request properties from dataclass fields and assert schema/wire parity; include the capability constant without introducing a JSON Schema runtime dependency.
+4. Export the new public request types. Keep _OPERATIONS and all SCF serialization unchanged.
+5. Run focused contract/discovery/architecture tests and commit as feat: add typed atst neb contracts.
+
+## Task 2: Implement the isolated external-CLI adapter
+
+Files: src/abacus_forge/atst_neb.py, src/abacus_forge/__init__.py, tests/test_atst_neb.py.
+
+1. Add failing service tests using a temporary fake atst executable. Cover successful prepare, dry-run execute, summary-plus-postprocess, missing input/executable, non-zero process exit, timeout, operation admission, artifact references, and unassessed scientific status.
+2. Implement AtstNebPrepareService, AtstNebExecuteService, AtstNebPostprocessService, and AtstNebServiceSet.default(...) without importing atst_tools.
+3. Resolve all request paths under the admitted workspace; reject missing inputs as precondition.missing. Resolve an absolute executable or shutil.which; missing executable is the same precondition class.
+4. Store stdout/stderr logs below reports/atst/ and construct artifact references once. Preserve the existing operation guard and claimed-operation event behavior.
+5. Invoke:
+   - prepare: atst neb make INIT FINAL N_IMAGES --method METHOD -o CHAIN, adding --no-align when requested;
+   - execute: atst run CONFIG, adding only the typed dry-run/check-input/timeout/executable flags;
+   - postprocess: atst neb summary TRAJ --n-max N --format json --output SUMMARY, then atst neb post TRAJ with typed postprocess flags.
+   Process non-zero exits and timeouts return failed OperationOutcome values (exit class 4); command/precondition errors return frozen Forge errors. Never synthesize scientific conclusions.
+6. Run focused adapter tests and commit as feat: add external atst neb services.
+
+## Task 3: Bind the capability to the machine CLI
+
+Files: src/abacus_forge/machine_cli.py, tests/test_machine_cli.py, tests/test_cli_process.py, README.md.
+
+1. Write failing tests for request-file and stdin execution of ATST prepare/execute/postprocess, capability discovery/schema, unknown capability/operation mapping to request.invalid with exit 2, missing executable exit 3, fake process failure exit 4, and direct-service versus CLI envelope parity.
+2. Add ATST decoders and capability-aware routing. SCF requests keep their existing route; an atst-neb capability selects the ATST service set; postprocess without that capability remains invalid.
+3. Keep the CLI runner as decode then same service then render. Do not expose a top-level legacy post parser or alter legacy default output. Permit injected ATST services in tests without widening the public legacy facade unnecessarily.
+4. Document the experimental machine request entry point and the external atst executable requirement. State that ATST, outer scheduling, and scientific assessment remain caller responsibilities.
+5. Run focused machine/process tests and commit as feat: expose atst neb on machine cli.
+
+## Task 4: Final boundary and release-evidence update
+
+Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence requires it, and tests as needed.
+
+1. Add the adapter to the roadmap as experimental and record the future release gate: optional ATST installation/version pin, clean-environment import/process verification, and real-smoke evidence.
+2. Run architecture/boundary scans proving no atst_tools import, Slurm/DPDispatcher integration, scheduler launch, or scientific validation code entered Forge.
+3. Run the full suite in the supported environment, git diff --check, and the repository verification-before-completion checks. Record exact outputs in this plan.
+4. Perform an independent review of the final diff for SPEC alignment, strict request/schema parity, envelope/exit parity, and accidental legacy surface changes. Commit as docs: record atst neb adapter boundaries.
+
+## Verification and self-review checklist
+
+- [ ] Every new request round-trips and rejects unknown keys.
+- [ ] Discovery advertises only the implemented experimental ATST operations and truthful artifact roles.
+- [ ] Direct service and machine CLI produce equivalent envelopes for the same isolated fixture.
+- [ ] Missing preconditions, process failures, and malformed requests map to the frozen classes/exits.
+- [ ] No required dependency or import of atst_tools was added.
+- [ ] No Slurm/site scheduler or scientific judgment entered the Forge boundary.
+- [ ] Full tests, boundary scan, and diff hygiene are green before claiming completion.
+
+## Task 4 execution evidence
+
+- Roadmap now records `atst-neb` as an implemented but experimental optional adapter. Stable release remains gated on an explicit atst-tools installation/version/API decision, clean-environment import/process verification, and a real NEB smoke run.
+- Boundary scan command: `rg -n "from atst_tools|import atst_tools|slurm|DPDispatcher|Bohrium|srun|sbatch|mpirun|scientific.*(valid|accept)|validation.*scientific" src/abacus_forge pyproject.toml`.
+  Result: no ATST Python import, scheduler integration, or scientific validation implementation was found; the existing `mpirun` match is the pre-existing SCF runner command construction and is not an ATST/site scheduler integration.
+- Full supported-environment test command: `conda run -n paimon python -m pytest -q`.
+  Result: `389 passed, 2 skipped in 42.67s`.
+- Hygiene command: `git diff --check`.
+  Result: passed (no output).
+- Real atst-tools smoke: not run in this environment; it remains a release gate and is not represented by fake-executable tests.
+
+## Task 4 checklist
+
+- [x] Roadmap records the experimental adapter and future release gates.
+- [x] Boundary scan completed; no new platform scheduling or scientific judgment entered Forge.
+- [x] Full supported-environment test output recorded after the final implementation revision.
+- [x] `git diff --check` recorded after the final implementation revision.
+- [ ] Independent final diff review completed.
