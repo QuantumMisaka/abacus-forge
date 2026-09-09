@@ -94,6 +94,21 @@ def test_external_reports_directory_is_rejected_before_log_write(tmp_path: Path)
     assert not any(external.glob("*-stdout.log"))
     assert not any(external.glob("*-stderr.log"))
 
+def test_log_symlink_cannot_overwrite_forge_manifest(tmp_path: Path) -> None:
+    (tmp_path / "config.yaml").write_text("workflow: []")
+    reports = tmp_path / "reports" / "atst"
+    reports.mkdir(parents=True)
+    manifest = tmp_path / "reports" / "forge-workspace.json"
+    manifest.write_text('{"schema_version":"forge.workspace/v1","workspace_rel":".","events":[],"sentinel":"keep"}')
+    operation_id = _id()
+    (reports / f"{operation_id}-stdout.log").symlink_to(manifest)
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="/bin/true").execute.execute(
+        AtstNebExecuteRequest(operation_id=operation_id, workspace_rel=".", config_path_rel="config.yaml")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+    assert '"sentinel":"keep"' in manifest.read_text()
+
 def test_postprocess_cannot_overwrite_forge_audit_or_external_derived_targets(tmp_path: Path) -> None:
     (tmp_path / "neb.traj").write_text("trajectory")
     external = tmp_path.parent / f"{tmp_path.name}-derived-external"

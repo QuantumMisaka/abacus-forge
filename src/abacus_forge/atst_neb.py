@@ -37,7 +37,7 @@ class _AtstContext:
     def contained_log_path(cls, workspace: Workspace, operation_id: str, stream: str) -> Path:
         """Resolve the log directory and final file before creating or writing it."""
         cls.ensure_target(workspace, workspace.root / "reports/atst", "reports_dir")
-        return cls.ensure_target(workspace, workspace.root / f"reports/atst/{operation_id}-{stream}.log", "reports_log")
+        return cls.ensure_output_target(workspace, workspace.root / f"reports/atst/{operation_id}-{stream}.log", "reports_log")
     @staticmethod
     def ensure_target(workspace: Workspace, value: str | Path, field: str) -> Path:
         candidate = Path(value)
@@ -49,13 +49,15 @@ class _AtstContext:
     @classmethod
     def ensure_output_target(cls, workspace: Workspace, value: str | Path, field: str) -> Path:
         resolved = cls.ensure_target(workspace, value, field)
-        relative = resolved.relative_to(workspace.root)
-        reserved = {
-            Path("reports/forge-workspace.json"),
-            Path("reports/.forge-workspace.lock"),
-            Path("reports/.forge-operation.lock"),
-        }
-        if relative in reserved or (len(relative.parts) >= 2 and relative.parts[:2] in (("reports", "events"), ("reports", "claims"))):
+        reserved_files = ("reports/forge-workspace.json", "reports/.forge-workspace.lock", "reports/.forge-operation.lock")
+        reserved_dirs = ("reports/events", "reports/claims")
+        if any(resolved == (workspace.root / item).resolve(strict=False) for item in reserved_files):
+            raise ForgePathError(f"{field} must not overwrite Forge audit paths")
+        for item in reserved_dirs:
+            try:
+                resolved.relative_to((workspace.root / item).resolve(strict=False))
+            except ValueError:
+                continue
             raise ForgePathError(f"{field} must not overwrite Forge audit paths")
         return resolved
     @staticmethod
