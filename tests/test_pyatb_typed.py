@@ -219,6 +219,82 @@ def test_typed_prepare_retains_an_exact_existing_source_destination(tmp_path: Pa
     assert hr_record["source_sha256"] == hr_record["destination_sha256"]
 
 
+def test_typed_prepare_link_alias_records_lexical_destination_without_replacing_alias(tmp_path: Path) -> None:
+    _sources(tmp_path)
+    destination = tmp_path / "inputs/pyatb_sources"
+    destination.mkdir(parents=True)
+    alias = destination / "hr.csr"
+    alias.symlink_to(Path("../../source/hr.csr"))
+    original_target = os.readlink(alias)
+
+    _, handoff = prepare_typed_pyatb_band(tmp_path, _prepare_request())
+
+    hr_record = next(record for record in handoff if record["role"] == "hr")
+    assert hr_record["destination"] == "inputs/pyatb_sources/hr.csr"
+    assert os.readlink(alias) == original_target
+
+
+def test_typed_prepare_copy_rejects_exact_symlink_alias_without_mutation(tmp_path: Path) -> None:
+    _sources(tmp_path)
+    destination = tmp_path / "inputs/pyatb_sources"
+    destination.mkdir(parents=True)
+    alias = destination / "hr.csr"
+    alias.symlink_to(Path("../../source/hr.csr"))
+    original_target = os.readlink(alias)
+
+    with pytest.raises(ForgeRequestError):
+        prepare_typed_pyatb_band(tmp_path, _prepare_request(handoff_mode="copy"))
+
+    assert alias.is_symlink()
+    assert os.readlink(alias) == original_target
+    assert sorted(path.name for path in destination.iterdir()) == ["hr.csr"]
+    assert not (tmp_path / "inputs/STRU").exists()
+    assert not (tmp_path / "inputs/Input").exists()
+    assert not (tmp_path / "inputs/KPT_band").exists()
+
+
+@pytest.mark.parametrize(
+    "unsafe_basename",
+    ("bad name.csr", "bad,name.csr", "bad{name}.csr", "bad#name.csr", "bad\nname.csr"),
+)
+def test_typed_prepare_rejects_unsafe_matrix_token_before_writes(
+    tmp_path: Path, unsafe_basename: str
+) -> None:
+    _sources(tmp_path)
+    source = tmp_path / "source" / unsafe_basename
+    source.write_text("unsafe", encoding="utf-8")
+
+    with pytest.raises(ForgeRequestError):
+        prepare_typed_pyatb_band(
+            tmp_path,
+            _prepare_request(hr_paths_rel=(f"source/{unsafe_basename}",)),
+        )
+
+    assert not (tmp_path / "inputs").exists()
+
+
+@pytest.mark.parametrize(
+    "unsafe_label",
+    ("K 1", "K,1", "K{1}", "K#1", "K\n1", "K//1"),
+)
+def test_typed_prepare_rejects_unsafe_line_label_before_writes(
+    tmp_path: Path, unsafe_label: str
+) -> None:
+    _sources(tmp_path)
+    line_kpoints = (
+        {"coords": [0.0, 0.0, 0.0], "label": unsafe_label},
+        {"coords": [0.5, 0.0, 0.0], "label": "X"},
+    )
+
+    with pytest.raises(ForgeRequestError):
+        prepare_typed_pyatb_band(
+            tmp_path,
+            _prepare_request(line_kpoints=line_kpoints),
+        )
+
+    assert not (tmp_path / "inputs").exists()
+
+
 def test_typed_prepare_rejects_malformed_stru_without_partial_write(tmp_path: Path) -> None:
     _sources(tmp_path)
     (tmp_path / "source/STRU").write_text("not a STRU", encoding="utf-8")
@@ -316,6 +392,55 @@ def test_typed_collect_missing_and_partial_are_factual(tmp_path: Path) -> None:
     )
     assert "accepted" not in str(partial.to_dict()).lower()
     assert "rejected" not in str(partial.to_dict()).lower()
+
+
+def test_typed_collect_uses_total_band_gap_section_when_multiple_spin_sections_exist(tmp_path: Path) -> None:
+    _write_band_outputs(
+        tmp_path,
+        info=(
+            "For nspin up:\n"
+            "Band gap (eV): 0.25\n"
+            "For nspin down:\n"
+            "Band gap (eV): 0.50\n"
+            "For total band:\n"
+            "Band gap (eV): 0.75\n"
+        ),
+        data=False,
+        picture=False,
+    )
+
+    result = collect_typed_pyatb_band(
+        tmp_path,
+        PyatbBandCollectRequest(operation_id=_id(), workspace_rel="."),
+    )
+
+    metric = next(metric for metric in result.metrics if metric.name == "band_gap")
+    assert metric.value == 0.75
+    assert result.diagnostics["malformed_output_paths_rel"] == ()
+
+
+def test_typed_collect_omits_ambiguous_spin_gap_without_total_section(tmp_path: Path) -> None:
+    _write_band_outputs(
+        tmp_path,
+        info=(
+            "For nspin up:\n"
+            "Band gap (eV): 0.25\n"
+            "For nspin down:\n"
+            "Band gap (eV): 0.50\n"
+        ),
+        data=False,
+        picture=False,
+    )
+
+    result = collect_typed_pyatb_band(
+        tmp_path,
+        PyatbBandCollectRequest(operation_id=_id(), workspace_rel="."),
+    )
+
+    assert result.metrics == ()
+    assert result.diagnostics["malformed_output_paths_rel"] == (
+        "inputs/Out/Band_Structure/band_info.dat",
+    )
 
 
 def test_typed_collect_omits_escaped_symlink_outputs(tmp_path: Path) -> None:

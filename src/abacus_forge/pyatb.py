@@ -355,12 +355,14 @@ def prepare_typed_pyatb_band(
     if any(
         not basename
         or any(character.isspace() for character in basename)
-        or "#" in basename
+        or any(character in basename for character in ",{}#")
+        or "//" in basename
         for basename in matrix_basenames
     ):
         raise ForgeRequestError(
             "PyATB matrix source basenames must be single input tokens"
         )
+    _validate_typed_line_point_tokens(request)
 
     # Resolve and hash every source, and calculate every destination, before
     # creating the workspace layout.  This is the no-partial-write boundary.
@@ -373,6 +375,7 @@ def prepare_typed_pyatb_band(
             source_path,
             root=root,
             role=role,
+            mode=handoff_mode,
         )
         try:
             source_sha256 = _sha256_file(source_path)
@@ -607,6 +610,41 @@ def _typed_relative_file(value: object, field_name: str) -> str:
     return normalized
 
 
+def _validate_typed_line_point_tokens(request: Any) -> None:
+    """Reject labels that would change the grammar of generated PyATB text.
+
+    Labels stay intentionally permissive in the public request contract.  A
+    typed prepare operation validates the narrower token surface at the last
+    boundary before rendering labels into ``Input`` and ``KPT_band``.
+    """
+
+    try:
+        points = request.line_kpoints
+    except AttributeError as error:
+        raise ForgeRequestError("request is missing typed PyATB line points") from error
+    try:
+        for index, point in enumerate(points):
+            label = point.get("label")
+            if label is None:
+                continue
+            _validate_typed_input_token(label, f"line_kpoints[{index}].label")
+    except AttributeError as error:
+        raise ForgeRequestError("line_kpoints entries must be objects") from error
+
+
+def _validate_typed_input_token(value: object, field_name: str) -> None:
+    if not isinstance(value, str) or not value:
+        raise ForgeRequestError(f"{field_name} must be a non-empty PyATB token")
+    if (
+        any(character.isspace() for character in value)
+        or any(character in value for character in ",{}#")
+        or "//" in value
+    ):
+        raise ForgeRequestError(
+            f"{field_name} contains characters unsafe for a PyATB input token"
+        )
+
+
 def _typed_workspace_source(root: Path, path_rel: str, role: str) -> Path:
     candidate = root / Path(path_rel)
     try:
@@ -647,12 +685,17 @@ def _validate_typed_destination_conflict(
     *,
     root: Path,
     role: str,
+    mode: str,
 ) -> None:
     """Reject an existing destination unless it is the exact source alias."""
 
     if not destination.exists() and not destination.is_symlink():
         return
     if destination.is_symlink():
+        if mode == "copy":
+            raise ForgeRequestError(
+                f"{role} copy destination cannot be an existing symlink: {destination.name}"
+            )
         try:
             destination_target = destination.resolve(strict=True)
         except (FileNotFoundError, OSError, RuntimeError) as error:
@@ -797,6 +840,10 @@ def _stage_typed_file(source: Path, destination: Path, *, mode: str) -> None:
     if destination.exists() or destination.is_symlink():
         # The preflight above permits only an exact source alias.  Retain it
         # rather than unlinking a caller-owned path.
+        if destination.is_symlink() and mode == "copy":
+            raise ForgeRequestError(
+                f"copy destination cannot be an existing symlink: {destination.name}"
+            )
         if destination.resolve(strict=True) == source.resolve(strict=True):
             return
         raise ForgeRequestError(f"destination already exists: {destination.name}")
@@ -819,7 +866,10 @@ def _sha256_file(path: Path) -> str:
 
 def _relative_to_root(root: Path, path: Path) -> str:
     try:
-        return canonical_relative_path(path.resolve(strict=False).relative_to(root).as_posix())
+        # Provenance records the destination's lexical workspace route.  In
+        # particular, an existing symlink alias must not collapse to its
+        # resolved source path in the public handoff record.
+        return canonical_relative_path(path.relative_to(root).as_posix())
     except (OSError, RuntimeError, ValueError) as error:
         raise ForgePathError("path escapes workspace") from error
 
@@ -833,11 +883,30 @@ _TYPED_BAND_GAP_RE = re.compile(
     re.IGNORECASE,
 )
 
+_TYPED_BAND_SECTION_RE = re.compile(
+    r"^[ \t]*For[ \t]+[^:\r\n]+:[ \t]*(?:\r?\n|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
+_TYPED_TOTAL_BAND_HEADER_RE = re.compile(
+    r"^[ \t]*For[ \t]+total[ \t]+band[ \t]*:[ \t]*(?:\r?\n|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def _typed_parse_band_gap(path: Path) -> float | None:
     text = path.read_text(encoding="utf-8", errors="strict")
-    match = _TYPED_BAND_GAP_RE.search(text)
-    if match is None:
+    total_header = _TYPED_TOTAL_BAND_HEADER_RE.search(text)
+    if total_header is not None:
+        remainder = text[total_header.end() :]
+        next_section = _TYPED_BAND_SECTION_RE.search(remainder)
+        section = remainder if next_section is None else remainder[: next_section.start()]
+        matches = list(_TYPED_BAND_GAP_RE.finditer(section))
+    else:
+        matches = list(_TYPED_BAND_GAP_RE.finditer(text))
+    if len(matches) != 1:
         return None
-    value = float(match.group("value"))
+    try:
+        value = float(matches[0].group("value"))
+    except (TypeError, ValueError, OverflowError):
+        return None
     return value if math.isfinite(value) else None
