@@ -68,6 +68,9 @@ SCF 收集完整性由非空输出日志、有限总能量和解析情况决定�
 
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
+typed service 与旧 API 共用 `preparation.py`、`collection.py` 和 INPUT 编辑基元；
+路径、错误及事件持久化由 `service_support.py` 提供通用支持。旧 API 保留原有
+task/sequence 分发与兼容记录，不再是 typed service 的底层依赖。
 
 typed prepare 当前接收结构路径和参数，不提供赝势/轨道文件映射或自动搬运接口。
 调用方需要自行组织 workspace 中的资产并核对引用位置；prepare 返回成功不代表
