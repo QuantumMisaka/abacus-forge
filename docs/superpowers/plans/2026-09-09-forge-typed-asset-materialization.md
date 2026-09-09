@@ -79,8 +79,8 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 
 - [x] Write RED integration tests against Task1/2 contracts.
 - [x] Integrate typed path and prove legacy regression stays green.
-- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_api.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_assets.py`; exact revision `ec3d84d` passed `492` tests in `46.51s`.
-- [x] Commit and report exact raw output/revision; independent task review passed at `ec3d84d`.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_api.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_assets.py`; exact revision `ec3d84d` passed `492` tests in `46.51s`; final boundary fix `e39a4b8` passed the owning boundary suites (`200` tests).
+- [x] Commit and report exact raw output/revision; the typed-prepare review passed at `ec3d84d`, and the final overall review passed at `40d1901`.
 
 ## Task 4: Documentation and final verification
 
@@ -93,7 +93,7 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 **Verification:** Run the full offline gate after Task3/Task4 docs with exact interpreter/flags, `git diff --check`, and review packages. No real ABACUS run is required for this file/materialization boundary.
 
 - [x] Update docs concisely after code behavior is fixed.
-- [ ] Run full offline pytest and diff check; retain raw output (主代理在文档提交后独立重跑全量 gate)。
-- [x] Obtain task reviews and whole-branch review; close all Critical/Important findings before delivery; Task 3 review passed at `ec3d84d`.
+- [x] Run full offline pytest and diff check; final HEAD `40d1901` passed `726 tests, 3 skipped in 59.32s`; `git diff --check` passed.
+- [x] Obtain task reviews and whole-branch review; close all Critical/Important findings before delivery; final overall review passed at `40d1901`.
 
 **Plan self-review:** Checked against the two SPECs at branch `80d197a`, current contracts/discovery/service seams, Paimon v1.2 asset pipeline, abacustest map behavior and current Forge legacy tests. New fields are optional and preserve request v1. Asset writes are isolated below typed service, explicit and fail-closed. The plan deliberately excludes directory inference for typed requests, science validation, orchestration, scheduler behavior and real execution. No unresolved public behavior decision remains after the user’s “进行推进” authorization.
