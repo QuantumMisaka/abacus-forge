@@ -14,6 +14,8 @@
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
 - 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位与资源/质量保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
+- 2026-09-10 已落地独立的 typed `band.postprocess` / `dos.postprocess` service 与 Agent-first machine routing：两者均为 `experimental`，要求显式非空 source path，返回 facts-only 的 `execution=not_run` envelope、workspace-relative input/output artifacts（sha256/size）并追加一个 operation event；API 与 CLI 在隔离 workspace 中保持事实 parity。
+- typed `band`/`dos` postprocess 不等同于既有 `run_band`、`run_dos`、sequence helper 或 `abacus-forge band|dos` task；后者继续保持 legacy task/sequence 语义，不被隐式改写。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
 - 已初步实现 Forge-level 实验性 property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
@@ -29,7 +31,7 @@
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
 - 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
-- typed MD 当前只交付单工作目录的准备、修改、一次本地执行和事实收集；`MD_dump`/日志只作为可用事实返回。本批次尚未交付 MD 专用 trajectory conversion 或独立 `postprocess`/`export`，后者仍是后续 Forge operation 批次；monitor、workflow 编排、restart/resume、调度与科学判断保持在 Forge 外。后续批次仍包括 PyATB engine boundary 和更多 property-pack 的真实 smoke。
+- typed MD 当前只交付单工作目录的准备、修改、一次本地执行和事实收集；`MD_dump`/日志只作为可用事实返回。本批次尚未交付 MD 专用 trajectory conversion 或独立 `postprocess`/`export`；已交付的 typed band/DOS postprocess 是另一条实验性 capability 边界。monitor、workflow 编排、restart/resume、调度与科学判断保持在 Forge 外。后续批次仍包括 typed PyATB engine boundary 和更多 property-pack 的真实 smoke。
 - 固化 SCF->NSCF artifact handoff 规则：电荷、矩阵、最终结构、DOS/PyATB 后处理所需文件要有明确 manifest，而不是只依赖目录名约定。
 - 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
@@ -53,6 +55,9 @@
 ## 明确延后项
 - `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
+- typed `export` 仍是独立的后续 operation；本批次不把 postprocess 结果隐式导出或改写为 legacy export。
+- typed PyATB engine handoff、property/composite 聚合仍需单独设计和验证；现有 PyATB sequence/helper 不构成 typed postprocess 的交付证据。
+- workflow/orchestration、monitor、重试/恢复和科学判断由 Forge 外部的调用方负责；typed postprocess 只返回 parser facts，不生成 band gap/acceptance 等科学结论。
 - atst-tools 只作为可选 NEB engine adapter：其图像/链路编排与执行语义由 atst-tools 负责，Forge 不把它变成核心依赖，也不承接 Slurm/站点启动或上层编排。
 - 不在 Forge core 中引入平台化 UI 或任务管理逻辑；本地 TUI 若实现，只作为 Python API/结构化 CLI envelope 之上的可选薄壳。
 - 新增 property pack 不自动进入 PAIMON v1.3 能力面；进入 Agent/协议适配层前需要另行评估契约、用户体验与真实运行门禁。

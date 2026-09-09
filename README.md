@@ -69,6 +69,17 @@ SCF 收集完整性由非空输出日志、有限总能量和解析情况决定�
 最终结构；收敛标志独立返回。typed collect 只读取 workspace 内的领域文件，
 审计事件、claims、锁和 workspace manifest 不进入计算产物列表。
 
+`BandPostprocessRequest` 与 `DosPostprocessRequest` 提供独立的 typed band/DOS
+`postprocess` service。它们的成熟度为 `experimental`，要求调用方显式声明一个非空的
+workspace-relative source path 列表；不会隐式执行 `collect`、`export` 或上游 operation。
+纯进程内解析不声明执行事实：成功、部分解析和 parser failure 的
+`execution` 均为 `not_run`，`collection` 反映 `complete`、`partial` 或
+`missing_output`，`scientific` 始终为 `unassessed`。结果只交付 parser facts、相对
+artifact（input/output、sha256、size）和一个追加式 operation event。这里的 typed
+postprocess 与下文已有的 `run_band`、`run_dos`、`run_band_sequence`、
+`run_dos_sequence` 以及 `abacus-forge band|dos` legacy task/sequence API 是不同边界；
+后者继续保持原有 task/sequence 语义，不被隐式改写为 typed service。
+
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
 typed service 与旧 API 共用 `preparation.py`、`collection.py` 和 INPUT 编辑基元；
@@ -89,14 +100,16 @@ legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推�
 ## Agent-first CLI
 
 Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax` 和
-成熟度为 `experimental` 的 `md`、`atst-neb`。它固定暴露三个顶层命令：`operation`
+成熟度为 `experimental` 的 `md`、`atst-neb`；typed `band`/`dos` 另提供仅用于
+`postprocess` 的实验性 capability。它固定暴露三个顶层命令：`operation`
 （`scf`、`relax`、`cell-relax`、`md` 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
-`execute`、`postprocess`）、`schema`（读取请求 schema）和
+`execute`、`postprocess`；`band`、`dos` 执行 `postprocess`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
 
-没有 capability 的 `postprocess` 以及 `export` 仍返回 `request.invalid`；legacy CLI
-的默认输出和入口保持不变。
+没有 capability 的 `postprocess` 以及 `export` 仍返回 `request.invalid`；typed
+band/DOS 请求必须分别声明 `capability="band"`/`"dos"`。legacy CLI 的默认输出和入口
+保持不变。
 
 请求可以来自文件：
 
@@ -131,9 +144,10 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 ```
 
 `capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前发现的
-capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`；`md` 仅支持
+capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`；`md` 仅支持
 `prepare`、`modify`、`execute`、`collect`，且 maturity 为 `experimental`；其他 capability
-按各自 descriptor 暴露 operation。默认格式下，
+按各自 descriptor 暴露 operation，`band`/`dos` 仅暴露 `postprocess` 且 maturity 为
+`experimental`。默认格式下，
 `operation` 在 stdout 输出恰好一个完整的 JSON outcome/error envelope，其中包含错误消息与
 结果 diagnostics；stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
 `0`（无执行失败）、
@@ -382,6 +396,77 @@ PYTHONPATH=src python -m abacus_forge.cli workfunc prepare runs/slab --vacuum-ax
 PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis c --json
 ```
 
+## Typed band/DOS postprocess（experimental）
+
+Band 和 DOS 请求都必须携带 `schema_version`、合法的 lowercase UUIDv4
+`operation_id`、`workspace_rel` 和 `operation="postprocess"`。source 只能写成该
+workspace 内的显式相对路径；Band 的 `source_paths_rel`、DOS 的 `dos_paths_rel` 都必须
+非空。以下是可直接交给 machine CLI 的完整请求示例：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "band",
+  "operation": "postprocess",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174100",
+  "workspace_rel": "runs/Si_band",
+  "source_paths_rel": ["inputs/BANDS_1.dat"],
+  "output_dir_rel": "outputs/postprocess",
+  "plot_emin": -10.0,
+  "plot_emax": 10.0,
+  "save_data": true,
+  "save_plot": true
+}
+```
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "dos",
+  "operation": "postprocess",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174101",
+  "workspace_rel": "runs/FeO_dos",
+  "dos_paths_rel": ["inputs/DOS1_smearing.dat"],
+  "pdos_path_rel": null,
+  "tdos_path_rel": null,
+  "output_dir_rel": "outputs/postprocess",
+  "include_tdos": true,
+  "include_pdos": true,
+  "pdos_mode": "species",
+  "pdos_atom_indices": [],
+  "plot_emin": -10.0,
+  "plot_emax": 10.0,
+  "save_data": true,
+  "save_plot": true,
+  "suffix": null
+}
+```
+
+将上述 JSON 分别保存为 `band-request.json` 或 `dos-request.json` 后，可通过 stdin
+执行单个 operation：
+
+```bash
+cat band-request.json | PYTHONPATH=src python -m abacus_forge.cli operation postprocess --stdin
+cat dos-request.json | PYTHONPATH=src python -m abacus_forge.cli operation postprocess --stdin
+```
+
+Python API 使用同一 typed service 集合和请求记录：
+
+```python
+from abacus_forge import BandPostprocessRequest, PostprocessServiceSet
+
+request = BandPostprocessRequest.from_dict(band_payload)
+result = PostprocessServiceSet.default(workspace_root=".").band.postprocess(request)
+```
+
+直接 service 调用和上述 subprocess CLI 返回等价的 typed envelope facts（只需对不同
+operation-id 与隔离 workspace root 做 parity normalization）。每次成功或 admitted
+parser outcome 只追加一个 `reports/events/<operation_id>-postprocess.json`；可选 factual
+report 位于 `reports/postprocess/`，生成文件和 report 都是 workspace-relative output
+artifact，source 是 input artifact。结果不泄露绝对路径，不生成 band gap、acceptance 或
+其它科学判断；缺失 source、路径碰撞和审计保留路径会按既有 request/precondition/error
+语义返回。
+
 ## Typed Relax operations
 
 `RelaxPrepareRequest`、`RelaxModifyRequest`、`RelaxExecuteRequest` 和
@@ -441,8 +526,9 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 
 typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
 和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立
-`postprocess`/`export`。独立 `postprocess`/`export` 仍按 SPEC 作为后续 Forge 批次；PyATB
-engine boundary 和更多真实 property-pack smoke 也仍待后续交付。监控、workflow 编排、
+`postprocess`/`export`。上文的 typed band/DOS postprocess 是单独的实验性能力，不扩展为
+MD 或其它 task 的隐式后处理；typed `export`、PyATB engine boundary 和更多真实
+property-pack smoke 仍待后续交付。监控、workflow 编排、
 恢复/重试、调度和科学判断由 Forge 外部的人类或 Agent 负责；Stage 5 的 legacy 依赖
 解除与稳定发布门禁也尚未完成。
 
@@ -556,9 +642,11 @@ runs/<run_id>/
     forge-workspace.json
     events/
       <event-id>-<operation>.json
+    postprocess/
+      <operation-id>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。这里记录的是当前已实现的持久化边界；postprocess/export、扩展状态策略、ATP 集成和 capability-specific 真实操作/解析验收仍不属于稳定发布保证范围。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；typed `export`、PyATB typed engine handoff、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍不属于本批次。
 
 事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
 
@@ -567,6 +655,8 @@ runs/<run_id>/
 - 不内置云平台提交、追踪、下载能力
 - 不引入 AiiDA 语义或工作流编排语义到 Forge 核心
 - 对于 phonon / elastic 等厚工作流，其实现必须基于解耦的单元模块，且其输入/计算/输出必须可解耦
+- typed `export`、typed PyATB engine handoff、property/composite 聚合不在本批次
+- 调度、workflow/orchestration、重试/恢复和科学判断由 Forge 外部的调用方负责
 
 ## 贡献
 

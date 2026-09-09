@@ -46,12 +46,12 @@
 
 **Test strategy:** Extend existing contract/machine suites; no new test file because the current registry and process tests own request and discovery behavior. Assert round trips, strict unknown fields, invalid paths/types/bounds/suffix, deterministic descriptors, explicit capability routing, `schema <band|dos> postprocess`, and request-invalid/exit-2 for unsupported operations or missing capability. Verify no service call occurs on invalid input.
 
-- [ ] **Step 1: Write failing contract/discovery/decoder tests.**
-- [ ] **Step 2: Run the focused RED gate:**
+- [x] **Step 1: Write failing contract/discovery/decoder tests.**
+- [x] **Step 2: Run the focused RED gate:**
   `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_architecture.py`.
-- [ ] **Step 3: Implement the separate request module and registry dispatch without widening legacy `ForgeRequest`.**
-- [ ] **Step 4: Run the focused GREEN gate and `git diff --check`.**
-- [ ] **Step 5: Commit:** `git add src/abacus_forge/postprocess_contracts.py src/abacus_forge/discovery.py src/abacus_forge/machine_cli.py src/abacus_forge/__init__.py tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_architecture.py && git commit -m "feat: add typed band dos postprocess requests"`.
+- [x] **Step 3: Implement the separate request module and registry dispatch without widening legacy `ForgeRequest`.**
+- [x] **Step 4: Run the focused GREEN gate and `git diff --check`.**
+- [x] **Step 5: Commit:** `git add src/abacus_forge/postprocess_contracts.py src/abacus_forge/discovery.py src/abacus_forge/machine_cli.py src/abacus_forge/__init__.py tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_architecture.py && git commit -m "feat: add typed band dos postprocess requests"`.
 
 ### Task 2: Explicit-input algorithm seam and contained artifact projection
 
@@ -66,11 +66,11 @@
 
 **Test strategy:** Use existing sample band/DOS fixtures and hand-created temporary files. Assert explicit file ordering, no directory discovery, safe output names, DOS suffix traversal rejection at the request boundary, deterministic data/plot generation, malformed input handling, and unchanged legacy helper tests. Avoid tests that infer science conclusions from generated plots.
 
-- [ ] **Step 1: Add RED tests for explicit paths and output containment.**
-- [ ] **Step 2: Run the owning RED gate:** `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_dos_postprocess.py tests/test_units.py tests/test_postprocess_algorithms.py` (omit the new file until it exists).
-- [ ] **Step 3: Extract/reuse the smallest event-free algorithm seam; leave legacy wrappers behaviorally intact.**
-- [ ] **Step 4: Run GREEN and `git diff --check`; inspect generated files for absolute-path leakage in typed results.**
-- [ ] **Step 5: Commit:** `git add src/abacus_forge/postprocess_algorithms.py src/abacus_forge/unit_postprocess.py src/abacus_forge/dos_postprocess.py tests/test_dos_postprocess.py tests/test_units.py tests/test_postprocess_algorithms.py && git commit -m "refactor: expose explicit postprocess algorithms"`.
+- [x] **Step 1: Add RED tests for explicit paths and output containment.**
+- [x] **Step 2: Run the owning RED gate:** `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_dos_postprocess.py tests/test_units.py tests/test_postprocess_algorithms.py` (omit the new file until it exists).
+- [x] **Step 3: Extract/reuse the smallest event-free algorithm seam; leave legacy wrappers behaviorally intact.**
+- [x] **Step 4: Run GREEN and `git diff --check`; inspect generated files for absolute-path leakage in typed results.**
+- [x] **Step 5: Commit:** `git add src/abacus_forge/postprocess_algorithms.py src/abacus_forge/unit_postprocess.py src/abacus_forge/dos_postprocess.py tests/test_dos_postprocess.py tests/test_units.py tests/test_postprocess_algorithms.py && git commit -m "refactor: expose explicit postprocess algorithms"`.
 
 ### Task 3: Typed band/DOS services, API/CLI parity and durable audit
 
@@ -83,17 +83,17 @@
 - `PostprocessService` protocol exposes `postprocess(request: BandPostprocessRequest | DosPostprocessRequest) -> OperationOutcome | ForgeErrorEnvelope`.
 - `PostprocessServiceSet.default(workspace_root=".")` exposes `.band.postprocess` and `.dos.postprocess`, sharing one `ServiceContext` and one admission/persistence path. A compatibility facade is not added.
 - The service resolves and validates every source before opening it, verifies output directory containment and reserved audit paths, then admits the operation ID before domain writes. It calls the explicit algorithm seam, writes only requested data/plot and factual report diagnostics under the workspace, builds input/output `ArtifactRecord`s with relative paths, hashes and sizes, and persists one event. Source records have `role="input"`, generated records have `role="output"`, and report files are included only when actually written.
-- Successful parse with at least one requested family yields `execution="completed"`, `collection="complete"`; optional missing DOS family yields `collection="partial"` with diagnostics; no usable source after admission yields `collection="missing_output"` only when the request itself was valid but the expected file has disappeared. Missing request-declared files before parser invocation map to `precondition.missing`/exit 3. Parser failure maps to an admitted outcome with `execution="failed"`, `collection="partial"`, factual `parse_error` diagnostics and exit 4; it never changes a prior ABACUS execute/collect event.
+- Pure in-process parsing never claims an execution fact: successful parse, parser degradation and a valid source disappearing after admission all use `execution="not_run"`; `collection` is `complete`, `partial` or `missing_output` and parser observations/diagnostics carry the detailed facts. Optional missing DOS family yields `collection="partial"` with diagnostics. Missing request-declared files before parser invocation map to `precondition.missing`/exit 3. A parser failure is an admitted outcome with `execution="not_run"`, `collection="partial"`, factual `parse_error` diagnostics, an `OperationOutcome` JSON document and exit 0; it never changes a prior ABACUS execute/collect event. An independently launched postprocessor is outside this batch and follows the SPEC process-execution matrix.
 - `scientific="unassessed"` for every outcome. Observations are parser facts such as file counts, row/point counts, spin channels, selected paths and generated artifact names; no band-gap or physical acceptance observation is synthesized.
 - Repeated `operation_id` is rejected by existing workspace admission without touching source/output files. A source symlink resolving outside the workspace and an output path overlapping `reports/events`, `reports/claims`, `reports/forge-workspace.json`, locks, or a source file are rejected with the existing path/request classes.
 
 **Test strategy:** New service/process suites use isolated temporary workspaces, explicit files, a fake no-process algorithm seam where useful, and true `run_cli` subprocess calls for parity. Assert API and CLI envelopes match after normalizing only operation IDs/path-bearing diagnostics, input/output artifact roles and refs are relative/contained, one event is written, no implicit collect/export occurs, error/exit mappings are stable, and legacy `collect_unit(postprocess=True)` remains unchanged.
 
-- [ ] **Step 1: Add RED service/API/process tests, including malformed files, missing optional DOS family, repeated IDs, symlink escape and reserved output paths.**
-- [ ] **Step 2: Run RED:** `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_postprocess_services.py tests/test_postprocess_machine_cli.py`.
-- [ ] **Step 3: Implement the narrow service set using `ServiceContext.persist()` and the existing operation guard; do not add postprocess logic to `api.py` or the legacy `ForgeServices` facade.**
-- [ ] **Step 4: Run GREEN with the service suites plus `tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_units.py tests/test_dos_postprocess.py`; run `git diff --check`.**
-- [ ] **Step 5: Commit:** `git add src/abacus_forge/postprocess_services.py src/abacus_forge/machine_cli.py src/abacus_forge/__init__.py tests/test_postprocess_services.py tests/test_postprocess_machine_cli.py && git commit -m "feat: expose typed band dos postprocess services"`.
+- [x] **Step 1: Add RED service/API/process tests, including malformed files, admitted source disappearance, zero requested outputs, missing optional DOS family, repeated IDs, symlink escape and reserved output paths.**
+- [x] **Step 2: Run RED:** `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_postprocess_services.py tests/test_postprocess_machine_cli.py`.
+- [x] **Step 3: Implement the narrow service set using `ServiceContext.persist()` and the existing operation guard; do not add postprocess logic to `api.py` or the legacy `ForgeServices` facade.**
+- [x] **Step 4: Run GREEN with the service suites plus `tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_units.py tests/test_dos_postprocess.py`; run `git diff --check`.**
+- [x] **Step 5: Commit:** `git add src/abacus_forge/postprocess_services.py src/abacus_forge/machine_cli.py src/abacus_forge/__init__.py tests/test_postprocess_services.py tests/test_postprocess_machine_cli.py && git commit -m "feat: expose typed band dos postprocess services"`.
 
 ### Task 4: Public documentation, capability evidence and final verification
 
@@ -105,13 +105,27 @@
 
 **Verification:**
 
-- [ ] Run the full offline gate with the repository interpreter and flags: `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider`.
-- [ ] Run actual discovery commands and parse output: `PYTHONPATH=src ... -m abacus_forge.cli capabilities`, `... schema band postprocess`, `... schema dos postprocess`.
-- [ ] Run `git diff --check`, forbidden-import scan and clean worktree check. Any pre-existing scan hits must be recorded, not silently reclassified.
-- [ ] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
-- [ ] Commit docs and the exact verification evidence; do not merge or push.
+- [x] Run the full offline gate with the repository interpreter and flags: `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider`.
+- [x] Run actual discovery commands and parse output: `PYTHONPATH=src ... -m abacus_forge.cli capabilities`, `... schema band postprocess`, `... schema dos postprocess`.
+- [x] Run `git diff --check`, forbidden-import scan and clean worktree check. Any pre-existing scan hits must be recorded, not silently reclassified.
+- [x] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
+- [x] Commit docs and the exact verification evidence; do not merge or push.
+
+## Task 4 execution evidence (2026-09-10)
+
+- Discovery JSON parsing passed: `band` and `dos` are present as `experimental`, `abacus`,
+  `postprocess`-only capabilities with `input`/`output` artifact roles. Their schemas are
+  strict (`additionalProperties=false`) and require explicit non-empty
+  `source_paths_rel`/`dos_paths_rel`.
+- Full offline gate passed: `828 passed, 3 skipped in 63.91s` with the repository `paimon`
+  interpreter and `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src -p no:cacheprovider` flags.
+- Forbidden-import scan returned `[]`; `git diff --check` passed. The final post-commit clean
+  worktree check retains only the shared parent worktree's intentionally uncommitted plan
+  changes before this documentation commit; no product/test changes are included here.
+- Documentation records typed band/DOS as landed but experimental, explicitly separates them
+  from legacy task/sequence helpers, and defers typed export, typed PyATB handoff,
+  property/composite aggregation, scheduling/orchestration and scientific judgment.
 
 ## Self-review record
 
 This plan was checked against the approved SPEC's independent postprocess request requirement, one-operation admission/event rule, facts-vs-science boundary, API/CLI parity, artifact containment and legacy compatibility clauses. It deliberately keeps `export` out because its source-result reference and destination/overwrite contract is not yet specified, and keeps PyATB out because the current helper has implicit SCF directory discovery. The only new public capabilities are narrow `band.postprocess` and `dos.postprocess`, each independently testable and still experimental. No unresolved product decision remains within this selected batch; the next PyATB and typed export batches require their own plans.
-
