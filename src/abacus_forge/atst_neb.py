@@ -165,8 +165,10 @@ class AtstNebPostprocessService:
                     post_cmd += ["--vib-thr", str(request.vib_thr)]
                     rc2, _, err2, timeout2 = self._context.run(workspace, post_cmd, request.operation_id + "-post", None)
                 rc = rc1 if rc1 != 0 or timeout1 else rc2
+                summary_key = summary.resolve()
+                summary_changed = summary.is_file() and (summary_key not in before_outputs or (summary.stat().st_size, summary.stat().st_mtime_ns) != before_outputs[summary_key])
                 logs = [("summary_stdout", f"reports/atst/{request.operation_id}-summary-stdout.log", "output"), ("summary_stderr", f"reports/atst/{request.operation_id}-summary-stderr.log", "output"), ("post_stdout", f"reports/atst/{request.operation_id}-post-stdout.log", "output"), ("post_stderr", f"reports/atst/{request.operation_id}-post-stderr.log", "output")]
-                entries = [("trajectory", request.trajectory_path_rel, "input"), ("summary", request.summary_path_rel, "output"), *logs]
+                entries = [("trajectory", request.trajectory_path_rel, "input"), *([("summary", request.summary_path_rel, "output")] if summary_changed else []), *logs]
                 prefixes = [prefix]
                 if request.write_latest: prefixes.append(workspace.root / "outputs/atst/neb-latest")
                 if request.write_neb_init_chain: prefixes.append(workspace.root / "outputs/atst/neb-init-chain.traj")
@@ -183,7 +185,7 @@ class AtstNebPostprocessService:
                                 changed_outputs[item.resolve()].append(key)
                 artifacts = self._context.artifacts(workspace, entries)
                 output_exists = all(changed_outputs[item.resolve()] for item in prefixes)
-                collection = "complete" if rc == 0 and summary.is_file() and output_exists else ("missing_output" if rc == 0 else "partial")
+                collection = "complete" if rc == 0 and summary_changed and output_exists else ("missing_output" if rc == 0 else "partial")
                 envelope = ForgeResultEnvelope("postprocess", request.workspace_rel, _status(rc, timeout1 or timeout2, collection=collection), artifacts=artifacts, diagnostics={"summary_command": summary_cmd, "postprocess_command": post_cmd, "returncode": rc, "stderr": "\n".join(x for x in (err1, err2) if x), "summary_returncode": rc1, "postprocess_returncode": rc2})
                 return self._context.persist(workspace, request, envelope, token)
         except Exception as error: return self._context.make_error(request, error)
