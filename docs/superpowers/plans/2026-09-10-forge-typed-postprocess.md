@@ -61,6 +61,7 @@
 
 **Interfaces:**
 - Provide event-free functions accepting already validated `Path` inputs and a contained output directory, returning serializable parser summaries plus the exact generated output paths. Band accepts an ordered sequence of `BANDS_*.dat`-compatible files; DOS accepts explicit total-DOS paths and optional PDOS/TDOS paths. Neither function scans a workspace or writes outside the passed output directory.
+- The typed DOS projection follows the ABACUS total-DOS format (`energy`, DOS, cumulative integral): it keeps the DOS column and combines explicitly supplied spin files horizontally only when their energy grids agree. The typed band summary recognizes ABACUS's k-point-index/path-distance prefixes when present; legacy one-prefix fixtures remain compatible through the legacy helper.
 - Keep the existing public `postprocess_abacus_band`, `postprocess_abacus_dos`, and `postprocess_dos_family` signatures and implicit discovery/absolute diagnostic behavior for legacy callers. Their implementation may delegate to the new seam only where existing tests demonstrate behavior equivalence.
 - Typed algorithm results must not emit `accepted`/`rejected` facts. A parser with no numeric rows raises a typed precondition/parse exception for the service to map, while optional DOS family absence is represented as a factual missing-family diagnostic.
 
@@ -82,7 +83,7 @@
 **Interfaces:**
 - `PostprocessService` protocol exposes `postprocess(request: BandPostprocessRequest | DosPostprocessRequest) -> OperationOutcome | ForgeErrorEnvelope`.
 - `PostprocessServiceSet.default(workspace_root=".")` exposes `.band.postprocess` and `.dos.postprocess`, sharing one `ServiceContext` and one admission/persistence path. A compatibility facade is not added.
-- The service resolves and validates every source before opening it, verifies output directory containment and reserved audit paths, then admits the operation ID before domain writes. It calls the explicit algorithm seam, writes only requested data/plot and factual report diagnostics under the workspace, builds input/output `ArtifactRecord`s with relative paths, hashes and sizes, and persists one event. Source records have `role="input"`, generated records have `role="output"`, and report files are included only when actually written.
+- The service resolves and validates every source before opening it, verifies output directory containment and reserved audit paths (including the report filename leaf), then admits the operation ID before domain writes. It calls the explicit algorithm seam, writes only requested data/plot and factual report diagnostics under the workspace, builds input/output `ArtifactRecord`s with relative paths, hashes and sizes, and persists one event. Source records have `role="input"`, generated records have `role="output"`, and an admitted outcome's factual report is included when it is written.
 - Pure in-process parsing never claims an execution fact: successful parse, parser degradation and a valid source disappearing after admission all use `execution="not_run"`; `collection` is `complete`, `partial` or `missing_output` and parser observations/diagnostics carry the detailed facts. Optional missing DOS family yields `collection="partial"` with diagnostics. Missing request-declared files before parser invocation map to `precondition.missing`/exit 3. A parser failure is an admitted outcome with `execution="not_run"`, `collection="partial"`, factual `parse_error` diagnostics, an `OperationOutcome` JSON document and exit 0; it never changes a prior ABACUS execute/collect event. An independently launched postprocessor is outside this batch and follows the SPEC process-execution matrix.
 - `scientific="unassessed"` for every outcome. Observations are parser facts such as file counts, row/point counts, spin channels, selected paths and generated artifact names; no band-gap or physical acceptance observation is synthesized.
 - Repeated `operation_id` is rejected by existing workspace admission without touching source/output files. A source symlink resolving outside the workspace and an output path overlapping `reports/events`, `reports/claims`, `reports/forge-workspace.json`, locks, or a source file are rejected with the existing path/request classes.
@@ -108,7 +109,7 @@
 - [x] Run the full offline gate with the repository interpreter and flags: `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider`.
 - [x] Run actual discovery commands and parse output: `PYTHONPATH=src ... -m abacus_forge.cli capabilities`, `... schema band postprocess`, `... schema dos postprocess`.
 - [x] Run `git diff --check`, forbidden-import scan and clean worktree check. Any pre-existing scan hits must be recorded, not silently reclassified.
-- [ ] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
+- [x] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
 - [x] Commit docs and the exact verification evidence; do not merge or push.
 
 ## Task 4 execution evidence (2026-09-10)
@@ -117,14 +118,21 @@
   `postprocess`-only capabilities with `input`/`output` artifact roles. Their schemas are
   strict (`additionalProperties=false`) and require explicit non-empty
   `source_paths_rel`/`dos_paths_rel`.
-- Full offline gate passed: `828 passed, 3 skipped in 63.91s` with the repository `paimon`
-  interpreter and `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src -p no:cacheprovider` flags.
+- Full offline gate passed after the final facts/safety correction at `d69c198`: `832 passed,
+  3 skipped in 65.22s` with the repository `paimon` interpreter and
+  `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src -p no:cacheprovider` flags. The earlier
+  documentation-only revision `b84eeff` also passed `828 passed, 3 skipped`; it is not used as
+  evidence for the final code revision.
 - Forbidden-import scan returned `[]`; `git diff --check` passed. The final post-commit
   `git status --short --branch` showed a clean `forge-core-fidelity` worktree; no product/test
   changes are included here.
 - Documentation records typed band/DOS as landed but experimental, explicitly separates them
   from legacy task/sequence helpers, and defers typed export, typed PyATB handoff,
   property/composite aggregation, scheduling/orchestration and scientific judgment.
+- Whole-branch review at `638954d` found three Important facts/artifact issues. The correction
+  commit `d69c198` closed them; the revision-bound re-review approved with no Critical,
+  Important or Minor findings. Focused post-review gate: `430 passed in 44.94s`; the final
+  full gate above is bound to `d69c198`.
 
 ## Self-review record
 
