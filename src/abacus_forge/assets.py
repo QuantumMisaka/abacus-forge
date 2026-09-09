@@ -8,8 +8,11 @@ import hashlib
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
+from .errors import ForgePathError, ForgePreconditionError, ForgeRequestError
 
-_PSEUDO_SUFFIXES = {".upf", ".vp"}
+
+_PSEUDO_SUFFIXES = {".upf"}
+_TYPED_PSEUDO_SUFFIXES = {".upf", ".vp"}
 _ORBITAL_SUFFIXES = {".orb"}
 
 
@@ -49,28 +52,38 @@ def materialize_assets(
 ) -> tuple[AssetMaterialization, ...]:
     """Validate and materialize explicitly supplied pseudo/orbital assets."""
     if mode not in {"copy", "link"}:
-        raise ValueError(f"unsupported asset mode: {mode}")
+        raise ForgeRequestError(f"unsupported asset mode: {mode}")
     root = Path(workspace_root).resolve()
     target = Path(target_inputs)
     if not target.is_absolute():
         target = root / target
     target = target.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        raise ForgePathError("target_inputs must remain under workspace root") from None
     entries: list[tuple[str, str, Path]] = []
     for family, mapping in (("pseudo", pseudo_sources or {}), ("orbital", orbital_sources or {})):
         for species, raw_source in mapping.items():
             if not isinstance(raw_source, (str, Path)) or not str(raw_source):
-                raise ValueError("asset source must be a non-empty path")
+                raise ForgeRequestError("asset source must be a non-empty path")
             source = Path(raw_source)
-            source = source if source.is_absolute() else root / source
+            was_absolute = source.is_absolute()
+            source = source if was_absolute else root / source
             source = source.resolve()
-            if not source.is_file():
-                raise ValueError(f"asset source is not a regular file: {raw_source}")
-            allowed = _PSEUDO_SUFFIXES if family == "pseudo" else _ORBITAL_SUFFIXES
+            if not was_absolute:
+                try:
+                    source.relative_to(root)
+                except ValueError:
+                    raise ForgePathError("relative asset source must remain under workspace root") from None
+            if not source.exists() or not source.is_file() or source.is_symlink():
+                raise ForgePreconditionError(f"asset source is not a regular file: {raw_source}")
+            allowed = _TYPED_PSEUDO_SUFFIXES if family == "pseudo" else _ORBITAL_SUFFIXES
             if source.suffix.lower() not in allowed:
-                raise ValueError(f"invalid {family} asset suffix: {source.name}")
+                raise ForgeRequestError(f"invalid {family} asset suffix: {source.name}")
             basename = source.name
             if basename in {"", ".", ".."} or Path(basename).name != basename:
-                raise ValueError(f"unsafe asset basename: {basename}")
+                raise ForgeRequestError(f"unsafe asset basename: {basename}")
             entries.append((family, str(species), source))
 
     destinations: dict[str, tuple[Path, Path]] = {}
@@ -80,20 +93,20 @@ def materialize_assets(
         key = str(destination)
         prior = destinations.get(key)
         if prior is not None and prior[1] != source:
-            raise ValueError(f"duplicate asset basename from distinct sources: {source.name}")
+            raise ForgeRequestError(f"duplicate asset basename from distinct sources: {source.name}")
         destinations[key] = (destination, source)
         if mode == "link":
             try:
                 source.relative_to(root)
             except ValueError:
-                raise ValueError("external assets cannot be linked") from None
+                raise ForgeRequestError("external assets cannot be linked") from None
         if destination.exists() or destination.is_symlink():
             if destination.is_symlink() and mode == "link":
                 existing_source = (destination.parent / destination.readlink()).resolve()
                 if existing_source != source:
-                    raise ValueError(f"conflicting existing destination: {destination}")
-            elif not destination.is_file() or _sha256(destination) != _sha256(source):
-                raise ValueError(f"conflicting existing destination: {destination}")
+                    raise ForgeRequestError(f"conflicting existing destination: {destination}")
+            elif mode == "link" or not destination.is_file() or destination.is_symlink() or _sha256(destination) != _sha256(source):
+                raise ForgeRequestError(f"conflicting existing destination: {destination}")
         records.append((family, species, source, destination, mode))
 
     target.mkdir(parents=True, exist_ok=True)
