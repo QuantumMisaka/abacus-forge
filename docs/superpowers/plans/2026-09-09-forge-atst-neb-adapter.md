@@ -27,6 +27,7 @@ Tech stack: Python dataclasses, subprocess, existing workspace/result/error help
 - Prepare creates an NEB chain with atst neb make; execute runs an opaque YAML with atst run; postprocess first obtains JSON summary data with atst neb summary and then invokes atst neb post for requested derived artifacts.
 - The adapter owns only the local command invocation and factual result capture. ATST owns NEB image/chain semantics; the caller owns outer orchestration, scheduling, and scientific interpretation.
 - `atst-neb.prepare` binds specifically to `atst neb make` (endpoint-to-chain generation); it is not the top-level `atst prepare` reverse-config operation that generates a workflow YAML from an ABACUS run directory. This slice exposes only the structured, non-interactive, path-controlled CLI subset needed by the adapter; omitted ATST flags are not passed through as arbitrary argv.
+- The ATST backend and model choice (including DeePMD or other calculator implementations) remain owned by atst-tools and the caller's opaque workflow configuration; Forge does not select, install, configure, or scientifically assess those backends.
 - The optional dependency/version and clean-environment real-smoke test are release evidence, not a required-dependency change in this implementation slice.
 
 ## Task 1: Add typed ATST-NEB request contracts and discovery
@@ -35,7 +36,7 @@ Files: src/abacus_forge/contracts.py, src/abacus_forge/discovery.py, src/abacus_
 
 1. Write failing tests for strict round-trip decoding and rejection of unknown fields, wrong capability, non-contained paths, invalid image counts/methods, execute check-input invariants, and postprocess output options.
 2. Add _AtstNebRequest and three dataclass requests:
-   - AtstNebPrepareRequest: init/final structure relative paths, `n_images` >= 1 (default `5`, matching ATST 2.2.4), chain output path default, method IDPP or linear, and no_align.
+   - AtstNebPrepareRequest: init/final structure relative paths, `n_images` >= 1 (Forge default `5`, following ATST 2.2.4's top-level prepare/reverse-config convention; `neb make` receives it explicitly), chain output path default, method IDPP or linear, and no_align.
    - AtstNebExecuteRequest: opaque config relative path, dry-run/check-input controls (with positive `check_input_timeout` default `120`, matching ATST 2.2.4), optional ABACUS executable, and optional positive outer Forge subprocess timeout; enforce check_input implies dry_run.
    - AtstNebPostprocessRequest: trajectory and summary/output paths, non-negative n_max, and explicit typed flags for plotting, energy profile, vibration analysis/threshold (`vib_thr` default `0.10`, matching ATST 2.2.4), strict band, latest-chain and init-chain output.
    Every request serializes capability: atst-neb, its operation, schema version, workspace identity, and only portable fields. Required fields use the existing sentinel pattern so inherited dataclasses stay strict.
@@ -93,9 +94,9 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 - Boundary scan command: `rg -n "from atst_tools|import atst_tools|slurm|DPDispatcher|Bohrium|srun|sbatch|mpirun|scientific.*(valid|accept)|validation.*scientific" src/abacus_forge pyproject.toml`.
   Result: no ATST Python import, scheduler integration, or scientific validation implementation was found; the existing `mpirun` match is the pre-existing SCF runner command construction and is not an ATST/site scheduler integration.
 - Full supported-environment test command: `conda run -n paimon python -m pytest -q`.
-  Result after the final adapter safety fixes: `394 passed, 2 skipped in 40.84s`.
+  Result after default-alignment changes: `396 passed, 2 skipped in 42.26s`.
 - Focused adapter/machine/architecture command: `conda run -n paimon python -m pytest -q tests/test_atst_neb.py tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_architecture.py`.
-  Result after the final adapter safety fixes: `172 passed in 27.75s`.
+  Result after default-alignment changes: `174 passed in 32.17s`.
 - Hygiene command: `git diff --check`.
   Result: passed (no output).
 - ATST source/version verification: `/home/james/work/deepmodeling/atst-tools` is on `main` at `9318177`, exactly matches `origin/main`, and declares version `2.2.4`; the published PyPI version is also `2.2.4`. The `atst-dev` environment resolves the source tree and reports `atst 2.2.4`.
@@ -111,6 +112,6 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 
 ## Final independent review evidence
 
-- Review scope: complete change `ed53bdc..b55172d`, with a focused re-review of `3b58bda..b55172d` and the current PLAN wording revision.
-- Result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility and ATST discovery/README/marker alignment were preserved.
+- Review scope: complete change `ed53bdc..8030523`, with a focused re-review of `c9a25df..8030523` and the current PLAN wording revision.
+- Result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility, ATST 2.2.4 default alignment, discovery/README/marker alignment, and the DeePMD boundary were preserved.
 - Release boundary retained: real atst-tools smoke and explicit version/API locking remain future release gates, not claims made by this fake-executable test slice.
