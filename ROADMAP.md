@@ -11,6 +11,7 @@
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
+- 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位与资源/质量保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
@@ -21,7 +22,6 @@
 - 可选 typed Relax real smoke 只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；未提供真实输入时不产生 release evidence。
 
 ## 近期方向
-- 输入保真与 typed collect/core 收口按 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md) 推进；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
 - 后续单独收敛 typed prepare 的 PP/ORB 映射和资产搬运：明确来源、覆盖优先级、copy/link、路径包含性、重名与缺失诊断；保留 STRU 引用不等于自动备齐计算资产。
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。

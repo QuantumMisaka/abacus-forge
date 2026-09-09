@@ -89,9 +89,9 @@ Extraction seams: move `prepare` and preparation-only helpers into `preparation.
 
 **Test strategy:** Hand-checked silicon primitive/conventional cells with custom mass/resources; compare geometry, atom count, species-bound references and mass. Test a nonuniform magnetic case and a constrained case both fail explicitly; do not infer expected data using the converter under test.
 
-- [ ] Establish RED for standardization metadata loss and silent site-property merging.
-- [ ] Implement bounded preservation/rejection and run Task1 owning-suite command, expecting pass.
-- [ ] Commit with raw RED/GREEN report and obtain independent task review.
+- [x] Establish RED for standardization metadata loss and silent site-property merging.
+- [x] Implement bounded preservation/rejection and run Task1 owning-suite command; 68 passed at `97c4238`.
+- [x] Commit with raw RED/GREEN report and obtain independent task review; approved without findings.
 
 ## Remaining design work and acceptance scope
 
@@ -99,8 +99,10 @@ Explicit typed PP/ORB asset maps and materialization policy require a dedicated 
 
 ## Controller closure
 
-- [ ] Update SPEC concisely for corrected input/collection behavior and actual extraction status, without expanding governance prose; sync README/ROADMAP and source reference report.
+- [x] Update SPEC concisely for corrected input/collection behavior and actual extraction status, without expanding governance prose; sync README/ROADMAP and source reference report.
 - [ ] Independent task reviews followed by whole-branch review; close Important findings before delivery.
 - [ ] Retain branch and reviewable diff; report actual limitations and next typed-asset task.
 
 **Self-review:** Plan checked against two SPECs at e7a9cc8: status/observation separation, one-operation boundary, source compatibility and no old runtime dependency retained. No new schema is introduced. Structural coordinate handling is corrected/rejected within existing inputs, not a new scientific algorithm. Known omitted asset materialization is explicitly recorded above; implementation tasks have disjoint serial ownership.
+
+**Integrated offline evidence:** Source/test revision `97c4238`: full pytest with the interpreter/flags above returned 642 passed, 3 opt-in skips (59.16 s), exit 0; `git diff --check` exit 0. Independent whole-branch review is the remaining closure gate. No real execution or stable-release claim is made.
