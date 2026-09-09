@@ -18,7 +18,7 @@ if args[:2] == ["neb", "make"]:
 if args[:2] == ["neb", "summary"]:
     p = pathlib.Path(args[args.index("--output") + 1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("{}")
 if args[:2] == ["neb", "post"]:
-    pathlib.Path("outputs/atst").mkdir(parents=True, exist_ok=True); pathlib.Path("outputs/atst/neb-ts-result.txt").write_text("post")
+    p = pathlib.Path(args[args.index("--output-prefix") + 1] + ".cif"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("post")
 print("ok")
 """.replace("MODE_PLACEHOLDER", mode), encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)

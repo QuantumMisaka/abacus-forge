@@ -73,6 +73,10 @@ class _AtstContext:
         workspace.append_claimed_v1_operation_event(request.operation_id, envelope.operation, outcome.to_dict(), owner_token=token)
         return outcome
 
+    @staticmethod
+    def matches_prefix(path: Path, prefix: Path) -> bool:
+        return path == prefix or (path.parent == prefix.parent and path.name.startswith(prefix.name + "."))
+
 def _status(returncode: int, timed_out: bool, dry_run: bool = False, collection: str = "not_collected") -> OperationStatus:
     execution = "failed" if timed_out or returncode != 0 else ("skipped" if dry_run else "completed")
     return OperationStatus(execution=execution, scientific="unassessed", collection=collection)
@@ -134,7 +138,7 @@ class AtstNebPostprocessService:
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
                 self._context.require_file(trajectory, request.trajectory_path_rel, "trajectory_path_rel")
                 executable = self._context.executable()
-                before_outputs = {p.resolve() for p in (workspace.root / "outputs").rglob("*")} if (workspace.root / "outputs").exists() else set()
+                before_outputs = {p.resolve(): (p.stat().st_size, p.stat().st_mtime_ns) for p in (workspace.root / "outputs").rglob("*") if p.is_file()} if (workspace.root / "outputs").exists() else {}
                 summary.parent.mkdir(parents=True, exist_ok=True)
                 prefix.parent.mkdir(parents=True, exist_ok=True)
                 summary_cmd = [executable, "neb", "summary", str(trajectory), "--format", "json", "--output", str(summary)]
@@ -149,7 +153,7 @@ class AtstNebPostprocessService:
                         latest.parent.mkdir(parents=True, exist_ok=True)
                         post_cmd += ["--write-latest", str(latest)]
                     if request.write_neb_init_chain:
-                        chain = self._context.path(workspace, "outputs/atst/neb-init-chain", "write_neb_init_chain")
+                        chain = self._context.path(workspace, "outputs/atst/neb-init-chain.traj", "write_neb_init_chain")
                         chain.parent.mkdir(parents=True, exist_ok=True)
                         post_cmd += ["--write-neb-init-chain", str(chain)]
                     for flag, value in (("--plot", request.plot), ("--energy-profile", request.energy_profile), ("--vib-analysis", request.vib_analysis), ("--strict-band", request.strict_band)):
@@ -165,13 +169,16 @@ class AtstNebPostprocessService:
                 entries = [("trajectory", request.trajectory_path_rel, "input"), ("summary", request.summary_path_rel, "output"), *logs]
                 prefixes = [prefix]
                 if request.write_latest: prefixes.append(workspace.root / "outputs/atst/neb-latest")
-                if request.write_neb_init_chain: prefixes.append(workspace.root / "outputs/atst/neb-init-chain")
+                if request.write_neb_init_chain: prefixes.append(workspace.root / "outputs/atst/neb-init-chain.traj")
                 if request.plot_label: prefixes.append(self._context.path(workspace, request.plot_label, "plot_label"))
                 for candidate in sorted((workspace.root / "outputs").rglob("*") if (workspace.root / "outputs").exists() else ()):
-                    if candidate.is_file() and candidate.resolve() not in before_outputs and any(str(candidate).startswith(str(item)) for item in prefixes):
-                        entries.append((f"atst-{candidate.stem}-{candidate.suffix.lstrip('.')}", candidate.relative_to(workspace.root).as_posix(), "output"))
+                    key = candidate.resolve()
+                    changed = candidate.is_file() and (key not in before_outputs or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != before_outputs[key])
+                    if changed and any(self._context.matches_prefix(key, item.resolve()) for item in prefixes):
+                        rel = candidate.relative_to(workspace.root).as_posix()
+                        entries.append((f"atst-{hashlib.sha256(rel.encode()).hexdigest()[:12]}", rel, "output"))
                 artifacts = self._context.artifacts(workspace, entries)
-                output_exists = any(str(candidate).startswith(str(item)) and candidate.is_file() for item in prefixes for candidate in workspace.root.rglob("*") if candidate.is_file())
+                output_exists = any(item.path_rel.startswith("outputs/") for item in artifacts)
                 collection = "complete" if rc == 0 and summary.is_file() and output_exists else ("missing_output" if rc == 0 else "partial")
                 envelope = ForgeResultEnvelope("postprocess", request.workspace_rel, _status(rc, timeout1 or timeout2, collection=collection), artifacts=artifacts, diagnostics={"summary_command": summary_cmd, "postprocess_command": post_cmd, "returncode": rc, "stderr": "\n".join(x for x in (err1, err2) if x), "summary_returncode": rc1, "postprocess_returncode": rc2})
                 return self._context.persist(workspace, request, envelope, token)
