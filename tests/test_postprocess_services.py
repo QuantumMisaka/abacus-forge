@@ -11,6 +11,7 @@ from abacus_forge import (
     DosPostprocessRequest,
     ForgeErrorEnvelope,
     OperationOutcome,
+    OperationStatus,
     PostprocessServiceSet,
     Workspace,
 )
@@ -79,7 +80,7 @@ def test_band_service_persists_relative_input_output_and_report_artifacts(tmp_pa
     result = PostprocessServiceSet.default(workspace_root=tmp_path).band.postprocess(request)
 
     assert isinstance(result, OperationOutcome)
-    assert result.envelope.status.execution == "completed"
+    assert result.envelope.status.execution == "not_run"
     assert result.envelope.status.collection == "complete"
     assert result.envelope.status.scientific == "unassessed"
     assert str(tmp_path) not in json.dumps(result.to_dict(), sort_keys=True)
@@ -111,7 +112,7 @@ def test_dos_service_keeps_optional_pdos_absence_as_partial_collection(tmp_path:
     result = PostprocessServiceSet.default(workspace_root=tmp_path).dos.postprocess(request)
 
     assert isinstance(result, OperationOutcome)
-    assert result.envelope.status.execution == "completed"
+    assert result.envelope.status.execution == "not_run"
     assert result.envelope.status.collection == "partial"
     assert result.envelope.to_dict()["diagnostics"]["missing_families"] == ["pdos"]
     assert "pdos" not in result.envelope.diagnostics["parsed_families"]
@@ -159,7 +160,7 @@ def test_dos_service_reports_missing_output_when_no_optional_family_is_usable(tm
     result = PostprocessServiceSet.default(workspace_root=tmp_path).dos.postprocess(request)
 
     assert isinstance(result, OperationOutcome)
-    assert result.envelope.status.execution == "completed"
+    assert result.envelope.status.execution == "not_run"
     assert result.envelope.status.collection == "missing_output"
     assert result.envelope.to_dict()["diagnostics"]["missing_families"] == ["pdos"]
     assert len(_event_files(workspace)) == 1
@@ -177,7 +178,7 @@ def test_parser_failure_is_an_admitted_partial_outcome_and_does_not_touch_upstre
     result = PostprocessServiceSet.default(workspace_root=tmp_path).band.postprocess(request)
 
     assert isinstance(result, OperationOutcome)
-    assert result.envelope.status.execution == "failed"
+    assert result.envelope.status.execution == "not_run"
     assert result.envelope.status.collection == "partial"
     assert result.envelope.status.scientific == "unassessed"
     assert "numeric rows" in result.envelope.diagnostics["parse_error"]
@@ -202,6 +203,44 @@ def test_missing_declared_source_is_precondition_after_durable_admission(tmp_pat
     assert not _event_files(workspace)
     assert (workspace.reports_dir / "claims" / f"{request.operation_id}.json").is_file()
     assert not (workspace.root / "outputs/postprocess").exists()
+
+
+def test_declared_source_disappearing_after_admission_is_persisted_as_missing_output(
+    tmp_path: Path,
+) -> None:
+    workspace = _band_workspace(tmp_path)
+    request = _band_request(_operation_id(314), save_plot=False)
+    source = workspace.root / "inputs/BANDS_1.dat"
+
+    def unlinking_algorithm(
+        source_paths: object, output_dir: Path, **kwargs: object
+    ) -> ExplicitPostprocessResult:
+        del output_dir, kwargs
+        paths = tuple(source_paths)
+        Path(paths[0]).unlink()
+        return ExplicitPostprocessResult(
+            summary={"num_points": 1},
+            diagnostics={"source_count": 1},
+            generated_paths=(),
+        )
+
+    result = PostprocessServiceSet(
+        workspace_root=tmp_path, band_algorithm=unlinking_algorithm
+    ).band.postprocess(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status == OperationStatus(
+        execution="not_run", scientific="unassessed", collection="missing_output"
+    )
+    assert result.envelope.to_dict()["diagnostics"]["missing_source_paths_rel"] == [
+        "inputs/BANDS_1.dat"
+    ]
+    assert str(tmp_path) not in json.dumps(result.to_dict(), sort_keys=True)
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} == {
+        f"reports/postprocess/{request.operation_id}.json",
+    }
+    assert len(_event_files(workspace)) == 1
+    assert not source.exists()
 
 
 def test_repeated_operation_id_is_rejected_without_mutating_domain_files(tmp_path: Path) -> None:
@@ -298,6 +337,29 @@ def test_missing_declared_generated_target_is_audited_as_missing_output(tmp_path
         f"reports/postprocess/{request.operation_id}.json",
     }
     assert len(_event_files(workspace)) == 1
+
+
+def test_algorithm_generated_path_is_rejected_when_no_outputs_are_requested(tmp_path: Path) -> None:
+    workspace = _band_workspace(tmp_path)
+    request = _band_request(_operation_id(315), save_data=False, save_plot=False)
+
+    def undeclared_output_algorithm(
+        source_paths: object, output_dir: Path, **kwargs: object
+    ) -> ExplicitPostprocessResult:
+        del source_paths, kwargs
+        return ExplicitPostprocessResult(
+            summary={"num_points": 1},
+            diagnostics={"source_count": 1},
+            generated_paths=(output_dir / "band.dat",),
+        )
+
+    result = PostprocessServiceSet(
+        workspace_root=tmp_path, band_algorithm=undeclared_output_algorithm
+    ).band.postprocess(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    assert not _event_files(workspace)
 
 
 def test_service_set_rejects_mismatched_typed_requests(tmp_path: Path) -> None:

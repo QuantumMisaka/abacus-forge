@@ -252,6 +252,32 @@ def _run_postprocess(
                     ),
                 )
                 generated_paths = _paths_from_relative_names(workspace, diagnostics["generated_paths_rel"])
+                missing_source_paths_rel = _missing_source_paths(
+                    artifact_source_paths, artifact_source_paths_rel
+                )
+                if missing_source_paths_rel:
+                    diagnostics["missing_source_paths_rel"] = list(missing_source_paths_rel)
+                    diagnostics["collection_reason"] = "declared_source_disappeared_after_admission"
+                    present_source_paths, present_source_paths_rel = _present_source_artifacts(
+                        artifact_source_paths, artifact_source_paths_rel
+                    )
+                    return _persist_outcome(
+                        context=context,
+                        workspace=workspace,
+                        request=request,
+                        owner_token=owner_token,
+                        source_paths=present_source_paths,
+                        source_paths_rel=present_source_paths_rel,
+                        generated_paths=generated_paths,
+                        report_path=report_path,
+                        report_rel=report_rel,
+                        summary={},
+                        diagnostics=diagnostics,
+                        capability=capability,
+                        status=OperationStatus(
+                            execution="not_run", scientific="unassessed", collection="missing_output"
+                        ),
+                    )
                 return _persist_outcome(
                     context=context,
                     workspace=workspace,
@@ -266,7 +292,7 @@ def _run_postprocess(
                     diagnostics=diagnostics,
                     capability=capability,
                     status=OperationStatus(
-                        execution="failed", scientific="unassessed", collection="partial"
+                        execution="not_run", scientific="unassessed", collection="partial"
                     ),
                 )
             except PostprocessPreconditionError as error:
@@ -285,6 +311,32 @@ def _run_postprocess(
             )
             generated_paths = tuple(result.generated_paths)
             _validate_generated_paths(workspace, output_dir, generated_paths, output_names)
+            missing_source_paths_rel = _missing_source_paths(
+                artifact_source_paths, artifact_source_paths_rel
+            )
+            if missing_source_paths_rel:
+                diagnostics["missing_source_paths_rel"] = list(missing_source_paths_rel)
+                diagnostics["collection_reason"] = "declared_source_disappeared_after_admission"
+                present_source_paths, present_source_paths_rel = _present_source_artifacts(
+                    artifact_source_paths, artifact_source_paths_rel
+                )
+                return _persist_outcome(
+                    context=context,
+                    workspace=workspace,
+                    request=request,
+                    owner_token=owner_token,
+                    source_paths=present_source_paths,
+                    source_paths_rel=present_source_paths_rel,
+                    generated_paths=generated_paths,
+                    report_path=report_path,
+                    report_rel=report_rel,
+                    summary=result.summary,
+                    diagnostics=diagnostics,
+                    capability=capability,
+                    status=OperationStatus(
+                        execution="not_run", scientific="unassessed", collection="missing_output"
+                    ),
+                )
             usable = _has_usable_result(result, capability=capability, request=request)
             collection = _collection_status(
                 result,
@@ -308,7 +360,7 @@ def _run_postprocess(
                 diagnostics=diagnostics,
                 capability=capability,
                 status=OperationStatus(
-                    execution="completed", scientific="unassessed", collection=collection
+                    execution="not_run", scientific="unassessed", collection=collection
                 ),
             )
     except Exception as error:
@@ -630,7 +682,7 @@ def _validate_generated_paths(
             resolved.relative_to(output_dir.resolve())
         except ValueError as error:
             raise ForgePathError("generated output must remain under output_dir") from error
-        if expected and resolved not in {item.resolve(strict=False) for item in expected}:
+        if resolved not in {item.resolve(strict=False) for item in expected}:
             raise ForgeRequestError("algorithm returned an undeclared postprocess output")
         if path.is_symlink():
             raise ForgePathError("generated output must not be a symlink")
@@ -662,6 +714,27 @@ def _output_state(output_dir: Path, output_names: Sequence[str]) -> dict[Path, t
         if path.is_file() and not path.is_symlink():
             state[path.resolve(strict=False)] = (path.stat().st_size, path.stat().st_mtime_ns)
     return state
+
+
+def _missing_source_paths(
+    source_paths: Sequence[Path], source_paths_rel: Sequence[str]
+) -> tuple[str, ...]:
+    return tuple(
+        path_rel
+        for path, path_rel in zip(source_paths, source_paths_rel, strict=True)
+        if not path.is_file() or path.is_symlink()
+    )
+
+
+def _present_source_artifacts(
+    source_paths: Sequence[Path], source_paths_rel: Sequence[str]
+) -> tuple[tuple[Path, ...], tuple[str, ...]]:
+    pairs = tuple(
+        (path, path_rel)
+        for path, path_rel in zip(source_paths, source_paths_rel, strict=True)
+        if path.is_file() and not path.is_symlink()
+    )
+    return tuple(path for path, _ in pairs), tuple(path_rel for _, path_rel in pairs)
 
 
 def _paths_from_relative_names(workspace: Workspace, values: object) -> tuple[Path, ...]:

@@ -65,7 +65,7 @@ def test_machine_cli_defaults_band_service_and_returns_one_envelope(tmp_path: Pa
     result = json.loads(process.stdout)
     assert result["envelope"]["operation"] == "postprocess"
     assert result["envelope"]["status"] == {
-        "execution": "completed",
+        "execution": "not_run",
         "scientific": "unassessed",
         "collection": "complete",
     }
