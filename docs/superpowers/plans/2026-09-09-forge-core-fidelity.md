@@ -34,6 +34,8 @@ Reference root is `/home/james/work/sidereus/workplace` (not the worktree parent
 
 Coordinate dispatch must use exact recognized modes: Direct, Cartesian (coordinates multiplied by lattice constant in Angstrom), Cartesian_angstrom, Cartesian_au (Bohr conversion independent of lattice constant). Reject unknown and centered modes explicitly in this batch rather than silently reinterpreting; recognized STRU parser errors must not become successful raw fallback preparation. Prior review incorrectly described Cartesian_au as falling through to Direct; the actual defect is Cartesian scale and prefix acceptance of centered/unknown modes.
 
+Write native ABACUS lattice units: LATTICE_CONSTANT is in Bohr; do not emit the Forge-only LATTICE_CONSTANT_UNIT extension. Keep reading old Forge Angstrom-unit files for compatibility. A consumer-independent assertion must reconstruct geometry using native Bohr semantics, so a Forge read/write round-trip cannot mask wrong units.
+
 Vacuum detection for full periodic cells uses the largest circular fractional gap times the perpendicular interplanar cell height (reciprocal metric), not Cartesian span; preserve return shape and threshold. Check translation/wrapping/rotation invariance, skew cells and the z=.98/.02 in a 20-A cell case (19.2-A gap). Handle empty/degenerate and nonperiodic cells explicitly without NaN or fabricated axes. Axis-swap behavior is not changed in this batch.
 
 **Test strategy:** Extend the three owning suites with hand-derived fixtures; no new test file or runtime reference imports. Tests compare output fields/geometries, not source strings.

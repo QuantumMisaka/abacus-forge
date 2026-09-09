@@ -194,7 +194,7 @@
         <li>本阶段不实现 ATP/MCP、AsterFire Tool、<code>tool_data</code>、task_id、AiiDA、Slurm、Bohrium、DPDispatcher、数据库或恢复型 workflow。</li>
         <li>不进行科学解释、研究建议、任务编排、重试/续算、平台调度或用户决策；Forge 只交付执行/收集事实与解析观察。</li>
         <li>不让 TUI、prompt、TTY 判断、数字 Task-ID 或目录命名成为能力协议；允许 TUI 作为 API/CLI 之上的交互适配器，但不承载执行/收集语义、科学判断或独立状态机。</li>
-        <li>本阶段不重写 ABACUS 输入解析、结构变换、日志解析和 PyATB 数学实现。</li>
+        <li>复用已有 ABACUS 输入、结构、日志和 PyATB 实现；对已复现的格式、单位、数据丢失和解析完整性缺陷作有回归证据的修复。</li>
         <li>本阶段不把 property pack、复杂 MD 或 PyATB 的科学判定写入 Forge；它们只提供已实现的单元操作和解析产物。</li>
         <li>本阶段不移除旧 public API、旧 CLI 或兼容文件。</li>
       </ul>
@@ -242,6 +242,7 @@
       <ul>
         <li><strong>execution：</strong>进程正常结束且返回码为零为 <code>completed</code>；非零退出、超时、缺 executable、信号终止或 runner 异常为 <code>failed</code>；显式 dry-run 或显式跳过为 <code>skipped</code>。<code>normal_end</code> 是独立 observation，不得被隐式吞并。其中「缺 executable」若在进程启动前发现（尚无任何执行事实），按设计决策中的失败类别映射表返回 error envelope；<code>failed</code> 只描述进程确已启动后的结果 envelope。</li>
         <li><strong>collection：</strong>所有 requested artifacts 存在且解析完成为 <code>complete</code>；部分结果或解析降级为 <code>partial</code>；关键输出不存在为 <code>missing_output</code>；尚未收集为 <code>not_collected</code>。</li>
+        <li><strong>SCF collect：</strong>所需数据为 workspace 内的非空输出日志与可解析的有限总能量；没有日志为 <code>missing_output</code>，缺能量、解析错误或来源选择歧义为 <code>partial</code>，数据齐全为 <code>complete</code>。收敛标志只作观察，缺少可选 time/report JSON 不影响完整性。审计 manifest、events、claims 和锁不作为领域输出 artifact，路径别名遵循同一规则。</li>
         <li>旧字段 <code>normal_end</code>、<code>converge</code>、<code>relax_converge</code> 只作为兼容输入和 observations 来源；任何接受、拒绝或科学解释都由上层产生。</li>
       </ul>
       <p><strong>兼容边界：</strong>当前 contract foundation 中的泛型 <code>ForgeRequest</code> 仍只接受五个核心 operation（<code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、<code>export</code>），本阶段不得静默扩大其旧构造器语义。<code>postprocess</code> 是新 service 层的独立 typed request 与事件 operation；其 request registry、序列化形态和兼容映射必须在实现 PLAN 中明确，不能把它偷偷塞回旧 <code>ForgeRequest</code> 或把旧 <code>collect</code> 事件改写成后处理事件。</p>
@@ -337,7 +338,7 @@ Paimon Tool adapter ──┤
         <li><strong>public API：</strong>稳定 Python 入口，直接调用 service 并返回 typed envelope；不通过 subprocess 回调 CLI。</li>
         <li><strong>CLI：</strong>request 解码、service 调用、JSON/text renderer 与 exit mapping；不得携带第二套 operation 逻辑。</li>
         <li><strong>services：</strong>接收 typed request，调用 core/engine/runner/collector，产生 execution/collection envelope 和事件。</li>
-        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；不依赖 runner、平台或 scheduler。</li>
+        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；保留 STRU 的赝势/轨道引用、质量与逐原子属性，显式覆盖只改变指定项；正确处理坐标单位，未支持的坐标模式明确拒绝。周期真空识别按周期间隙和晶胞几何处理。不依赖 runner、平台或 scheduler。</li>
         <li><strong>runner：</strong>只执行明确 command，返回 returncode、termination、timeout、stdout/stderr 和 runtime diagnostics。</li>
         <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。ATST 使用的后端和模型（包括 DeePMD）由 atst-tools 与调用方的配置负责，Forge 将其视为不透明配置，不选择、安装、配置或进行科学评估。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
