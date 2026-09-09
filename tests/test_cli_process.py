@@ -306,14 +306,18 @@ def test_atst_neb_machine_discovery_and_unknown_selectors_are_structured(tmp_pat
     result = run_cli("operation", "prepare", "--stdin", cwd=tmp_path, input_text=json.dumps(unknown))
     assert result.returncode == 2
     assert json.loads(result.stdout)["error"]["class"] == "request.invalid"
-    result = run_cli("operation", "export", "--stdin", cwd=tmp_path, input_text=json.dumps(unknown))
+    unsupported = _atst_request("export", "123e4567-e89b-42d3-a456-426614174227")
+    result = run_cli("operation", "export", "--stdin", cwd=tmp_path, input_text=json.dumps(unsupported))
     assert result.returncode == 2
+    assert len(_parse_concatenated_json_values(result.stdout)) == 1
     assert json.loads(result.stdout)["error"]["class"] == "request.invalid"
 
 
 def test_atst_neb_missing_executable_maps_to_exit_three(tmp_path: Path) -> None:
     _write_neb_fixture(tmp_path)
-    env = {"PATH": str(Path(sys.executable).parent)}
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    env = {"PATH": str(empty_bin)}
     request = _atst_request("execute", "123e4567-e89b-42d3-a456-426614174224")
     result = run_cli("operation", "execute", "--stdin", cwd=tmp_path, env=env, input_text=json.dumps(request))
     assert result.returncode == 3
