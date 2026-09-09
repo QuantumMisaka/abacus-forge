@@ -351,7 +351,8 @@ def _read_stru_text(text: str) -> Atoms:
             continue
 
         if stripped == "ATOMIC_POSITIONS":
-            coordinate_mode = lines[index + 1].strip().lower()
+            coordinate_tokens = lines[index + 1].split(maxsplit=1)
+            coordinate_mode = coordinate_tokens[0].lower() if coordinate_tokens else ""
             index += 2
             while index < len(lines):
                 symbol = lines[index].split("#", 1)[0].strip()

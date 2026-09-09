@@ -186,8 +186,10 @@ def _select_log_sources(
 
     fallback_candidates: list[Path] = []
     for candidate in _fallback_log_paths(workspace, layout=layout):
-        if candidate.exists() and (not contained or contained_source(workspace.root, candidate)):
+        if candidate.exists():
             fallback_candidates.append(candidate)
+    if contained:
+        fallback_candidates = _contained_unique_sources(workspace, fallback_candidates)
 
     if selected_path is None:
         if fallback_candidates:
@@ -294,7 +296,9 @@ def _discover_output_log(
             }
         override_missing = True
 
-    fixed_candidates = [candidate for candidate in _fallback_log_paths(workspace, layout=layout) if candidate.exists() and candidate.is_file() and (not contained or contained_source(workspace.root, candidate))]
+    fixed_candidates = [candidate for candidate in _fallback_log_paths(workspace, layout=layout) if candidate.exists() and candidate.is_file()]
+    if contained:
+        fixed_candidates = _contained_unique_sources(workspace, fixed_candidates)
     if fixed_candidates:
         selected = sorted(fixed_candidates, key=lambda path: _natural_sort_key(str(path.relative_to(workspace.root))))[0]
         return {
@@ -309,7 +313,7 @@ def _discover_output_log(
 
     content_candidates = _candidate_output_logs(workspace, layout=layout)
     if contained:
-        content_candidates = [path for path in content_candidates if contained_source(workspace.root, path)]
+        content_candidates = _contained_unique_sources(workspace, content_candidates)
     matching_candidates = [path for path in content_candidates if _file_contains_output_banner(path)]
     if not matching_candidates:
         return {
@@ -332,6 +336,15 @@ def _discover_output_log(
         "override_missing": override_missing,
         "ignored_paths": [str(path) for path in matching_candidates if path != selected],
     }
+
+
+def _contained_unique_sources(workspace: Workspace, candidates: list[Path]) -> list[Path]:
+    sources: dict[Path, None] = {}
+    for candidate in candidates:
+        source = contained_source(workspace.root, candidate)
+        if source is not None:
+            sources[source] = None
+    return list(sources)
 
 
 def _candidate_output_logs(workspace: Workspace, *, layout: str = "forge") -> list[Path]:

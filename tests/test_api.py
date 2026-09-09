@@ -363,12 +363,13 @@ def test_prepare_does_not_fallback_for_unrecognized_stru_coordinate_mode(tmp_pat
     assert not (tmp_path / "case" / "inputs" / "STRU").exists()
 
 
-def test_prepare_parses_and_normalizes_valid_inline_stru(tmp_path: Path) -> None:
+@pytest.mark.parametrize("comment", ["", " # lattice-scaled coordinates"])
+def test_prepare_parses_and_normalizes_valid_inline_stru(tmp_path: Path, comment: str) -> None:
     inline_stru = (
         "ATOMIC_SPECIES\nSi 28.5 Si.inline.upf\n\n"
         "LATTICE_CONSTANT\n2.0\n\n"
         "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
-        "ATOMIC_POSITIONS\nCartesian\nSi\n0\n1\n0.25 0.5 0.75\n"
+        f"ATOMIC_POSITIONS\nCartesian{comment}\nSi\n0\n1\n0.25 0.5 0.75\n"
     )
 
     workspace = prepare(tmp_path / "inline-case", task="scf", structure=inline_stru)

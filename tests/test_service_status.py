@@ -1283,6 +1283,56 @@ def test_typed_collection_does_not_parse_external_log_aliases(
     assert all(item.name != "total_energy" for item in result.observations)
 
 
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+@pytest.mark.parametrize("discovery", ["fallback", "banner"])
+@pytest.mark.parametrize("same_source", [True, False], ids=["alias", "distinct"])
+def test_typed_collection_log_ambiguity_counts_resolved_sources(
+    tmp_path: Path, capability: str, discovery: str, same_source: bool
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability=capability,
+        log_text="TOTAL ENERGY = -4.2\n" if discovery == "banner" else None,
+    )
+    source_name, other_name = ("stdout.log", "out.log") if discovery == "fallback" else ("z-banner.log", "a-banner.log")
+    source = workspace.outputs_dir / source_name
+    other = workspace.outputs_dir / other_name
+    text = "Atomic-orbital Based Ab-initio\nTOTAL ENERGY = -4.2\n"
+    source.write_text(text, encoding="utf-8")
+    if same_source:
+        other.symlink_to(source)
+    else:
+        other.write_text(text, encoding="utf-8")
+
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    result = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174308", workspace_rel="collection", **extra
+    ))
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == ("complete" if same_source else "partial")
+    assert {item.name: item.value for item in result.observations}["total_energy"] == -4.2
+    diagnostics = result.envelope.diagnostics
+    assert diagnostics["output_log_selection_ambiguous"] is (not same_source)
+    assert diagnostics["log_selection_ambiguous"] is False
+    expected_sources = {str(source)} if same_source else {str(source), str(other)}
+    assert set(diagnostics["output_log_candidates"]) == expected_sources
+    assert len(diagnostics["output_log_candidates"]) == len(expected_sources)
+    if same_source:
+        assert diagnostics["output_log_path"] == str(source)
+        assert not diagnostics["output_log_ignored_paths"]
+    if discovery == "fallback":
+        assert set(diagnostics["fallback_log_candidates"]) == expected_sources
+        assert diagnostics["selected_log_path"] == str(source)
+        if same_source:
+            assert not diagnostics["ignored_log_paths"]
+
+    legacy = abacus_forge.collect(workspace)
+    assert legacy.diagnostics["output_log_selection_ambiguous"] is True
+    assert legacy.diagnostics["output_log_path"] == str(other)
+
+
 def test_typed_collection_domain_alias_preserves_report_facts(tmp_path: Path) -> None:
     workspace = _write_relax_collection_workspace(
         tmp_path, capability="scf", relax_report={"ionic_steps": [1, 2]}

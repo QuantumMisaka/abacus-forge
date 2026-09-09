@@ -228,6 +228,7 @@ def test_structure_make_supercell_scales_cell_and_atom_count() -> None:
     assert np.allclose(supercell.atoms.cell.lengths(), [4.0, 3.0, 12.0])
 
 
+@pytest.mark.parametrize("comment", ["", " # native coordinate mode"])
 @pytest.mark.parametrize(
     ("coordinate_mode", "position_line", "expected_position"),
     [
@@ -242,6 +243,7 @@ def test_read_stru_supports_coordinate_modes_and_move_flags(
     coordinate_mode: str,
     position_line: str,
     expected_position: list[float],
+    comment: str,
 ) -> None:
     stru_text = f"""ATOMIC_SPECIES
 Si 28.085500 Si.upf
@@ -260,7 +262,7 @@ LATTICE_VECTORS
 0.0 0.0 2.0
 
 ATOMIC_POSITIONS
-{coordinate_mode}
+{coordinate_mode}{comment}
 Si
 1.5
 1
@@ -278,14 +280,15 @@ Si
     assert atoms.info["abacus_species_meta"]["Si"]["orb"] == "Si.orb"
 
 
+@pytest.mark.parametrize("comment", ["", " # unsupported mode"])
 @pytest.mark.parametrize("coordinate_mode", ["Cartesian_angstrom_center_xy", "Cartesian_unknown", "Directly"])
-def test_read_stru_rejects_unrecognized_coordinate_modes(tmp_path: Path, coordinate_mode: str) -> None:
+def test_read_stru_rejects_unrecognized_coordinate_modes(tmp_path: Path, coordinate_mode: str, comment: str) -> None:
     stru_path = tmp_path / "unsupported.STRU"
     stru_path.write_text(
         "ATOMIC_SPECIES\nSi 28.0855 Si.upf\n\n"
         "LATTICE_CONSTANT\n2.0\nLATTICE_CONSTANT_UNIT\nAngstrom\n\n"
         "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
-        f"ATOMIC_POSITIONS\n{coordinate_mode}\nSi\n0\n1\n0 0 0\n",
+        f"ATOMIC_POSITIONS\n{coordinate_mode}{comment}\nSi\n0\n1\n0 0 0\n",
         encoding="utf-8",
     )
 
