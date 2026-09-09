@@ -112,6 +112,6 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 
 ## Final independent review evidence
 
-- Review scope: complete change `ed53bdc..8030523`, with a focused re-review of `c9a25df..8030523` and the current PLAN wording revision.
+- Review scope: complete change `ed53bdc..999f035`, with a focused re-review of `c9a25df..999f035` and the current SPEC/PLAN wording revision.
 - Result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility, ATST 2.2.4 default alignment, discovery/README/marker alignment, and the DeePMD boundary were preserved.
 - Release boundary retained: real atst-tools smoke and explicit version/API locking remain future release gates, not claims made by this fake-executable test slice.

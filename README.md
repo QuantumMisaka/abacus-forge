@@ -154,7 +154,8 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 该 capability 通过外部 `atst` 可执行文件调用 `atst neb make`、`atst run` 和
 `atst neb summary/post`；Forge 本身不要求安装或导入 `atst-tools` Python 包。
 NEB 图像/链路编排与并行执行由 atst-tools 负责；外层任务调度、重试以及科学结果判定由调用方负责，
-Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化 envelope。
+Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化 envelope。ATST 后端和模型
+（包括 DeePMD）由 atst-tools 与调用方配置；Forge 不选择、安装、配置或科学评估这些后端。
 
 ### 本地 composite task pack
 
