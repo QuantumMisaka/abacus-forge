@@ -61,11 +61,14 @@ Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 才能产生
 
 ## Agent-first CLI
 
-Stage 3 的 machine surface 目前只提供 `scf`，成熟度为 `experimental`。它固定
-暴露三个顶层命令：`operation`（执行 `prepare`、`modify`、`execute`、`collect`，以及
-结构上可识别但当前未实现的 `postprocess`、`export`）、`schema`（读取请求 schema）和
+Stage 3 的 machine surface 提供 SCF，以及成熟度为 `experimental` 的 `atst-neb`。
+它固定暴露三个顶层命令：`operation`（SCF 执行 `prepare`、`modify`、`execute`、`collect`；
+`atst-neb` 执行 `prepare`、`execute`、`postprocess`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
+
+没有 capability 的 `postprocess` 以及 `export` 仍返回 `request.invalid`；legacy CLI
+的默认输出和入口保持不变。
 
 请求可以来自文件：
 
