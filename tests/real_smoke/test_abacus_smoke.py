@@ -81,7 +81,10 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
         pytest.fail(f"ABACUS_FORGE_ABACUS_EXECUTABLE is not executable: {executable}")
 
     workspace = tmp_path / "typed-relax-smoke"
-    shutil.copytree(source, workspace, symlinks=True)
+    # Materialize links while copying the prepared source so execution cannot
+    # write through a preserved output symlink into the caller's workspace.
+    shutil.copytree(source, workspace, symlinks=False)
+    workspace_root = workspace.resolve()
     workspace_rel = workspace.name
     execute_id = "123e4567-e89b-42d3-a456-426614174102"
     collect_id = "123e4567-e89b-42d3-a456-426614174103"
@@ -160,8 +163,14 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
     for artifact in final_structure_artifacts:
         path_rel = artifact["path_rel"]
         assert not Path(path_rel).is_absolute()
-        assert ".." not in Path(path_rel).parts
-        assert (workspace / path_rel).is_file()
+        try:
+            resolved_path = (workspace / path_rel).resolve(strict=True)
+            resolved_path.relative_to(workspace_root)
+        except (OSError, RuntimeError, ValueError):
+            pytest.fail(
+                f"final structure artifact escapes copied workspace: {path_rel}"
+            )
+        assert resolved_path.is_file()
 
     collect_event_path = workspace / "reports" / "events" / f"{collect_id}-collect.json"
     collect_event = json.loads(collect_event_path.read_text(encoding="utf-8"))

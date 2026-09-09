@@ -32,7 +32,6 @@ workspace; `ABACUS_FORGE_RELAX_SMOKE_CAPABILITY` defaults to `relax` and accepts
 only `relax` or `cell-relax`:
 
 ```bash
-export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/absolute/path/to/prepared-workspace
 export ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/absolute/path/to/prepared-relax-workspace
 export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
 export ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=relax
@@ -41,9 +40,9 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   tests/real_smoke/test_abacus_smoke.py -k typed_relax
 ```
 
-`ABACUS_FORGE_REAL_SMOKE_WORKSPACE` remains the module-level real-smoke gate;
-it may point to the same prepared directory when only the typed Relax test is
-selected. Missing Relax-specific inputs skip with a precise reason; supplied
+The legacy SCF smoke above uses `ABACUS_FORGE_REAL_SMOKE_WORKSPACE`; the typed
+Relax test has its own workspace gate and does not require that unrelated
+variable. Missing Relax-specific inputs skip with a precise reason; supplied
 invalid paths, capabilities, or executables fail. The test records serialized
 outcome/event/artifact facts only and does not assess physical convergence.
 

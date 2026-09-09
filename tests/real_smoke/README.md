@@ -18,7 +18,6 @@ does not apply a physical convergence threshold. The default capability is
 `relax`; set it to `cell-relax` for the other supported phase:
 
 ```bash
-export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/absolute/path/to/prepared-workspace
 export ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/absolute/path/to/prepared-relax-workspace
 export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
 export ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=relax
@@ -27,12 +26,11 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   tests/real_smoke/test_abacus_smoke.py -k typed_relax
 ```
 
-`ABACUS_FORGE_REAL_SMOKE_WORKSPACE` is also required by the module-level
-real-smoke gate; it can be the same prepared directory when selecting only
-`typed_relax`. Missing Relax-specific environment values skip with a precise
-reason. An invalid supplied workspace, capability, or executable fails the
-test. No real Relax workspace is bundled with Forge, so this test remains
-unproven until those values are supplied.
+The typed Relax test has its own environment gate and does not require the
+legacy SCF variable `ABACUS_FORGE_REAL_SMOKE_WORKSPACE`. Missing Relax-specific
+environment values skip with a precise reason. An invalid supplied workspace,
+capability, or executable fails the test. No real Relax workspace is bundled
+with Forge, so this test remains unproven until those values are supplied.
 
 This gate proves Forge execution and collection integration only. It does not
 replace convergence studies, platform validation, or the Paimon v1.2 benchmark.
