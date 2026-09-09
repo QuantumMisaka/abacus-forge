@@ -77,6 +77,10 @@ class _AtstContext:
     def matches_prefix(path: Path, prefix: Path) -> bool:
         return path == prefix or (path.parent == prefix.parent and path.name.startswith(prefix.name + "."))
 
+    @staticmethod
+    def suffixed(prefix: Path, suffix: str) -> Path:
+        return Path(str(prefix) + suffix)
+
 def _status(returncode: int, timed_out: bool, dry_run: bool = False, collection: str = "not_collected") -> OperationStatus:
     execution = "failed" if timed_out or returncode != 0 else ("skipped" if dry_run else "completed")
     return OperationStatus(execution=execution, scientific="unassessed", collection=collection)
@@ -204,10 +208,10 @@ class AtstNebPostprocessService:
                             if self._context.matches_prefix(key, item.resolve()):
                                 changed_outputs[item.resolve()].append(key)
                 artifacts = self._context.artifacts(workspace, entries)
-                required = [prefix.with_suffix(".cif"), prefix.with_suffix(".stru")]
+                required = [self._context.suffixed(prefix, ".cif"), self._context.suffixed(prefix, ".stru")]
                 if request.write_latest: required += [workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"]
                 if request.write_neb_init_chain: required.append(workspace.root / "outputs/atst/neb-init-chain.traj")
-                if request.plot: required.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label").with_suffix(".pdf"))
+                if request.plot: required.append(self._context.suffixed(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"), ".pdf"))
                 output_exists = all(path.is_file() and (path.resolve() not in post_before or (path.stat().st_size, path.stat().st_mtime_ns) != post_before[path.resolve()]) for path in required)
                 collection = "complete" if rc == 0 and summary_changed and output_exists else ("missing_output" if rc == 0 else "partial")
                 envelope = ForgeResultEnvelope("postprocess", request.workspace_rel, _status(rc, timeout1 or timeout2, collection=collection), artifacts=artifacts, diagnostics={"summary_command": summary_cmd, "postprocess_command": post_cmd, "returncode": rc, "stderr": "\n".join(x for x in (err1, err2) if x), "summary_returncode": rc1, "postprocess_returncode": rc2})
