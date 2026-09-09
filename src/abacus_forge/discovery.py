@@ -67,7 +67,7 @@ _ATST_NEB_DESCRIPTOR = CapabilityDescriptor(
         "execute": ("workflow_config",),
         "postprocess": ("trajectory",),
     },
-    artifact_roles=("input", "provenance_manifest", "output"),
+    artifact_roles=("input", "output"),
     optional_dependencies=("atst-tools",),
 )
 

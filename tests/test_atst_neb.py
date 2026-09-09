@@ -76,6 +76,40 @@ def test_missing_executable_is_precondition_after_inputs_exist(tmp_path: Path) -
         AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
     assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "precondition.missing"
 
+def test_external_reports_directory_is_rejected_before_log_write(tmp_path: Path) -> None:
+    (tmp_path / "config.yaml").write_text("workflow: []")
+    external = tmp_path.parent / f"{tmp_path.name}-external"
+    external.mkdir()
+    sentinel = external / "sentinel.log"
+    sentinel.write_text("keep")
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "atst").symlink_to(external, target_is_directory=True)
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="/bin/true").execute.execute(
+        AtstNebExecuteRequest(operation_id=_id(), workspace_rel=".", config_path_rel="config.yaml")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+    assert sentinel.read_text() == "keep"
+    assert not any(external.glob("*-stdout.log"))
+    assert not any(external.glob("*-stderr.log"))
+
+def test_postprocess_cannot_overwrite_forge_audit_or_external_derived_targets(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    external = tmp_path.parent / f"{tmp_path.name}-derived-external"
+    external.mkdir()
+    sentinel = external / "sentinel.cif"
+    sentinel.write_text("keep")
+    service = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="/bin/true")
+    audit = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", summary_path_rel="reports/forge-workspace.json"))
+    assert isinstance(audit, ForgeErrorEnvelope) and audit.error_class == "request.invalid"
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    (outputs / "atst").symlink_to(external, target_is_directory=True)
+    derived = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="outputs/atst/sentinel"))
+    assert isinstance(derived, ForgeErrorEnvelope) and derived.error_class == "request.path"
+    assert sentinel.read_text() == "keep"
+
 def test_postprocess_rejects_trajectory_operation_log_collision(tmp_path: Path) -> None:
     op_id = _id(); log_rel = f"reports/atst/{op_id}-post-stdout.log"
     (tmp_path / log_rel).parent.mkdir(parents=True, exist_ok=True)
