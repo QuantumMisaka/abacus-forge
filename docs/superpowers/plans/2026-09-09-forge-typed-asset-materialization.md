@@ -93,7 +93,7 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 **Verification:** Run the full offline gate after Task3/Task4 docs with exact interpreter/flags, `git diff --check`, and review packages. No real ABACUS run is required for this file/materialization boundary.
 
 - [x] Update docs concisely after code behavior is fixed.
-- [x] Run full offline pytest and diff check; final HEAD `40d1901` passed `726 tests, 3 skipped in 59.32s`; `git diff --check` passed.
+- [x] Run full offline pytest and diff check; final code revision `40d1901` passed `726 tests, 3 skipped in 59.32s`; subsequent commits are documentation-only; `git diff --check` passed.
 - [x] Obtain task reviews and whole-branch review; close all Critical/Important findings before delivery; final overall review passed at `40d1901`.
 
 **Plan self-review:** Checked against the two SPECs at branch `80d197a`, current contracts/discovery/service seams, Paimon v1.2 asset pipeline, abacustest map behavior and current Forge legacy tests. New fields are optional and preserve request v1. Asset writes are isolated below typed service, explicit and fail-closed. The plan deliberately excludes directory inference for typed requests, science validation, orchestration, scheduler behavior and real execution. No unresolved public behavior decision remains after the user’s “进行推进” authorization.
