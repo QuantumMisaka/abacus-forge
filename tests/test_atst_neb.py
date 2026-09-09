@@ -120,6 +120,28 @@ def test_resolved_symlink_prefix_overlap_is_rejected(tmp_path: Path) -> None:
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb", output_prefix="real/x", plot=True, plot_label="alias/x"))
     assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
 
+def test_same_operation_id_conflicts_and_refs_are_one_to_one(tmp_path: Path) -> None:
+    (tmp_path / "init").write_text("i"); (tmp_path / "final").write_text("f")
+    service = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path)))
+    req = AtstNebPrepareRequest(operation_id=_id(), workspace_rel=".", init_structure_path_rel="init", final_structure_path_rel="final")
+    first = service.prepare.prepare(req); second = service.prepare.prepare(req)
+    assert isinstance(first, OperationOutcome) and isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+    (tmp_path / "neb.traj").write_text("x")
+    post = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
+    assert isinstance(post, OperationOutcome)
+    refs = post.envelope.diagnostics["artifact_refs"]
+    assert len(refs) == len(post.envelope.artifacts) == len({item["artifact_id"] for item in refs})
+
+def test_stale_output_does_not_count_but_overwrite_does(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("x"); (tmp_path / "reports/atst").mkdir(parents=True)
+    (tmp_path / "reports/atst/neb-summary.json").write_text("old"); (tmp_path / "outputs/atst/neb-ts.cif").parent.mkdir(parents=True); (tmp_path / "outputs/atst/neb-ts.cif").write_text("old")
+    fake = _fake_atst(tmp_path); fake.write_text(fake.read_text().replace('p = pathlib.Path(args[args.index("--output") + 1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("{}")', ''))
+    stale = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(fake)).postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
+    assert isinstance(stale, OperationOutcome) and stale.status.collection in {"missing_output", "partial"}
+    fresh = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
+    assert isinstance(fresh, OperationOutcome) and fresh.status.collection == "complete"
+
 def test_discovery_plot_label_condition_has_three_validated_branches() -> None:
     schema = request_schema_document("atst-neb", "postprocess")
     condition = schema["request_schema"]["allOf"][0]
