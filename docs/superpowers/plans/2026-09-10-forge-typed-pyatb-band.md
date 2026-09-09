@@ -92,10 +92,10 @@
 
 **Test strategy:** Add direct service and subprocess parity tests with a fake PyATB executable that writes `Out/Band_Structure/band_info.dat`, `band.dat`, and a picture. Cover missing executable, nonzero exit, timeout, dry-run, missing output, duplicate operation admission, artifact containment, one-event persistence and API/CLI parity. Use unique operation IDs and separate workspaces per invocation.
 
-- [ ] Write RED service/machine/API parity tests.
-- [ ] Implement the service set and registry/dispatch wiring.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py`; expect all selected tests to pass.
-- [ ] Commit and report exact output/revision; independent task review follows.
+- [x] Write RED service/machine/API parity tests.
+- [x] Implement the service set and registry/dispatch wiring.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py`; `469 passed`.
+- [x] Commit and report exact output/revision; implementation `3ef68db`, report `f06e2c3`; independent review CLEAN/APPROVED.
 
 ## Task 4: Documentation, final verification and branch review
 
