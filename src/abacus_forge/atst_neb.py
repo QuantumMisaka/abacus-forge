@@ -163,6 +163,9 @@ class AtstNebPostprocessService:
             if request.write_latest: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-latest", "write_latest"))
             if request.write_neb_init_chain: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-init-chain.traj", "write_neb_init_chain"))
             if request.plot: prefix_paths.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"))
+            resolved_prefixes = [item.resolve() for item in prefix_paths]
+            if any(self._prefixes_overlap(left, right) for i, left in enumerate(resolved_prefixes) for right in resolved_prefixes[i + 1:]):
+                return _ScfServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
             if summary.resolve() == trajectory.resolve() or any(path.resolve() in {item.resolve() for item in log_paths} for path in (summary, trajectory)) or any(self._context.matches_prefix(path, item) for path in (summary, trajectory) for item in prefix_paths):
                 return _ScfServiceContext.error("request.invalid", "postprocess input/output paths collide", request)
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
