@@ -15,6 +15,8 @@ import math
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from abacus_forge.band_data import BandData
 from abacus_forge.contracts import JSONValue
 from abacus_forge.dos_data import DOSData, PDOSData
@@ -127,7 +129,7 @@ def process_dos_files(
 
     if include_tdos:
         try:
-            total_dos = DOSData.from_paths(list(paths))
+            total_dos = _typed_total_dos(paths)
         except Exception as exc:
             raise PostprocessParseError(f"could not parse total DOS files: {exc}") from exc
         if not total_dos.rows:
@@ -296,8 +298,85 @@ def _validate_suffix(suffix: str | None) -> None:
 
 def _band_summary(data: BandData) -> dict[str, JSONValue]:
     summary = dict(data.summary())
+    summary["num_bands"] = max(
+        len(data.rows[0]) - _band_prefix_columns(data.rows), 0
+    ) if data.rows else 0
     summary["band_files"] = [path.name for path in data.paths]
     return _json_safe(summary)
+
+
+def _band_prefix_columns(rows: Sequence[Sequence[float]]) -> int:
+    """Recognize the explicit ABACUS k-index/path-distance prefixes.
+
+    Existing Forge fixtures use one leading path-distance column.  ABACUS
+    band rows can instead begin with a one-based k-point index followed by
+    path distance (for example ``1 0.0 -1.0 1.0``).  Requiring every row to
+    have an integer-like positive index and the first path distance to be zero
+    keeps this detector conservative for the legacy one-prefix shape.
+    """
+
+    if not rows or any(len(row) < 3 for row in rows):
+        return 1
+    indices = [row[0] for row in rows]
+    if not all(_is_integer_like(value) and value >= 1 for value in indices):
+        return 1
+    if not math.isclose(indices[0], 1.0, rel_tol=0.0, abs_tol=1e-12):
+        return 1
+    if not math.isclose(rows[0][1], 0.0, rel_tol=0.0, abs_tol=1e-12):
+        return 1
+    return 2
+
+
+def _is_integer_like(value: float) -> bool:
+    return math.isfinite(value) and math.isclose(value, round(value), rel_tol=0.0, abs_tol=1e-12)
+
+
+def _typed_total_dos(paths: Sequence[Path]) -> DOSData:
+    """Parse total DOS columns without changing the legacy DOSData loader.
+
+    ABACUS total-DOS rows are ``energy, DOS, cumulative-integral``.  The
+    typed boundary retains only the DOS column and treats explicitly supplied
+    files as spin channels on one shared energy grid.
+    """
+
+    tables = tuple(_read_typed_dos_table(path) for path in paths)
+    common_energy, _ = tables[0]
+    channels = [values for _, values in tables]
+    reference = np.asarray(common_energy, dtype=float)
+    for energy, _ in tables[1:]:
+        candidate = np.asarray(energy, dtype=float)
+        if candidate.shape != reference.shape or not np.allclose(
+            candidate, reference, rtol=0.0, atol=1e-12
+        ):
+            raise PostprocessParseError("total DOS files must use a common energy grid")
+    dosdata = np.asarray(channels, dtype=float).T
+    rows = [
+        [float(energy), *[float(channel[index]) for channel in channels]]
+        for index, energy in enumerate(common_energy)
+    ]
+    return DOSData(
+        paths=list(paths),
+        rows=rows,
+        energy=reference,
+        dosdata=dosdata,
+    )
+
+
+def _read_typed_dos_table(path: Path) -> tuple[list[float], list[float]]:
+    rows: list[list[float]] = []
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        try:
+            values = [float(token) for token in stripped.split()]
+        except ValueError:
+            continue
+        if len(values) >= 2:
+            rows.append(values)
+    if not rows:
+        raise PostprocessParseError("total DOS parser found no numeric rows")
+    return [row[0] for row in rows], [row[1] for row in rows]
 
 
 def _dos_summary(data: DOSData) -> dict[str, JSONValue]:

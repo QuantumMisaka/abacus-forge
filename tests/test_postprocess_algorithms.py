@@ -54,6 +54,23 @@ def test_process_band_files_uses_explicit_order_and_contained_outputs(tmp_path: 
     assert json.dumps(result.diagnostics, allow_nan=False)
 
 
+def test_process_band_files_counts_energy_columns_after_abacus_prefixes(tmp_path: Path) -> None:
+    source = tmp_path / "BANDS_abacus.dat"
+    source.write_text("1 0.0 -1.0 1.0\n2 0.5 -0.8 1.2\n", encoding="utf-8")
+
+    result = process_band_files(
+        [source],
+        tmp_path / "output",
+        plot_emin=-2.0,
+        plot_emax=2.0,
+        save_data=False,
+        save_plot=False,
+    )
+
+    assert result.summary["num_columns"] == 4
+    assert result.summary["num_bands"] == 2
+
+
 def test_process_band_files_raises_typed_parse_error_without_numeric_rows(tmp_path: Path) -> None:
     source = tmp_path / "BANDS_bad.dat"
     source.write_text("# no numeric rows\nnot a table\n", encoding="utf-8")
@@ -148,6 +165,71 @@ def test_process_dos_files_uses_explicit_order_and_reports_missing_optional_fami
     assert str(tmp_path) not in _json_text(result.diagnostics)
     assert json.dumps(result.summary, allow_nan=False)
     assert json.dumps(result.diagnostics, allow_nan=False)
+
+
+def test_process_dos_files_uses_dos_column_from_three_column_abacus_table(tmp_path: Path) -> None:
+    source = tmp_path / "DOS1_smearing.dat"
+    source.write_text(
+        "# Energy DOS cumulative_integral\n-1.0 0.1 0.1\n0.0 1.0 1.1\n1.0 0.2 1.3\n",
+        encoding="utf-8",
+    )
+
+    result = process_dos_files(
+        [source],
+        None,
+        None,
+        tmp_path / "output",
+        include_tdos=True,
+        include_pdos=False,
+        pdos_mode="species",
+        pdos_atom_indices=(),
+        plot_emin=-2.0,
+        plot_emax=2.0,
+        save_data=True,
+        save_plot=False,
+        suffix=None,
+    )
+
+    assert result.summary["total_dos"]["points"] == 3
+    assert result.summary["total_dos"]["spin_channels"] == 1
+    rows = [
+        [float(value) for value in line.split()]
+        for line in (tmp_path / "output" / "DOS.dat").read_text(encoding="utf-8").splitlines()[1:]
+        if line.strip()
+    ]
+    assert rows == [[-1.0, 0.1], [0.0, 1.0], [1.0, 0.2]]
+
+
+def test_process_dos_files_combines_explicit_spin_files_horizontally(tmp_path: Path) -> None:
+    spin_up = tmp_path / "DOS1_smearing.dat"
+    spin_down = tmp_path / "DOS2_smearing.dat"
+    spin_up.write_text("-1.0 0.1 0.1\n0.0 1.0 1.1\n1.0 0.2 1.3\n", encoding="utf-8")
+    spin_down.write_text("-1.0 0.3 0.3\n0.0 0.8 1.1\n1.0 0.4 1.5\n", encoding="utf-8")
+
+    result = process_dos_files(
+        [spin_up, spin_down],
+        None,
+        None,
+        tmp_path / "output",
+        include_tdos=True,
+        include_pdos=False,
+        pdos_mode="species",
+        pdos_atom_indices=(),
+        plot_emin=-2.0,
+        plot_emax=2.0,
+        save_data=True,
+        save_plot=False,
+        suffix=None,
+    )
+
+    assert result.summary["total_dos"]["points"] == 3
+    assert result.summary["total_dos"]["spin_channels"] == 2
+    rows = [
+        [float(value) for value in line.split()]
+        for line in (tmp_path / "output" / "DOS.dat").read_text(encoding="utf-8").splitlines()[1:]
+        if line.strip()
+    ]
+    assert rows == [[-1.0, 0.1, 0.3], [0.0, 1.0, 0.8], [1.0, 0.2, 0.4]]
 
 
 def test_process_dos_files_generates_stable_data_and_plot_paths(tmp_path: Path) -> None:

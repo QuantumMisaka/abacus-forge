@@ -296,6 +296,30 @@ def test_output_source_collision_and_reserved_audit_directory_are_rejected(tmp_p
     assert not (workspace.reports_dir / "events" / f"{_operation_id(308)}-postprocess.json").exists()
 
 
+def test_postprocess_report_leaf_symlink_is_rejected_without_overwriting_old_report(tmp_path: Path) -> None:
+    workspace = _band_workspace(tmp_path)
+    services = PostprocessServiceSet.default(workspace_root=tmp_path)
+    old_request = _band_request(_operation_id(316), save_plot=False)
+    old_result = services.band.postprocess(old_request)
+    assert isinstance(old_result, OperationOutcome)
+
+    old_report = workspace.reports_dir / "postprocess" / f"{old_request.operation_id}.json"
+    before_bytes = old_report.read_bytes()
+    before_hash = hashlib.sha256(before_bytes).hexdigest()
+    new_request = _band_request(_operation_id(317), save_plot=False)
+    new_report = workspace.reports_dir / "postprocess" / f"{new_request.operation_id}.json"
+    new_report.symlink_to(old_report)
+
+    result = services.band.postprocess(new_request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+    assert old_report.read_bytes() == before_bytes
+    assert hashlib.sha256(old_report.read_bytes()).hexdigest() == before_hash
+    assert new_report.is_symlink()
+    assert len(_event_files(workspace)) == 1
+
+
 def test_algorithm_oserror_maps_to_persistence_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     workspace = _band_workspace(tmp_path)
     request = _band_request(_operation_id(312), save_plot=False)

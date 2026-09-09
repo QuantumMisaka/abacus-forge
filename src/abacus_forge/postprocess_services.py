@@ -182,6 +182,7 @@ def _run_postprocess(
         )
         output_dir = context.workspace_path(workspace, output_dir_rel, "output_dir_rel")
         report_rel = f"{_REPORT_DIRECTORY}/{request.operation_id}.json"
+        report_raw_path = workspace.root / report_rel
         report_path = context.workspace_path(workspace, report_rel, "postprocess report")
 
         # This is deliberately a side-effect-free phase.  It resolves every
@@ -197,6 +198,7 @@ def _run_postprocess(
             output_dir_rel=output_dir_rel,
             output_names=output_names,
             report_path=report_path,
+            report_raw_path=report_raw_path,
         )
 
         resolved_optional: dict[str, Path | None] = {}
@@ -378,11 +380,13 @@ def _preflight_paths(
     output_dir_rel: str,
     output_names: Sequence[str],
     report_path: Path,
+    report_raw_path: Path,
 ) -> None:
     _reject_symlink_components(workspace, workspace.root / "reports", "Forge audit paths")
     raw_output_dir = workspace.root / output_dir_rel
     _reject_symlink_components(workspace, raw_output_dir, "output_dir_rel")
     _reject_symlink_components(workspace, workspace.root / _REPORT_DIRECTORY, "postprocess report")
+    _reject_symlink_components(workspace, report_raw_path, "postprocess report")
     if _is_reserved(workspace, output_dir) or _is_reserved(workspace, report_path):
         raise ForgePathError("postprocess output must not overlap Forge audit paths")
     if output_dir in source_paths or output_dir in optional_paths:
