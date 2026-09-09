@@ -6,7 +6,8 @@ import hashlib
 from pathlib import Path
 from typing import Callable, Protocol, TypeVar, runtime_checkable
 
-from abacus_forge.api import UnitModifySpec, UnitSpec, collect, modify_unit, prepare_unit, execute, suppress_legacy_events
+from abacus_forge.api import UnitModifySpec, UnitSpec, collect_contained as collect, modify_unit, prepare_unit, execute, suppress_legacy_events
+from abacus_forge import collection_results
 from abacus_forge.contracts import (
     ArtifactRecord, ArtifactRef,
     ForgeErrorEnvelope,
@@ -469,8 +470,8 @@ class _CollectService:
                     envelope = collection_envelope(result, typed_request.workspace_rel)
                     extra_observations = collection_observations(result)
                 else:
-                    envelope = _with_workspace(result.to_envelope(), typed_request.workspace_rel)
-                    extra_observations = ()
+                    envelope = collection_results.collection_envelope(result, typed_request.workspace_rel)
+                    extra_observations = collection_results.collection_observations(result)
                 return self._context.persist(
                     workspace,
                     typed_request,

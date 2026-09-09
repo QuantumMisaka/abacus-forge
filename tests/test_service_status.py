@@ -1152,6 +1152,130 @@ def test_collect_delivers_false_convergence_without_scientific_projection(tmp_pa
     assert all(observation.value not in ("accepted", "guarded", "rejected") for observation in result.observations)
 
 
+@pytest.mark.parametrize(
+    "log_text,expected",
+    [(None, "missing_output"), ("", "missing_output"),
+     ("SCF CONVERGED\n", "partial"), ("NORMAL END\n", "partial"),
+     ("TOTAL ENERGY = -4.2\n", "complete"),
+     ("TOTAL ENERGY = -4.2\nSCF NOT CONVERGED\n", "complete"),
+     ("TOTAL ENERGY = 1e999\nSCF CONVERGED\n", "partial")],
+)
+def test_scf_collection_factual_completeness(tmp_path: Path, log_text: str | None, expected: str) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    if log_text is not None:
+        workspace.write_text("outputs/stdout.log", log_text)
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174301", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == expected
+    if log_text == "TOTAL ENERGY = -4.2\n":
+        assert {item.name for item in result.observations}.isdisjoint(
+            {"converged", "converge", "electronic_convergence"}
+        )
+        assert not result.envelope.checks
+    if log_text and "NOT CONVERGED" in log_text:
+        assert {item.name: item.value for item in result.observations}["electronic_convergence"] is False
+
+
+@pytest.mark.parametrize("defect", ["report", "time", "ambiguous"])
+def test_scf_collection_parse_degradation_is_partial(tmp_path: Path, defect: str) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -4.2\nSCF CONVERGED\n")
+    if defect == "ambiguous":
+        workspace.write_text("outputs/out.log", "TOTAL ENERGY = -9.0\n")
+    else:
+        workspace.write_text("reports/metrics_relax.json" if defect == "report" else "outputs/time.json", "{broken")
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174302", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "partial"
+
+
+def test_scf_collection_preserves_array_and_structure_observations(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability="scf",
+        log_text="TOTAL ENERGY = -4.2\nTOTAL-FORCE (eV/Angstrom)\nSi1 0.1 0.2 0.3\n",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174303", workspace_rel="collection")
+    )
+    assert isinstance(result, OperationOutcome)
+    observations = {item.name: item for item in result.observations}
+    assert observations["forces"].to_dict()["value"] == [[0.1, 0.2, 0.3]]
+    assert observations["structure_snapshot"].source == "file"
+    assert observations["final_structure_snapshot"].source == "file"
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+def test_typed_collection_excludes_prior_audit_and_resolved_aliases(tmp_path: Path, capability: str) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    first = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174304", workspace_rel="collection", **extra
+    ))
+    assert isinstance(first, OperationOutcome)
+    for index, target in enumerate((
+        "reports/events/123e4567-e89b-42d3-a456-426614174304-collect.json",
+        "reports/forge-workspace.json", "reports/.forge-operation.lock", "reports/.forge-workspace.lock",
+        "reports/claims/123e4567-e89b-42d3-a456-426614174305.json",
+    )):
+        (workspace.outputs_dir / f"alias-{index}.json").symlink_to(workspace.root / target)
+    second = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174305", workspace_rel="collection", **extra
+    ))
+    assert isinstance(second, OperationOutcome)
+    paths = {item.path_rel for item in second.envelope.artifacts}
+    assert paths == {item.path_rel for item in first.envelope.artifacts}
+    assert not any(path.startswith(("reports/events/", "reports/claims/")) for path in paths)
+    assert paths.isdisjoint({"reports/forge-workspace.json", "reports/.forge-operation.lock", "reports/.forge-workspace.lock"})
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+@pytest.mark.parametrize("log_name", ["stdout.log", "OUT.ABACUS/running_scf.log", "banner.log"])
+def test_typed_collection_does_not_parse_external_log_aliases(
+    tmp_path: Path, capability: str, log_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability, log_text=None)
+    outside = tmp_path / "outside.log"
+    outside.write_text("WELCOME TO ABACUS\nTOTAL ENERGY = -777.0\nSCF CONVERGED\n", encoding="utf-8")
+    (workspace.outputs_dir / log_name).symlink_to(outside)
+    original_read_text = Path.read_text
+    external_reads = []
+    def guarded_read(path: Path, *args: object, **kwargs: object) -> str:
+        if path.resolve() == outside.resolve():
+            external_reads.append(str(path))
+        return original_read_text(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", guarded_read)
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    result = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174306", workspace_rel="collection", **extra
+    ))
+    assert isinstance(result, OperationOutcome)
+    assert external_reads == []
+    assert result.status.collection == "missing_output"
+    assert all(item.name != "total_energy" for item in result.observations)
+
+
+def test_typed_collection_domain_alias_preserves_report_facts(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability="scf", relax_report={"ionic_steps": [1, 2]}
+    )
+    (workspace.outputs_dir / "report-alias.json").symlink_to(workspace.reports_dir / "metrics_relax.json")
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174307", workspace_rel="collection")
+    )
+    assert isinstance(result, OperationOutcome)
+    observations = {item.name: item for item in result.observations}
+    assert observations["relax_metrics"].to_dict()["value"] == {"ionic_steps": [1, 2]}
+    assert [item.path_rel for item in result.envelope.artifacts].count("reports/metrics_relax.json") == 1
+
+
 def test_missing_prepare_structure_is_admitted_before_precondition_check(tmp_path: Path) -> None:
     services = ForgeServices.default(workspace_root=tmp_path)
     request = ScfPrepareRequest(

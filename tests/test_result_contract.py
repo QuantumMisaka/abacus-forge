@@ -3,10 +3,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from abacus_forge import LocalRunner
 from abacus_forge.api import UnitSpec, collect, prepare, prepare_unit, run
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from tests.support.fake_executables import write_fake_abacus
+
+
+@pytest.mark.parametrize("text,status", [("SCF CONVERGED\n", "complete"), ("TOTAL ENERGY = -4.2\nSCF NOT CONVERGED\n", "partial")])
+def test_legacy_collection_keeps_historical_completeness(tmp_path: Path, text: str, status: str) -> None:
+    workspace = prepare(tmp_path / "legacy", task="scf")
+    workspace.write_text("outputs/stdout.log", text)
+    assert collect(workspace).to_envelope().status.collection == status
 
 
 def test_collection_result_to_dict_has_stable_agent_fields(tmp_path: Path) -> None:

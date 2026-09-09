@@ -296,9 +296,10 @@ def test_parser_error_has_nonzero_exit_and_empty_stdout() -> None:
     assert "invalid choice" in error_result.stderr
 
 
-def test_operation_stdin_matches_direct_collect_api(tmp_path: Path) -> None:
-    api_workspace = _write_prepared_scf(tmp_path / "api")
-    cli_workspace = _write_prepared_scf(tmp_path / "cli")
+@pytest.mark.parametrize("stdout,collection", [("SCF CONVERGED\n", "partial"), ("TOTAL ENERGY = -4.2\n", "complete")])
+def test_operation_stdin_matches_direct_collect_api(tmp_path: Path, stdout: str, collection: str) -> None:
+    api_workspace = _write_prepared_scf(tmp_path / "api", stdout=stdout)
+    cli_workspace = _write_prepared_scf(tmp_path / "cli", stdout=stdout)
     api_request = ScfCollectRequest(
         operation_id="123e4567-e89b-42d3-a456-426614174201",
         workspace_rel="scf",
@@ -320,6 +321,7 @@ def test_operation_stdin_matches_direct_collect_api(tmp_path: Path) -> None:
     assert process.returncode == 0
     assert process.stderr == ""
     assert len(_parse_concatenated_json_values(process.stdout)) == 1
+    assert json.loads(process.stdout)["envelope"]["status"]["collection"] == collection
     assert _normalize_operation_identity(
         json.loads(process.stdout), operation_id=cli_request.operation_id, workspace_root=cli_workspace.root.parent
     ) == _normalize_operation_identity(

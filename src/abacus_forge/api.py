@@ -15,6 +15,7 @@ from ase import Atoms
 
 from abacus_forge.assets import collect_assets, stage_assets
 from abacus_forge.collectors.abacus import collect_abacus_metrics
+from abacus_forge.collection_results import contained_source, projection_artifacts
 from abacus_forge.contracts import ArtifactRecord, ForgeResultEnvelope, OperationStatus
 from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt_line_mode, write_kpt_mesh
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
@@ -589,18 +590,36 @@ def collect(
         Optional explicit stdout-like output log path. Relative paths are
         resolved against the workspace root.
     """
+    return _collect_workspace(workspace, output_log=output_log, layout=layout)
+
+
+def collect_contained(workspace: Workspace) -> CollectionResult:
+    """Internal typed-service entry; legacy collect keeps its source behavior."""
+    return _collect_workspace(workspace, contained=True)
+
+
+def _collect_workspace(
+    workspace: str | Path | Workspace,
+    *,
+    output_log: str | Path | None = None,
+    layout: str = "forge",
+    contained: bool = False,
+) -> CollectionResult:
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
     normalized_layout = _normalize_layout(ws, layout)
     artifacts = _collect_artifacts(ws, layout=normalized_layout)
-    inputs_snapshot = _inputs_snapshot(ws, layout=normalized_layout)
-    log_selection = _select_log_sources(ws, artifacts, inputs_snapshot=inputs_snapshot, output_log=output_log, layout=normalized_layout)
+    if contained:
+        artifacts = projection_artifacts(CollectionResult(ws.root, "unfinished", artifacts=artifacts))
+    inputs_snapshot = _inputs_snapshot(ws, layout=normalized_layout, contained=contained)
+    log_selection = _select_log_sources(ws, artifacts, inputs_snapshot=inputs_snapshot, output_log=output_log, layout=normalized_layout, contained=contained)
     main_log_path = log_selection["main_log_path"]
     output_log_path = log_selection["output_log_path"]
     main_log_text = _read_text_if_exists(main_log_path)
     output_log_text = _read_text_if_exists(output_log_path)
     stderr_path = _stderr_path(ws, layout=normalized_layout)
-    structure_snapshot = _structure_snapshot(_input_path(ws, "STRU", layout=normalized_layout))
+    structure_path = _input_path(ws, "STRU", layout=normalized_layout)
+    structure_snapshot = _structure_snapshot(structure_path) if not contained or contained_source(ws.root, structure_path) else None
     final_structure_snapshot, final_structure_diagnostics = _final_structure_snapshot(artifacts)
     metrics, diagnostics = collect_abacus_metrics(
         main_log_text=main_log_text,
@@ -618,7 +637,8 @@ def collect(
         if path is not None
     ]
     diagnostics["stderr_nonempty"] = bool(
-        stderr_path.exists() and stderr_path.read_text(encoding="utf-8", errors="ignore").strip()
+        (not contained or contained_source(ws.root, stderr_path))
+        and stderr_path.exists() and stderr_path.read_text(encoding="utf-8", errors="ignore").strip()
     )
     if log_selection["warning"] is not None:
         diagnostics.setdefault("warnings", []).append(log_selection["warning"])
@@ -631,7 +651,7 @@ def collect(
         )
         relax_summary["final_structure_path"] = diagnostics.get("final_structure_path")
         metrics["relax_summary"] = relax_summary
-    status = _determine_status(
+    status = "unfinished" if contained else _determine_status(
         metrics,
         stderr_path=stderr_path,
         text_blobs=[text for text in (main_log_text, output_log_text) if text is not None],
@@ -860,6 +880,7 @@ def _select_log_sources(
     inputs_snapshot: dict[str, Any],
     output_log: str | Path | None = None,
     layout: str = "forge",
+    contained: bool = False,
 ) -> dict[str, Any]:
     input_parameters = inputs_snapshot.get("INPUT", {})
     calculation = str(input_parameters.get("calculation", "")).strip() if isinstance(input_parameters, dict) else ""
@@ -897,7 +918,7 @@ def _select_log_sources(
 
     fallback_candidates: list[Path] = []
     for candidate in _fallback_log_paths(workspace, layout=layout):
-        if candidate.exists():
+        if candidate.exists() and (not contained or contained_source(workspace.root, candidate)):
             fallback_candidates.append(candidate)
 
     if selected_path is None:
@@ -922,6 +943,7 @@ def _select_log_sources(
         workspace,
         explicit_output_log=output_log,
         layout=layout,
+        contained=contained,
     )
 
     return {
@@ -986,12 +1008,13 @@ def _discover_output_log(
     *,
     explicit_output_log: str | Path | None,
     layout: str = "forge",
+    contained: bool = False,
 ) -> dict[str, Any]:
     override_requested = str(explicit_output_log) if explicit_output_log is not None else None
     override_missing = False
     if explicit_output_log is not None:
         explicit_path = _resolve_workspace_path(workspace, explicit_output_log)
-        if explicit_path.exists() and explicit_path.is_file():
+        if explicit_path.exists() and explicit_path.is_file() and (not contained or contained_source(workspace.root, explicit_path)):
             return {
                 "selected_path": explicit_path,
                 "selected_reason": "override",
@@ -1003,7 +1026,7 @@ def _discover_output_log(
             }
         override_missing = True
 
-    fixed_candidates = [candidate for candidate in _fallback_log_paths(workspace, layout=layout) if candidate.exists() and candidate.is_file()]
+    fixed_candidates = [candidate for candidate in _fallback_log_paths(workspace, layout=layout) if candidate.exists() and candidate.is_file() and (not contained or contained_source(workspace.root, candidate))]
     if fixed_candidates:
         selected = sorted(fixed_candidates, key=lambda path: _natural_sort_key(str(path.relative_to(workspace.root))))[0]
         return {
@@ -1017,6 +1040,8 @@ def _discover_output_log(
         }
 
     content_candidates = _candidate_output_logs(workspace, layout=layout)
+    if contained:
+        content_candidates = [path for path in content_candidates if contained_source(workspace.root, path)]
     matching_candidates = [path for path in content_candidates if _file_contains_output_banner(path)]
     if not matching_candidates:
         return {
@@ -1097,13 +1122,13 @@ def _input_path(workspace: Workspace, name: str, *, layout: str) -> Path:
     return (workspace.root if layout == "flat" else workspace.inputs_dir) / name
 
 
-def _inputs_snapshot(workspace: Workspace, *, layout: str = "forge") -> dict[str, Any]:
+def _inputs_snapshot(workspace: Workspace, *, layout: str = "forge", contained: bool = False) -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
     input_path = _input_path(workspace, "INPUT", layout=layout)
-    if input_path.exists():
+    if input_path.exists() and (not contained or contained_source(workspace.root, input_path)):
         snapshot["INPUT"] = read_input(input_path)
     kpt_path = _input_path(workspace, "KPT", layout=layout)
-    if kpt_path.exists():
+    if kpt_path.exists() and (not contained or contained_source(workspace.root, kpt_path)):
         snapshot["KPT"] = kpt_path.read_text(encoding="utf-8")
         try:
             snapshot["KPT_PARSED"] = read_kpt(kpt_path)
