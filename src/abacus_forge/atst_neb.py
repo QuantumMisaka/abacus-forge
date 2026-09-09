@@ -146,14 +146,19 @@ class AtstNebPostprocessService:
             trajectory = self._context.path(workspace, request.trajectory_path_rel, "trajectory_path_rel")
             summary = self._context.path(workspace, request.summary_path_rel, "summary_path_rel")
             prefix = self._context.path(workspace, request.output_prefix, "output_prefix")
+            log_paths = {workspace.root / "reports/atst" / f"{request.operation_id}-{suffix}-{stream}.log" for suffix in ("summary", "post") for stream in ("stdout", "stderr")}
+            prefix_paths = [prefix]
+            if request.write_latest: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-latest", "write_latest"))
+            if request.write_neb_init_chain: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-init-chain.traj", "write_neb_init_chain"))
+            if request.plot_label: prefix_paths.append(self._context.path(workspace, request.plot_label, "plot_label"))
+            if summary.resolve() == trajectory.resolve() or summary.resolve() in {item.resolve() for item in log_paths} or any(self._context.matches_prefix(path, item) for path in (summary, trajectory) for item in prefix_paths):
+                return _ScfServiceContext.error("request.invalid", "postprocess input/output paths collide", request)
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
                 self._context.require_file(trajectory, request.trajectory_path_rel, "trajectory_path_rel")
                 executable = self._context.executable()
                 before_outputs = {p.resolve(): (p.stat().st_size, p.stat().st_mtime_ns) for p in workspace.root.rglob("*") if p.is_file()}
                 summary.parent.mkdir(parents=True, exist_ok=True)
                 prefix.parent.mkdir(parents=True, exist_ok=True)
-                log_paths = {workspace.root / "reports/atst" / f"{request.operation_id}-{suffix}-stdout.log" for suffix in ("summary", "post")}
-                log_paths |= {workspace.root / "reports/atst" / f"{request.operation_id}-{suffix}-stderr.log" for suffix in ("summary", "post")}
                 summary_cmd = [executable, "neb", "summary", str(trajectory), "--format", "json", "--output", str(summary)]
                 if request.n_max:
                     summary_cmd[4:4] = ["--n-max", str(request.n_max)]

@@ -53,3 +53,18 @@ def test_nonzero_and_timeout_are_failed_outcomes(tmp_path: Path) -> None:
     timed = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path, "timeout"))).execute.execute(
         AtstNebExecuteRequest(operation_id=_id(), workspace_rel=".", config_path_rel="config.yaml", timeout_seconds=0.05))
     assert isinstance(timed, OperationOutcome) and timed.status.execution == "failed"
+
+def test_postprocess_rejects_overlapping_prefixes_and_log_summary(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    service = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path)))
+    overlap = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="reports/custom/x", plot_label="reports/custom/x.pdf"))
+    assert isinstance(overlap, ForgeErrorEnvelope) and overlap.error_class == "request.invalid"
+    op_id = _id()
+    collision = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=op_id, workspace_rel=".", trajectory_path_rel="neb.traj", summary_path_rel=f"reports/atst/{op_id}-summary-stdout.log"))
+    assert isinstance(collision, ForgeErrorEnvelope) and collision.error_class == "request.invalid"
+
+def test_missing_executable_is_precondition_after_inputs_exist(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing-atst").postprocess.postprocess(
+        AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
+    assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "precondition.missing"
