@@ -16,7 +16,7 @@ Tech stack: Python dataclasses, subprocess, existing workspace/result/error help
 2. Keep the request surface portable: workspace-relative paths, explicit operation/capability, no launcher, scheduler, shell, arbitrary environment, retry, or restart injection fields.
 3. Keep ATST YAML opaque. Forge validates path containment and process preconditions, but ATST remains the authority for YAML syntax and workflow semantics.
 4. Use one JSON document on stdout, diagnostics on stderr, no prompt/TTY branch, and the existing exit mapping: request errors 2, missing preconditions 3, process failure/timeout 4, internal failure 5.
-5. Capability maturity is experimental; discovery must describe only behavior implemented and tested in this slice. Artifact roles are input, provenance_manifest, and output.
+5. Capability maturity is experimental; discovery must describe only behavior implemented and tested in this slice. Existing SCF discovery retains the roles input, provenance_manifest, and output; the ATST-NEB adapter currently emits only input and output artifacts.
 6. All operations use the existing workspace admission/operation guard and persist the returned factual outcome. Scientific status remains unassessed.
 7. Do not add a top-level legacy post command, Slurm integration, a required ATST Python import, or a scientific validation gate.
 
@@ -92,7 +92,9 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 - Boundary scan command: `rg -n "from atst_tools|import atst_tools|slurm|DPDispatcher|Bohrium|srun|sbatch|mpirun|scientific.*(valid|accept)|validation.*scientific" src/abacus_forge pyproject.toml`.
   Result: no ATST Python import, scheduler integration, or scientific validation implementation was found; the existing `mpirun` match is the pre-existing SCF runner command construction and is not an ATST/site scheduler integration.
 - Full supported-environment test command: `conda run -n paimon python -m pytest -q`.
-  Result: `389 passed, 2 skipped in 42.67s`.
+  Result after the final adapter safety fixes: `394 passed, 2 skipped in 40.84s`.
+- Focused adapter/machine/architecture command: `conda run -n paimon python -m pytest -q tests/test_atst_neb.py tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py tests/test_architecture.py`.
+  Result after the final adapter safety fixes: `172 passed in 27.75s`.
 - Hygiene command: `git diff --check`.
   Result: passed (no output).
 - Real atst-tools smoke: not run in this environment; it remains a release gate and is not represented by fake-executable tests.
@@ -103,4 +105,10 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 - [x] Boundary scan completed; no new platform scheduling or scientific judgment entered Forge.
 - [x] Full supported-environment test output recorded after the final implementation revision.
 - [x] `git diff --check` recorded after the final implementation revision.
-- [ ] Independent final diff review completed.
+- [x] Independent final diff review completed.
+
+## Final independent review evidence
+
+- Review scope: complete change `ed53bdc..b55172d`, with a focused re-review of `3b58bda..b55172d` and the current PLAN wording revision.
+- Result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility and ATST discovery/README/marker alignment were preserved.
+- Release boundary retained: real atst-tools smoke and explicit version/API locking remain future release gates, not claims made by this fake-executable test slice.
