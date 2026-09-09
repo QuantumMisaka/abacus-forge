@@ -97,7 +97,8 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
   Result after the final adapter safety fixes: `172 passed in 27.75s`.
 - Hygiene command: `git diff --check`.
   Result: passed (no output).
-- Real atst-tools smoke: not run in this environment; it remains a release gate and is not represented by fake-executable tests.
+- ATST source/version verification: `/home/james/work/deepmodeling/atst-tools` is on `main` at `9318177`, exactly matches `origin/main`, and declares version `2.2.4`; the published PyPI version is also `2.2.4`. The `atst-dev` environment resolves the source tree and reports `atst 2.2.4`.
+- Real ATST CLI contract smoke: using that `atst-dev` executable, Forge `prepare` (`atst neb make`), `execute` dry-run (`atst run`), and `postprocess` (`atst neb summary/post`) succeeded against local fixtures, with structured Forge outcomes and artifacts. A full ABACUS/NEB calculation was not run; real workflow execution, version/API locking, and clean-environment evidence remain release gates and are not represented by this CLI smoke.
 
 ## Task 4 checklist
 
