@@ -156,7 +156,7 @@ def _atst_request_properties(operation: str) -> dict[str, JSONValue]:
             "config_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
             "dry_run": {"type": "boolean", "default": False},
             "check_input": {"type": "boolean", "default": False},
-            "check_input_timeout": {"type": "number", "exclusiveMinimum": 0, "default": 30.0},
+            "check_input_timeout": {"type": "integer", "exclusiveMinimum": 0, "default": 30},
             "abacus_executable": {"type": ["string", "null"], "minLength": 1, "default": None},
             "timeout_seconds": {"type": ["number", "null"], "exclusiveMinimum": 0, "default": None},
         })
@@ -169,7 +169,7 @@ def _atst_request_properties(operation: str) -> dict[str, JSONValue]:
             "write_latest": {"type": "boolean", "default": False},
             "write_neb_init_chain": {"type": "boolean", "default": False},
             "plot": {"type": "boolean", "default": False},
-            "plot_label": {"type": ["string", "null"], "minLength": 1, "default": None},
+            "plot_label": {"type": ["string", "null"], "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN, "default": None},
             "energy_profile": {"type": "boolean", "default": False},
             "vib_analysis": {"type": "boolean", "default": False},
             "vib_thr": {"type": "number", "exclusiveMinimum": 0, "default": 0.01},
