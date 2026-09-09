@@ -16,6 +16,7 @@ from abacus_forge import (
     ScfServiceSet,
     Workspace,
 )
+from tests.support.fake_executables import write_fake_abacus
 
 
 def _source(path: Path) -> Path:
@@ -108,3 +109,27 @@ def test_md_context_requires_matching_input_calculation(tmp_path: Path) -> None:
     result = services.collect.collect(_request(MdCollectRequest, "106"))
 
     assert result.error_class == "precondition.missing"
+
+
+def test_md_execute_runs_local_runner_and_reports_process_facts(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    for input_name in ("INPUT", "STRU", "KPT"):
+        (workspace.inputs_dir / input_name).write_text(
+            "calculation md\n" if input_name == "INPUT" else "prepared\n", encoding="utf-8"
+        )
+    executable = write_fake_abacus(
+        tmp_path / "fake-abacus", stdout_lines=["TOTAL ENERGY = -4.2", "NORMAL END"]
+    )
+    request = _request(MdExecuteRequest, "107", executable=str(executable))
+
+    result = MdServiceSet.default(workspace_root=tmp_path).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.execution == "completed"
+    assert result.envelope.status.scientific == "unassessed"
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} >= {
+        "outputs/stdout.log", "outputs/stderr.log"
+    }
+    assert any(metric.name == "returncode" and metric.value == 0 for metric in result.envelope.metrics)
+    assert any(metric.name == "omp_threads" for metric in result.envelope.metrics)

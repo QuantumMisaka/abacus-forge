@@ -6,7 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from abacus_forge import MdExecuteRequest, MdPrepareRequest, OperationOutcome
+from abacus_forge import (
+    MdCollectRequest,
+    MdExecuteRequest,
+    MdModifyRequest,
+    MdPrepareRequest,
+    MdServiceSet,
+    OperationOutcome,
+    Workspace,
+)
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_operation_request, run_machine_cli
 
@@ -85,3 +93,84 @@ def test_md_dry_run_and_prepare_use_machine_envelope(tmp_path: Path) -> None:
         assert result["envelope"]["operation"] == operation
         assert result["envelope"]["status"]["scientific"] == "unassessed"
         assert stderr.getvalue() == ""
+
+
+def _md_workspace(root: Path, operation: str) -> None:
+    workspace = Workspace(root / "job")
+    workspace.ensure_layout()
+    if operation == "prepare":
+        (workspace.root / "source.STRU").write_text(
+            "ATOMIC_SPECIES\nSi 28.0855 Si.upf\n\nLATTICE_CONSTANT\n1.0\n"
+            "LATTICE_CONSTANT_UNIT\nAngstrom\n\nLATTICE_VECTORS\n"
+            "1 0 0\n0 1 0\n0 0 1\n\nATOMIC_POSITIONS\nDirect\nSi\n"
+            "0\n1\n0 0 0 m 1 1 1\n", encoding="utf-8"
+        )
+    else:
+        workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\nmd_type nve\n")
+        workspace.write_text("inputs/STRU", "prepared\n")
+        workspace.write_text("inputs/KPT", "prepared\n")
+        if operation == "collect":
+            output = workspace.outputs_dir / "OUT.ABACUS"
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "running_md.log").write_text(
+                "TOTAL ENERGY = -4.2\nNORMAL END\n", encoding="utf-8"
+            )
+            (workspace.outputs_dir / "MD_dump").write_text(
+                "STEP 1 TEMP 300 ETOT -4.2\n", encoding="utf-8"
+            )
+
+
+def _fact_projection(result: OperationOutcome, root: Path) -> dict[str, object]:
+    envelope = result.envelope.to_dict()
+    observations = result.to_dict()["observations"]
+    for observation in observations:
+        value = observation.get("value")
+        if isinstance(value, dict) and isinstance(value.get("path"), str):
+            try:
+                value["path"] = Path(value["path"]).relative_to(root).as_posix()
+            except ValueError:
+                pass
+    return {
+        "status": envelope["status"],
+        "artifacts": envelope["artifacts"],
+        "metrics": envelope["metrics"],
+        "checks": envelope["checks"],
+        "warnings": envelope["warnings"],
+        "observations": observations,
+    }
+
+
+@pytest.mark.parametrize(
+    "operation,request_type,extra",
+    [
+        ("prepare", MdPrepareRequest, {"structure_path_rel": "source.STRU"}),
+        ("modify", MdModifyRequest, {"input_updates": {"md_nstep": 20}}),
+        ("execute", MdExecuteRequest, {"dry_run": True}),
+        ("collect", MdCollectRequest, {}),
+    ],
+)
+def test_md_machine_cli_matches_direct_service_facts(
+    tmp_path: Path, operation: str, request_type: type, extra: dict[str, object]
+) -> None:
+    api_root, cli_root = tmp_path / "api", tmp_path / "cli"
+    _md_workspace(api_root, operation)
+    _md_workspace(cli_root, operation)
+    api_id = "123e4567-e89b-42d3-a456-426614174010"
+    cli_id = "123e4567-e89b-42d3-a456-426614174011"
+    api_request = request_type(
+        operation_id=api_id, workspace_rel="job", capability="md", **extra
+    )
+    service = getattr(MdServiceSet.default(workspace_root=api_root), operation)
+    api_result = getattr(service, operation)(api_request)
+    assert isinstance(api_result, OperationOutcome)
+
+    payload = {**_payload(operation, **extra), "operation_id": cli_id, "workspace_rel": "job"}
+    stdout, stderr = io.StringIO(), io.StringIO()
+    code = run_machine_cli(
+        ["operation", operation, "--stdin"],
+        stdin=io.StringIO(json.dumps(payload)), stdout=stdout, stderr=stderr, cwd=cli_root,
+    )
+    assert code == 0
+    cli_result = OperationOutcome.from_dict(json.loads(stdout.getvalue()))
+    assert stderr.getvalue() == ""
+    assert _fact_projection(cli_result, cli_root) == _fact_projection(api_result, api_root)
