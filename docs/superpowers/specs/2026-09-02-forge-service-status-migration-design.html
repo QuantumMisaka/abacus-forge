@@ -276,7 +276,7 @@
         <p><strong>结果关联与兼容：</strong><code>ForgeResultEnvelope</code> 不新增 <code>operation_id</code> 或 observations 字段，其序列化 key set 保持冻结；新 Python API 与 v1 机器 CLI 由外层 <code>OperationOutcome</code> 同时携带 ID、result 与 observations，持久化 event 的 <code>id</code> 仍等于该 ID。error envelope 自描述并携带 <code>operation_id</code>。legacy CLI/API 继续直接使用旧 result，不被静默包裹。</p>
       </div>
       <div class="decision">
-        <p><strong>冻结契约：双 CLI 面而非静默改写 legacy。</strong>新增 <code>abacus-forge operation &lt;prepare|modify|execute|collect|postprocess|export&gt; --request FILE</code> 与 <code>--stdin</code>（二者互斥），以及 <code>schema</code>/<code>capabilities</code> discovery；该 v1 命令面默认 JSON，<code>--format=text</code>/<code>--pretty</code> 只渲染同一 envelope。既有 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、task pack 与 <code>--json</code> 是 legacy surface，默认输出、参数和行为不变，直到另行版本化废弃。新稳定 Python API 直接暴露同一 typed service；旧 <code>UnitSpec</code>/result API 仅向新 service 做适配。</p>
+        <p><strong>冻结契约：双 CLI 面而非静默改写 legacy。</strong>新增 <code>abacus-forge operation &lt;prepare|modify|execute|collect|postprocess|export&gt; --request FILE</code> 与 <code>--stdin</code>（二者互斥），以及 <code>schema</code>/<code>capabilities</code> discovery；该 v1 命令面默认 JSON，<code>--format=text</code>/<code>--pretty</code> 只渲染同一 envelope。既有 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、task pack 与 <code>--json</code> 是 legacy surface，默认输出、参数和行为不变，直到另行版本化废弃。新稳定 Python API 直接暴露同一 typed service；旧 <code>UnitSpec</code>/result API 保持兼容适配，并与 service 共享下层操作基元。</p>
       </div>
       <div class="decision">
         <p><strong>决策 1：状态只记录执行/收集事实。</strong>服务返回执行状态、收集状态、observations/checks、metrics 与 artifact refs；不维护科学 policy registry，不接受 <code>policy_id</code>，也不在 <code>OperationStatus</code> 中推导科学结论。observations 以 typed <code>Observation</code> 记录（name/value/source，source ∈ log/file/parser/runtime），由 <code>OperationOutcome</code> 在 Python API、v1 机器 CLI 与 operation event payload 中同形交付；它不进入内嵌 <code>forge.result/v1</code> 的冻结 key set。</p>
@@ -291,7 +291,7 @@
         <p><strong>排除：</strong>把 task、plot、workflow、scheduler 或平台资源策略塞进 LocalRunner/engine。</p>
       </div>
       <div class="decision">
-        <p><strong>决策 4：兼容 shim 优先。</strong>旧 <code>UnitSpec</code> 仍可调用，新增 typed request 先映射到既有 prepare/modify/execute/collect 实现，再逐步收敛内部模块。旧文件和旧 API 的废弃必须另有版本窗口。</p>
+        <p><strong>决策 4：兼容 shim 优先。</strong>旧 <code>UnitSpec</code> 仍可调用；typed service 与 legacy adapter 复用下层 prepare/modify/collect 基元，typed service 不构造旧 spec、不反向调用 legacy API，也不依赖事件抑制开关。旧文件和旧 API 的废弃必须另有版本窗口。</p>
         <p><strong>排除：</strong>一次性重写全部 task pack；这会同时改变物理行为、文件布局和迁移归因。</p>
       </div>
       <div class="decision">
@@ -343,7 +343,7 @@ Paimon Tool adapter ──┤
         <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。ATST 使用的后端和模型（包括 DeePMD）由 atst-tools 与调用方的配置负责，Forge 将其视为不透明配置，不选择、安装、配置或进行科学评估。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
         <li><strong>packs：</strong>以具名 capability 暴露 SCF、relax、band、DOS、PyATB、property 以及可选的 atst-tools NEB 入口；每项声明 maturity、supported operations、artifact、engine 和可选依赖。</li>
-        <li><strong>compat：</strong>把 <code>UnitSpec</code>、旧 result 对象和旧文件投影到新 service；新代码不得反向依赖旧 God Object。</li>
+        <li><strong>compat：</strong>保留 <code>UnitSpec</code>、旧 result 对象、旧文件与旧 task/sequence 分发；与 typed service 共享下层基元，分别维护既有输出和事件语义。通用路径、错误与持久化支持不依赖具体 capability；ATST 不复用 SCF 私有上下文。</li>
       </ul>
       <h3>最小接口形态</h3>
       <p>实现计划必须把下列逻辑接口固化为 Python protocol 或等价的窄接口；具体 dataclass 字段以执行计划为准，但不得重新引入宽泛 <code>UnitSpec</code>：</p>
