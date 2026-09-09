@@ -28,6 +28,7 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 
 - `prepare(...)` / `abacus-forge prepare`
 - 支持从结构文件生成 `INPUT` / `STRU` / `KPT`
+- ABACUS task profile 默认显式写入 `dft_functional=pbe`；调用方可通过参数覆盖该默认
 - 支持参数覆盖、参数删除、K 点设置、PP/ORB 路径、`copy/link` 资产模式
 - 支持简单的按元素共线磁矩初始化
 
@@ -141,6 +142,8 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 - `run_dos_sequence(...)`：本地组合 `SCF -> NSCF DOS/PDOS -> collect/postprocess`
 - `prepare_pyatb_band(...)` / `run_pyatb(...)` / `collect_pyatb(...)` 可作为独立 PyATB 原语使用
 - sequence API 只作为兼容 helper 管理本地子目录；新的可组合入口是 `prepare_unit / execute_unit / collect_unit`
+
+NEB 的后续扩展可通过可选的 atst-tools engine adapter 暴露 Forge 的 `prepare`、`execute`、`postprocess` 单元；外部 `atst neb post` 对应 Forge 的 `postprocess`，而 NEB 图像工作流由 atst-tools 负责。Forge 不承接 Slurm/站点调度、重试编排或科学结果判定；该适配器须在独立计划中锁定版本、API 和真实 smoke 证据后再进入 capability discovery。
 
 ### 本地 composite task pack
 
