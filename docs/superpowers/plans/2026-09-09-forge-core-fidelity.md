@@ -100,9 +100,9 @@ Explicit typed PP/ORB asset maps and materialization policy require a dedicated 
 ## Controller closure
 
 - [x] Update SPEC concisely for corrected input/collection behavior and actual extraction status, without expanding governance prose; sync README/ROADMAP and source reference report.
-- [ ] Independent task reviews followed by whole-branch review; close Important findings before delivery.
-- [ ] Retain branch and reviewable diff; report actual limitations and next typed-asset task.
+- [x] Independent task reviews followed by whole-branch review; both Important findings (commented coordinate modes and duplicate log aliases) fixed at `07d5032`, scoped re-review approved without new findings.
+- [x] Retain branch and reviewable diff; report actual limitations and next typed-asset task. Branch `forge-core-fidelity` retained; no merge or push.
 
 **Self-review:** Plan checked against two SPECs at e7a9cc8: status/observation separation, one-operation boundary, source compatibility and no old runtime dependency retained. No new schema is introduced. Structural coordinate handling is corrected/rejected within existing inputs, not a new scientific algorithm. Known omitted asset materialization is explicitly recorded above; implementation tasks have disjoint serial ownership.
 
-**Integrated offline evidence:** Source/test revision `97c4238`: full pytest with the interpreter/flags above returned 642 passed, 3 opt-in skips (59.16 s), exit 0; `git diff --check` exit 0. Independent whole-branch review is the remaining closure gate. No real execution or stable-release claim is made.
+**Integrated offline evidence:** Source/test revision `97c4238`: full pytest with the interpreter/flags above returned 642 passed, 3 opt-in skips (59.16 s), exit 0. Final fix revision `07d5032`: 24 focused regressions and the six-suite owning gate (structure, modify, API, service status, CLI process, reference collection), 229 passed (45.28 s), exit 0; `git diff --check` exit 0. Whole-branch review plus scoped fix review are closed. These are separate runs; no full-suite642 claim is made for the amended revision, nor any real execution or stable-release claim.
