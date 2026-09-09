@@ -20,6 +20,11 @@ if args[:2] == ["neb", "summary"]:
     p = pathlib.Path(args[args.index("--output") + 1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("{}")
 if args[:2] == ["neb", "post"]:
     p = pathlib.Path(args[args.index("--output-prefix") + 1]); p.parent.mkdir(parents=True, exist_ok=True); pathlib.Path(str(p)+".cif").write_text("post"); pathlib.Path(str(p)+".stru").write_text("post")
+    if "no_stru" == "MODE_PLACEHOLDER": pathlib.Path(str(p)+".stru").unlink()
+    if "--plot-label" in args: pathlib.Path(args[args.index("--plot-label") + 1] + ".pdf").write_text("plot")
+    if "--write-latest" in args:
+        q = pathlib.Path(args[args.index("--write-latest") + 1]); pathlib.Path(str(q)+".traj").write_text("traj"); pathlib.Path(str(q)+".extxyz").write_text("xyz")
+    if "--write-neb-init-chain" in args: pathlib.Path(args[args.index("--write-neb-init-chain") + 1]).write_text("chain")
 print("ok")
 """.replace("MODE_PLACEHOLDER", mode), encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
@@ -77,6 +82,21 @@ def test_postprocess_rejects_trajectory_operation_log_collision(tmp_path: Path) 
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").postprocess.postprocess(
         AtstNebPostprocessRequest(operation_id=op_id, workspace_rel=".", trajectory_path_rel=log_rel))
     assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
+
+def test_output_groups_and_optional_stru(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    service = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path, "no_stru")))
+    result = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="reports/custom/ts", plot=True))
+    assert isinstance(result, OperationOutcome) and result.status.collection == "complete"
+    assert any(item.path_rel == "reports/custom/ts.cif" for item in result.envelope.artifacts)
+    assert any(item.path_rel == "outputs/atst/nebplots_chain.pdf" for item in result.envelope.artifacts)
+
+def test_missing_latest_extxyz_is_missing_output(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    fake = _fake_atst(tmp_path)
+    fake.write_text(fake.read_text().replace('pathlib.Path(str(q)+".extxyz").write_text("xyz")', ''))
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(fake)).postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", write_latest=True))
+    assert isinstance(result, OperationOutcome) and result.status.collection == "missing_output"
 
 def test_discovery_plot_label_condition_has_three_validated_branches() -> None:
     schema = request_schema_document("atst-neb", "postprocess")
