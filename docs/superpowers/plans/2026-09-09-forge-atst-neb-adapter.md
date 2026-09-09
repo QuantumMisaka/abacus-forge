@@ -26,6 +26,7 @@ Tech stack: Python dataclasses, subprocess, existing workspace/result/error help
 - Requests use explicit capability plus operation. SCF requests remain unchanged and continue to route without a capability field.
 - Prepare creates an NEB chain with atst neb make; execute runs an opaque YAML with atst run; postprocess first obtains JSON summary data with atst neb summary and then invokes atst neb post for requested derived artifacts.
 - The adapter owns only the local command invocation and factual result capture. ATST owns NEB image/chain semantics; the caller owns outer orchestration, scheduling, and scientific interpretation.
+- `atst-neb.prepare` binds specifically to `atst neb make` (endpoint-to-chain generation); it is not the top-level `atst prepare` reverse-config operation that generates a workflow YAML from an ABACUS run directory. This slice exposes only the structured, non-interactive, path-controlled CLI subset needed by the adapter; omitted ATST flags are not passed through as arbitrary argv.
 - The optional dependency/version and clean-environment real-smoke test are release evidence, not a required-dependency change in this implementation slice.
 
 ## Task 1: Add typed ATST-NEB request contracts and discovery
@@ -34,9 +35,9 @@ Files: src/abacus_forge/contracts.py, src/abacus_forge/discovery.py, src/abacus_
 
 1. Write failing tests for strict round-trip decoding and rejection of unknown fields, wrong capability, non-contained paths, invalid image counts/methods, execute check-input invariants, and postprocess output options.
 2. Add _AtstNebRequest and three dataclass requests:
-   - AtstNebPrepareRequest: init/final structure relative paths, n_images >= 1, chain output path default, method IDPP or linear, and no_align.
-   - AtstNebExecuteRequest: config relative path, dry_run, check_input, positive check-input timeout, optional executable, and optional positive process timeout; enforce check_input implies dry_run.
-   - AtstNebPostprocessRequest: trajectory relative path, non-negative n_max, summary/output paths, and explicit typed flags for plotting, energy profile, vibration analysis/threshold, strict band, latest-chain and init-chain output.
+   - AtstNebPrepareRequest: init/final structure relative paths, `n_images` >= 1 (default `5`, matching ATST 2.2.4), chain output path default, method IDPP or linear, and no_align.
+   - AtstNebExecuteRequest: opaque config relative path, dry-run/check-input controls (with positive `check_input_timeout` default `120`, matching ATST 2.2.4), optional ABACUS executable, and optional positive outer Forge subprocess timeout; enforce check_input implies dry_run.
+   - AtstNebPostprocessRequest: trajectory and summary/output paths, non-negative n_max, and explicit typed flags for plotting, energy profile, vibration analysis/threshold (`vib_thr` default `0.10`, matching ATST 2.2.4), strict band, latest-chain and init-chain output.
    Every request serializes capability: atst-neb, its operation, schema version, workspace identity, and only portable fields. Required fields use the existing sentinel pattern so inherited dataclasses stay strict.
 3. Extend discovery with an experimental atst-neb descriptor and per-operation static schemas. Derive request properties from dataclass fields and assert schema/wire parity; include the capability constant without introducing a JSON Schema runtime dependency.
 4. Export the new public request types. Keep _OPERATIONS and all SCF serialization unchanged.

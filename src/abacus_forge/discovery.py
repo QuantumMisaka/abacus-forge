@@ -146,7 +146,7 @@ def _atst_request_properties(operation: str) -> dict[str, JSONValue]:
         properties.update({
             "init_structure_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
             "final_structure_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
-            "n_images": {"type": "integer", "minimum": 1, "default": 1},
+            "n_images": {"type": "integer", "minimum": 1, "default": 5},
             "chain_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN, "default": "inputs/init_neb_chain.traj"},
             "method": {"type": "string", "enum": ["IDPP", "linear"], "default": "IDPP"},
             "no_align": {"type": "boolean", "default": False},
@@ -156,7 +156,7 @@ def _atst_request_properties(operation: str) -> dict[str, JSONValue]:
             "config_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
             "dry_run": {"type": "boolean", "default": False},
             "check_input": {"type": "boolean", "default": False},
-            "check_input_timeout": {"type": "integer", "exclusiveMinimum": 0, "default": 30},
+            "check_input_timeout": {"type": "integer", "exclusiveMinimum": 0, "default": 120},
             "abacus_executable": {"type": ["string", "null"], "minLength": 1, "default": None},
             "timeout_seconds": {"type": ["number", "null"], "exclusiveMinimum": 0, "default": None},
         })
@@ -172,7 +172,7 @@ def _atst_request_properties(operation: str) -> dict[str, JSONValue]:
             "plot_label": {"type": ["string", "null"], "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN, "default": None},
             "energy_profile": {"type": "boolean", "default": False},
             "vib_analysis": {"type": "boolean", "default": False},
-            "vib_thr": {"type": "number", "exclusiveMinimum": 0, "default": 0.01},
+            "vib_thr": {"type": "number", "exclusiveMinimum": 0, "default": 0.10},
             "strict_band": {"type": "boolean", "default": False},
         })
     return properties

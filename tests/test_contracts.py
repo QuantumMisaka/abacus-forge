@@ -421,6 +421,17 @@ def test_atst_neb_requests_round_trip_strictly() -> None:
             type(request).from_dict({**payload, "unknown": True})
 
 
+def test_atst_neb_defaults_match_atst_tools_224() -> None:
+    from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest
+
+    prepare = AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif")
+    execute = AtstNebExecuteRequest(operation_id=OPERATION_ID, workspace_rel=".", config_path_rel="workflow.yaml")
+    postprocess = AtstNebPostprocessRequest(operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel="neb.traj")
+    assert prepare.n_images == 5
+    assert execute.check_input_timeout == 120
+    assert postprocess.vib_thr == 0.10
+
+
 def test_atst_neb_request_rejects_wrong_capability_and_invalid_options() -> None:
     from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPrepareRequest, AtstNebPostprocessRequest
     request = AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif")
@@ -503,6 +514,12 @@ def test_atst_neb_execute_schema_freezes_check_input_dry_run_dependency() -> Non
     dependency = schema["allOf"][0]
     assert dependency["if"]["properties"]["check_input"]["const"] is True
     assert dependency["then"]["properties"]["dry_run"]["const"] is True
+
+
+def test_atst_neb_schema_publishes_atst_tools_defaults() -> None:
+    assert request_schema_document("atst-neb", "prepare")["request_schema"]["properties"]["n_images"]["default"] == 5
+    assert request_schema_document("atst-neb", "execute")["request_schema"]["properties"]["check_input_timeout"]["default"] == 120
+    assert request_schema_document("atst-neb", "postprocess")["request_schema"]["properties"]["vib_thr"]["default"] == 0.10
 
 
 @pytest.mark.parametrize("operation", ["prepare", "modify", "execute", "collect"])

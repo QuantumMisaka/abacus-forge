@@ -646,7 +646,7 @@ class _AtstNebRequest(OperationRef):
 class AtstNebPrepareRequest(_AtstNebRequest):
     init_structure_path_rel: str = ""
     final_structure_path_rel: str = ""
-    n_images: int = 1
+    n_images: int = 5
     chain_path_rel: str = "inputs/init_neb_chain.traj"
     method: Literal["IDPP", "linear"] = "IDPP"
     no_align: bool = False
@@ -689,7 +689,7 @@ class AtstNebExecuteRequest(_AtstNebRequest):
     config_path_rel: str = ""
     dry_run: bool = False
     check_input: bool = False
-    check_input_timeout: int = 30
+    check_input_timeout: int = 120
     abacus_executable: str | None = None
     timeout_seconds: float | None = None
 
@@ -736,7 +736,7 @@ class AtstNebPostprocessRequest(_AtstNebRequest):
     plot_label: str | None = None
     energy_profile: bool = False
     vib_analysis: bool = False
-    vib_thr: float = 0.01
+    vib_thr: float = 0.10
     strict_band: bool = False
 
     def __post_init__(self) -> None:
