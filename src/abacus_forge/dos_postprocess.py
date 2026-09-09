@@ -43,6 +43,7 @@ def postprocess_dos_family(
 ) -> dict[str, str]:
     """Write requested DOS-family postprocess artifacts."""
 
+    _validate_suffix(suffix)
     base = Path(output_dir)
     base.mkdir(parents=True, exist_ok=True)
     artifacts: dict[str, str] = {}
@@ -215,7 +216,18 @@ def write_dos_pdos(pdosdatas: list[np.ndarray], energy: np.ndarray, labels: list
 
 
 def _output_path(base: Path, stem: str, extension: str, suffix: str | None) -> Path:
+    _validate_suffix(suffix)
     return base / f"{stem}_{suffix}.{extension}" if suffix else base / f"{stem}.{extension}"
+
+
+def _validate_suffix(suffix: str | None) -> None:
+    """Reject suffixes that can escape the requested output directory."""
+    if suffix is None:
+        return
+    if not isinstance(suffix, str) or not suffix:
+        raise ValueError("suffix must be a non-empty safe filename component or None")
+    if "/" in suffix or "\\" in suffix or any(part in {".", ".."} for part in suffix.split("/")):
+        raise ValueError("suffix must be a non-empty safe filename component or None")
 
 
 def _as_2d(data: np.ndarray) -> np.ndarray:
