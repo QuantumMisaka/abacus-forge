@@ -51,7 +51,7 @@ def materialize_assets(
     mode: str = "copy",
 ) -> tuple[AssetMaterialization, ...]:
     """Validate and materialize explicitly supplied pseudo/orbital assets."""
-    if mode not in {"copy", "link"}:
+    if not isinstance(mode, str) or mode not in {"copy", "link"}:
         raise ForgeRequestError(f"unsupported asset mode: {mode}")
     root = Path(workspace_root).resolve()
     target = Path(target_inputs)
@@ -62,13 +62,19 @@ def materialize_assets(
         target.relative_to(root)
     except ValueError:
         raise ForgePathError("target_inputs must remain under workspace root") from None
+    if target.exists() and not target.is_dir():
+        raise ForgeRequestError("target_inputs must be a directory")
     entries: list[tuple[str, str, Path]] = []
     for family, mapping in (("pseudo", pseudo_sources or {}), ("orbital", orbital_sources or {})):
+        if not hasattr(mapping, "items"):
+            raise ForgeRequestError("asset sources must be mappings")
         for species, raw_source in mapping.items():
             if not isinstance(raw_source, (str, Path)) or not str(raw_source):
                 raise ForgeRequestError("asset source must be a non-empty path")
             source = Path(raw_source)
             was_absolute = source.is_absolute()
+            if source.is_symlink():
+                raise ForgePreconditionError(f"asset source is not a regular file: {raw_source}")
             source = source if was_absolute else root / source
             source = source.resolve()
             if not was_absolute:
@@ -102,6 +108,8 @@ def materialize_assets(
                 raise ForgeRequestError("external assets cannot be linked") from None
         if destination.exists() or destination.is_symlink():
             if destination.is_symlink() and mode == "link":
+                if destination.readlink().is_absolute():
+                    raise ForgeRequestError(f"conflicting existing destination: {destination}")
                 existing_source = (destination.parent / destination.readlink()).resolve()
                 if existing_source != source:
                     raise ForgeRequestError(f"conflicting existing destination: {destination}")

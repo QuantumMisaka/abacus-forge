@@ -86,3 +86,30 @@ def test_target_must_be_inside_workspace(tmp_path, target):
         outside = tmp_path / "outside"; outside.mkdir(); (root / "external-link").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ForgePathError): materialize_assets(root / target, root, {"Si": "Si.upf"})
     assert not (tmp_path / "outside" / "Si.upf").exists()
+
+
+@pytest.mark.parametrize("mode", ["bad", None, 1])
+def test_invalid_mode_and_empty_source_are_request_errors(tmp_path, mode):
+    root = tmp_path / "w"; root.mkdir(); target = root / "target"
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": ""}, mode=mode)
+    assert not target.exists()
+
+
+def test_existing_target_types_are_mode_strict(tmp_path):
+    root = tmp_path / "w"; root.mkdir(); target = root / "target"; target.mkdir()
+    source = root / "Si.upf"; source.write_bytes(b"x")
+    (target / "Si.upf").write_bytes(b"x")
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source}, mode="link")
+    (target / "Si.upf").unlink(); (target / "Si.upf").symlink_to(source)
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source}, mode="copy")
+    (target / "Si.upf").unlink(); (target / "Si.upf").symlink_to(source.resolve())
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source}, mode="link")
+    assert (target / "Si.upf").is_symlink()
+
+
+def test_source_symlink_and_target_file_fail_without_writes(tmp_path):
+    root = tmp_path / "w"; root.mkdir(); source = root / "Si.upf"; source.write_bytes(b"x")
+    alias = root / "alias.upf"; alias.symlink_to(source)
+    with pytest.raises(ForgePreconditionError): materialize_assets(root / "target", root, {"Si": alias})
+    target = root / "target"; target.write_bytes(b"not-dir")
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source})
