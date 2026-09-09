@@ -461,11 +461,12 @@ result = PostprocessServiceSet.default(workspace_root=".").band.postprocess(requ
 
 直接 service 调用和上述 subprocess CLI 返回等价的 typed envelope facts（只需对不同
 operation-id 与隔离 workspace root 做 parity normalization）。每次成功或 admitted
-parser outcome 只追加一个 `reports/events/<operation_id>-postprocess.json`；可选 factual
-report 位于 `reports/postprocess/`，生成文件和 report 都是 workspace-relative output
-artifact，source 是 input artifact。结果不泄露绝对路径，不生成 band gap、acceptance 或
-其它科学判断；缺失 source、路径碰撞和审计保留路径会按既有 request/precondition/error
-语义返回。
+parser outcome 只追加一个 `reports/events/<operation_id>-postprocess.json`；每个 admitted
+`OperationOutcome` 固定写入 `reports/postprocess/<operation_id>.json`，request 或
+precondition 错误不写该 report。生成文件和 OperationOutcome report 都是
+workspace-relative output artifact，source 是 input artifact。结果不泄露绝对路径，不生成
+band gap、acceptance 或其它科学判断；缺失 source、路径碰撞和审计保留路径会按既有
+request/precondition/error 语义返回。
 
 ## Typed Relax operations
 

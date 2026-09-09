@@ -108,7 +108,7 @@
 - [x] Run the full offline gate with the repository interpreter and flags: `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider`.
 - [x] Run actual discovery commands and parse output: `PYTHONPATH=src ... -m abacus_forge.cli capabilities`, `... schema band postprocess`, `... schema dos postprocess`.
 - [x] Run `git diff --check`, forbidden-import scan and clean worktree check. Any pre-existing scan hits must be recorded, not silently reclassified.
-- [x] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
+- [ ] Obtain independent task reviews and a whole-branch review; close Critical/Important findings with revision-bound reruns.
 - [x] Commit docs and the exact verification evidence; do not merge or push.
 
 ## Task 4 execution evidence (2026-09-10)
@@ -119,9 +119,9 @@
   `source_paths_rel`/`dos_paths_rel`.
 - Full offline gate passed: `828 passed, 3 skipped in 63.91s` with the repository `paimon`
   interpreter and `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src -p no:cacheprovider` flags.
-- Forbidden-import scan returned `[]`; `git diff --check` passed. The final post-commit clean
-  worktree check retains only the shared parent worktree's intentionally uncommitted plan
-  changes before this documentation commit; no product/test changes are included here.
+- Forbidden-import scan returned `[]`; `git diff --check` passed. The final post-commit
+  `git status --short --branch` showed a clean `forge-core-fidelity` worktree; no product/test
+  changes are included here.
 - Documentation records typed band/DOS as landed but experimental, explicitly separates them
   from legacy task/sequence helpers, and defers typed export, typed PyATB handoff,
   property/composite aggregation, scheduling/orchestration and scientific judgment.
