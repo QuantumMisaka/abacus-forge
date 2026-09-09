@@ -248,7 +248,7 @@ def _atst_schema_for(operation: str) -> dict[str, JSONValue]:
             "then": {"required": ["dry_run"], "properties": {"dry_run": {"const": True}}},
         }]
     if operation == "postprocess":
-        schema["allOf"] = [{"if": {"required": ["plot_label"]}, "then": {"required": ["plot"], "properties": {"plot": {"const": True}}}}]
+        schema["allOf"] = [{"if": {"properties": {"plot_label": {"type": "string"}}}, "then": {"required": ["plot"], "properties": {"plot": {"const": True}}}}]
     return schema
 
 
