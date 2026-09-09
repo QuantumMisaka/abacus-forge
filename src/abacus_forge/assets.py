@@ -73,10 +73,10 @@ def materialize_assets(
                 raise ForgeRequestError("asset source must be a non-empty path")
             source = Path(raw_source)
             was_absolute = source.is_absolute()
-            if source.is_symlink():
+            candidate = source if was_absolute else root / source
+            if candidate.is_symlink():
                 raise ForgePreconditionError(f"asset source is not a regular file: {raw_source}")
-            source = source if was_absolute else root / source
-            source = source.resolve()
+            source = candidate.resolve()
             if not was_absolute:
                 try:
                     source.relative_to(root)
