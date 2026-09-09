@@ -32,6 +32,11 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 - 支持参数覆盖、参数删除、K 点设置、PP/ORB 路径、`copy/link` 资产模式
 - 支持简单的按元素共线磁矩初始化
 
+STRU 归一化保留已有赝势/轨道引用和质量，写出 ABACUS 原生 Bohr 晶格单位；旧
+Forge 的 Angstrom 单位扩展仍可读取。支持 `Direct`、`Cartesian`、
+`Cartesian_angstrom`、`Cartesian_au`；居中坐标模式和未知模式会明确报错。
+周期真空识别使用分数坐标周期间隙和晶格面间距，支持跨周期边界的薄层与斜晶胞。
+
 ### 输入编辑
 
 - `modify_input(...)` / `abacus-forge modify-input`

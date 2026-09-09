@@ -338,7 +338,7 @@ Paimon Tool adapter ──┤
         <li><strong>public API：</strong>稳定 Python 入口，直接调用 service 并返回 typed envelope；不通过 subprocess 回调 CLI。</li>
         <li><strong>CLI：</strong>request 解码、service 调用、JSON/text renderer 与 exit mapping；不得携带第二套 operation 逻辑。</li>
         <li><strong>services：</strong>接收 typed request，调用 core/engine/runner/collector，产生 execution/collection envelope 和事件。</li>
-        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；保留 STRU 的赝势/轨道引用、质量与逐原子属性，显式覆盖只改变指定项；正确处理坐标单位，未支持的坐标模式明确拒绝。周期真空识别按周期间隙和晶胞几何处理。不依赖 runner、平台或 scheduler。</li>
+        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；保留 STRU 的赝势/轨道引用、质量、已有共线磁矩与移动标志，显式覆盖只改变指定项；写出原生 Bohr 晶格单位，未支持的坐标模式明确拒绝。周期真空识别按周期间隙和晶胞几何处理。不依赖 runner、平台或 scheduler。</li>
         <li><strong>runner：</strong>只执行明确 command，返回 returncode、termination、timeout、stdout/stderr 和 runtime diagnostics。</li>
         <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。ATST 使用的后端和模型（包括 DeePMD）由 atst-tools 与调用方的配置负责，Forge 将其视为不透明配置，不选择、安装、配置或进行科学评估。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
