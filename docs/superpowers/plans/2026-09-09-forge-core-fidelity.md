@@ -47,11 +47,13 @@ Vacuum detection for full periodic cells uses the largest circular fractional ga
 
 ## Task 2: Common typed collection projection
 
-**Files:** `src/abacus_forge/relax_results.py`, new `collection_results.py` for shared projection only, `services.py`; existing `tests/test_service_status.py`, `test_cli_process.py`, `test_result_contract.py`.
+**Files:** `src/abacus_forge/relax_results.py`, new `collection_results.py` for shared typed collection/projection, `services.py`; `api.py` only if a shared internal collection hook is needed to avoid duplicate parsing; existing `tests/test_service_status.py`, `test_cli_process.py`, `test_result_contract.py`.
 
 **Interfaces:** SCF typed collect uses factual projection; Relax retains its extra final-structure requirements. Legacy `CollectionResult.to_envelope` and `api.collect` retain compatibility semantics.
 
 **Behavior:** Shared artifact filtering excludes all `reports/events/`, `reports/claims/`, workspace manifest and locks, both lexical and resolved aliases. Retain actual domain artifacts and relative paths. SCF complete requires a selected nonempty contained output log, finite parsed total energy, no relevant parser/report errors or ambiguous selection; no log is missing_output, missing energy/degraded parse is partial. Convergence true/false/missing never controls completeness. Do not require optional time/report JSON. Preserve available arrays and structures as observations; missing convergence must not become a false fact. Reuse common helpers in Relax without weakening its final-output requirement.
+
+Enforce source containment before reading selected logs or parsing artifacts; filtering only the resulting ArtifactRecord cannot undo external-file reads. Share underlying selection/parsing machinery, with the narrow typed seam subsequently moved below api in Task 3.
 
 **Test strategy:** Existing service tests cover output-only directories, marker-only partial, energy with nonconverged complete, missing convergence observation, repeated collect excluding older audit events, symlink aliases; one process parity regression guards machine transport.
 
