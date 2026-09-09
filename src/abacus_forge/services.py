@@ -32,6 +32,12 @@ from abacus_forge.relax_contracts import (
     RelaxPrepareRequest,
 )
 from abacus_forge.relax_results import collection_envelope, collection_observations
+from abacus_forge.md_contracts import (
+    MdCollectRequest,
+    MdExecuteRequest,
+    MdModifyRequest,
+    MdPrepareRequest,
+)
 from abacus_forge.runner import LocalRunner
 from abacus_forge.errors import ForgePreconditionError
 from abacus_forge.workspace import Workspace
@@ -82,6 +88,8 @@ class _AbacusServiceContext(ServiceContext):
             (RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest),
         ):
             return request.capability
+        if isinstance(request, (MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest)):
+            return request.capability
         return "scf"
 
     @staticmethod
@@ -96,7 +104,17 @@ class _AbacusServiceContext(ServiceContext):
             ScfCollectRequest: RelaxCollectRequest,
         }
         excluded_type = relax_types.get(request_type)
-        return excluded_type is None or not isinstance(request, excluded_type)
+        md_types = {
+            ScfPrepareRequest: MdPrepareRequest,
+            ScfModifyRequest: MdModifyRequest,
+            ScfExecuteRequest: MdExecuteRequest,
+            ScfCollectRequest: MdCollectRequest,
+        }
+        md_excluded_type = md_types.get(request_type)
+        return (
+            (excluded_type is None or not isinstance(request, excluded_type))
+            and (md_excluded_type is None or not isinstance(request, md_excluded_type))
+        )
 
     def require_matching_calculation(self, workspace: Workspace, task: str) -> None:
         """Require an existing INPUT to select the requested ABACUS phase."""
@@ -443,6 +461,34 @@ class RelaxServiceSet:
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
     ) -> "RelaxServiceSet":
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+
+
+class MdServiceSet:
+    """Per-operation molecular-dynamics services with MD input validation."""
+
+    def __init__(
+        self,
+        *,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+    ) -> None:
+        context = _AbacusServiceContext(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=True,
+        )
+        self.prepare: PrepareService = _PrepareService(context, MdPrepareRequest)
+        self.modify: ModifyService = _ModifyService(context, MdModifyRequest)
+        self.execute: ExecuteService = _ExecuteService(context, MdExecuteRequest)
+        self.collect: CollectService = _CollectService(context, MdCollectRequest)
+
+    @classmethod
+    def default(
+        cls,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+    ) -> "MdServiceSet":
         return cls(workspace_root=workspace_root, runner_factory=runner_factory)
 
 
