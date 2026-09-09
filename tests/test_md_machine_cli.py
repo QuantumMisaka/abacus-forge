@@ -17,6 +17,8 @@ from abacus_forge import (
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_operation_request, run_machine_cli
+from tests.support.fake_executables import write_fake_abacus
+from tests.support.process import run_cli
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
@@ -173,4 +175,56 @@ def test_md_machine_cli_matches_direct_service_facts(
     assert code == 0
     cli_result = OperationOutcome.from_dict(json.loads(stdout.getvalue()))
     assert stderr.getvalue() == ""
+    assert _fact_projection(cli_result, cli_root) == _fact_projection(api_result, api_root)
+
+
+@pytest.mark.parametrize(
+    "operation,request_type",
+    [
+        ("prepare", MdPrepareRequest),
+        ("modify", MdModifyRequest),
+        ("execute", MdExecuteRequest),
+        ("collect", MdCollectRequest),
+    ],
+)
+def test_md_subprocess_cli_matches_direct_service_facts(
+    tmp_path: Path, operation: str, request_type: type
+) -> None:
+    """The installed machine process preserves the same MD facts as the API."""
+    api_root, cli_root = tmp_path / "api", tmp_path / "cli"
+    _md_workspace(api_root, operation)
+    _md_workspace(cli_root, operation)
+    extra: dict[str, object] = {}
+    if operation == "prepare":
+        extra["structure_path_rel"] = "source.STRU"
+    elif operation == "modify":
+        extra["input_updates"] = {"md_nstep": 20}
+    elif operation == "execute":
+        extra["executable"] = str(
+            write_fake_abacus(
+                tmp_path / "fake-abacus",
+                stdout_lines=["TOTAL ENERGY = -4.2", "NORMAL END"],
+            )
+        )
+
+    api_id = "123e4567-e89b-42d3-a456-426614174020"
+    cli_id = "123e4567-e89b-42d3-a456-426614174021"
+    api_request = request_type(
+        operation_id=api_id, workspace_rel="job", capability="md", **extra
+    )
+    api_service = getattr(MdServiceSet.default(workspace_root=api_root), operation)
+    api_result = getattr(api_service, operation)(api_request)
+    assert isinstance(api_result, OperationOutcome)
+
+    payload = {
+        **_payload(operation, **extra),
+        "operation_id": cli_id,
+        "workspace_rel": "job",
+    }
+    process = run_cli(
+        "operation", operation, "--stdin", cwd=cli_root, input_text=json.dumps(payload)
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert process.stderr == ""
+    cli_result = OperationOutcome.from_dict(json.loads(process.stdout))
     assert _fact_projection(cli_result, cli_root) == _fact_projection(api_result, api_root)
