@@ -38,6 +38,10 @@ def test_process_band_files_uses_explicit_order_and_contained_outputs(tmp_path: 
 
     assert isinstance(result, ExplicitPostprocessResult)
     assert result.summary["band_files"] == ["BANDS_2.dat", "BANDS_1.dat"]
+    assert type(result.summary["num_points"]) is int
+    assert type(result.summary["num_kpoints"]) is int
+    assert type(result.summary["num_bands"]) is int
+    assert type(result.summary["num_columns"]) is int
     assert "BANDS_3.dat" not in result.summary["band_files"]
     assert result.generated_paths == (output / "band.dat", output / "band.png")
     assert all(path.parent == output for path in result.generated_paths)
@@ -130,6 +134,9 @@ def test_process_dos_files_uses_explicit_order_and_reports_missing_optional_fami
     )
 
     assert result.summary["total_dos"]["dos_files"] == ["DOS2_smearing.dat", "DOS1_smearing.dat"]
+    assert type(result.summary["total_dos"]["points"]) is int
+    assert type(result.summary["total_dos"]["energy_min"]) is float
+    assert type(result.summary["total_dos"]["spin_channels"]) is int
     assert result.summary["projected_dos"] is None
     assert result.diagnostics["missing_families"] == ["pdos"]
     assert result.generated_paths == (
@@ -193,3 +200,30 @@ def test_process_dos_files_generates_stable_data_and_plot_paths(tmp_path: Path) 
     assert (first.generated_paths[1]).read_bytes() == second.generated_paths[1].read_bytes()
     assert (first.generated_paths[2]).read_bytes() == second.generated_paths[2].read_bytes()
     assert (first.generated_paths[3]).read_bytes() == second.generated_paths[3].read_bytes()
+
+
+def test_process_dos_files_preserves_writer_io_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sources = tmp_path / "sources"
+    write_sample_dos_family_artifacts(sources)
+
+    def fail_writer(**kwargs: object) -> dict[str, str]:
+        raise PermissionError("destination is not writable")
+
+    monkeypatch.setattr("abacus_forge.dos_postprocess.postprocess_dos_family", fail_writer)
+
+    with pytest.raises(PermissionError, match="destination is not writable"):
+        process_dos_files(
+            [sources / "DOS1_smearing.dat"],
+            None,
+            None,
+            tmp_path / "output",
+            include_tdos=True,
+            include_pdos=False,
+            pdos_mode="species",
+            pdos_atom_indices=(),
+            plot_emin=-1.0,
+            plot_emax=1.0,
+            save_data=True,
+            save_plot=False,
+            suffix=None,
+        )

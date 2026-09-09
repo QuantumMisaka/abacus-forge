@@ -185,6 +185,10 @@ def process_dos_files(
                 save_plot=save_plot,
                 suffix=suffix,
             )
+        except OSError:
+            # Preserve destination and other output I/O failures for the
+            # service layer to classify separately from parser failures.
+            raise
         except PostprocessAlgorithmError:
             raise
         except Exception as exc:
@@ -324,6 +328,8 @@ def _json_value(value: Any) -> JSONValue:
         return {str(key): _json_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_value(item) for item in value]
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
     if isinstance(value, float):
         return value if math.isfinite(value) else None
     # Parser summaries currently contain Python scalars.  Keep this fallback

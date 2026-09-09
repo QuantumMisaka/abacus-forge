@@ -222,9 +222,12 @@ def _output_path(base: Path, stem: str, extension: str, suffix: str | None) -> P
 
 def _validate_suffix(suffix: str | None) -> None:
     """Reject suffixes that can escape the requested output directory."""
-    if suffix is None:
+    # Historically ``suffix=""`` selected the standard DOS.dat/PDOS.dat
+    # names.  Keep that legacy behavior while rejecting every non-empty
+    # component that could alter the output directory or filename shape.
+    if suffix is None or suffix == "":
         return
-    if not isinstance(suffix, str) or not suffix:
+    if not isinstance(suffix, str):
         raise ValueError("suffix must be a non-empty safe filename component or None")
     if "/" in suffix or "\\" in suffix or any(part in {".", ".."} for part in suffix.split("/")):
         raise ValueError("suffix must be a non-empty safe filename component or None")

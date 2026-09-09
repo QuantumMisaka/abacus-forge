@@ -59,6 +59,25 @@ def test_postprocess_dos_family_writes_suffix_outputs(tmp_path: Path) -> None:
     assert (tmp_path / "post" / "PDOS_species.dat").read_text(encoding="utf-8").splitlines()[0].strip().startswith("Energy")
 
 
+def test_postprocess_dos_family_empty_suffix_preserves_standard_names(tmp_path: Path) -> None:
+    write_sample_dos_family_artifacts(tmp_path / "raw")
+    total = DOSData.from_arrays([-1.0, 0.0, 1.0], [[0.1], [1.0], [0.2]])
+    pdos = PDOSData.from_path(tmp_path / "raw" / "PDOS")
+
+    artifacts = postprocess_dos_family(
+        output_dir=tmp_path / "post",
+        total_dos=total,
+        projected_dos=pdos,
+        save_plot=False,
+        suffix="",
+    )
+
+    assert artifacts == {
+        "DOS.dat": str(tmp_path / "post" / "DOS.dat"),
+        "PDOS.dat": str(tmp_path / "post" / "PDOS.dat"),
+    }
+
+
 @pytest.mark.parametrize("suffix", ["../escape", "..\\escape", ".", ".."])
 def test_postprocess_dos_family_rejects_unsafe_suffix_without_writing_outside_output(tmp_path: Path, suffix: str) -> None:
     total = DOSData.from_arrays([-1.0, 0.0, 1.0], [[0.1], [1.0], [0.2]])
