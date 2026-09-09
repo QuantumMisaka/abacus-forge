@@ -22,6 +22,11 @@ from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
 )
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
 from abacus_forge import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_atst_neb_request, decode_scf_request, exit_code_for, run_machine_cli
@@ -197,7 +202,7 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
 def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
     assert [descriptor["name"] for descriptor in descriptors] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band",
     ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"
@@ -232,6 +237,20 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
             "inputs": {"postprocess": ["dos_files", "pdos", "tdos"]},
             "artifact_roles": ["input", "output"],
             "optional_dependencies": [],
+        },
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "pyatb-band",
+            "maturity": "experimental",
+            "engine": "pyatb",
+            "operations": ["prepare", "execute", "collect"],
+            "inputs": {
+                "prepare": ["structure", "hr", "sr", "rr", "fermi_energy", "line_kpoints"],
+                "execute": ["prepared_workspace"],
+                "collect": ["workspace_outputs"],
+            },
+            "artifact_roles": ["input", "provenance_manifest", "output"],
+            "optional_dependencies": ["pyatb"],
         },
     ]
 
@@ -743,3 +762,98 @@ def test_machine_default_services_dispatch_relax_execute(capability: str, tmp_pa
     assert json.loads(output)["envelope"]["status"]["execution"] == "skipped"
     assert json.loads(output)["envelope"]["diagnostics"]["task"] == capability
     assert diagnostics == ""
+
+
+def _pyatb_prepare_payload() -> dict[str, object]:
+    return {
+        "schema_version": "forge.request/v1",
+        "capability": "pyatb-band",
+        "operation": "prepare",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "structure_path_rel": "inputs/STRU",
+        "hr_paths_rel": ["inputs/HR.dat"],
+        "sr_path_rel": "inputs/SR.dat",
+        "rr_path_rel": "inputs/rR.dat",
+        "fermi_energy": 1.25,
+        "line_kpoints": [
+            {"coords": [0, 0, 0], "label": "G"},
+            {"coords": [0.5, 0, 0], "label": "X"},
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_type", "payload"),
+    [
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        (
+            "execute",
+            PyatbBandExecuteRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "execute",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+        (
+            "collect",
+            PyatbBandCollectRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "collect",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+    ],
+)
+def test_decode_operation_request_routes_typed_pyatb_band_requests(
+    operation: str, request_type: type[object], payload: dict[str, object]
+) -> None:
+    request = _decode_operation_request(operation, payload)
+    assert isinstance(request, request_type)
+    assert request.to_dict()["capability"] == "pyatb-band"  # type: ignore[union-attr]
+
+
+def test_machine_pyatb_band_unknown_selectors_are_invalid_without_service() -> None:
+    payload = _pyatb_prepare_payload()
+    with pytest.raises(ForgeRequestError):
+        _decode_operation_request("prepare", {**payload, "capability": "pyatb"})
+    with pytest.raises(ForgeRequestError):
+        _decode_operation_request("modify", payload)
+
+
+def test_pyatb_band_discovery_descriptor_and_schemas_match_wire_fields() -> None:
+    descriptors = capabilities_document()["capabilities"]
+    descriptor = next(item for item in descriptors if item["name"] == "pyatb-band")
+    assert descriptor["maturity"] == "experimental"
+    assert descriptor["engine"] == "pyatb"
+    assert descriptor["operations"] == ["prepare", "execute", "collect"]
+    assert descriptor["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    for operation, request_type, payload in (
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        ("execute", PyatbBandExecuteRequest, {"operation_id": OPERATION_ID, "workspace_rel": "job"}),
+        ("collect", PyatbBandCollectRequest, {"operation_id": OPERATION_ID, "workspace_rel": "job"}),
+    ):
+        request_values = {key: value for key, value in payload.items() if key not in {"schema_version", "capability", "operation"}}
+        request = request_type(**request_values)
+        schema = request_schema_document("pyatb-band", operation)["request_schema"]
+        assert schema["additionalProperties"] is False
+        assert set(schema["properties"]) == set(request.to_dict())
+        assert set(schema["required"]) == (
+            {"schema_version", "capability", "operation", "operation_id", "workspace_rel"}
+            | ({"structure_path_rel", "hr_paths_rel", "sr_path_rel", "rr_path_rel", "fermi_energy", "line_kpoints"} if operation == "prepare" else set())
+        )
+        assert schema["properties"]["schema_version"]["const"] == "forge.request/v1"
+
+
+def test_machine_process_pyatb_schema_and_capability_discovery_are_single_documents() -> None:
+    for argv in (("capabilities",), ("schema", "pyatb-band", "prepare"), ("schema", "pyatb-band", "collect")):
+        code, output, diagnostics = _invoke(list(argv))
+        assert code == 0
+        assert diagnostics == ""
+        assert isinstance(json.loads(output), dict)

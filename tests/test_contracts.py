@@ -41,11 +41,34 @@ from abacus_forge.discovery import (
     capabilities_document,
     request_schema_document,
 )
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
 from abacus_forge.errors import ForgeRequestError
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
 RELAX_CAPABILITIES = ("relax", "cell-relax")
+
+
+def _pyatb_prepare_request(**updates: object) -> PyatbBandPrepareRequest:
+    values: dict[str, object] = {
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "structure_path_rel": "inputs/STRU",
+        "hr_paths_rel": ["inputs/HR.dat"],
+        "sr_path_rel": "inputs/SR.dat",
+        "rr_path_rel": "inputs/rR.dat",
+        "fermi_energy": 1.25,
+        "line_kpoints": [
+            {"coords": [0, 0, 0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ],
+    }
+    values.update(updates)
+    return PyatbBandPrepareRequest(**values)
 
 
 RELAX_REQUEST_CASES = (
@@ -502,7 +525,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band",
     ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
@@ -517,6 +540,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
     assert payload["capabilities"][5]["operations"] == ["postprocess"]
     assert payload["capabilities"][6]["operations"] == ["postprocess"]
+    assert payload["capabilities"][7]["operations"] == ["prepare", "execute", "collect"]
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:
@@ -1091,3 +1115,68 @@ def test_postprocess_schema_matches_dataclass_wire_and_rejects_extra_fields(
         "operation_id",
         "workspace_rel",
     }
+
+
+def test_pyatb_band_requests_round_trip_with_defaults_and_frozen_payloads() -> None:
+    request = _pyatb_prepare_request()
+    payload = request.to_dict()
+    assert payload["schema_version"] == "forge.request/v1"
+    assert payload["capability"] == "pyatb-band"
+    assert payload["operation"] == "prepare"
+    assert payload["nspin"] == 1
+    assert payload["line_segments"] == 20
+    assert payload["max_kpoint_num"] == 4000
+    assert payload["handoff_mode"] == "link"
+    assert PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(payload))) == request
+    payload["line_kpoints"][0]["coords"][0] = 99  # type: ignore[index]
+    assert request.line_kpoints[0]["coords"][0] == 0
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        request.fermi_energy = 2.0  # type: ignore[misc]
+    with pytest.raises(ValueError, match="unknown"):
+        PyatbBandPrepareRequest.from_dict({**request.to_dict(), "unknown": True})
+
+    execute = PyatbBandExecuteRequest(operation_id=OPERATION_ID, workspace_rel="job")
+    collect = PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job")
+    assert execute.to_dict()["executable"] == "pyatb"
+    assert collect.to_dict()["band_info_path_rel"] == "inputs/Out/Band_Structure/band_info.dat"
+    assert PyatbBandExecuteRequest.from_dict(json.loads(json.dumps(execute.to_dict()))) == execute
+    assert PyatbBandCollectRequest.from_dict(json.loads(json.dumps(collect.to_dict()))) == collect
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("nspin", 3),
+        ("hr_paths_rel", ["inputs/HR1.dat", "inputs/HR2.dat"]),
+        ("hr_paths_rel", []),
+        ("line_kpoints", [{"coords": [0, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0, 0], "extra": 1}, {"coords": [1, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0, float("nan")]}, {"coords": [1, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0]}, {"coords": [1, 0, 0]}]),
+        ("structure_path_rel", "../STRU"),
+        ("sr_path_rel", "a/../SR.dat"),
+        ("rr_path_rel", "/tmp/rR.dat"),
+        ("fermi_energy", float("inf")),
+        ("handoff_mode", "move"),
+    ],
+)
+def test_pyatb_band_prepare_rejects_invalid_cardinality_numbers_and_paths(
+    field: str, value: object
+) -> None:
+    with pytest.raises(ValueError, match=field):
+        _pyatb_prepare_request(**{field: value})
+
+
+def test_pyatb_band_prepare_accepts_spin_two_only_with_two_hr_paths() -> None:
+    request = _pyatb_prepare_request(nspin=2, hr_paths_rel=["inputs/HR1.dat", "inputs/HR2.dat"])
+    assert request.nspin == 2
+    assert request.hr_paths_rel == ("inputs/HR1.dat", "inputs/HR2.dat")
+    with pytest.raises(ValueError, match="hr_paths_rel"):
+        _pyatb_prepare_request(nspin=2)
+
+
+def test_pyatb_band_collect_rejects_invalid_output_path_lists() -> None:
+    with pytest.raises(ValueError, match="band_data_paths_rel"):
+        PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job", band_data_paths_rel=["../band.dat"])
+    with pytest.raises(ValueError, match="band_picture_paths_rel"):
+        PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job", band_picture_paths_rel=["a//band.png"])

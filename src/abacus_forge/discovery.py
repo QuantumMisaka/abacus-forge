@@ -25,6 +25,11 @@ from abacus_forge.md_contracts import (
     MdPrepareRequest,
 )
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -65,6 +70,11 @@ POSTPROCESS_REQUEST_TYPES = {
     "band": {"postprocess": BandPostprocessRequest},
     "dos": {"postprocess": DosPostprocessRequest},
 }
+PYATB_BAND_REQUEST_TYPES = {
+    "prepare": PyatbBandPrepareRequest,
+    "execute": PyatbBandExecuteRequest,
+    "collect": PyatbBandCollectRequest,
+}
 
 REQUEST_TYPES_BY_CAPABILITY = {
     "scf": SCF_REQUEST_TYPES,
@@ -72,6 +82,7 @@ REQUEST_TYPES_BY_CAPABILITY = {
     "cell-relax": RELAX_REQUEST_TYPES,
     "md": MD_REQUEST_TYPES,
     **POSTPROCESS_REQUEST_TYPES,
+    "pyatb-band": PYATB_BAND_REQUEST_TYPES,
 }
 
 REQUIRED_WIRE_FIELDS = {
@@ -141,6 +152,19 @@ _DOS_DESCRIPTOR = CapabilityDescriptor(
     artifact_roles=("input", "output"),
     optional_dependencies=(),
 )
+_PYATB_BAND_DESCRIPTOR = CapabilityDescriptor(
+    name="pyatb-band",
+    maturity="experimental",
+    engine="pyatb",
+    operations=("prepare", "execute", "collect"),
+    inputs={
+        "prepare": ("structure", "hr", "sr", "rr", "fermi_energy", "line_kpoints"),
+        "execute": ("prepared_workspace",),
+        "collect": ("workspace_outputs",),
+    },
+    artifact_roles=("input", "provenance_manifest", "output"),
+    optional_dependencies=("pyatb",),
+)
 
 
 def _relax_descriptor(name: str) -> CapabilityDescriptor:
@@ -195,7 +219,62 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     properties = _base_properties(operation)
     if capability != "scf":
         properties["capability"] = {"type": "string", "const": capability}
-    if capability == "band" and operation == "postprocess":
+    if capability == "pyatb-band" and operation == "prepare":
+        properties.update(
+            {
+                "structure_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                "hr_paths_rel": {
+                    "type": "array", "minItems": 1, "maxItems": 2,
+                    "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                },
+                "sr_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                "rr_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                "fermi_energy": {"type": "number"},
+                "line_kpoints": {
+                    "type": "array", "minItems": 2,
+                    "items": {
+                        "type": "object", "additionalProperties": False,
+                        "properties": {
+                            "coords": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+                            "label": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["coords"],
+                    },
+                },
+                "nspin": {"type": "integer", "enum": [1, 2], "default": 1},
+                "line_segments": {"type": "integer", "minimum": 1, "default": 20},
+                "max_kpoint_num": {"type": "integer", "minimum": 1, "default": 4000},
+                "handoff_mode": {"type": "string", "enum": ["link", "copy"], "default": "link"},
+            }
+        )
+    elif capability == "pyatb-band" and operation == "execute":
+        properties.update(
+            {
+                "executable": {"type": "string", "minLength": 1, "default": "pyatb"},
+                "mpi_ranks": {"type": "integer", "minimum": 1, "default": 1},
+                "omp_threads": {"type": "integer", "minimum": 1, "default": 1},
+                "timeout_seconds": {"type": ["number", "null"], "exclusiveMinimum": 0, "default": None},
+                "dry_run": {"type": "boolean", "default": False},
+            }
+        )
+    elif capability == "pyatb-band" and operation == "collect":
+        properties.update(
+            {
+                "band_info_path_rel": {
+                    "type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN,
+                    "default": "inputs/Out/Band_Structure/band_info.dat",
+                },
+                "band_data_paths_rel": {
+                    "type": "array", "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                    "default": [],
+                },
+                "band_picture_paths_rel": {
+                    "type": "array", "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                    "default": [],
+                },
+            }
+        )
+    elif capability == "band" and operation == "postprocess":
         properties.update(
             {
                 "source_paths_rel": {
@@ -354,13 +433,24 @@ def _representative_request(capability: str, operation: str) -> Any:
         "operation_id": "123e4567-e89b-42d3-a456-426614174000",
         "workspace_rel": ".",
     }
-    if operation == "prepare":
+    if capability == "pyatb-band" and operation == "prepare":
+        kwargs.update(
+            {
+                "structure_path_rel": "inputs/STRU",
+                "hr_paths_rel": ("inputs/HR.dat",),
+                "sr_path_rel": "inputs/SR.dat",
+                "rr_path_rel": "inputs/rR.dat",
+                "fermi_energy": 0.0,
+                "line_kpoints": ({"coords": (0.0, 0.0, 0.0)}, {"coords": (0.5, 0.0, 0.0)}),
+            }
+        )
+    elif operation == "prepare":
         kwargs["structure_path_rel"] = "source.STRU"
     elif capability == "band" and operation == "postprocess":
         kwargs["source_paths_rel"] = ("BANDS_1.dat",)
     elif capability == "dos" and operation == "postprocess":
         kwargs["dos_paths_rel"] = ("DOS1_smearing.dat",)
-    if capability not in {"scf", "band", "dos"}:
+    if capability not in {"scf", "band", "dos", "pyatb-band"}:
         kwargs["capability"] = capability
     return request_type(**kwargs)
 
@@ -408,7 +498,11 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         if name in REQUIRED_WIRE_FIELDS[operation]
         or (name == "capability" and capability != "scf")
     ]
-    if capability == "band" and operation == "postprocess":
+    if capability == "pyatb-band" and operation == "prepare":
+        required.extend(
+            ["hr_paths_rel", "sr_path_rel", "rr_path_rel", "fermi_energy", "line_kpoints"]
+        )
+    elif capability == "band" and operation == "postprocess":
         required.append("source_paths_rel")
     elif capability == "dos" and operation == "postprocess":
         required.append("dos_paths_rel")
@@ -458,7 +552,14 @@ def capabilities_document() -> dict[str, JSONValue]:
             "schema_version": CAPABILITIES_SCHEMA_VERSION,
             "capabilities": [
                 descriptor.to_dict()
-                for descriptor in (*_CAPABILITY_DESCRIPTORS, _ATST_NEB_DESCRIPTOR, _MD_DESCRIPTOR, _BAND_DESCRIPTOR, _DOS_DESCRIPTOR)
+                for descriptor in (
+                    *_CAPABILITY_DESCRIPTORS,
+                    _ATST_NEB_DESCRIPTOR,
+                    _MD_DESCRIPTOR,
+                    _BAND_DESCRIPTOR,
+                    _DOS_DESCRIPTOR,
+                    _PYATB_BAND_DESCRIPTOR,
+                )
             ],
         }
     )

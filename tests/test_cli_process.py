@@ -507,6 +507,9 @@ def test_machine_process_discovery_emits_one_json_document_and_no_diagnostics() 
         ("schema", "cell-relax", "modify"),
         ("schema", "band", "postprocess"),
         ("schema", "dos", "postprocess"),
+        ("schema", "pyatb-band", "prepare"),
+        ("schema", "pyatb-band", "execute"),
+        ("schema", "pyatb-band", "collect"),
     ):
         result = run_cli(*argv)
         assert result.returncode == 0
