@@ -79,6 +79,20 @@ Extraction seams: move `prepare` and preparation-only helpers into `preparation.
 - [ ] Run full offline suite with the interpreter/flags above; expect all pass with only opt-in skips, plus `git diff --check` exit 0.
 - [ ] Commit and report exact moved responsibilities and verification.
 
+## Task 4: Preserve metadata across primitive/conventional standardization
+
+**Evidence:** Parent probe after Task1: `primitive_to_conventional` converts Si2 with custom mass 30 and Si.upf/Si.orb to Si8 with default mass and empty metadata. Pymatgen `keep_site_properties=True` retains mass but can merge distinct site magnetic moments by choosing a representative; blindly enabling it is insufficient.
+
+**Files/interfaces:** `structure.py` existing `primitive_to_conventional` and `conventional_to_primitive`; existing `tests/test_structure.py` and `test_modify.py`. Signatures remain unchanged.
+
+**Behavior:** Preserve species PP/ORB metadata and uniform-per-species supplied masses/magnetic moments through both conversions; use existing pymatgen `keep_site_properties` support and reinstall metadata on returned ASE atoms. Explicitly reject inputs with constrained move flags or different masses/magnetic moments among atoms of one species when this normalization cannot preserve them, using `ForgeRequestError` rather than silently selecting a representative. Flags for unconstrained converted atoms remain all movable. Do not invent magnetic-symmetry or constraint-rotation algorithms.
+
+**Test strategy:** Hand-checked silicon primitive/conventional cells with custom mass/resources; compare geometry, atom count, species-bound references and mass. Test a nonuniform magnetic case and a constrained case both fail explicitly; do not infer expected data using the converter under test.
+
+- [ ] Establish RED for standardization metadata loss and silent site-property merging.
+- [ ] Implement bounded preservation/rejection and run Task1 owning-suite command, expecting pass.
+- [ ] Commit with raw RED/GREEN report and obtain independent task review.
+
 ## Remaining design work and acceptance scope
 
 Explicit typed PP/ORB asset maps and materialization policy require a dedicated request-schema increment plan after this core extraction; existing legacy asset arguments remain available. This batch restores reference preservation, but does not claim typed prepare stages source-relative external assets or validates an executable-ready complete directory. Document that limit near typed prepare usage. Follow-up must settle explicit map precedence, workspace containment, copy/link semantics, basename collision behavior and absent-asset diagnostics together, using Paimon v1.2 PP/ORB finalization as reference. Typed MD, independent export/PyATB and property algorithm promotion remain separate batches.
