@@ -109,6 +109,8 @@ def materialize_assets(
                 raise ForgeRequestError("external assets cannot be linked") from None
         if destination.exists() or destination.is_symlink():
             if destination.is_symlink() and mode == "link":
+                if destination.readlink().is_absolute():
+                    raise ForgeRequestError(f"conflicting existing destination: {destination}")
                 existing_source = (destination.parent / destination.readlink()).resolve()
                 if existing_source != source:
                     raise ForgeRequestError(f"conflicting existing destination: {destination}")
