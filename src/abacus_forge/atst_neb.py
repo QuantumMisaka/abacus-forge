@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Protocol
 from abacus_forge.contracts import ArtifactRecord, AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest, ForgeErrorEnvelope, ForgeResultEnvelope, OperationOutcome, OperationStatus
 from abacus_forge.errors import ForgePathError, ForgePreconditionError
-from abacus_forge.services import _ScfServiceContext, _observations, _with_artifact_refs
+from abacus_forge.service_support import ServiceContext
 from abacus_forge.workspace import Workspace
 
 ServiceResult = OperationOutcome | ForgeErrorEnvelope
@@ -18,21 +18,11 @@ class AtstNebExecuteServiceProtocol(Protocol):
 class AtstNebPostprocessServiceProtocol(Protocol):
     def postprocess(self, request: AtstNebPostprocessRequest) -> ServiceResult: ...
 
-class _AtstContext:
+class _AtstContext(ServiceContext):
     def __init__(self, workspace_root: str | Path = ".", atst_executable: str = "atst") -> None:
-        self.workspace_root = Path(workspace_root).resolve()
+        super().__init__(workspace_root=workspace_root)
         self.atst_executable = atst_executable
-    def workspace(self, workspace_rel: str) -> Workspace:
-        root = (self.workspace_root / workspace_rel).resolve()
-        try: root.relative_to(self.workspace_root)
-        except ValueError as error: raise ForgePathError("workspace_rel must remain under workspace_root") from error
-        return Workspace(root)
-    @staticmethod
-    def path(workspace: Workspace, value: str, field: str) -> Path:
-        candidate = (workspace.root / value).resolve()
-        try: candidate.relative_to(workspace.root)
-        except ValueError as error: raise ForgePathError(f"{field} must remain under workspace_rel") from error
-        return candidate
+    path = staticmethod(ServiceContext.workspace_path)
     @classmethod
     def contained_log_path(cls, workspace: Workspace, operation_id: str, stream: str) -> Path:
         """Resolve the log directory and final file before creating or writing it."""
@@ -60,9 +50,6 @@ class _AtstContext:
                 continue
             raise ForgePathError(f"{field} must not overwrite Forge audit paths")
         return resolved
-    @staticmethod
-    def require_file(path: Path, value: str, field: str) -> None:
-        if not path.is_file(): raise ForgePreconditionError(f"{field} file not found: {value}")
     def executable(self) -> str:
         candidate = Path(self.atst_executable)
         if candidate.is_absolute():
@@ -99,12 +86,9 @@ class _AtstContext:
         stderr_path.write_text(stderr, encoding="utf-8")
         return rc, stdout, stderr, timed_out
     def make_error(self, request: object, error: Exception) -> ForgeErrorEnvelope:
-        return _ScfServiceContext(workspace_root=self.workspace_root).error_from_exception(error, request)
+        return self.error_from_exception(error, request)
     def persist(self, workspace: Workspace, request: object, envelope: ForgeResultEnvelope, token: str) -> OperationOutcome:
-        envelope = _with_artifact_refs(envelope, request.operation_id)
-        outcome = OperationOutcome(request.operation_id, envelope, _observations(envelope))
-        workspace.append_claimed_v1_operation_event(request.operation_id, envelope.operation, outcome.to_dict(), owner_token=token)
-        return outcome
+        return super().persist(workspace, request, envelope, owner_token=token)
 
     @staticmethod
     def matches_prefix(path: Path, prefix: Path) -> bool:
@@ -122,7 +106,7 @@ class AtstNebPrepareService:
     def __init__(self, context: _AtstContext) -> None: self._context = context
     def prepare(self, request: AtstNebPrepareRequest) -> ServiceResult:
         if not isinstance(request, AtstNebPrepareRequest):
-            return _ScfServiceContext.error("request.invalid", "expected AtstNebPrepareRequest", None)
+            return ServiceContext.error("request.invalid", "expected AtstNebPrepareRequest", None)
         try:
             workspace = self._context.workspace(request.workspace_rel)
             self._context.ensure_target(workspace, workspace.root / "reports/forge-workspace.json", "forge audit path")
@@ -132,9 +116,9 @@ class AtstNebPrepareService:
             self._context.ensure_output_target(workspace, chain, "chain_path_rel")
             logs = {workspace.root / "reports/atst" / f"{request.operation_id}-{stream}.log" for stream in ("stdout", "stderr")}
             if any(path.resolve() in {item.resolve() for item in logs} for path in (init, final, chain)):
-                return _ScfServiceContext.error("request.invalid", "prepare path collides with operation log", request)
+                return ServiceContext.error("request.invalid", "prepare path collides with operation log", request)
             if chain.resolve() in {init.resolve(), final.resolve()}:
-                return _ScfServiceContext.error("request.invalid", "chain path collides with structure input", request)
+                return ServiceContext.error("request.invalid", "chain path collides with structure input", request)
             with workspace.operation_guard(request.operation_id, "prepare") as token:
                 self._context.require_file(init, request.init_structure_path_rel, "init_structure_path_rel")
                 self._context.require_file(final, request.final_structure_path_rel, "final_structure_path_rel")
@@ -152,12 +136,12 @@ class AtstNebExecuteService:
     def __init__(self, context: _AtstContext) -> None: self._context = context
     def execute(self, request: AtstNebExecuteRequest) -> ServiceResult:
         if not isinstance(request, AtstNebExecuteRequest):
-            return _ScfServiceContext.error("request.invalid", "expected AtstNebExecuteRequest", None)
+            return ServiceContext.error("request.invalid", "expected AtstNebExecuteRequest", None)
         try:
             workspace = self._context.workspace(request.workspace_rel); self._context.ensure_target(workspace, workspace.root / "reports/forge-workspace.json", "forge audit path"); config = self._context.path(workspace, request.config_path_rel, "config_path_rel")
             logs = {workspace.root / "reports/atst" / f"{request.operation_id}-{stream}.log" for stream in ("stdout", "stderr")}
             if config.resolve() in {item.resolve() for item in logs}:
-                return _ScfServiceContext.error("request.invalid", "execute path collides with operation log", request)
+                return ServiceContext.error("request.invalid", "execute path collides with operation log", request)
             with workspace.operation_guard(request.operation_id, "execute") as token:
                 self._context.require_file(config, request.config_path_rel, "config_path_rel")
                 command = [self._context.executable(), "run", str(config)]
@@ -179,15 +163,15 @@ class AtstNebPostprocessService:
         return left == right or left.parent == right.parent and (left.name.startswith(right.name + ".") or right.name.startswith(left.name + "."))
     def postprocess(self, request: AtstNebPostprocessRequest) -> ServiceResult:
         if not isinstance(request, AtstNebPostprocessRequest):
-            return _ScfServiceContext.error("request.invalid", "expected AtstNebPostprocessRequest", None)
+            return ServiceContext.error("request.invalid", "expected AtstNebPostprocessRequest", None)
         requested = [Path(request.output_prefix)]
         if request.write_latest: requested.append(Path("outputs/atst/neb-latest"))
         if request.write_neb_init_chain: requested.append(Path("outputs/atst/neb-init-chain.traj"))
         if request.plot: requested.append(Path(request.plot_label or "outputs/atst/nebplots_chain"))
         if any(self._prefixes_overlap(left, right) for i, left in enumerate(requested) for right in requested[i + 1:]):
-            return _ScfServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
+            return ServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
         if any(self._context.matches_prefix(Path(request.summary_path_rel), item) for item in requested):
-            return _ScfServiceContext.error("request.invalid", "summary_path_rel overlaps output prefix", request)
+            return ServiceContext.error("request.invalid", "summary_path_rel overlaps output prefix", request)
         try:
             workspace = self._context.workspace(request.workspace_rel)
             self._context.ensure_target(workspace, workspace.root / "reports/forge-workspace.json", "forge audit path")
@@ -201,11 +185,11 @@ class AtstNebPostprocessService:
             if request.plot: prefix_paths.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"))
             resolved_prefixes = [item.resolve() for item in prefix_paths]
             if any(self._prefixes_overlap(left, right) for i, left in enumerate(resolved_prefixes) for right in resolved_prefixes[i + 1:]):
-                return _ScfServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
+                return ServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
             if summary.resolve() == trajectory.resolve() or any(path.resolve() in {item.resolve() for item in log_paths} for path in (summary, trajectory)) or any(self._context.matches_prefix(path, item) for path in (summary, trajectory) for item in prefix_paths):
-                return _ScfServiceContext.error("request.invalid", "postprocess input/output paths collide", request)
+                return ServiceContext.error("request.invalid", "postprocess input/output paths collide", request)
             if summary.resolve() == (workspace.root / "reports/forge-workspace.json").resolve():
-                return _ScfServiceContext.error("request.invalid", "summary_path_rel collides with Forge audit path", request)
+                return ServiceContext.error("request.invalid", "summary_path_rel collides with Forge audit path", request)
             self._context.ensure_output_target(workspace, summary, "summary_path_rel")
             expected_targets = [self._context.suffixed(prefix, suffix) for prefix in (prefix,) for suffix in (".cif", ".stru")]
             if request.write_latest: expected_targets.extend((workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"))
@@ -217,9 +201,9 @@ class AtstNebPostprocessService:
                 resolved_target = self._context.ensure_output_target(workspace, target, "postprocess output")
                 resolved_expected_targets.append(resolved_target)
                 if resolved_target in protected_targets:
-                    return _ScfServiceContext.error("request.invalid", "postprocess output collides with protected workspace path", request)
+                    return ServiceContext.error("request.invalid", "postprocess output collides with protected workspace path", request)
             if len(resolved_expected_targets) != len(set(resolved_expected_targets)):
-                return _ScfServiceContext.error("request.invalid", "postprocess output targets must be distinct", request)
+                return ServiceContext.error("request.invalid", "postprocess output targets must be distinct", request)
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
                 self._context.require_file(trajectory, request.trajectory_path_rel, "trajectory_path_rel")
                 executable = self._context.executable()

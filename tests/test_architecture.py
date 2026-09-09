@@ -74,6 +74,91 @@ def test_production_modules_do_not_import_forbidden_upper_layers() -> None:
     assert violations == []
 
 
+def import_graph(source_root: Path) -> dict[str, set[str]]:
+    """Resolve absolute and package-relative imports, including re-exports."""
+    graph: dict[str, set[str]] = {}
+    for path in sorted(source_root.rglob("*.py")):
+        parts = path.relative_to(source_root).with_suffix("").parts
+        module = ".".join(("abacus_forge", *parts))
+        package = module.rsplit(".", 1)[0]
+        if parts[-1] == "__init__":
+            module = package
+        imports: set[str] = set()
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imports.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                base = node.module or ""
+                if node.level:
+                    parent = package.split(".")[:len(package.split(".")) - node.level + 1]
+                    base = ".".join((*parent, *([base] if base else [])))
+                # A named import can be either a symbol or a submodule.
+                # Prefer the submodule when present, avoiding false traversal
+                # of the package's compatibility facade for sibling imports.
+                for alias in node.names:
+                    candidate = f"{base}.{alias.name}"
+                    relative = candidate.removeprefix("abacus_forge.").replace(".", "/")
+                    if (source_root / f"{relative}.py").is_file() or (source_root / relative / "__init__.py").is_file():
+                        imports.add(candidate)
+                    else:
+                        imports.add(base)
+        graph[module] = imports
+    return graph
+
+
+def dependency_violations(
+    graph: dict[str, set[str]], roots: set[str],
+    forbidden_modules: frozenset[str] = frozenset({"abacus_forge.api"}),
+) -> list[str]:
+    violations: set[str] = set()
+    for root in sorted(roots):
+        pending = [(root,)]
+        visited: set[str] = set()
+        while pending:
+            chain = pending.pop()
+            module = chain[-1]
+            if module in visited:
+                continue
+            visited.add(module)
+            if module in forbidden_modules or module.split(".", 1)[0] in FORBIDDEN_ROOTS:
+                violations.add(" -> ".join(chain))
+                continue
+            pending.extend((*chain, target) for target in sorted(graph.get(module, ())))
+    return sorted(violations)
+
+
+def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
+    graph = import_graph(SOURCE_ROOT)
+    roots = {
+        f"abacus_forge.{name}" for name in (
+            "services", "atst_neb", "preparation", "collection",
+            "service_support", "compatibility_records", "modify",
+            "collection_results", "relax_results",
+        )
+    }
+    assert roots <= graph.keys()
+    assert dependency_violations(graph, roots) == []
+    assert dependency_violations(
+        graph, roots - {"abacus_forge.services"},
+        frozenset({"abacus_forge.api", "abacus_forge.services"}),
+    ) == []
+    support = ast.parse((SOURCE_ROOT / "service_support.py").read_text(encoding="utf-8"))
+    request_types = {
+        alias.name for node in ast.walk(support) if isinstance(node, ast.ImportFrom)
+        for alias in node.names if alias.name.endswith("Request")
+    }
+    assert request_types == set(), "generic support must not select capability request types"
+
+
+def test_dependency_gate_follows_relative_reexports_and_forbidden_transitive_imports(tmp_path: Path) -> None:
+    (tmp_path / "services.py").write_text("from . import bridge\n", encoding="utf-8")
+    (tmp_path / "bridge.py").write_text("from abacus_forge.api import prepare\nimport mcp.server\n", encoding="utf-8")
+    assert dependency_violations(import_graph(tmp_path), {"abacus_forge.services"}) == [
+        "abacus_forge.services -> abacus_forge.bridge -> abacus_forge.api",
+        "abacus_forge.services -> abacus_forge.bridge -> mcp.server",
+    ]
+
+
 def test_machine_help_exposes_frozen_commands() -> None:
     operation_help = run_cli("operation", "--help")
     assert operation_help.returncode == 0

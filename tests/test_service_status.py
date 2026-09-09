@@ -448,7 +448,7 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     services_module = __import__("abacus_forge.services", fromlist=["services"])
-    calls = {name: 0 for name in ("prepare_unit", "modify_unit", "execute", "collect")}
+    calls = {name: 0 for name in ("prepare", "modify_input", "collect")}
     for name in calls:
         original = getattr(services_module, name)
 
@@ -458,6 +458,15 @@ def test_typed_scf_services_persist_request_ids_and_facts(
 
         monkeypatch.setattr(services_module, name, counted)
 
+    runner_calls = 0
+    original_run = LocalRunner.run
+
+    def counted_run(self, *args, **kwargs):
+        nonlocal runner_calls
+        runner_calls += 1
+        return original_run(self, *args, **kwargs)
+
+    monkeypatch.setattr(LocalRunner, "run", counted_run)
     executable = write_fake_abacus(
         tmp_path / "fake-abacus",
         stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED", "NORMAL END"],
@@ -489,9 +498,21 @@ def test_typed_scf_services_persist_request_ids_and_facts(
             parameters={"ecutwfc": 80},
         )
     )
+    assert json.loads((structure.parent / "forge-unit.json").read_text()) == {
+        "kind": "abacus-forge.unit", "task": "scf", "unit": "default",
+        "engine": "abacus", "prepared": True, "source_workdir": None, "metadata": {},
+    }
+    assert json.loads((structure.parent / "meta.json").read_text())["metadata"] == {"unit": "default"}
     modified = services.modify_scf(
         _request(ScfModifyRequest, "scf", modify_id, input_updates={"ecutwfc": 90})
     )
+    assert read_input(structure.parent / "inputs/INPUT")["ecutwfc"] == "90"
+    assert json.loads((structure.parent / "forge-result.json").read_text()) == {
+        "step": "modify", "workspace": str(structure.parent), "task": "scf",
+        "unit": "default", "engine": "abacus", "status": "completed",
+        "modified_files": ["INPUT"],
+        "changes": {"INPUT": {"updates": {"ecutwfc": 90}, "removed": []}},
+    }
     executed = services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
     collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
 
@@ -505,9 +526,9 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
     assert isinstance(modified, OperationOutcome)
     assert modified.status.execution == "not_run"
-    # Typed execution calls LocalRunner.run directly; the legacy ``execute``
-    # API remains imported for compatibility but is not part of this path.
-    assert calls == {"prepare_unit": 1, "modify_unit": 1, "execute": 0, "collect": 1}
+    assert calls == {"prepare": 1, "modify_input": 1, "collect": 1}
+    assert runner_calls == 1
+    assert next(metric.value for metric in collected.envelope.metrics if metric.name == "total_energy") == -3.2
 
 
 def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path) -> None:
@@ -604,7 +625,7 @@ def test_typed_scf_missing_inputs_are_admitted_preconditions(
     def fail_modify(*args, **kwargs):
         raise AssertionError("missing-input precondition must stop before modify primitive")
 
-    monkeypatch.setattr(services_module, "modify_unit", fail_modify)
+    monkeypatch.setattr(services_module, "modify_input", fail_modify)
 
     class FailRunner:
         def preflight(self, workspace):
@@ -934,10 +955,10 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
 @pytest.mark.parametrize(
     ("operation", "primitive_name", "error_type"),
     [
-        ("prepare", "prepare_unit", TypeError),
-        ("prepare", "prepare_unit", ValueError),
-        ("modify", "modify_unit", TypeError),
-        ("modify", "modify_unit", ValueError),
+        ("prepare", "prepare", TypeError),
+        ("prepare", "prepare", ValueError),
+        ("modify", "modify_input", TypeError),
+        ("modify", "modify_input", ValueError),
     ],
 )
 def test_primitive_internal_error_is_not_request_error(
