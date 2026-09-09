@@ -56,6 +56,7 @@ SCF_WIRE_KEYS = {
     ScfPrepareRequest: {
         "schema_version", "operation", "operation_id", "workspace_rel",
         "structure_path_rel", "structure_format", "parameters",
+        "pseudo_sources", "orbital_sources", "asset_mode",
     },
     ScfModifyRequest: {
         "schema_version", "operation", "operation_id", "workspace_rel",
@@ -301,7 +302,74 @@ def test_typed_prepare_request_requires_workspace_relative_structure() -> None:
     )
     assert request.to_dict()["structure_path_rel"] == "source/STRU"
     assert request.to_dict()["parameters"] == {"ecutwfc": 80}
+    assert request.to_dict()["pseudo_sources"] == {}
+    assert request.to_dict()["orbital_sources"] == {}
+    assert request.to_dict()["asset_mode"] == "copy"
     assert ScfPrepareRequest.from_dict(request.to_dict()) == request
+
+
+def test_typed_prepare_request_round_trips_and_freezes_asset_sources() -> None:
+    pseudo_sources = {"Si": "/assets/Si.upf"}
+    orbital_sources = {"Si": "assets/Si.orb"}
+    request = ScfPrepareRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources=pseudo_sources,
+        orbital_sources=orbital_sources,
+        asset_mode="link",
+    )
+
+    pseudo_sources["Si"] = "/assets/changed.upf"
+    orbital_sources.clear()
+
+    assert request.pseudo_sources == {"Si": "/assets/Si.upf"}
+    assert request.orbital_sources == {"Si": "assets/Si.orb"}
+    with pytest.raises(TypeError):
+        request.pseudo_sources["Si"] = "/assets/changed.upf"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        request.orbital_sources["Si"] = "assets/changed.orb"  # type: ignore[index]
+    assert ScfPrepareRequest.from_dict(json.loads(json.dumps(request.to_dict()))) == request
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("pseudo_sources", None),
+        ("pseudo_sources", []),
+        ("pseudo_sources", "Si.upf"),
+        ("pseudo_sources", {"": "Si.upf"}),
+        ("pseudo_sources", {"Si": ""}),
+        ("pseudo_sources", {1: "Si.upf"}),
+        ("pseudo_sources", {"Si": 1}),
+        ("orbital_sources", None),
+        ("orbital_sources", []),
+        ("orbital_sources", "Si.orb"),
+        ("orbital_sources", {"": "Si.orb"}),
+        ("orbital_sources", {"Si": ""}),
+        ("orbital_sources", {1: "Si.orb"}),
+        ("orbital_sources", {"Si": 1}),
+    ],
+)
+def test_typed_prepare_request_rejects_invalid_asset_source_maps(field: str, value: object) -> None:
+    with pytest.raises(ValueError, match=field):
+        ScfPrepareRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="scf",
+            structure_path_rel="source.STRU",
+            **{field: value},
+        )
+
+
+@pytest.mark.parametrize("asset_mode", ["", "symlink", None, 1, [], {"mode": "copy"}])
+def test_typed_prepare_request_rejects_invalid_asset_mode(asset_mode: object) -> None:
+    with pytest.raises(ValueError, match="asset_mode"):
+        ScfPrepareRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="scf",
+            structure_path_rel="source.STRU",
+            asset_mode=asset_mode,  # type: ignore[arg-type]
+        )
 
 
 def test_typed_modify_request_exposes_narrow_input_changes() -> None:
@@ -582,6 +650,21 @@ def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> 
     schema = request_schema_document("scf", "prepare")["request_schema"]
     pattern = schema["properties"]["structure_path_rel"]["pattern"]
     assert re.fullmatch(pattern, path_value) is None
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax", "cell-relax"])
+def test_prepare_schema_exposes_typed_asset_fields(capability: str) -> None:
+    schema = request_schema_document(capability, "prepare")["request_schema"]
+    properties = schema["properties"]
+
+    for field_name in ("pseudo_sources", "orbital_sources"):
+        assert properties[field_name]["type"] == "object"
+        assert properties[field_name]["additionalProperties"] == {"type": "string"}
+        assert properties[field_name]["default"] == {}
+    assert properties["asset_mode"]["type"] == "string"
+    assert properties["asset_mode"]["enum"] == ["copy", "link"]
+    assert properties["asset_mode"]["default"] == "copy"
+    assert schema["additionalProperties"] is False
 
 
 @pytest.mark.parametrize("capability,operation", [("md", "prepare"), ("scf", "postprocess")])

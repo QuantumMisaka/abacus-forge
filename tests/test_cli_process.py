@@ -493,6 +493,60 @@ def test_machine_process_discovery_emits_one_json_document_and_no_diagnostics() 
         assert len(_parse_concatenated_json_values(result.stdout)) == 1
 
 
+def test_machine_process_decodes_valid_typed_prepare_asset_fields_before_preconditions(
+    tmp_path: Path,
+) -> None:
+    request = _operation_request(
+        "prepare",
+        "123e4567-e89b-42d3-a456-426614174228",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": "assets/Si.upf"},
+        orbital_sources={"Si": "assets/Si.orb"},
+        asset_mode="link",
+    )
+    result = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(request),
+    )
+
+    assert result.returncode == 3
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "precondition.missing"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("pseudo_sources", {"Si": 1}),
+        ("orbital_sources", {"Si": ""}),
+        ("asset_mode", "hardlink"),
+    ],
+)
+def test_machine_process_rejects_invalid_typed_prepare_asset_fields_as_request_schema(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    request = _operation_request(
+        "prepare",
+        "123e4567-e89b-42d3-a456-426614174229",
+        structure_path_rel="source.STRU",
+        **{field: value},
+    )
+    result = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(request),
+    )
+
+    assert result.returncode == 2
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "request.schema"
+
+
 def test_atst_neb_machine_process_supports_stdin_prepare_and_request_file_execute(tmp_path: Path) -> None:
     _write_neb_fixture(tmp_path)
     fake = _write_fake_atst(tmp_path / "atst")

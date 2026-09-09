@@ -36,6 +36,7 @@ _COLLECTION_STATUSES = frozenset({"not_collected", "complete", "partial", "missi
 _CHECK_STATUSES = frozenset({"passed", "failed", "warning", "unavailable"})
 _METRIC_KINDS = frozenset({"reported", "derived", "runtime"})
 _CAPABILITY_MATURITIES = frozenset({"experimental", "stable"})
+_ASSET_MODES = frozenset({"copy", "link"})
 
 
 def _json_round_trip(value: object) -> JSONValue:
@@ -90,6 +91,23 @@ def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
     if not all(isinstance(item, str) and item for item in values):
         raise ValueError(f"{field_name} must contain non-empty strings")
     return values
+
+
+def _string_mapping(value: object, field_name: str) -> Mapping[str, str]:
+    """Return an immutable JSON-safe map with non-empty string entries."""
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field_name} must be a JSON-safe object")
+    try:
+        values = dict(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{field_name} must be a JSON-safe object") from error
+    if not all(isinstance(key, str) and key for key in values):
+        raise ValueError(f"{field_name} keys must be non-empty strings")
+    if not all(isinstance(item, str) and item for item in values.values()):
+        raise ValueError(f"{field_name} values must be non-empty strings")
+    # The entry checks establish JSON-safe scalar keys and values; retain a
+    # canonical detached mapping so caller mutations cannot affect the record.
+    return _freeze_json(_json_round_trip(values))  # type: ignore[return-value]
 
 
 def _require_schema_version(value: str, expected: str) -> None:
@@ -462,6 +480,9 @@ class ScfPrepareRequest(_ScfRequest):
     structure_path_rel: str = ""
     structure_format: str | None = None
     parameters: Mapping[str, JSONValue] = field(default_factory=dict)
+    pseudo_sources: Mapping[str, str] = field(default_factory=dict)
+    orbital_sources: Mapping[str, str] = field(default_factory=dict)
+    asset_mode: Literal["copy", "link"] = "copy"
 
     def __post_init__(self) -> None:
         _ScfRequest.__post_init__(self)
@@ -475,6 +496,9 @@ class ScfPrepareRequest(_ScfRequest):
         if not isinstance(parameters, dict):
             raise ValueError("parameters must be a JSON-safe object")
         object.__setattr__(self, "parameters", _freeze_json(parameters))
+        object.__setattr__(self, "pseudo_sources", _string_mapping(self.pseudo_sources, "pseudo_sources"))
+        object.__setattr__(self, "orbital_sources", _string_mapping(self.orbital_sources, "orbital_sources"))
+        _require_literal(self.asset_mode, _ASSET_MODES, "asset_mode")
 
     def to_dict(self) -> dict[str, JSONValue]:
         payload = _ScfRequest.to_dict(self)
@@ -483,6 +507,9 @@ class ScfPrepareRequest(_ScfRequest):
                 "structure_path_rel": self.structure_path_rel,
                 "structure_format": self.structure_format,
                 "parameters": _thaw_json(self.parameters),
+                "pseudo_sources": _thaw_json(self.pseudo_sources),
+                "orbital_sources": _thaw_json(self.orbital_sources),
+                "asset_mode": self.asset_mode,
             }
         )
         return payload

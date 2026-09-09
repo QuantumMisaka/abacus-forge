@@ -162,6 +162,21 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 },
                 "structure_format": {"type": ["string", "null"], "minLength": 1, "default": None},
                 "parameters": parameters,
+                "pseudo_sources": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "default": {},
+                },
+                "orbital_sources": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "default": {},
+                },
+                "asset_mode": {
+                    "type": "string",
+                    "enum": ["copy", "link"],
+                    "default": "copy",
+                },
             }
         )
     elif operation == "modify":
