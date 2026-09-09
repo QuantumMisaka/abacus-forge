@@ -497,7 +497,9 @@ def test_capability_descriptor_rejects_invalid_values() -> None:
 def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> None:
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
-    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax", "atst-neb"]
+    assert [item["name"] for item in payload["capabilities"]] == [
+        "scf", "relax", "cell-relax", "atst-neb", "md",
+    ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
@@ -505,6 +507,10 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload["capabilities"][0]["inputs"]["prepare"].append("mutated")
     assert capabilities_document()["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert capabilities_document()["capabilities"][0]["inputs"]["prepare"] == ["structure"]
+    assert payload["capabilities"][4]["maturity"] == "experimental"
+    assert payload["capabilities"][4]["engine"] == "abacus"
+    assert payload["capabilities"][4]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:
@@ -652,7 +658,7 @@ def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> 
     assert re.fullmatch(pattern, path_value) is None
 
 
-@pytest.mark.parametrize("capability", ["scf", "relax", "cell-relax"])
+@pytest.mark.parametrize("capability", ["scf", "relax", "cell-relax", "md"])
 def test_prepare_schema_exposes_typed_asset_fields(capability: str) -> None:
     schema = request_schema_document(capability, "prepare")["request_schema"]
     properties = schema["properties"]
@@ -668,7 +674,7 @@ def test_prepare_schema_exposes_typed_asset_fields(capability: str) -> None:
     assert schema["additionalProperties"] is False
 
 
-@pytest.mark.parametrize("capability,operation", [("md", "prepare"), ("scf", "postprocess")])
+@pytest.mark.parametrize("capability,operation", [("unknown", "prepare"), ("scf", "postprocess")])
 def test_unknown_schema_selector_raises_request_error(capability: str, operation: str) -> None:
     with pytest.raises(ForgeRequestError):
         request_schema_document(capability, operation)
