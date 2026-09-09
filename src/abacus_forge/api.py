@@ -22,6 +22,7 @@ from abacus_forge.prepare_profiles import build_task_parameters
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
+from abacus_forge.structure_recognition import detect_structure_format
 from abacus_forge.workspace import Workspace
 from abacus_forge.validation import validate_inputs
 
@@ -185,6 +186,8 @@ def prepare(
             structure_payload = AbacusStructure.from_input(structure, structure_format=structure_format)
         except Exception:
             structure_payload = None
+            if _is_recognized_stru_source(structure, structure_format):
+                raise
             if not _write_structure_fallback(ws, structure):
                 raise
         if structure_payload is not None:
@@ -1195,6 +1198,23 @@ def _write_structure_fallback(workspace: Workspace, structure: Any) -> bool:
         if _looks_like_stru_text(structure):
             workspace.write_text("inputs/STRU", structure if structure.endswith("\n") else structure + "\n")
             return True
+    return False
+
+
+def _is_recognized_stru_source(structure: Any, structure_format: str | None) -> bool:
+    if structure_format is not None and structure_format.lower() == "stru":
+        return True
+    if isinstance(structure, Path):
+        try:
+            return detect_structure_format(structure) == "stru"
+        except OSError:
+            return False
+    if isinstance(structure, str):
+        if _looks_like_stru_text(structure):
+            return True
+        path = _existing_path(structure)
+        if path is not None:
+            return detect_structure_format(path) == "stru"
     return False
 
 

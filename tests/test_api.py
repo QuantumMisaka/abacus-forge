@@ -11,6 +11,7 @@ from ase.io import write as ase_write
 from abacus_forge import AbacusStructure, LocalRunner, Workspace, collect, export, perturb_structure, prepare, run
 from abacus_forge.band_data import BandData, write_sample_band_artifacts
 from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_dos_family_artifacts
+from abacus_forge.errors import ForgeRequestError
 from abacus_forge.input_io import read_input
 from abacus_forge.sample_outputs import write_sample_analysis_outputs
 from abacus_forge.structure_recognition import detect_structure_format
@@ -344,6 +345,70 @@ def test_prepare_accepts_perturbed_structure_payload(tmp_path: Path) -> None:
 
     assert np.allclose(recovered.atoms.positions[0], [0.1, 0.0, 0.0], atol=1e-6)
     assert np.allclose(recovered.atoms.positions[1], [1.3, 1.2, 1.5], atol=1e-6)
+
+
+def test_prepare_does_not_fallback_for_unrecognized_stru_coordinate_mode(tmp_path: Path) -> None:
+    source = tmp_path / "unsupported.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nSi 28.0855 Si.upf\n\n"
+        "LATTICE_CONSTANT\n2.0\nLATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nCartesian_angstrom_center_xy\nSi\n0\n1\n0 0 0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ForgeRequestError, match="unsupported coordinate mode"):
+        prepare(tmp_path / "case", task="scf", structure=source)
+
+    assert not (tmp_path / "case" / "inputs" / "STRU").exists()
+
+
+def test_prepare_parses_and_normalizes_valid_inline_stru(tmp_path: Path) -> None:
+    inline_stru = (
+        "ATOMIC_SPECIES\nSi 28.5 Si.inline.upf\n\n"
+        "LATTICE_CONSTANT\n2.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nCartesian\nSi\n0\n1\n0.25 0.5 0.75\n"
+    )
+
+    workspace = prepare(tmp_path / "inline-case", task="scf", structure=inline_stru)
+    recovered = AbacusStructure.from_input(workspace.inputs_dir / "STRU", structure_format="stru")
+
+    assert recovered.atoms.positions[0] == pytest.approx(
+        [0.5 * 0.529177210903, 1.0 * 0.529177210903, 1.5 * 0.529177210903]
+    )
+    assert recovered.atoms.get_masses().tolist() == pytest.approx([28.5])
+    assert recovered.atoms.info["abacus_species_meta"]["Si"]["pp"] == "Si.inline.upf"
+
+
+def test_prepare_rejects_unsupported_inline_stru_without_raw_fallback(tmp_path: Path) -> None:
+    inline_stru = (
+        "ATOMIC_SPECIES\nSi 28.0855 Si.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nCartesian_angstrom_center_xyz\nSi\n0\n1\n0 0 0\n"
+    )
+
+    with pytest.raises(ForgeRequestError, match="unsupported coordinate mode"):
+        prepare(tmp_path / "invalid-inline-case", task="scf", structure=inline_stru)
+
+    assert not (tmp_path / "invalid-inline-case" / "inputs" / "STRU").exists()
+
+
+def test_prepare_does_not_fallback_for_parse_error_in_recognized_stru(tmp_path: Path) -> None:
+    source = tmp_path / "malformed.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nSi not-a-mass Si.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError):
+        prepare(tmp_path / "malformed-case", task="scf", structure=source)
+
+    assert not (tmp_path / "malformed-case" / "inputs" / "STRU").exists()
 
 
 def test_prepare_supports_simple_element_level_magmoms(tmp_path: Path) -> None:

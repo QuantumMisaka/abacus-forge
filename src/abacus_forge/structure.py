@@ -11,9 +11,15 @@ import numpy as np
 from ase import Atoms
 from ase.io import read as ase_read
 
+from abacus_forge.errors import ForgeRequestError
 from abacus_forge.structure_recognition import StructureMetadata, detect_structure_format, get_structure_metadata
 
 BOHR_TO_ANG = 0.529177210903
+_NATIVE_LATTICE_CONSTANT_BOHR = 1.0 / BOHR_TO_ANG
+
+
+class UnsupportedCoordinateModeError(ForgeRequestError):
+    """The STRU coordinate mode is not supported by the Forge reader."""
 
 
 @dataclass(slots=True)
@@ -54,6 +60,9 @@ class AbacusStructure:
                     pbc=[True, True, True],
                 )
                 return cls(atoms, source_format=structure_format or "mapping")
+
+        if isinstance(value, str) and detect_structure_format("inline", text=value) == "stru":
+            return cls(_read_stru_text(value), source_format="stru")
 
         path = Path(value)
         fmt = (structure_format or detect_structure_format(path)).lower()
@@ -123,7 +132,15 @@ class AbacusStructure:
         return AbacusStructure(swapped, source_format=self.source_format)
 
     def make_supercell(self, repeats: tuple[int, int, int] | list[int]) -> "AbacusStructure":
-        return AbacusStructure(self.atoms.repeat(repeats), source_format=self.source_format)
+        repeated = self.atoms.repeat(repeats)
+        source_move_flags = self.atoms.info.get("abacus_move_flags")
+        if isinstance(source_move_flags, list) and len(source_move_flags) == len(self.atoms):
+            repeated.info["abacus_move_flags"] = [
+                list(flag)
+                for _ in range(int(np.prod(repeats)))
+                for flag in source_move_flags
+            ]
+        return AbacusStructure(repeated, source_format=self.source_format)
 
     def to_stru(
         self,
@@ -135,7 +152,22 @@ class AbacusStructure:
         order = np.argsort(atoms.get_atomic_numbers(), kind="stable")
         symbols = [atoms[idx].symbol for idx in order]
         species = list(OrderedDict.fromkeys(symbols))
-        masses = {atom.symbol: atom.mass for atom in atoms}
+        species_meta = _species_metadata(atoms)
+        masses: dict[str, float] = {}
+        for symbol, atom in zip(symbols, (atoms[idx] for idx in order), strict=False):
+            masses.setdefault(symbol, float(atom.mass))
+        pp_values = {
+            symbol: _resolved_species_value(symbol, "pp", pp_map, species_meta)
+            for symbol in species
+        }
+        orbital_values = {
+            symbol: _resolved_species_value(symbol, "orb", orb_map, species_meta)
+            for symbol in species
+        }
+        if any(orbital_values.values()) and not all(orbital_values.values()):
+            raise ValueError(
+                "NUMERICAL_ORBITAL requires an orbital reference for every species"
+            )
         scaled_positions = atoms.get_scaled_positions(wrap=False)[order]
         magmoms = (
             atoms.get_initial_magnetic_moments()[order]
@@ -151,21 +183,18 @@ class AbacusStructure:
             "ATOMIC_SPECIES",
         ]
         for symbol in species:
-            lines.append(f"{symbol} {masses[symbol]:.6f} {pp_map.get(symbol, '') if pp_map else ''}".rstrip())
-        if orb_map:
+            pp = pp_values[symbol]
+            lines.append(f"{symbol} {masses[symbol]:.6f} {pp}".rstrip())
+        if all(orbital_values.values()) and orbital_values:
             lines.extend(["", "NUMERICAL_ORBITAL"])
             for symbol in species:
-                orbital = orb_map.get(symbol)
-                if orbital:
-                    lines.append(str(orbital))
+                lines.append(orbital_values[symbol])
 
         lines.extend(
             [
                 "",
                 "LATTICE_CONSTANT",
-                "1.0",
-                "LATTICE_CONSTANT_UNIT",
-                "Angstrom",
+                f"{_NATIVE_LATTICE_CONSTANT_BOHR:.12f}",
                 "",
                 "LATTICE_VECTORS",
             ]
@@ -194,8 +223,37 @@ class AbacusStructure:
         return "\n".join(lines) + "\n"
 
 
+def _species_metadata(atoms: Atoms) -> dict[str, Mapping[str, str | float]]:
+    metadata = atoms.info.get("abacus_species_meta")
+    if not isinstance(metadata, Mapping):
+        return {}
+    return {
+        str(symbol): values
+        for symbol, values in metadata.items()
+        if isinstance(values, Mapping)
+    }
+
+
+def _resolved_species_value(
+    symbol: str,
+    field: str,
+    overrides: Mapping[str, str] | None,
+    metadata: Mapping[str, Mapping[str, str | float]],
+) -> str:
+    if overrides is not None:
+        override = overrides.get(symbol)
+        if override is not None and str(override).strip():
+            return str(override)
+    source_value = metadata.get(symbol, {}).get(field, "")
+    return str(source_value) if source_value is not None else ""
+
+
 def _read_stru(path: Path) -> Atoms:
-    lines = [line.rstrip("\n") for line in path.read_text(encoding="utf-8", errors="ignore").splitlines()]
+    return _read_stru_text(path.read_text(encoding="utf-8", errors="ignore"))
+
+
+def _read_stru_text(text: str) -> Atoms:
+    lines = [line.rstrip("\n") for line in text.splitlines()]
     species_meta: dict[str, dict[str, str | float]] = {}
     lattice_constant = 1.0
     lattice_unit = "bohr"
@@ -316,12 +374,19 @@ def _read_stru(path: Path) -> Atoms:
         scale = lattice_constant * BOHR_TO_ANG
     cell = np.array(lattice_vectors, dtype=float) * scale
     coords = np.array(positions, dtype=float)
-    if coordinate_mode.startswith("cartesian_angstrom"):
+    if coordinate_mode == "cartesian_angstrom":
         atoms = Atoms(symbols=symbols, positions=coords, cell=cell, pbc=[True, True, True])
-    elif coordinate_mode.startswith("cartesian"):
+    elif coordinate_mode == "cartesian_au":
         atoms = Atoms(symbols=symbols, positions=coords * BOHR_TO_ANG, cell=cell, pbc=[True, True, True])
-    else:
+    elif coordinate_mode == "cartesian":
+        atoms = Atoms(symbols=symbols, positions=coords * scale, cell=cell, pbc=[True, True, True])
+    elif coordinate_mode == "direct":
         atoms = Atoms(symbols=symbols, scaled_positions=coords, cell=cell, pbc=[True, True, True])
+    else:
+        raise UnsupportedCoordinateModeError(
+            f"unsupported coordinate mode: {coordinate_mode or '<empty>'}"
+        )
+    atoms.set_masses([float(species_meta[symbol]["mass"]) for symbol in symbols])
     atoms.set_initial_magnetic_moments(magmoms)
     atoms.info["abacus_move_flags"] = move_flags
     atoms.info["abacus_species_meta"] = species_meta

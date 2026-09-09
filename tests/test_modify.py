@@ -91,6 +91,23 @@ def test_modify_stru_supports_supercell_and_validate_shapes() -> None:
         modify_stru(structure, move_flags=[[1, 1, 1], [0, 0, 0]])
 
 
+def test_modify_stru_remaps_move_flags_after_supercell_and_vacancy() -> None:
+    atoms = Atoms(
+        symbols=["O", "Si"],
+        positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        cell=[[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]],
+        pbc=True,
+    )
+    atoms.set_masses([17.0, 29.0])
+    atoms.info["abacus_move_flags"] = [[1, 0, 0], [0, 1, 1]]
+
+    modified = modify_stru(atoms, supercell=(2, 1, 1), vacancy_indices=[2])
+
+    assert modified.atoms.get_chemical_symbols() == ["O", "O", "Si"]
+    assert modified.atoms.get_masses().tolist() == pytest.approx([17.0, 17.0, 29.0])
+    assert modified.atoms.info["abacus_move_flags"] == [[1, 0, 0], [1, 0, 0], [0, 1, 1]]
+
+
 def test_modify_stru_supports_element_defaults_and_afm(tmp_path) -> None:
     atoms = Atoms(
         symbols=["Fe", "Fe", "O"],
