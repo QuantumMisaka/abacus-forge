@@ -168,7 +168,7 @@ class AbacusStructure:
             for symbol in species
         }
         if any(orbital_values.values()) and not all(orbital_values.values()):
-            raise ValueError(
+            raise ForgeRequestError(
                 "NUMERICAL_ORBITAL requires an orbital reference for every species"
             )
         scaled_positions = atoms.get_scaled_positions(wrap=False)[order]

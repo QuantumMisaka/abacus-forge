@@ -91,6 +91,8 @@ def materialize_assets(
             basename = source.name
             if basename in {"", ".", ".."} or Path(basename).name != basename:
                 raise ForgeRequestError(f"unsafe asset basename: {basename}")
+            if any(character.isspace() for character in basename) or basename.startswith("#"):
+                raise ForgeRequestError(f"asset basename is not a single STRU token: {basename}")
             entries.append((family, str(species), source))
 
     destinations: dict[str, tuple[Path, Path]] = {}

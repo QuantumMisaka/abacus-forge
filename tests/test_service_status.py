@@ -1238,6 +1238,85 @@ def test_typed_prepare_asset_failures_are_fail_closed_before_domain_writes(
     assert assets["Si_upf"].exists()
 
 
+@pytest.mark.parametrize("basename", ["bad name.upf", "#hidden.upf"])
+def test_typed_prepare_rejects_non_token_asset_basename_before_writes(
+    tmp_path: Path, basename: str
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    source = tmp_path / "scf" / basename
+    source.write_bytes(b"invalid basename")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174239",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(source)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not any(inputs.iterdir())
+
+
+def test_typed_prepare_disambiguates_case_folded_artifact_ids(tmp_path: Path) -> None:
+    _typed_si_o_fixture(tmp_path)
+    first = tmp_path / "scf" / "a" / "atom.upf"
+    second = tmp_path / "scf" / "b" / "ATOM.upf"
+    first.parent.mkdir(); second.parent.mkdir()
+    first.write_bytes(b"first"); second.write_bytes(b"second")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174240",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(first), "O": str(second)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    input_artifacts = [a for a in result.envelope.artifacts if a.role == "input"]
+    ids = [a.id for a in input_artifacts]
+    assert len(ids) == len(set(ids))
+    assert "input-stru" in ids
+    assert "input-input" in ids
+    assert "input-atom.upf" not in ids
+    assert sum(item.startswith("input-atom.upf-") for item in ids) == 2
+
+
+def test_typed_prepare_rejects_partial_orbital_map_without_orbital_metadata(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "scf"
+    workspace.mkdir(parents=True)
+    (workspace / "source.STRU").write_text(
+        "ATOMIC_SPECIES\nSi 28.085500 Si.upf\nO 15.999000 O.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\nLATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+        "LATTICE_VECTORS\n4 0 0\n0 4 0\n0 0 4\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0 m 1 1 1\n"
+        "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n",
+        encoding="utf-8",
+    )
+    orbital = workspace / "Si.orb"
+    orbital.write_bytes(b"si orbital")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174241",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        orbital_sources={"Si": str(orbital)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = workspace / "inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / orbital.name).exists()
+
+
 @pytest.mark.parametrize(
     ("operation", "primitive_name", "error_type"),
     [

@@ -78,6 +78,13 @@ def test_to_stru_writes_orbital_map_for_lcao_inputs() -> None:
     assert "O.orb" in text
 
 
+def test_to_stru_rejects_partial_orbital_map_as_request_error() -> None:
+    atoms = Atoms("SiO", cell=[4, 4, 4], pbc=True)
+
+    with pytest.raises(ForgeRequestError, match="NUMERICAL_ORBITAL"):
+        AbacusStructure.from_input(atoms).to_stru(orb_map={"Si": "Si.orb"})
+
+
 def test_stru_roundtrip_preserves_species_metadata_and_masses_after_sorting(tmp_path: Path) -> None:
     source = tmp_path / "source.STRU"
     source.write_text(

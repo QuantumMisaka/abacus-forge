@@ -185,14 +185,42 @@ def _manifest_artifact(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
 
 def _prepare_artifacts(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
     records = list(_manifest_artifact(workspace))
+    used_ids = {record.id for record in records}
     if workspace.inputs_dir.is_dir():
-        for path, resolved in _contained_files(workspace, workspace.inputs_dir):
+        files = _contained_files(workspace, workspace.inputs_dir)
+        base_ids = [
+            f"input-{path.relative_to(workspace.inputs_dir).as_posix().replace('/', '-').lower()}"
+            for path, _ in files
+        ]
+        base_counts = {base_id: base_ids.count(base_id) for base_id in set(base_ids)}
+        for (path, resolved), base_id in zip(files, base_ids, strict=True):
             relative = path.relative_to(workspace.root.resolve()).as_posix()
+            artifact_id = base_id
+            if base_counts[base_id] > 1:
+                digest = hashlib.sha256(relative.encode("utf-8")).hexdigest()
+                suffix_length = 12
+                attempt = 0
+                while True:
+                    suffix = digest[:suffix_length]
+                    if attempt:
+                        suffix = f"{suffix}-{attempt}"
+                    artifact_id = f"{base_id}-{suffix}"
+                    if artifact_id not in used_ids:
+                        break
+                    attempt += 1
+            elif artifact_id in used_ids:
+                digest = hashlib.sha256(relative.encode("utf-8")).hexdigest()
+                artifact_id = f"{base_id}-{digest[:12]}"
+                attempt = 0
+                while artifact_id in used_ids:
+                    attempt += 1
+                    artifact_id = f"{base_id}-{digest[:12]}-{attempt}"
             records.append(ArtifactRecord(
-                id=f"input-{path.relative_to(workspace.inputs_dir).as_posix().replace('/', '-').lower()}",
+                id=artifact_id,
                 path_rel=relative, role="input", stage="prepare",
                 sha256=hashlib.sha256(resolved.read_bytes()).hexdigest(), size_bytes=resolved.stat().st_size,
             ))
+            used_ids.add(artifact_id)
     return tuple(records)
 
 
