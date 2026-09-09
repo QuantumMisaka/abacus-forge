@@ -65,7 +65,8 @@ def materialize_assets(
     if target.exists() and not target.is_dir():
         raise ForgeRequestError("target_inputs must be a directory")
     entries: list[tuple[str, str, Path]] = []
-    for family, mapping in (("pseudo", pseudo_sources or {}), ("orbital", orbital_sources or {})):
+    for family, supplied in (("pseudo", pseudo_sources), ("orbital", orbital_sources)):
+        mapping = {} if supplied is None else supplied
         if not hasattr(mapping, "items"):
             raise ForgeRequestError("asset sources must be mappings")
         for species, raw_source in mapping.items():

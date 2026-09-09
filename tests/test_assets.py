@@ -124,3 +124,10 @@ def test_source_symlink_and_target_file_fail_without_writes(tmp_path):
     with pytest.raises(ForgePreconditionError): materialize_assets(root / "target", root, {"Si": "alias.upf"})
     target = root / "target"; target.write_bytes(b"not-dir")
     with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source})
+
+
+@pytest.mark.parametrize("supplied", [[], "", False])
+def test_falsy_non_mapping_sources_are_rejected_before_target_creation(tmp_path, supplied):
+    root = tmp_path / "w"; root.mkdir(); target = root / "target"
+    with pytest.raises(ForgeRequestError): materialize_assets(target, root, supplied)
+    assert not target.exists()
