@@ -18,6 +18,9 @@ from abacus_forge.contracts import (
     ScfExecuteRequest,
     ScfModifyRequest,
     ScfPrepareRequest,
+    AtstNebPrepareRequest,
+    AtstNebExecuteRequest,
+    AtstNebPostprocessRequest,
     canonical_relative_path,
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
@@ -31,7 +34,14 @@ from abacus_forge.errors import (
     normalize_error_message,
     OperationConflictError,
 )
-from abacus_forge.services import ScfServiceSet, ServiceResult
+from abacus_forge.services import ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.atst_neb import AtstNebServiceSet
+from abacus_forge.relax_contracts import (
+    RelaxCollectRequest,
+    RelaxExecuteRequest,
+    RelaxModifyRequest,
+    RelaxPrepareRequest,
+)
 
 
 _SCF_DECODERS = {
@@ -40,6 +50,29 @@ _SCF_DECODERS = {
     "execute": ScfExecuteRequest.from_dict,
     "collect": ScfCollectRequest.from_dict,
 }
+_ATST_NEB_DECODERS = {
+    "prepare": AtstNebPrepareRequest.from_dict,
+    "execute": AtstNebExecuteRequest.from_dict,
+    "postprocess": AtstNebPostprocessRequest.from_dict,
+}
+_RELAX_DECODERS = {
+    "prepare": RelaxPrepareRequest.from_dict,
+    "modify": RelaxModifyRequest.from_dict,
+    "execute": RelaxExecuteRequest.from_dict,
+    "collect": RelaxCollectRequest.from_dict,
+}
+_CAPABILITY_DECODERS = {
+    "scf": _SCF_DECODERS,
+    "relax": _RELAX_DECODERS,
+    "cell-relax": _RELAX_DECODERS,
+    "atst-neb": _ATST_NEB_DECODERS,
+}
+_RELAX_REQUEST_TYPES = (
+    RelaxPrepareRequest,
+    RelaxModifyRequest,
+    RelaxExecuteRequest,
+    RelaxCollectRequest,
+)
 _MACHINE_OPERATIONS = ("prepare", "modify", "execute", "collect", "postprocess", "export")
 _ERROR_EXIT_CODES = {
     "request.invalid": 2,
@@ -211,9 +244,9 @@ def _preflight(operation: str, payload: object) -> None:
         raise ForgePathError("workspace_rel must be a canonical relative path") from error
 
 
-def decode_scf_request(operation: str, payload: object):
+def _decode_request(operation: str, payload: object, decoders: Mapping[str, Any]):
     """Decode one supported SCF operation through its explicit typed decoder."""
-    decoder = _SCF_DECODERS.get(operation)
+    decoder = decoders.get(operation)
     if decoder is None:
         raise ForgeRequestError("operation is not implemented by the v1 machine adapter")
     _preflight(operation, payload)
@@ -223,6 +256,27 @@ def decode_scf_request(operation: str, payload: object):
         raise
     except (TypeError, ValueError, KeyError) as error:
         raise ForgeSchemaError("request fields do not match the operation schema") from error
+
+
+def decode_scf_request(operation: str, payload: object):
+    """Decode one supported SCF operation through its explicit typed decoder."""
+    return _decode_request(operation, payload, _SCF_DECODERS)
+
+
+def decode_atst_neb_request(operation: str, payload: object):
+    """Decode one ATST NEB operation through its explicit typed decoder."""
+    if not isinstance(payload, Mapping) or payload.get("capability") != "atst-neb":
+        raise ForgeRequestError("ATST NEB requests require capability='atst-neb'")
+    return _decode_request(operation, payload, _ATST_NEB_DECODERS)
+
+
+def decode_operation_request(operation: str, payload: object):
+    """Decode one request using the explicit capability registry."""
+    _preflight(operation, payload)
+    capability = payload.get("capability", "scf")  # type: ignore[union-attr]
+    if not isinstance(capability, str) or capability not in _CAPABILITY_DECODERS:
+        raise ForgeRequestError("unknown capability")
+    return _decode_request(operation, payload, _CAPABILITY_DECODERS[capability])
 
 
 def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelope:
@@ -243,7 +297,7 @@ def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelo
     return _error("internal.failure", "unexpected Forge machine adapter failure", payload)
 
 
-def _dispatch(operation: str, request: object, services: ScfServiceSet) -> ServiceResult:
+def _dispatch(operation: str, request: object, services: object) -> ServiceResult:
     service = getattr(services, operation)
     method = getattr(service, operation)
     return method(request)
@@ -330,7 +384,8 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | None = None,
+    atst_services: AtstNebServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
     parser = build_machine_parser()
@@ -369,16 +424,21 @@ def run_machine_cli(
     payload: object = None
     try:
         payload = _read_request(args, stdin=stdin, cwd=Path(cwd))
-        if args.operation in {"postprocess", "export"}:
-            raise ForgeRequestError("operation is not implemented by the v1 machine adapter")
-        request = decode_scf_request(args.operation, payload)
+        request = decode_operation_request(args.operation, payload)
     except (ForgeRequestError, ForgePathError, ForgeSchemaError) as error:
         result = _error_from_exception(error, payload)
         stdout.write(_render(result, output_format=args.output_format, pretty=args.pretty))
         return exit_code_for(result)
 
     try:
-        service_set = services if services is not None else ScfServiceSet.default(workspace_root=Path(cwd))
+        if services is not None:
+            service_set = services
+        elif isinstance(request, (AtstNebPrepareRequest, AtstNebExecuteRequest, AtstNebPostprocessRequest)):
+            service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, _RELAX_REQUEST_TYPES):
+            service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
+        else:
+            service_set = ScfServiceSet.default(workspace_root=Path(cwd))
         result = _dispatch(args.operation, request, service_set)
         if not isinstance(result, (OperationOutcome, ForgeErrorEnvelope)):
             raise TypeError("service returned an unsupported result")
@@ -391,7 +451,9 @@ def run_machine_cli(
 
 __all__ = [
     "build_machine_parser",
+    "decode_operation_request",
     "decode_scf_request",
+    "decode_atst_neb_request",
     "exit_code_for",
     "render_json",
     "render_result",

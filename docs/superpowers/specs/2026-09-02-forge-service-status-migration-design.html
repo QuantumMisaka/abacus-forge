@@ -129,7 +129,7 @@
       <h2>摘要</h2>
       <p>ABACUS-Forge 是 Paimon v1.3 的协议无关 ABACUS 单元操作基座，也是面向人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）的快捷消费面。它以单工作目录、版本化 contracts、稳定 Python API 和 Agent-first CLI 提供输入准备、执行、结果收集、后处理与导出；不是调度平台、厚 workflow 或科学判断层。</p>
       <p>本 SPEC 整合当前已确认的产品定位、消费模式、职责边界与 Service/Status 迁移决策。它在 2026-09-01 契约优先设计之上细化下一阶段的公共行为；保留已验证的解析、结构处理和旧 API/CLI 兼容层，不进行一次性重写。</p>
-      <div class="decision"><p><strong>职责结论：</strong>Forge 只返回执行事实、解析观察、产物和收集完整性。科学验证与接受判断、任务编排、重试/续算以及平台和调度选择全部上移到人类/Agent；Forge 不生成 <code>accepted</code>、<code>guarded</code> 或 <code>rejected</code> 等科学结论。</p></div>
+      <div class="decision"><p><strong>职责结论：</strong>Forge 只返回执行事实、解析观察、产物和收集完整性。科学验证与接受判断、任务编排、重试/续算以及平台和调度选择全部上移到人类/Agent；Forge 不生成 <code>accepted</code>、<code>guarded</code> 或 <code>rejected</code> 等科学结论。</p><p><strong>默认输入策略：</strong>ABACUS prepare profile 的 <code>dft_functional</code> 默认值显式为 <code>pbe</code>；调用方仍可通过 typed request 或参数覆盖。该默认是输入生成策略，不是科学验证或接受结论。</p></div>
     </section>
 
     <section id="consumption">
@@ -323,7 +323,7 @@ Paimon Tool adapter ──┤
                  │        │          ├── collector / postprocessor → domain facts + checks
                  │        ├── runner → process observation + stdout/stderr artifacts
                  ├── prepare/modify core → inputs + provenance artifacts
-                 └── engine adapter (ABACUS / PyATB) → command and raw domain output
+                 └── engine adapter (ABACUS / PyATB / optional atst-tools) → command and raw domain output
                          │
                          ▼
              ForgeResultEnvelope + append-only Workspace event
@@ -339,9 +339,9 @@ Paimon Tool adapter ──┤
         <li><strong>services：</strong>接收 typed request，调用 core/engine/runner/collector，产生 execution/collection envelope 和事件。</li>
         <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；不依赖 runner、平台或 scheduler。</li>
         <li><strong>runner：</strong>只执行明确 command，返回 returncode、termination、timeout、stdout/stderr 和 runtime diagnostics。</li>
-        <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；不决定上层 workflow 状态。</li>
+        <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。ATST 使用的后端和模型（包括 DeePMD）由 atst-tools 与调用方的配置负责，Forge 将其视为不透明配置，不选择、安装、配置或进行科学评估。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
-        <li><strong>packs：</strong>以具名 capability 暴露 SCF、relax、band、DOS、PyATB 与 property 等快捷入口；声明 maturity、supported operations、artifact、engine 和可选依赖。</li>
+        <li><strong>packs：</strong>以具名 capability 暴露 SCF、relax、band、DOS、PyATB 与 property 等快捷入口；未来可扩展可选的 atst-tools NEB capability；每项声明 maturity、supported operations、artifact、engine 和可选依赖。</li>
         <li><strong>compat：</strong>把 <code>UnitSpec</code>、旧 result 对象和旧文件投影到新 service；新代码不得反向依赖旧 God Object。</li>
       </ul>
       <h3>最小接口形态</h3>
@@ -352,9 +352,9 @@ ExecuteService.execute(ExecuteRequest) -&gt; OperationOutcome | ForgeErrorEnvelo
 CollectService.collect(CollectRequest) -&gt; OperationOutcome | ForgeErrorEnvelope
 PostprocessService.postprocess(PostprocessRequest) -&gt; OperationOutcome | ForgeErrorEnvelope
 ExportService.export(ExportRequest) -&gt; OperationOutcome | ForgeErrorEnvelope</pre>
-      <p><strong>首切片豁免注记（2026-09-03 审查修订）：</strong>首个 SCF 切片允许以任务限定 service facade（如 <code>ForgeServices.prepare_scf(ScfPrepareRequest)</code>）交付，条件：每个方法恰好消费一个 typed request 并返回冻结的 envelope/观察载体；facade 不持有跨 operation 状态、编排或科学判断；Stage 4（relax/MD/postprocess/PyATB）开始前必须收敛为按 operation 的 protocol 形态，或在本 SPEC 另行登记豁免。本注记是 PLAN 偏离最小接口形态的唯一依据；未登记偏离仍按「PLAN 不得发明或推翻 SPEC」处理。</p>
+      <p>Stage 3 已交付按 operation 的 protocol 与 <code>ScfServiceSet</code>；<code>ForgeServices</code> 仅保留为旧调用方的委托 shim。后续 capability 沿用窄 service 接口和共用的 workspace/event 机制。</p>
       <p>所有 service 都使用同一 <code>Workspace</code>、<code>ArtifactRecord</code>、<code>OperationStatus</code> 和 event persistence；跨 workspace 的 DAG、资源选择、重试编排由上层实现。</p>
-      <p><code>PostprocessRequest</code> 是对后处理程序或纯解析器的显式描述，允许它拥有自己的 <code>operation_id</code> 与输入 artifact refs；它不改变上游 ABACUS execute/collect 的状态，也不赋予 Forge 编排、调度或报告职责。当前泛型 <code>ForgeRequest</code> 的五动词兼容集合不被静默扩大；新 <code>PostprocessRequest</code> 由独立 typed request registry 与 compat mapping 引入。</p>
+      <p><code>PostprocessRequest</code> 是对后处理程序或纯解析器的显式描述，允许它拥有自己的 <code>operation_id</code> 与输入 artifact refs；它不改变上游 ABACUS execute/collect 的状态，也不赋予 Forge 编排、调度或报告职责。可选 atst-tools adapter 承接外部 <code>atst neb post</code> 时，映射为 Forge 的 <code>postprocess</code> operation，不新增顶层 <code>post</code> 动词。当前泛型 <code>ForgeRequest</code> 的五动词兼容集合不被静默扩大；新 <code>PostprocessRequest</code> 由独立 typed request registry 与 compat mapping 引入。</p>
     </section>
 
     <section id="errors">
@@ -406,16 +406,21 @@ rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" \
 
     <section id="rollout">
       <h2>迁移与发布</h2>
+      <p>2026-09-09 收口：Stage 3 已合并至 <code>a800b64</code>，Stage 4 首批 relax/cell-relax 与可选 atst-tools NEB adapter 已按独立 PLAN 落地到整合分支；当前这些能力均保持 <code>experimental</code>，稳定发布仍需各自的 compat、benchmark、clean-environment 与 real-smoke 证据。后续批次仍包括 MD、独立 postprocess/export 与 PyATB；各批次继续独立提供 PLAN 和验证证据。</p>
       <ol>
         <li><strong>Stage 0 — Contract freeze：</strong>本 SPEC 已批准；锁定 operation admission/event/artifact refs、outcome/error envelope 与 exit class、公共 API/CLI 双稳定面、execution/collection 状态、JSON stdout 与旧兼容边界。</li>
         <li><strong>Stage 1 — Request/API：</strong>新增 per-operation request、UUIDv4 event mapping、artifact-ref validator 与稳定 Python API；不改变旧 API/CLI，补齐 operation/observation matrix 和 API contract tests。</li>
         <li><strong>Stage 2 — SCF vertical slice：</strong>以 SCF prepare → modify → execute → collect 贯通 service、ABACUS engine、runner、collector、workspace event 与 API；移除 v1 对日志片段的静默 skip，确认旧输出兼容。</li>
         <li><strong>Stage 3 — Agent-first CLI：</strong>加入 request-file/stdin、capability/schema discovery、默认 JSON stdout/error envelope、exit class 与 process parity tests；legacy CLI 维持兼容。</li>
-        <li><strong>Stage 4 — Relax/MD/postprocess/PyATB：</strong>按真实证据迁移单元操作和解析能力；各 capability 只声明自己实际支持的输入、命令和产物。</li>
+        <li><strong>Stage 4 — Relax/MD/postprocess/PyATB/optional ATST NEB：</strong>按真实证据迁移单元操作和解析能力；可选 atst-tools NEB 适配器只复用 Forge 的 prepare/execute/postprocess operation，并把图像/链路编排及并行执行委托给 atst-tools；各 capability 只声明自己实际支持的输入、命令和产物，Slurm 与站点调度保持在 Forge 外。</li>
         <li><strong>Stage 5 — Adapter/UX/上层验收：</strong>在新的独立 <code>paimon-v3</code> 仓实现 Paimon thin adapter；TUI 在稳定 API/CLI 之后按需实现；由上层完成科学判断、编排与平台适配，并完成 compat、benchmark、real_smoke 与 shim hardening。</li>
       </ol>
       <p>每个 Stage 都是独立可审查的计划和提交。Stage 2 之前不得将 Paimon v1.2 切换为新后端；任何能力只有在 compat、benchmark 和 real_smoke 证据满足后才进入 Paimon v1.3 稳定面。<code>paimon-v3</code> 是独立于 Forge 的 Agent/adapter/benchmark 发布源；当前 <code>app-tools/toolbox/ABACUS</code> 继续维护 v1.2，并只在受控部署时消费 v3 产物，不复制 Forge 或 Paimon 核心逻辑。已结项 <code>paimon/</code> 保持历史证据库，不作为 v1.3 开发基线。TUI 不是 v1.3 后端切换门槛。</p>
       <p>回滚策略是保留旧 shim 和事件记录：若新 service 或 engine adapter 失败，上层可回退到旧 API；不得删除已经写入的 workspace event 或覆盖旧兼容文件。</p>
+      <h3 id="stage4-relax">Stage 4 首批：relax / cell-relax</h3>
+      <p>新增四种 Relax typed request，均显式携带 <code>capability=relax|cell-relax</code>，对应 prepare、modify、execute、collect；operation CLI 语法保持不变。既有 SCF 请求的字段与序列化保持兼容；CLI 中不含 capability 的请求仍按 SCF 解码。未知 capability 返回 <code>request.invalid</code>/2，已知 capability 的字段错误返回 <code>request.schema</code>/2。每项发现记录仅声明实际实现的操作，成熟度保持 experimental。</p>
+      <p>prepare 使用相应 ABACUS calculation profile；与 capability 冲突的 calculation 参数作为请求错误拒绝，modify 不得删除或改为其他 calculation。execute 对已有 INPUT 的 calculation 做前置一致性检查；collect 允许收集外部准备的目录，只依据显式请求和输入文件检查能力匹配，不要求先有 Forge prepare 事件。它们复用窄 service、runner、解析器与 workspace 事件机制，不串联操作。</p>
+      <p>relax collect 将总能量、力、应力、relax 步数、最终结构及已有收敛观察如实交付；缺失的观察不得伪造为否。收集完整性按日志、可解析能量与最终结构判定：没有输出日志为 missing_output；缺能量、最终结构不可解析或 parser 降级为 partial；所需数据齐全为 complete。收敛真值和 ABACUS 返回码不参与科学接受判断，也不替代收集完整性。最终结构通过 workspace-relative artifact 引用交付，数组和结构快照可进入外层 Observation，内嵌 result key set 不变。</p>
     </section>
 
     <section id="risks">

@@ -6,6 +6,8 @@ from typing import Any
 
 from abacus_forge.structure_recognition import StructureMetadata
 
+_COMMON_DEFAULTS: dict[str, Any] = {"dft_functional": "pbe"}
+
 TASK_DEFAULTS: dict[str, dict[str, Any]] = {
     "scf": {"calculation": "scf"},
     "relax": {"calculation": "relax", "cal_force": 1, "cal_stress": 1},
@@ -54,7 +56,7 @@ def build_task_parameters(
         if forbidden:
             raise ValueError(f"unsupported DOS parameter(s): {', '.join(forbidden)}")
     controls = {key: supplied.pop(key) for key in list(supplied) if key in _DOS_CONTROL_PARAMETERS}
-    merged = dict(TASK_DEFAULTS[normalized_task])
+    merged = {**_COMMON_DEFAULTS, **TASK_DEFAULTS[normalized_task]}
     if metadata is not None:
         if metadata.structure_class == "layer" and "dip_cor_flag" not in merged:
             merged["dip_cor_flag"] = 1

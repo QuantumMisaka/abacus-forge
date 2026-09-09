@@ -27,11 +27,23 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_machine_cli.py": ("cli",),
     "test_result_contract.py": ("integration",),
     "test_service_status.py": ("integration",),
+    "test_atst_neb.py": ("integration",),
     "test_collect_abacus_reference.py": ("compat",),
     "test_pyatb.py": ("pyatb",),
     "test_composite.py": ("composite",),
     "test_maturation_packs.py": ("experimental",),
     "test_architecture.py": ("core",),
+}
+
+_REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
+    "test_real_abacus_scf_execute_and_collect": (
+        "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
+    "test_typed_relax_machine_execute_and_collect": (
+        "ABACUS_FORGE_RELAX_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
 }
 
 
@@ -59,17 +71,20 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         if "real_smoke" in relative_parts:
             if not config.getoption("--run-real-smoke"):
                 item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real ABACUS smoke tests"))
-            elif not all(
-                os.environ.get(name)
-                for name in (
-                    "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
-                    "ABACUS_FORGE_ABACUS_EXECUTABLE",
+            else:
+                required_env = _REAL_SMOKE_ENV_BY_TEST.get(
+                    item.name,
+                    (
+                        "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
+                        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+                    ),
                 )
-            ):
-                item.add_marker(
-                    pytest.mark.skip(
-                        reason="set ABACUS_FORGE_REAL_SMOKE_WORKSPACE and ABACUS_FORGE_ABACUS_EXECUTABLE"
+                missing_env = tuple(name for name in required_env if not os.environ.get(name))
+                if missing_env:
+                    item.add_marker(
+                        pytest.mark.skip(
+                            reason="set " + " and ".join(missing_env)
+                        )
                     )
-                )
         if "benchmark" in relative_parts and not config.getoption("--run-benchmark"):
             item.add_marker(pytest.mark.skip(reason="pass --run-benchmark to run benchmark tests"))

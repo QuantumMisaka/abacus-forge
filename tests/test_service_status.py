@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 import fcntl
+import hashlib
 from pathlib import Path
 import json
 import signal
@@ -11,6 +12,8 @@ import threading
 import time
 
 import abacus_forge
+from ase import Atoms
+from ase.io import write as ase_write
 from abacus_forge import (
     CollectService,
     ExecuteService,
@@ -21,10 +24,13 @@ from abacus_forge import (
     ModifyService,
     OperationOutcome,
     PrepareService,
+    RelaxServiceSet,
     ScfServiceSet,
     Workspace,
 )
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from abacus_forge.input_io import read_input
+from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.result import RunResult
 from tests.support.fake_executables import write_fake_abacus
 
@@ -40,6 +46,72 @@ def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
 def _write_prepared_inputs(workspace: Workspace) -> None:
     for input_name in ("INPUT", "STRU", "KPT"):
         (workspace.inputs_dir / input_name).write_text("prepared\n", encoding="utf-8")
+
+
+def _relax_source(workspace: Workspace) -> Path:
+    source = workspace.root / "source.STRU"
+    source.write_text(
+        abacus_forge.AbacusStructure(
+            Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True),
+            source_format="ase",
+        ).to_stru(),
+        encoding="utf-8",
+    )
+    return source
+
+
+def _prepare_relax_workspace(tmp_path: Path, capability: str = "relax") -> tuple[RelaxServiceSet, Workspace]:
+    workspace = Workspace(tmp_path / capability)
+    workspace.ensure_layout()
+    source = _relax_source(workspace)
+    services = RelaxServiceSet.default(workspace_root=tmp_path)
+    result = services.prepare.prepare(
+        _request(
+            RelaxPrepareRequest,
+            capability,
+            f"123e4567-e89b-42d3-a456-426614174{130 if capability == 'relax' else 131}",
+            structure_path_rel=source.name,
+            parameters={"ecutwfc": 80},
+            capability=capability,
+        )
+    )
+    assert isinstance(result, OperationOutcome)
+    return services, workspace
+
+
+def _write_relax_collection_workspace(
+    tmp_path: Path,
+    *,
+    capability: str = "relax",
+    log_text: str | None = "TOTAL ENERGY = -4.2\n",
+    final_structure: str | None = "stru",
+    relax_report: dict[str, object] | None = None,
+    report_json_text: str | None = None,
+    input_calculation: str | None = None,
+) -> Workspace:
+    workspace = Workspace(tmp_path / "collection")
+    workspace.ensure_layout()
+    structure = Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True)
+    structure_payload = abacus_forge.AbacusStructure(structure, source_format="ase").to_stru()
+    calculation = input_calculation if input_calculation is not None else capability
+    workspace.write_text("inputs/INPUT", f"INPUT_PARAMETERS\ncalculation {calculation}\n")
+    workspace.write_text("inputs/STRU", structure_payload)
+    workspace.write_text("inputs/KPT", "K_POINTS\n0\nGamma\n1 1 1 0 0 0\n")
+    output_dir = workspace.outputs_dir / "OUT.ABACUS"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if log_text is not None:
+        (output_dir / f"running_{capability}.log").write_text(log_text, encoding="utf-8")
+    if final_structure == "stru":
+        (output_dir / "STRU_ION_D").write_text(structure_payload, encoding="utf-8")
+    elif final_structure == "cif":
+        ase_write(output_dir / "STRU_NOW.cif", structure, format="cif")
+    elif final_structure == "invalid":
+        (output_dir / "STRU_ION_D").write_text("not an ABACUS structure\n", encoding="utf-8")
+    if relax_report is not None:
+        workspace.write_json("reports/metrics_relax.json", relax_report)
+    if report_json_text is not None:
+        workspace.write_text("reports/metrics_relax.json", report_json_text)
+    return workspace
 
 
 class _RecordingRunnerFactory:
@@ -86,6 +158,133 @@ def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_
     }]
 
 
+def test_relax_service_set_exposes_typed_operations(tmp_path: Path) -> None:
+    service_set_type = getattr(abacus_forge, "RelaxServiceSet", None)
+    assert service_set_type is not None
+    services = service_set_type.default(workspace_root=tmp_path)
+    assert all(hasattr(services, name) for name in ("prepare", "modify", "execute", "collect"))
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+def test_relax_prepare_and_modify_use_capability_profile_and_snapshots(
+    tmp_path: Path, capability: str
+) -> None:
+    services, workspace = _prepare_relax_workspace(tmp_path, capability)
+    input_before = read_input(workspace.inputs_dir / "INPUT")
+    assert input_before["calculation"] == capability
+    assert json.loads((workspace.root / "forge-unit.json").read_text())[
+        "task"
+    ] == capability
+
+    request = RelaxModifyRequest(
+        operation_id=f"123e4567-e89b-42d3-a456-426614174{140 if capability == 'relax' else 141}",
+        workspace_rel=capability,
+        input_updates={"ecutwfc": 90},
+        capability=capability,
+    )
+    result = services.modify.modify(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert read_input(workspace.inputs_dir / "INPUT")["ecutwfc"] == "90"
+    assert result.envelope.diagnostics["task"] == capability
+    assert result.envelope.diagnostics["input_snapshot_before"] != result.envelope.diagnostics[
+        "input_snapshot_after"
+    ]
+    event = json.loads(
+        (workspace.reports_dir / "events" / f"{request.operation_id}-modify.json").read_text()
+    )
+    assert event["payload"] == result.to_dict()
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+def test_relax_execute_dry_run_is_explicit_and_does_not_start_runner(
+    tmp_path: Path, capability: str
+) -> None:
+    class FailRunner:
+        def __call__(self, **kwargs: object) -> object:
+            raise AssertionError("dry-run must not construct or start a runner")
+
+    services = RelaxServiceSet.default(workspace_root=tmp_path, runner_factory=FailRunner())
+    request = RelaxExecuteRequest(
+        operation_id=f"123e4567-e89b-42d3-a456-426614174{150 if capability == 'relax' else 151}",
+        workspace_rel="job",
+        dry_run=True,
+        capability=capability,
+    )
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "skipped"
+    assert result.status.scientific == "unassessed"
+    assert result.operation_id == request.operation_id
+    payload = json.loads(
+        (tmp_path / "job" / "reports" / "events" / f"{request.operation_id}-execute.json").read_text()
+    )["payload"]
+    assert payload == result.to_dict()
+    assert json.loads((tmp_path / "job" / "forge-result.json").read_text())["task"] == capability
+
+
+@pytest.mark.parametrize("returncode,expected_execution", [(0, "completed"), (7, "failed")])
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+def test_relax_execute_persists_process_facts_for_each_capability(
+    tmp_path: Path,
+    returncode: int,
+    expected_execution: str,
+    capability: str,
+) -> None:
+    services, workspace = _prepare_relax_workspace(tmp_path, capability)
+    executable = write_fake_abacus(
+        tmp_path / f"fake-{capability}",
+        stdout_lines=["TOTAL ENERGY = -3.2", "NORMAL END"],
+        returncode=returncode,
+    )
+    request = RelaxExecuteRequest(
+        operation_id=f"123e4567-e89b-42d3-a456-426614174{160 + returncode + (10 if capability == 'cell-relax' else 0)}",
+        workspace_rel=capability,
+        executable=str(executable),
+        capability=capability,
+    )
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == expected_execution
+    assert result.envelope.diagnostics["failure_class"] == (
+        "none" if returncode == 0 else "nonzero_exit"
+    )
+    assert result.envelope.metrics[0].value == returncode
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} >= {
+        "outputs/stdout.log",
+        "outputs/stderr.log",
+    }
+    event = json.loads(
+        (workspace.reports_dir / "events" / f"{request.operation_id}-execute.json").read_text()
+    )
+    assert event["payload"] == result.to_dict()
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+def test_relax_execute_timeout_preserves_process_fact(capability: str, tmp_path: Path) -> None:
+    services, workspace = _prepare_relax_workspace(tmp_path, capability)
+    executable = tmp_path / "slow-abacus"
+    executable.write_text(
+        f"#!{sys.executable}\nimport time\ntime.sleep(0.2)\n", encoding="utf-8"
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    request = RelaxExecuteRequest(
+        operation_id=f"123e4567-e89b-42d3-a456-426614174{180 if capability == 'relax' else 181}",
+        workspace_rel=capability,
+        executable=str(executable),
+        timeout_seconds=0.02,
+        capability=capability,
+    )
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "failed"
+    assert result.envelope.diagnostics["failure_class"] == "timeout"
+    assert result.envelope.diagnostics["termination"] == "timeout"
+
+
 def test_legacy_forge_services_is_a_serialization_equivalent_shim(tmp_path: Path) -> None:
     executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
     direct_root = tmp_path / "direct"
@@ -104,6 +303,25 @@ def test_legacy_forge_services_is_a_serialization_equivalent_shim(tmp_path: Path
     assert isinstance(direct, OperationOutcome)
     assert isinstance(facade, OperationOutcome)
     assert direct.to_dict() == facade.to_dict()
+
+
+def test_legacy_facade_injected_runner_takes_precedence_over_request_fields(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174120",
+        workspace_rel="scf",
+        executable="request-value-that-must-not-run",
+    )
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert result.envelope.diagnostics["failure_class"] == "none"
 
 
 def test_outcome_contains_each_artifact_ref_once(tmp_path: Path) -> None:
@@ -196,6 +414,12 @@ def test_typed_execute_dry_run_does_not_start_runner(tmp_path: Path) -> None:
 
     assert isinstance(result, OperationOutcome)
     assert result.status.execution == "skipped"
+    expected_diagnostics = {"dry_run": True, "artifact_refs": []}
+    assert result.envelope.to_dict()["diagnostics"] == expected_diagnostics
+    event = json.loads(
+        (tmp_path / "scf" / "reports" / "events" / f"{result.operation_id}-execute.json").read_text()
+    )
+    assert event["payload"]["envelope"]["diagnostics"] == expected_diagnostics
 
 
 def test_legacy_run_many_skip_completed_remains_available(tmp_path: Path) -> None:
@@ -1053,3 +1277,471 @@ def test_execute_provenance_has_unique_runtime_facts(tmp_path: Path) -> None:
         (tmp_path / "scf" / "reports" / "events" / f"{request.operation_id}-execute.json").read_text()
     )
     assert event["payload"] == result.to_dict()
+
+
+@pytest.mark.parametrize("operation", ["prepare", "modify", "execute", "collect"])
+def test_relax_and_scf_services_reject_the_other_request_family_without_side_effects(
+    tmp_path: Path, operation: str
+) -> None:
+    operation_ids = {
+        "prepare": "123e4567-e89b-42d3-a456-426614174130",
+        "modify": "123e4567-e89b-42d3-a456-426614174131",
+        "execute": "123e4567-e89b-42d3-a456-426614174132",
+        "collect": "123e4567-e89b-42d3-a456-426614174133",
+    }
+    request_types = {
+        "prepare": (ScfPrepareRequest, RelaxPrepareRequest),
+        "modify": (ScfModifyRequest, RelaxModifyRequest),
+        "execute": (ScfExecuteRequest, RelaxExecuteRequest),
+        "collect": (ScfCollectRequest, RelaxCollectRequest),
+    }
+    scf_type, relax_type = request_types[operation]
+    kwargs = {
+        "prepare": {"structure_path_rel": "source.STRU"},
+        "modify": {"input_updates": {"ecutwfc": 90}},
+        "execute": {},
+        "collect": {},
+    }[operation]
+    scf_request = _request(scf_type, "job", operation_ids[operation], **kwargs)
+    relax_request = _request(
+        relax_type,
+        "job",
+        f"123e4567-e89b-42d3-a456-426614174{134 + list(request_types).index(operation)}",
+        capability="relax",
+        **kwargs,
+    )
+    scf_services = ScfServiceSet.default(workspace_root=tmp_path)
+    relax_services = RelaxServiceSet.default(workspace_root=tmp_path)
+
+    def invoke(service_set, request):
+        service = getattr(service_set, operation)
+        return getattr(service, operation)(request)
+
+    scf_result = invoke(scf_services, relax_request)
+    relax_result = invoke(relax_services, scf_request)
+
+    assert isinstance(scf_result, ForgeErrorEnvelope)
+    assert isinstance(relax_result, ForgeErrorEnvelope)
+    assert scf_result.error_class == "request.invalid"
+    assert relax_result.error_class == "request.invalid"
+    assert not tmp_path.exists() or not list(tmp_path.iterdir())
+
+
+def test_relax_execute_rejects_input_from_another_capability_before_runner_start(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path / "job").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("inputs/STRU", "prepared\n")
+    workspace.write_text("inputs/KPT", "prepared\n")
+    calls = 0
+
+    def fail_runner_factory(**kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("capability mismatch must stop before runner construction")
+
+    request = RelaxExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174135",
+        workspace_rel="job",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(
+        workspace_root=tmp_path, runner_factory=fail_runner_factory
+    ).execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert calls == 0
+    assert not (workspace.root / "forge-result.json").exists()
+    assert not list((workspace.reports_dir / "events").glob("*.json"))
+
+
+def test_relax_collect_rejects_input_from_another_capability_before_parsing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, input_calculation="scf")
+    services_module = __import__("abacus_forge.services", fromlist=["services"])
+
+    def fail_collect(workspace):
+        raise AssertionError("capability mismatch must stop before collection")
+
+    monkeypatch.setattr(services_module, "collect", fail_collect)
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174136",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert not list((workspace.reports_dir / "events").glob("*.json"))
+
+
+def test_relax_duplicate_request_id_returns_conflict_without_rewriting_facts(tmp_path: Path) -> None:
+    services = RelaxServiceSet.default(workspace_root=tmp_path)
+    request = RelaxExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174137",
+        workspace_rel="job",
+        capability="cell-relax",
+        dry_run=True,
+    )
+    first = services.execute.execute(request)
+    result_path = tmp_path / "job" / "forge-result.json"
+    event_path = tmp_path / "job" / "reports" / "events" / f"{request.operation_id}-execute.json"
+    before = (result_path.read_bytes(), event_path.read_bytes())
+    second = services.execute.execute(request)
+
+    assert isinstance(first, OperationOutcome)
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"
+    assert (result_path.read_bytes(), event_path.read_bytes()) == before
+
+
+@pytest.mark.parametrize(
+    ("capability", "log_text", "final_structure", "expected_collection"),
+    [
+        ("relax", None, "stru", "missing_output"),
+        ("relax", "SCF NOT CONVERGED\n", "stru", "partial"),
+        ("relax", "TOTAL ENERGY = -4.2\n", None, "partial"),
+        ("cell-relax", "TOTAL ENERGY = -4.2\n", "stru", "complete"),
+    ],
+)
+def test_relax_collection_status_uses_factual_output_completeness(
+    tmp_path: Path,
+    capability: str,
+    log_text: str | None,
+    final_structure: str | None,
+    expected_collection: str,
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        capability=capability,
+        log_text=log_text,
+        final_structure=final_structure,
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174138",
+        workspace_rel="collection",
+        capability=capability,
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "not_run"
+    assert result.status.scientific == "unassessed"
+    assert result.status.collection == expected_collection
+    if final_structure is None:
+        assert all(observation.name != "final_structure_snapshot" for observation in result.observations)
+
+
+def test_relax_collection_complete_ignores_optional_and_convergence_warnings(
+    tmp_path: Path,
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path)
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174139",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    assert result.envelope.warnings
+    assert "No explicit convergence marker found in logs." in result.envelope.warnings
+    assert "time.json is absent." in result.envelope.warnings
+    assert "No report JSON artifacts found." in result.envelope.warnings
+    assert {metric.name for metric in result.envelope.metrics}.isdisjoint({"converged", "converge"})
+    assert all(observation.name not in {"converged", "converge"} for observation in result.observations)
+    assert not result.envelope.checks
+    assert result.envelope.diagnostics["final_structure_selection_ambiguous"] is False
+
+
+def test_relax_collection_keeps_false_electronic_convergence_without_ionic_fallback(
+    tmp_path: Path,
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        log_text="TOTAL ENERGY = -4.2\nSCF NOT CONVERGED\n",
+        relax_report={"final_structure_available": True, "ionic_steps": [1, 2]},
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174140",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    assert {metric.name for metric in result.envelope.metrics} >= {"converged", "converge"}
+    observations = {observation.name: observation for observation in result.observations}
+    assert observations["electronic_convergence"].value is False
+    assert observations["relax_metrics"].to_dict()["value"] == {
+        "final_structure_available": True,
+        "ionic_steps": [1, 2],
+    }
+    assert "converged" not in result.envelope.diagnostics["legacy_metrics"]["relax_summary"]
+    assert "converged" not in result.envelope.diagnostics["legacy_metrics"]["relax_metrics"]
+    assert "converged" not in observations["relax_summary"].to_dict()["value"]
+
+
+def test_relax_collection_preserves_explicit_ionic_convergence_and_nested_facts(
+    tmp_path: Path,
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        log_text=(
+            "TOTAL ENERGY = -4.2\nSCF CONVERGED\n"
+            "TOTAL-FORCE (eV/Angstrom)\nSi1 0.1 0.2 0.3\n"
+            "TOTAL-STRESS (KBAR)\n1 2 3\n4 5 6\n7 8 9\n"
+        ),
+        relax_report={"converged": True, "final_structure_available": True, "ionic_steps": [1, 2]},
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174141",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    observations = {observation.name: observation for observation in result.observations}
+    assert observations["electronic_convergence"].value is True
+    assert observations["forces"].source == "parser"
+    assert observations["stress"].source == "parser"
+    assert observations["relax_metrics"].source == "parser"
+    assert observations["relax_summary"].source == "parser"
+    assert observations["structure_snapshot"].source == "file"
+    assert observations["final_structure_snapshot"].source == "file"
+    assert observations["relax_summary"].value["converged"] is True
+    assert any(artifact.path_rel == "outputs/OUT.ABACUS/STRU_ION_D" for artifact in result.envelope.artifacts)
+    assert all(not Path(artifact.path_rel).is_absolute() for artifact in result.envelope.artifacts)
+
+
+def test_relax_collection_external_output_without_forge_manifest_is_supported(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path)
+    assert not (workspace.root / "forge-unit.json").exists()
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174142",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+
+
+def test_relax_collection_ambiguous_log_or_final_structure_is_partial(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path)
+    duplicate_log = workspace.outputs_dir / "other" / "running_relax.log"
+    duplicate_log.parent.mkdir(parents=True)
+    duplicate_log.write_text("TOTAL ENERGY = -4.2\n", encoding="utf-8")
+    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -4.2\n")
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174143",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    ambiguous_log = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(ambiguous_log, OperationOutcome)
+    assert ambiguous_log.status.collection == "partial"
+    assert ambiguous_log.envelope.diagnostics["log_selection_ambiguous"] is True
+
+    second_workspace = _write_relax_collection_workspace(tmp_path / "second")
+    structure = Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True)
+    ase_write(
+        second_workspace.outputs_dir / "OUT.ABACUS" / "STRU_NOW.cif",
+        structure,
+        format="cif",
+    )
+    second_request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174144",
+        workspace_rel="second/collection",
+        capability="relax",
+    )
+    ambiguous_structure = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(second_request)
+
+    assert isinstance(ambiguous_structure, OperationOutcome)
+    assert ambiguous_structure.status.collection == "partial"
+    assert ambiguous_structure.envelope.diagnostics["final_structure_selection_ambiguous"] is True
+
+
+def test_relax_collection_duplicate_final_structure_basename_is_partial(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path)
+    primary = workspace.outputs_dir / "OUT.ABACUS" / "STRU_ION_D"
+    duplicate = workspace.outputs_dir / "other" / "STRU_ION_D"
+    duplicate.parent.mkdir(parents=True)
+    duplicate.write_text(primary.read_text(encoding="utf-8"), encoding="utf-8")
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174147",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "partial"
+
+
+def test_relax_collection_parse_failure_and_escaped_final_symlink_are_partial(
+    tmp_path: Path,
+) -> None:
+    malformed = _write_relax_collection_workspace(tmp_path, final_structure="invalid")
+    malformed_request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174145",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    malformed_result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(malformed_request)
+
+    assert isinstance(malformed_result, OperationOutcome)
+    assert malformed_result.status.collection == "partial"
+    assert malformed_result.envelope.diagnostics["final_structure_parse_error"]
+    assert all(observation.name != "final_structure_snapshot" for observation in malformed_result.observations)
+
+    second_root = tmp_path / "symlink"
+    symlink_workspace = _write_relax_collection_workspace(second_root)
+    outside = second_root / "outside.STRU"
+    outside.write_text((symlink_workspace.outputs_dir / "OUT.ABACUS" / "STRU_ION_D").read_text(), encoding="utf-8")
+    final_path = symlink_workspace.outputs_dir / "OUT.ABACUS" / "STRU_ION_D"
+    final_path.unlink()
+    final_path.symlink_to(outside)
+    symlink_request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174146",
+        workspace_rel="symlink/collection",
+        capability="relax",
+    )
+    symlink_result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(symlink_request)
+
+    assert isinstance(symlink_result, OperationOutcome)
+    assert symlink_result.status.collection == "partial"
+    assert all(artifact.path_rel != "outputs/OUT.ABACUS/STRU_ION_D" for artifact in symlink_result.envelope.artifacts)
+    assert all(observation.name != "final_structure_snapshot" for observation in symlink_result.observations)
+
+
+@pytest.mark.parametrize(
+    ("capability", "operation_id"),
+    [
+        ("relax", "123e4567-e89b-42d3-a456-426614174148"),
+        ("cell-relax", "123e4567-e89b-42d3-a456-426614174149"),
+    ],
+)
+def test_relax_collect_returns_live_artifacts_with_current_hashes(
+    tmp_path: Path, capability: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    artifact_paths = {artifact.path_rel for artifact in result.envelope.artifacts}
+    assert "reports/forge-workspace.json" not in artifact_paths
+    assert not any(path.startswith("reports/claims/") for path in artifact_paths)
+    for artifact in result.envelope.artifacts:
+        path = workspace.root / artifact.path_rel
+        assert path.is_file(), artifact.path_rel
+        assert artifact.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert artifact.size_bytes == path.stat().st_size
+
+
+@pytest.mark.parametrize(
+    ("capability", "internal_target", "operation_id"),
+    [
+        ("relax", "claim", "123e4567-e89b-42d3-a456-426614174154"),
+        ("relax", "manifest", "123e4567-e89b-42d3-a456-426614174155"),
+        ("cell-relax", "claim", "123e4567-e89b-42d3-a456-426614174156"),
+        ("cell-relax", "manifest", "123e4567-e89b-42d3-a456-426614174157"),
+    ],
+)
+def test_relax_collect_filters_output_aliases_to_internal_bookkeeping(
+    tmp_path: Path, capability: str, internal_target: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    target = (
+        workspace.reports_dir / "claims" / f"{operation_id}.json"
+        if internal_target == "claim"
+        else workspace.reports_dir / "forge-workspace.json"
+    )
+    alias = workspace.outputs_dir / f"{internal_target}-alias.json"
+    alias.symlink_to(target)
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    for artifact in result.envelope.artifacts:
+        path = workspace.root / artifact.path_rel
+        resolved_rel = path.resolve().relative_to(workspace.root.resolve()).as_posix()
+        assert resolved_rel != "reports/forge-workspace.json"
+        assert not resolved_rel.startswith("reports/claims/")
+        assert resolved_rel not in {
+            "reports/.forge-operation.lock",
+            "reports/.forge-workspace.lock",
+        }
+        assert path.is_file(), artifact.path_rel
+        assert artifact.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert artifact.size_bytes == path.stat().st_size
+
+
+@pytest.mark.parametrize(
+    ("capability", "operation_id"),
+    [
+        ("relax", "123e4567-e89b-42d3-a456-426614174152"),
+        ("cell-relax", "123e4567-e89b-42d3-a456-426614174153"),
+    ],
+)
+def test_relax_collect_reselects_output_stru_after_input_stru(
+    tmp_path: Path, capability: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        capability=capability,
+        final_structure=None,
+    )
+    final_structure = Atoms(
+        "Si",
+        positions=[[0.5, 0.5, 0.5]],
+        cell=[5.0, 5.0, 5.0],
+        pbc=True,
+    )
+    workspace.write_text(
+        "outputs/OUT.ABACUS/STRU",
+        abacus_forge.AbacusStructure(final_structure, source_format="ase").to_stru(),
+    )
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    observations = {observation.name: observation for observation in result.observations}
+    final_snapshot = observations["final_structure_snapshot"].value
+    assert final_snapshot["source"].endswith("outputs/OUT.ABACUS/STRU")
+    assert final_snapshot["volume"] == pytest.approx(125.0)
+    assert result.envelope.diagnostics["final_structure_path"].endswith(
+        "outputs/OUT.ABACUS/STRU"
+    )
+    assert any(
+        artifact.path_rel == "outputs/OUT.ABACUS/STRU"
+        for artifact in result.envelope.artifacts
+    )
