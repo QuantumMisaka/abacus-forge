@@ -11,9 +11,33 @@ from ase.io import write as ase_write
 from abacus_forge import AbacusStructure, LocalRunner, Workspace, collect, export, perturb_structure, prepare, run
 from abacus_forge.band_data import BandData, write_sample_band_artifacts
 from abacus_forge.dos_data import DOSData, PDOSData, write_sample_dos_artifacts, write_sample_dos_family_artifacts
+from abacus_forge.input_io import read_input
 from abacus_forge.sample_outputs import write_sample_analysis_outputs
 from abacus_forge.structure_recognition import detect_structure_format
 from tests.support.fake_executables import write_fake_abacus
+
+
+@pytest.mark.parametrize("task", ["scf", "relax", "md", "band", "dos"])
+def test_prepare_task_profiles_default_to_pbe(tmp_path: Path, task: str) -> None:
+    workspace = prepare(tmp_path / task, task=task)
+
+    assert read_input(workspace.inputs_dir / "INPUT")["dft_functional"] == "pbe"
+
+
+def test_prepare_task_profile_overrides_pbe_default(tmp_path: Path) -> None:
+    parameter_workspace = prepare(
+        tmp_path / "parameter-override",
+        task="scf",
+        parameters={"dft_functional": "pbesol"},
+    )
+    input_override_workspace = prepare(
+        tmp_path / "input-override",
+        task="scf",
+        input_overrides={"dft_functional": "hse06"},
+    )
+
+    assert read_input(parameter_workspace.inputs_dir / "INPUT")["dft_functional"] == "pbesol"
+    assert read_input(input_override_workspace.inputs_dir / "INPUT")["dft_functional"] == "hse06"
 
 
 def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> None:
