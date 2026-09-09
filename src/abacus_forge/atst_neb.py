@@ -130,6 +130,8 @@ class AtstNebPostprocessService:
     def postprocess(self, request: AtstNebPostprocessRequest) -> ServiceResult:
         if not isinstance(request, AtstNebPostprocessRequest):
             return _ScfServiceContext.error("request.invalid", "expected AtstNebPostprocessRequest", None)
+        if request.plot_label is not None and request.plot_label == request.output_prefix:
+            return _ScfServiceContext.error("request.invalid", "plot_label must not equal output_prefix", request)
         try:
             workspace = self._context.workspace(request.workspace_rel)
             trajectory = self._context.path(workspace, request.trajectory_path_rel, "trajectory_path_rel")
@@ -145,6 +147,7 @@ class AtstNebPostprocessService:
                 if request.n_max:
                     summary_cmd[4:4] = ["--n-max", str(request.n_max)]
                 rc1, _, err1, timeout1 = self._context.run(workspace, summary_cmd, request.operation_id + "-summary", None)
+                post_before = {p.resolve(): (p.stat().st_size, p.stat().st_mtime_ns) for p in workspace.root.rglob("*") if p.is_file()}
                 post_cmd, rc2, err2, timeout2 = [], 0, "", False
                 if rc1 == 0 and not timeout1:
                     post_cmd = [executable, "neb", "post", str(trajectory), "--output-prefix", str(prefix)]
@@ -176,7 +179,7 @@ class AtstNebPostprocessService:
                 changed_outputs: dict[Path, list[Path]] = {item.resolve(): [] for item in prefixes}
                 for candidate in sorted(workspace.root.rglob("*")):
                     key = candidate.resolve()
-                    changed = candidate.is_file() and (key not in before_outputs or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != before_outputs[key])
+                    changed = candidate.is_file() and not str(key).startswith(str((workspace.root / "reports" / "atst").resolve())) and (key not in post_before or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != post_before[key])
                     if changed and any(self._context.matches_prefix(key, item.resolve()) for item in prefixes):
                         rel = candidate.relative_to(workspace.root).as_posix()
                         entries.append((f"atst-{hashlib.sha256(rel.encode()).hexdigest()[:12]}", rel, "output"))
