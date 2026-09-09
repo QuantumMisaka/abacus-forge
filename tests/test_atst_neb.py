@@ -131,6 +131,7 @@ def test_same_operation_id_conflicts_and_refs_are_one_to_one(tmp_path: Path) -> 
     post = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
     assert isinstance(post, OperationOutcome)
     refs = post.envelope.diagnostics["artifact_refs"]
+    assert len(refs) == len(post.envelope.artifacts) == len({ref["artifact_id"] for ref in refs})
     assert {ref["artifact_id"] for ref in refs} == {item.id for item in post.envelope.artifacts}
     assert {ref["operation_id"] for ref in refs} == {post.operation_id}
 
