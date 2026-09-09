@@ -393,7 +393,7 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | RelaxServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | None = None,
     atst_services: AtstNebServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
