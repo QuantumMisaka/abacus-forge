@@ -62,6 +62,12 @@ observations；它不把电子或离子收敛转换为科学接受结论。
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
 
+typed prepare 当前接收结构路径和参数，不提供赝势/轨道文件映射或自动搬运接口。
+调用方需要自行组织 workspace 中的资产并核对引用位置；prepare 返回成功不代表
+赝势/轨道已备齐。需要显式 `pseudo_path`、`orbital_path` 和 `copy/link` 选项时，
+使用现有 `prepare(...)` API。typed 资产接口的后续范围见
+[内核收口 PLAN](./docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)。
+
 ## Agent-first CLI
 
 Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax`，另有

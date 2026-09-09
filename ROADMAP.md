@@ -21,6 +21,8 @@
 - 可选 typed Relax real smoke 只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；未提供真实输入时不产生 release evidence。
 
 ## 近期方向
+- 输入保真与 typed collect/core 收口按 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md) 推进；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
+- 后续单独收敛 typed prepare 的 PP/ORB 映射和资产搬运：明确来源、覆盖优先级、copy/link、路径包含性、重名与缺失诊断；保留 STRU 引用不等于自动备齐计算资产。
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
