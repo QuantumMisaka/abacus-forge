@@ -61,8 +61,10 @@ execution/collection 事实与 observations；若兼容结果保留 `scientific`
 `execution=skipped`；typed execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，
 并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
 给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
-Relax collection 还会把已解析的力、应力、relax 指标和初始/最终结构作为事实
-observations；它不把电子或离子收敛转换为科学接受结论。
+SCF/Relax collection 将已解析的数组指标和有效结构快照作为事实 observations。
+SCF 收集完整性由非空输出日志、有限总能量和解析情况决定，Relax 还要求有效的
+最终结构；收敛标志独立返回。typed collect 只读取 workspace 内的领域文件，
+审计事件、claims、锁和 workspace manifest 不进入计算产物列表。
 
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
