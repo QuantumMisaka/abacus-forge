@@ -239,7 +239,10 @@ def _run_postprocess(
                 else:
                     result = algorithm(source_paths, output_dir, **algorithm_call_kwargs)
             except PostprocessParseError as error:
-                if _has_os_error_cause(error):
+                missing_source_paths_rel = _missing_source_paths(
+                    artifact_source_paths, artifact_source_paths_rel
+                )
+                if _has_os_error_cause(error) and not missing_source_paths_rel:
                     raise ForgePersistenceError("postprocess input/output persistence failed") from error
                 diagnostics = _failure_diagnostics(
                     request=request,
@@ -252,9 +255,6 @@ def _run_postprocess(
                     ),
                 )
                 generated_paths = _paths_from_relative_names(workspace, diagnostics["generated_paths_rel"])
-                missing_source_paths_rel = _missing_source_paths(
-                    artifact_source_paths, artifact_source_paths_rel
-                )
                 if missing_source_paths_rel:
                     diagnostics["missing_source_paths_rel"] = list(missing_source_paths_rel)
                     diagnostics["collection_reason"] = "declared_source_disappeared_after_admission"
@@ -563,6 +563,7 @@ def _persist_outcome(
     except OSError as error:
         raise ForgePersistenceError("unable to persist postprocess report") from error
 
+    raced_missing_source_paths: list[str] = []
     artifacts = _artifact_records(
         workspace=workspace,
         source_paths=source_paths,
@@ -570,8 +571,18 @@ def _persist_outcome(
         generated_paths=generated_paths,
         report_path=report_path,
         report_rel=report_rel,
+        missing_source_paths_rel=raced_missing_source_paths,
     )
     envelope_diagnostics = dict(diagnostics)
+    if raced_missing_source_paths:
+        existing_missing = envelope_diagnostics.get("missing_source_paths_rel", ())
+        if not isinstance(existing_missing, (list, tuple)):
+            existing_missing = ()
+        envelope_diagnostics["missing_source_paths_rel"] = sorted(
+            set(list(existing_missing) + raced_missing_source_paths)
+        )
+        envelope_diagnostics["collection_reason"] = "declared_source_disappeared_after_admission"
+        status = OperationStatus(execution="not_run", scientific="unassessed", collection="missing_output")
     envelope_diagnostics["report_path_rel"] = report_rel
     envelope = ForgeResultEnvelope(
         operation=request.operation,
@@ -602,6 +613,7 @@ def _artifact_records(
     generated_paths: Sequence[Path],
     report_path: Path,
     report_rel: str,
+    missing_source_paths_rel: list[str] | None = None,
 ) -> tuple[ArtifactRecord, ...]:
     records: list[ArtifactRecord] = []
     seen_paths: set[str] = set()
@@ -618,17 +630,30 @@ def _artifact_records(
         normalized = canonical_relative_path(path_rel)
         if normalized == "." or normalized in seen_paths:
             return
+        if role == "input" and (not path.is_file() or path.is_symlink()):
+            if missing_source_paths_rel is not None:
+                missing_source_paths_rel.append(normalized)
+            return
         if role == "output" and normalized != report_rel and (not path.is_file() or path.is_symlink()):
             # A parser/writer seam may report a requested target that vanished
             # before collection.  Keep the durable outcome factual and let the
             # collection predicate classify it as ``missing_output``.
             return
-        resolved = path.resolve(strict=True)
+        try:
+            resolved = path.resolve(strict=True)
+        except FileNotFoundError:
+            if role == "input" and missing_source_paths_rel is not None:
+                missing_source_paths_rel.append(normalized)
+                return
+            raise
         try:
             resolved.relative_to(workspace.root.resolve())
         except ValueError as error:
             raise ForgePathError("artifact path escapes workspace") from error
         if not resolved.is_file():
+            if role == "input" and missing_source_paths_rel is not None:
+                missing_source_paths_rel.append(normalized)
+                return
             raise ForgePreconditionError(f"artifact file not found: {normalized}")
         artifact_id = stable_id or _artifact_id(prefix, normalized)
         attempt = 1
@@ -639,6 +664,11 @@ def _artifact_records(
         try:
             digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
             size = resolved.stat().st_size
+        except FileNotFoundError:
+            if role == "input" and missing_source_paths_rel is not None:
+                missing_source_paths_rel.append(normalized)
+                return
+            raise
         except OSError as error:
             raise ForgePersistenceError("unable to hash postprocess artifact") from error
         records.append(
