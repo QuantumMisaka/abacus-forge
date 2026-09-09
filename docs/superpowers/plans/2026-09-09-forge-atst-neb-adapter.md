@@ -112,6 +112,7 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 
 ## Final independent review evidence
 
-- Review scope: complete change `ed53bdc..999f035`, with a focused re-review of `c9a25df..999f035` and the current SPEC/PLAN wording revision.
-- Result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility, ATST 2.2.4 default alignment, discovery/README/marker alignment, and the DeePMD boundary were preserved.
+- Independent review scope: complete implementation change `ed53bdc..8030523`, with a focused re-review of `c9a25df..8030523` and the then-current PLAN wording.
+- Independent result: PASS. The review confirmed the resolved-path protections for logs, derived outputs, Forge audit paths, input collisions, and output aliases; SCF descriptor compatibility, ATST 2.2.4 default alignment, discovery/README/marker alignment, and the external-backend boundary were preserved.
+- Post-review closure: `999f035..a707e96` contains documentation-only follow-ups clarifying backend/model ownership and correcting the SPEC/README/PLAN evidence wording. The current revision was rechecked with the focused and full offline gates below; no production code changed after the independent implementation review.
 - Release boundary retained: real atst-tools smoke and explicit version/API locking remain future release gates, not claims made by this fake-executable test slice.
