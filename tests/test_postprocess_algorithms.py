@@ -227,3 +227,20 @@ def test_process_dos_files_preserves_writer_io_errors(tmp_path: Path, monkeypatc
             save_plot=False,
             suffix=None,
         )
+
+
+def test_process_band_files_preserves_output_mkdir_errors(tmp_path: Path) -> None:
+    sources = tmp_path / "sources"
+    write_sample_band_artifacts(sources, include_plot=False)
+    output = tmp_path / "output"
+    output.write_text("a regular file cannot be used as an output directory\n", encoding="utf-8")
+
+    with pytest.raises(FileExistsError):
+        process_band_files(
+            [sources / "BANDS_1.dat"],
+            output,
+            plot_emin=-1.0,
+            plot_emax=1.0,
+            save_data=True,
+            save_plot=False,
+        )

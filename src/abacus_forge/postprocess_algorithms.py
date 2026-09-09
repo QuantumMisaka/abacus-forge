@@ -249,10 +249,9 @@ def _prepare_output_dir(output_dir: Path) -> Path:
         raise PostprocessPreconditionError("output_dir must be a Path")
     if output_dir.is_symlink():
         raise PostprocessPreconditionError("output_dir must not be a symlink")
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise PostprocessPreconditionError(f"output_dir is not writable: {output_dir}") from exc
+    # Keep filesystem failures visible to the service layer so it can
+    # distinguish output I/O from typed input/output precondition errors.
+    output_dir.mkdir(parents=True, exist_ok=True)
     if not output_dir.is_dir():
         raise PostprocessPreconditionError("output_dir must be a directory")
     return output_dir
