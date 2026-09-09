@@ -44,24 +44,24 @@
 - Consumes: base request dataclasses and `_require_matching_calculation` pattern from `src/abacus_forge/relax_contracts.py`.
 - Produces: `MdPrepareRequest`, `MdModifyRequest`, `MdExecuteRequest`, `MdCollectRequest`, each serializing the base fields plus `capability: "md"` and accepting the same `forge.request/v1` operation fields.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   - Round-trip all four request types through `to_dict()`/`from_dict()`.
   - Assert prepare preserves explicit `pseudo_sources`, `orbital_sources`, `asset_mode`, and arbitrary JSON-safe MD parameters.
   - Assert prepare rejects `parameters={"calculation": "scf"}` and modify rejects an update to another calculation or removal of `calculation`.
   - Assert unknown serialized fields are rejected and `capability != "md"` is rejected.
-- [ ] **Step 2: Run the owning tests and verify RED**
+- [x] **Step 2: Run the owning tests and verify RED**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_contracts.py`
   - Expected: collection/import or assertion failures because the MD request module/types do not exist.
-- [ ] **Step 3: Implement the minimal contracts**
+- [x] **Step 3: Implement the minimal contracts**
   - Mirror the Relax mixin, but use a single literal capability `md`.
   - Keep all MD controls in inherited `parameters`; do not add `md_type`, thermostat, pressure, seed, restart, or trajectory fields to the request dataclasses.
   - Enforce `parameters["calculation"] == "md"` when supplied; prohibit changing/removing `calculation` in modify.
-- [ ] **Step 4: Run the owning tests and verify GREEN**
+- [x] **Step 4: Run the owning tests and verify GREEN**
   - Run the command from Step 2; expected: all MD contract tests pass.
-- [ ] **Step 5: Run adjacent contract regressions**
+- [x] **Step 5: Run adjacent contract regressions**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_structure.py`
   - Expected: existing contract and structure tests remain green.
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   - `git add src/abacus_forge/md_contracts.py tests/test_md_contracts.py && git commit -m "feat: add typed MD request contracts"`
 
 ## Task 2: Route MD through typed services
@@ -77,25 +77,25 @@
 - Consumes: the four `Md*Request` types from Task 1 and the existing `_PrepareService`, `_ModifyService`, `_ExecuteService`, `_CollectService` implementations.
 - Produces: `MdServiceSet.default(workspace_root, runner_factory)` with `.prepare`, `.modify`, `.execute`, `.collect` members implementing the existing narrow protocols.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   - `MdServiceSet.prepare` writes `inputs/INPUT` with `calculation=md`, retains the PBE/NVE profile defaults, and records the same typed envelope/event/provenance shape as SCF/Relax.
   - `MdServiceSet.modify` refuses a calculation change and otherwise returns before/after snapshots.
   - `MdServiceSet.execute` supports the inherited dry-run and local fake-runner path, returning only execution facts and `scientific=unassessed`.
   - `MdServiceSet.collect` accepts an externally prepared workspace with `calculation=md`, returns existing `md_steps`/`md_dump_summary` parser facts when available, and never adds a scientific acceptance conclusion.
   - `ScfServiceSet` rejects `Md*Request` as `request.invalid`; `MdServiceSet` rejects SCF/Relax request types.
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_services.py`; expected: missing service/routing failures.
-- [ ] **Step 3: Implement minimal routing**
+- [x] **Step 3: Implement minimal routing**
   - Extend `_AbacusServiceContext.task_for` to return `md` for MD requests.
   - Extend `accepts_request` exclusions so SCF never consumes Relax or MD subclasses and each capability set accepts only its own request type.
   - Add `MdServiceSet` using `validate_input_calculation=True`, exactly like Relax, without adding a new service implementation or facade.
   - Export `MdServiceSet` and MD request classes from `abacus_forge.__init__`.
-- [ ] **Step 4: Run tests and verify GREEN**
+- [x] **Step 4: Run tests and verify GREEN**
   - Run focused `tests/test_md_services.py`; expected: all service tests pass.
-- [ ] **Step 5: Run service/status regressions**
+- [x] **Step 5: Run service/status regressions**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_result_contract.py tests/test_tasks.py`
   - Expected: existing SCF/Relax/legacy behavior remains green.
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   - `git add src/abacus_forge/services.py src/abacus_forge/__init__.py tests/test_md_services.py && git commit -m "feat: expose typed MD services"`
 
 ## Task 3: Add discovery and machine-CLI parity
@@ -112,24 +112,24 @@
 - Consumes: `Md*Request` and `MdServiceSet` from Tasks 1–2.
 - Produces: `capabilities` entry `md` with maturity `experimental`, engine `abacus`, operations `prepare|modify|execute|collect`, inputs and artifact roles matching actual output (`input`, `provenance_manifest`, `output`); `schema md <operation>` documents the inherited request fields.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   - `capabilities_document()` includes exactly the four MD operations and no postprocess/export claim.
   - `request_schema_document("md", op)` round-trips representative requests and rejects schema/property drift.
   - Machine `operation prepare|modify|execute|collect` decodes `capability=md`, routes to `MdServiceSet`, emits one JSON envelope, and has the same status/artifact facts as direct service invocation in an isolated workspace.
   - `schema md postprocess` and `schema md export` return `request.invalid`/2; `operation postprocess|export` with `capability=md` also returns `request.invalid`/2.
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_machine_cli.py tests/test_machine_cli.py`
   - Expected: MD is absent from discovery/decoder/routing.
-- [ ] **Step 3: Implement registry and routing**
+- [x] **Step 3: Implement registry and routing**
   - Add `MD_REQUEST_TYPES`/decoder entries, the descriptor and representative request to discovery.
   - Add `md` to machine capability decoders and route decoded `Md*Request` to `MdServiceSet`.
   - Keep parser operation choices and generic `ForgeRequest` operation set unchanged; do not create a `post` alias or legacy CLI branch.
-- [ ] **Step 4: Run tests and verify GREEN**
+- [x] **Step 4: Run tests and verify GREEN**
   - Run the command from Step 2; expected: discovery, schema and CLI parity tests pass.
-- [ ] **Step 5: Run process/architecture gates**
+- [x] **Step 5: Run process/architecture gates**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_cli_process.py tests/test_architecture.py`
   - Expected: stdout/error envelope, exit classes, forbidden-import and CLI architecture gates remain green.
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   - `git add src/abacus_forge/discovery.py src/abacus_forge/machine_cli.py tests/test_md_machine_cli.py tests/test_machine_cli.py && git commit -m "feat: expose typed MD machine capability"`
 
 ## Task 4: Document the bounded experimental surface
@@ -141,17 +141,17 @@
 
 **Test strategy:** Documentation must match `capabilities_document()` and the implemented request fields. Verify snippets by invoking discovery and a dry-run machine request; no real ABACUS process is required for this batch.
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
   - State that `md` is experimental and supports only typed `prepare/modify/execute/collect`.
   - Show the inherited `parameters` map for `md_type`, `md_nstep`, `md_dt`, temperatures and `md_dumpfreq`, while warning that caller/Agent owns physical parameter selection.
   - State that `MD_dump`/log facts are collected where present; trajectory conversion, monitor, restart/resume, postprocess/export, scheduler and scientific judgment are outside this batch.
   - Keep PBE/NVE defaults explicit and preserve legacy `run_md` documentation.
-- [ ] **Step 2: Verify docs against code**
+- [x] **Step 2: Verify docs against code**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m abacus_forge.cli capabilities`
   - Expected: the documented MD descriptor is present and exactly matches its operation/artifact claims.
-- [ ] **Step 3: Update this PLAN ledger**
+- [x] **Step 3: Update this PLAN ledger**
   - Check off completed Tasks 1–4 and append commit IDs, test outputs and reviewer findings.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   - `git add README.md ROADMAP.md docs/superpowers/plans/2026-09-10-forge-typed-md-operations.md && git commit -m "docs: describe typed MD capability boundary"`
 
 ## Task 5: Final verification and independent review
@@ -180,6 +180,14 @@
 - **Boundary decisions:** MD is a separate explicit capability; request fields stay inherited and open through `parameters`; existing factual collector is reused; MD parser/trajectory postprocess is a separate future batch; no monitor, restart/resume, scheduler, workflow or scientific acceptance.
 - **Compatibility checks:** no changes to generic `ForgeRequest` operation set, legacy `run_md`, legacy CLI, output layout, error classes, status values or artifact roles. `MdServiceSet` is a new typed entry only.
 - **Known limitations intentionally retained:** collection completeness still follows the existing factual collector rules and does not claim trajectory completeness; real ABACUS/MD smoke and Paimon v1.3 promotion remain later gates.
+
+## Execution ledger (Tasks 1–4)
+
+- Task 1 contracts: `85babc5` and calculation-fencing fix `574563e`; contract and adjacent regression run: `252 passed`.
+- Task 2 services: `6383e97`; service/status/result/task regression run: `172 passed`.
+- Task 3 discovery and machine surface: `97a181c`; MD/machine CLI parity run after registry expectation update: `81 passed`.
+- Task 4 documentation: this commit; `capabilities` output verified that `md` is `experimental`, advertises exactly `prepare`/`modify`/`execute`/`collect`, and uses artifact roles `input`/`provenance_manifest`/`output`.
+- Task 5 final focused/full gates and independent review remain pending; this ledger does not constitute release or stable-maturity evidence.
 
 ## Completion evidence
 

@@ -2,7 +2,7 @@
 
 > 开发入口、开发边界与约束请优先阅读 [AGENTS.md](./AGENTS.md)。项目规划与路线图已拆分到 [ROADMAP.md](./ROADMAP.md)。
 
-**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 快捷消费基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及实验性 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）。`run` 仍作为 `execute` 的兼容别名保留。
+**一句话定位：**`ABACUS-Forge` 是面向本机/HPC 环境的轻量级 ABACUS 快捷消费基座，提供 `prepare -> modify -> execute -> collect -> export` 原语，`scf / relax / cell-relax / md / band / dos` 单任务 CLI 闭环，`eos / elastic / vibration / phonon` 本地 composite task pack，以及实验性 `convergence / cube / workfunc / vacancy / bec` 等 property pack，可作为 Python 库或 CLI 使用，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）。其中 typed `md` 仍为实验性能力；`run` 仍作为 `execute` 的兼容别名保留。
 
 ## 当前定位
 
@@ -56,7 +56,8 @@ Forge 的 Angstrom 单位扩展仍可读取。支持 `Direct`、`Cartesian`、
 
 ### Typed operation service boundary
 
-`ScfServiceSet` 与 `RelaxServiceSet` 提供 typed SCF、relax 和 cell-relax 路径，交付
+`ScfServiceSet`、`RelaxServiceSet` 与 `MdServiceSet` 提供 typed SCF、relax、cell-relax 和
+MD 路径，交付
 execution/collection 事实与 observations；若兼容结果保留 `scientific` 字段，Forge
 只写 `unassessed`，不在 Forge 内作科学判定。`ScfExecuteRequest(dry_run=True)` 或
 对应的 `RelaxExecuteRequest(dry_run=True)` 才能产生
@@ -87,9 +88,9 @@ legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推�
 
 ## Agent-first CLI
 
-Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax`，另有
-成熟度为 `experimental` 的 `atst-neb`。它固定暴露三个顶层命令：`operation`（前三个
-capability 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
+Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax` 和
+成熟度为 `experimental` 的 `md`、`atst-neb`。它固定暴露三个顶层命令：`operation`
+（`scf`、`relax`、`cell-relax`、`md` 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
 `execute`、`postprocess`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
@@ -130,8 +131,9 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 ```
 
 `capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前发现的
-capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`；前三者支持 `prepare`、`modify`、
-`execute`、`collect`，`atst-neb` 支持 `prepare`、`execute`、`postprocess`。默认格式下，
+capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`；`md` 仅支持
+`prepare`、`modify`、`execute`、`collect`，且 maturity 为 `experimental`；其他 capability
+按各自 descriptor 暴露 operation。默认格式下，
 `operation` 在 stdout 输出恰好一个完整的 JSON outcome/error envelope，其中包含错误消息与
 结果 diagnostics；stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
 `0`（无执行失败）、
@@ -437,9 +439,40 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析
 不完整只反映 collection 状态。
 
-这只是 Stage 4 的首批 relax/cell-relax 交付。后续 Stage 4 批次仍包括 typed MD、独立
-`postprocess`/`export` operation、PyATB engine boundary 和更多真实 property-pack
-smoke；Stage 5 的 legacy 依赖解除与稳定发布门禁也尚未完成。
+typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
+和事实收集；它不提供 trajectory 转换、monitor、restart/resume 或独立
+`postprocess`/`export`。这些能力、PyATB engine boundary 和更多真实 property-pack smoke
+仍是后续批次；Stage 5 的 legacy 依赖解除与稳定发布门禁也尚未完成。
+
+## Typed MD operations
+
+`MdPrepareRequest`、`MdModifyRequest`、`MdExecuteRequest` 和 `MdCollectRequest` 提供
+实验性的 `md` capability。它们只支持 typed `prepare`、`modify`、`execute`、`collect`，
+沿用通用请求字段；MD 专属控制项继续放在 JSON-safe 的 `parameters` map 中，例如：
+
+```python
+from abacus_forge import MdPrepareRequest
+
+request = MdPrepareRequest(
+    operation_id="123e4567-e89b-42d3-a456-426614174014",
+    workspace_rel="runs/Si_md",
+    capability="md",
+    structure_path_rel="source.STRU",
+    parameters={
+        "md_type": "nve",
+        "md_nstep": 100,
+        "md_dt": 1.0,
+        "md_tfirst": 300,
+        "md_tlast": 300,
+        "md_dumpfreq": 1,
+    },
+)
+```
+
+默认 profile 使用 PBE 与 NVE；调用方或 Agent 负责选择和覆盖物理参数。`collect` 只在
+可用时返回 `MD_dump` 与日志中的解析事实、指标和 artifact 引用，不判断轨迹或物理结果
+是否可接受。trajectory 转换、monitor、restart/resume、独立 `postprocess`/`export`、
+调度以及科学判断均由 Forge 外部的人类或 Agent 负责。
 
 ## 作为 Python 库使用
 
