@@ -109,6 +109,19 @@ def test_log_symlink_cannot_overwrite_forge_manifest(tmp_path: Path) -> None:
     assert result.error_class == "request.path"
     assert '"sentinel":"keep"' in manifest.read_text()
 
+def test_derived_output_symlink_cannot_overwrite_trajectory(tmp_path: Path) -> None:
+    trajectory = tmp_path / "neb.traj"
+    trajectory.write_text("keep trajectory")
+    output_dir = tmp_path / "outputs" / "atst"
+    output_dir.mkdir(parents=True)
+    (output_dir / "neb-ts.cif").symlink_to(trajectory)
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="/bin/true").postprocess.postprocess(
+        AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="outputs/atst/neb-ts")
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    assert trajectory.read_text() == "keep trajectory"
+
 def test_postprocess_cannot_overwrite_forge_audit_or_external_derived_targets(tmp_path: Path) -> None:
     (tmp_path / "neb.traj").write_text("trajectory")
     external = tmp_path.parent / f"{tmp_path.name}-derived-external"

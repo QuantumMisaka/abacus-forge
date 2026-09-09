@@ -211,8 +211,11 @@ class AtstNebPostprocessService:
             if request.write_latest: expected_targets.extend((workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"))
             if request.write_neb_init_chain: expected_targets.append(workspace.root / "outputs/atst/neb-init-chain.traj")
             if request.plot: expected_targets.append(self._context.suffixed(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"), ".pdf"))
+            protected_targets = {trajectory.resolve(), summary.resolve(), *(path.resolve() for path in log_paths)}
             for target in expected_targets:
-                self._context.ensure_output_target(workspace, target, "postprocess output")
+                resolved_target = self._context.ensure_output_target(workspace, target, "postprocess output")
+                if resolved_target in protected_targets:
+                    return _ScfServiceContext.error("request.invalid", "postprocess output collides with protected workspace path", request)
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
                 self._context.require_file(trajectory, request.trajectory_path_rel, "trajectory_path_rel")
                 executable = self._context.executable()
