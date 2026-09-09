@@ -131,7 +131,8 @@ def test_same_operation_id_conflicts_and_refs_are_one_to_one(tmp_path: Path) -> 
     post = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
     assert isinstance(post, OperationOutcome)
     refs = post.envelope.diagnostics["artifact_refs"]
-    assert len(refs) == len(post.envelope.artifacts) == len({item["artifact_id"] for item in refs})
+    assert {ref["artifact_id"] for ref in refs} == {item.id for item in post.envelope.artifacts}
+    assert {ref["operation_id"] for ref in refs} == {post.operation_id}
 
 def test_stale_output_does_not_count_but_overwrite_does(tmp_path: Path) -> None:
     (tmp_path / "neb.traj").write_text("x"); (tmp_path / "reports/atst").mkdir(parents=True)
@@ -147,6 +148,9 @@ def test_postprocess_init_chain_uses_exact_traj_path(tmp_path: Path) -> None:
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).postprocess.postprocess(
         AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", write_neb_init_chain=True))
     assert isinstance(result, OperationOutcome) and result.status.collection == "complete"
+    command = result.envelope.diagnostics["postprocess_command"]
+    index = command.index("--write-neb-init-chain")
+    assert command[index + 1] == str((tmp_path / "outputs/atst/neb-init-chain.traj").resolve())
     assert any(item.path_rel == "outputs/atst/neb-init-chain.traj" for item in result.envelope.artifacts)
     assert (tmp_path / "outputs/atst/neb-init-chain.traj").is_file()
 
