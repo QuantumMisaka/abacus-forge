@@ -68,3 +68,11 @@ def test_missing_executable_is_precondition_after_inputs_exist(tmp_path: Path) -
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing-atst").postprocess.postprocess(
         AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
     assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "precondition.missing"
+
+def test_postprocess_rejects_trajectory_operation_log_collision(tmp_path: Path) -> None:
+    op_id = _id(); log_rel = f"reports/atst/{op_id}-post-stdout.log"
+    (tmp_path / log_rel).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / log_rel).write_text("input")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").postprocess.postprocess(
+        AtstNebPostprocessRequest(operation_id=op_id, workspace_rel=".", trajectory_path_rel=log_rel))
+    assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
