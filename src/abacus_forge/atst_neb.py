@@ -59,8 +59,8 @@ class _AtstContext:
             result = subprocess.run(command, cwd=workspace.root, capture_output=True, text=True, timeout=timeout, check=False)
             rc, stdout, stderr, timed_out = result.returncode, result.stdout, result.stderr, False
         except subprocess.TimeoutExpired as error:
-            stdout = error.stdout.decode() if isinstance(error.stdout, bytes) else (error.stdout or "")
-            stderr = error.stderr.decode() if isinstance(error.stderr, bytes) else (error.stderr or "")
+            stdout = error.stdout.decode(errors="replace") if isinstance(error.stdout, bytes) else (error.stdout or "")
+            stderr = error.stderr.decode(errors="replace") if isinstance(error.stderr, bytes) else (error.stderr or "")
             rc, timed_out = 124, True
         (reports / f"{operation_id}-stdout.log").write_text(stdout, encoding="utf-8")
         (reports / f"{operation_id}-stderr.log").write_text(stderr, encoding="utf-8")
@@ -90,6 +90,7 @@ class AtstNebPrepareService:
             with workspace.operation_guard(request.operation_id, "prepare") as token:
                 self._context.require_file(init, request.init_structure_path_rel, "init_structure_path_rel")
                 self._context.require_file(final, request.final_structure_path_rel, "final_structure_path_rel")
+                chain.parent.mkdir(parents=True, exist_ok=True)
                 command = [self._context.executable(), "neb", "make", str(init), str(final), str(request.n_images), "--method", request.method, "-o", str(chain)]
                 if request.no_align: command.append("--no-align")
                 rc, _, stderr, timeout = self._context.run(workspace, command, request.operation_id, None)
@@ -133,6 +134,8 @@ class AtstNebPostprocessService:
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
                 self._context.require_file(trajectory, request.trajectory_path_rel, "trajectory_path_rel")
                 executable = self._context.executable()
+                summary.parent.mkdir(parents=True, exist_ok=True)
+                prefix.parent.mkdir(parents=True, exist_ok=True)
                 summary_cmd = [executable, "neb", "summary", str(trajectory), "--format", "json", "--output", str(summary)]
                 if request.n_max:
                     summary_cmd[4:4] = ["--n-max", str(request.n_max)]
@@ -141,17 +144,28 @@ class AtstNebPostprocessService:
                 if rc1 == 0 and not timeout1:
                     post_cmd = [executable, "neb", "post", str(trajectory), "--output-prefix", str(prefix)]
                     if request.write_latest:
-                        post_cmd += ["--write-latest", str(self._context.path(workspace, "outputs/atst/neb-latest.traj", "write_latest"))]
+                        latest = self._context.path(workspace, "outputs/atst/neb-latest", "write_latest")
+                        latest.parent.mkdir(parents=True, exist_ok=True)
+                        post_cmd += ["--write-latest", str(latest)]
                     if request.write_neb_init_chain:
-                        post_cmd += ["--write-neb-init-chain", str(self._context.path(workspace, "outputs/atst/neb-init-chain.traj", "write_neb_init_chain"))]
+                        chain = self._context.path(workspace, "outputs/atst/neb-init-chain", "write_neb_init_chain")
+                        chain.parent.mkdir(parents=True, exist_ok=True)
+                        post_cmd += ["--write-neb-init-chain", str(chain)]
                     for flag, value in (("--plot", request.plot), ("--energy-profile", request.energy_profile), ("--vib-analysis", request.vib_analysis), ("--strict-band", request.strict_band)):
                         if value: post_cmd.append(flag)
-                    if request.plot_label: post_cmd += ["--plot-label", request.plot_label]
+                    if request.plot_label: post_cmd += ["--plot-label", str(self._context.path(workspace, request.plot_label, "plot_label"))]
+                    if request.plot_label:
+                        self._context.path(workspace, request.plot_label, "plot_label").parent.mkdir(parents=True, exist_ok=True)
+                    if request.n_max: post_cmd += ["--n-max", str(request.n_max)]
                     post_cmd += ["--vib-thr", str(request.vib_thr)]
                     rc2, _, err2, timeout2 = self._context.run(workspace, post_cmd, request.operation_id + "-post", None)
                 rc = rc1 if rc1 != 0 or timeout1 else rc2
                 logs = [("summary_stdout", f"reports/atst/{request.operation_id}-summary-stdout.log", "output"), ("summary_stderr", f"reports/atst/{request.operation_id}-summary-stderr.log", "output"), ("post_stdout", f"reports/atst/{request.operation_id}-post-stdout.log", "output"), ("post_stderr", f"reports/atst/{request.operation_id}-post-stderr.log", "output")]
-                artifacts = self._context.artifacts(workspace, [("trajectory", request.trajectory_path_rel, "input"), ("summary", request.summary_path_rel, "output"), *logs])
+                entries = [("trajectory", request.trajectory_path_rel, "input"), ("summary", request.summary_path_rel, "output"), *logs]
+                for candidate in sorted(workspace.root.glob("outputs/atst/*")):
+                    if candidate.is_file():
+                        entries.append((f"atst-{candidate.stem}", candidate.relative_to(workspace.root).as_posix(), "output"))
+                artifacts = self._context.artifacts(workspace, entries)
                 envelope = ForgeResultEnvelope("postprocess", request.workspace_rel, _status(rc, timeout1 or timeout2, collection="complete" if rc == 0 else "partial"), artifacts=artifacts, diagnostics={"summary_command": summary_cmd, "postprocess_command": post_cmd, "returncode": rc, "stderr": "\n".join(x for x in (err1, err2) if x), "summary_returncode": rc1, "postprocess_returncode": rc2})
                 return self._context.persist(workspace, request, envelope, token)
         except Exception as error: return self._context.make_error(request, error)

@@ -689,7 +689,7 @@ class AtstNebExecuteRequest(_AtstNebRequest):
     config_path_rel: str = ""
     dry_run: bool = False
     check_input: bool = False
-    check_input_timeout: float = 30.0
+    check_input_timeout: int = 30
     abacus_executable: str | None = None
     timeout_seconds: float | None = None
 
@@ -700,9 +700,11 @@ class AtstNebExecuteRequest(_AtstNebRequest):
             raise ValueError("dry_run and check_input must be booleans")
         if self.check_input and not self.dry_run:
             raise ValueError("check_input requires dry_run")
-        for value, name in ((self.check_input_timeout, "check_input_timeout"), (self.timeout_seconds, "timeout_seconds")):
-            if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0 or not math.isfinite(value)):
-                raise ValueError(f"{name} must be a positive finite number or None")
+        if isinstance(self.check_input_timeout, bool) or not isinstance(self.check_input_timeout, int) or self.check_input_timeout <= 0:
+            raise ValueError("check_input_timeout must be a positive integer")
+        value = self.timeout_seconds
+        if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0 or not math.isfinite(value)):
+            raise ValueError("timeout_seconds must be a positive finite number or None")
         if self.abacus_executable is not None:
             _require_nonempty_string(self.abacus_executable, "abacus_executable")
 
@@ -750,7 +752,7 @@ class AtstNebPostprocessRequest(_AtstNebRequest):
             if not isinstance(value, bool):
                 raise ValueError(f"{name} must be a boolean")
         if self.plot_label is not None:
-            _require_nonempty_string(self.plot_label, "plot_label")
+            self._validate_output_path(self.plot_label, "plot_label")
         if isinstance(self.vib_thr, bool) or not isinstance(self.vib_thr, (int, float)) or self.vib_thr <= 0 or not math.isfinite(self.vib_thr):
             raise ValueError("vib_thr must be a positive finite number")
 
