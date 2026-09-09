@@ -104,16 +104,22 @@ def test_forbidden_imports_reports_import_forms_in_sorted_path_order(tmp_path: P
     ]
 
 
-def test_machine_discovery_advertises_experimental_scf_and_atst_neb() -> None:
+def test_machine_discovery_advertises_experimental_scf_relax_and_atst_neb() -> None:
     result = run_cli("capabilities")
     assert result.returncode == 0
     assert result.stderr == ""
     payload = json.loads(result.stdout)
-    assert [item["name"] for item in payload["capabilities"]] == ["scf", "atst-neb"]
-    assert payload["capabilities"][1]["maturity"] == "experimental"
-    assert payload["capabilities"][1]["engine"] == "atst-tools"
-    assert payload["capabilities"][0]["maturity"] == "experimental"
-    assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax", "atst-neb"]
+    for capability in payload["capabilities"][:3]:
+        assert capability["maturity"] == "experimental"
+        assert capability["engine"] == "abacus"
+        assert capability["operations"] == ["prepare", "modify", "execute", "collect"]
+        assert capability["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    atst = payload["capabilities"][3]
+    assert atst["maturity"] == "experimental"
+    assert atst["engine"] == "atst-tools"
+    assert atst["operations"] == ["prepare", "execute", "postprocess"]
+    assert atst["artifact_roles"] == ["input", "output"]
 
 
 def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) -> None:

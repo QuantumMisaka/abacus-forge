@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from abacus_forge import machine_cli
 from abacus_forge.contracts import (
     ArtifactRecord,
     ForgeErrorEnvelope,
@@ -30,9 +31,21 @@ from abacus_forge.errors import (
     ForgeRequestError,
     ForgeSchemaError,
 )
+from abacus_forge.relax_contracts import (
+    RelaxCollectRequest,
+    RelaxExecuteRequest,
+    RelaxModifyRequest,
+    RelaxPrepareRequest,
+)
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
+
+
+def _decode_operation_request(operation: str, payload: object):
+    decoder = getattr(machine_cli, "decode_operation_request", None)
+    assert decoder is not None, "machine adapter must expose capability-aware decoding"
+    return decoder(operation, payload)
 
 
 def _request() -> dict[str, object]:
@@ -143,7 +156,12 @@ class _AllRecordingAtstServices:
 
 
 def _invoke(
-    argv: list[str], *, request_text: str = "", services: object | None = None, atst_services: object | None = None
+    argv: list[str],
+    *,
+    request_text: str = "",
+    services: object | None = None,
+    atst_services: object | None = None,
+    cwd: Path = Path("/tmp/forge-machine-test"),
 ):
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -152,7 +170,7 @@ def _invoke(
         stdin=io.StringIO(request_text),
         stdout=stdout,
         stderr=stderr,
-        cwd=Path("/tmp/forge-machine-test"),
+        cwd=cwd,
         services=services,  # type: ignore[arg-type]
         atst_services=atst_services,  # type: ignore[arg-type]
     )
@@ -166,6 +184,56 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
     assert json.dumps(schema, allow_nan=False, sort_keys=True)
     assert capabilities == capabilities_document()
     assert schema == request_schema_document("scf", "execute")
+
+
+def test_discovery_advertises_all_experimental_capabilities() -> None:
+    descriptors = capabilities_document()["capabilities"]
+    assert [descriptor["name"] for descriptor in descriptors] == ["scf", "relax", "cell-relax", "atst-neb"]
+    for descriptor in descriptors[:3]:
+        assert descriptor["maturity"] == "experimental"
+        assert descriptor["engine"] == "abacus"
+        assert descriptor["operations"] == ["prepare", "modify", "execute", "collect"]
+        assert descriptor["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    assert descriptors[3]["maturity"] == "experimental"
+    assert descriptors[3]["engine"] == "atst-tools"
+    assert descriptors[3]["operations"] == ["prepare", "execute", "postprocess"]
+    assert descriptors[3]["artifact_roles"] == ["input", "output"]
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+@pytest.mark.parametrize(
+    ("operation", "request_type", "extra"),
+    [
+        ("prepare", RelaxPrepareRequest, {"structure_path_rel": "source.STRU"}),
+        ("modify", RelaxModifyRequest, {}),
+        ("execute", RelaxExecuteRequest, {}),
+        ("collect", RelaxCollectRequest, {}),
+    ],
+)
+def test_relax_schema_reflects_typed_wire_and_calculation_constraints(
+    capability: str,
+    operation: str,
+    request_type: type[object],
+    extra: dict[str, object],
+) -> None:
+    request = request_type(
+        operation_id=OPERATION_ID,
+        workspace_rel="job",
+        capability=capability,
+        **extra,
+    )
+    schema = request_schema_document(capability, operation)["request_schema"]
+    assert set(schema["properties"]) == set(request.to_dict())
+    assert "capability" in schema["required"]
+    assert schema["properties"]["capability"] == {
+        "type": "string",
+        "const": capability,
+    }
+    if operation == "prepare":
+        assert schema["properties"]["parameters"]["properties"]["calculation"]["const"] == capability
+    if operation == "modify":
+        assert schema["properties"]["input_updates"]["properties"]["calculation"]["const"] == capability
+        assert schema["properties"]["remove_parameters"]["items"]["not"] == {"const": "calculation"}
 
 
 def test_machine_adapter_calls_one_service_and_writes_one_json_document() -> None:
@@ -297,8 +365,14 @@ def test_machine_json_reader_accepts_trailing_whitespace() -> None:
     assert len(services.calls) == 1
 
 
-def test_machine_schema_unknown_selector_is_one_request_invalid_document() -> None:
-    code, output, diagnostics = _invoke(["schema", "relax", "prepare"])
+@pytest.mark.parametrize(
+    ("capability", "operation"),
+    [("md", "execute"), ("relax", "postprocess"), ("pyatb", "prepare")],
+)
+def test_machine_schema_unknown_selector_is_one_request_invalid_document(
+    capability: str, operation: str
+) -> None:
+    code, output, diagnostics = _invoke(["schema", capability, operation])
     assert code == 2
     assert json.loads(output)["error"]["class"] == "request.invalid"
     assert diagnostics == ""
@@ -405,8 +479,6 @@ def test_decode_scf_request_uses_strict_typed_decoder() -> None:
         decode_scf_request("postprocess", _request())
     with pytest.raises(ForgePathError):
         decode_scf_request("collect", {**_request(), "workspace_rel": "../escape"})
-
-
 @pytest.mark.parametrize(
     ("operation", "request_type"),
     [("prepare", AtstNebPrepareRequest), ("execute", AtstNebExecuteRequest), ("postprocess", AtstNebPostprocessRequest)],
@@ -441,3 +513,97 @@ def test_machine_rejects_unknown_capability_and_capabilityless_postprocess() -> 
 def test_decode_atst_neb_request_requires_explicit_capability() -> None:
     with pytest.raises(ForgeRequestError):
         decode_atst_neb_request("prepare", _atst_payload("prepare", OPERATION_ID) | {"capability": "scf"})
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+@pytest.mark.parametrize(
+    ("operation", "request_type", "extra"),
+    [
+        ("prepare", RelaxPrepareRequest, {"structure_path_rel": "source.STRU"}),
+        ("modify", RelaxModifyRequest, {}),
+        ("execute", RelaxExecuteRequest, {}),
+        ("collect", RelaxCollectRequest, {}),
+    ],
+)
+def test_decode_operation_request_routes_relax_capabilities_to_typed_requests(
+    capability: str,
+    operation: str,
+    request_type: type[object],
+    extra: dict[str, object],
+) -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": operation,
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "capability": capability,
+        **extra,
+    }
+    request = _decode_operation_request(operation, payload)
+    assert isinstance(request, request_type)
+    assert request.to_dict()["capability"] == capability
+
+
+@pytest.mark.parametrize(
+    ("payload_update", "error_type"),
+    [
+        ({"capability": "md"}, ForgeRequestError),
+        ({"capability": None}, ForgeRequestError),
+        ({"capability": 1}, ForgeRequestError),
+        ({"capability": "scf"}, ForgeSchemaError),
+        ({"capability": "relax", "input_updates": {"calculation": "cell-relax"}}, ForgeSchemaError),
+        ({"capability": "cell-relax", "workspace_rel": "../escape"}, ForgePathError),
+        ({"capability": "relax", "schema_version": "forge.request/v2"}, ForgeSchemaError),
+    ],
+)
+def test_machine_rejects_invalid_capability_requests_before_service_dispatch(
+    payload_update: dict[str, object], error_type: type[Exception]
+) -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "modify",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        **payload_update,
+    }
+    with pytest.raises(error_type):
+        _decode_operation_request("modify", payload)
+
+    services = _AllRecordingServices(
+        {name: _outcome_for(name, OPERATION_ID) for name in ("prepare", "modify", "execute", "collect")}
+    )
+    code, output, diagnostics = _invoke(
+        ["operation", "modify", "--stdin"],
+        request_text=json.dumps(payload),
+        services=services,
+    )
+    assert code == 2
+    expected_error_class = {
+        ForgePathError: "request.path",
+        ForgeSchemaError: "request.schema",
+        ForgeRequestError: "request.invalid",
+    }[error_type]
+    assert json.loads(output)["error"]["class"] == expected_error_class
+    assert diagnostics == ""
+    assert services.calls == []
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax"])
+def test_machine_default_services_dispatch_relax_execute(capability: str, tmp_path: Path) -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": capability,
+        "capability": capability,
+        "dry_run": True,
+    }
+    code, output, diagnostics = _invoke(
+        ["operation", "execute", "--stdin"],
+        request_text=json.dumps(payload),
+        cwd=tmp_path,
+    )
+    assert code == 0
+    assert json.loads(output)["envelope"]["status"]["execution"] == "skipped"
+    assert json.loads(output)["envelope"]["diagnostics"]["task"] == capability
+    assert diagnostics == ""

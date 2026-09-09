@@ -4,10 +4,13 @@
 当前可用接口、CLI 示例与 Python API 用法请参阅 [README.md](./README.md)；开发入口与边界请参阅 [AGENTS.md](./AGENTS.md)。
 
 ## 当前阶段
+- Stage 3 已合并：SCF 的 typed Python services 与 Agent-first CLI 共用请求、结果和错误语义，当前 maturity 为 experimental。
+- Stage 4 首批已实现：`relax` 与 `cell-relax` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；两个 capability 均保持 `experimental` maturity。
 - 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
+- Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
@@ -15,13 +18,15 @@
 - property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 操作/解析验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
+- 可选 typed Relax real smoke 只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；未提供真实输入时不产生 release evidence。
 
 ## 近期方向
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
-- 优先补齐 relax/cell-relax 完成态语义：`normal_end=true` 但未达到收敛阈值时应在 metrics 中区分 `abacus_normal_end`、`converged` 与 `status`。
+- 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
+- Stage 4 首批之外仍待交付 typed MD、独立 `postprocess`/`export` operation、PyATB engine boundary，以及更多 property-pack 的真实 smoke；这些批次不由本次 relax/cell-relax 交付代替。
 - 固化 SCF->NSCF artifact handoff 规则：电荷、矩阵、最终结构、DOS/PyATB 后处理所需文件要有明确 manifest，而不是只依赖目录名约定。
 - 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
@@ -36,8 +41,7 @@
 - 当 property pack 经过真实 smoke 后，再由上层 adapter/workflow 选择成熟 Forge API 进行编排；Forge 本体仍不承接 provenance 存储、站点策略或恢复式工作流。
 
 ## 工程清理触发点
-- Stage 3 的 Agent-first CLI 门禁加入源码 AST forbidden-import 检查，防止 Forge 运行时重新依赖 AiiDA、ATP/MCP、平台调度或 legacy 工具包。
-- Stage 4 开始前按 SPEC 将首个 SCF `ForgeServices` facade 收敛为 per-operation protocol；届时把 `artifact_refs` 归一到单一注入点。
+- Stage 3 已交付源码 AST forbidden-import 门禁、per-operation protocol 与 artifact_refs 单点构造；新增能力复用这些边界。
 - 下次实质修改 workspace admission 接口时，先扫描外部使用，再收敛仅作兼容入口的 `claim_v1_operation` 别名。
 - Stage 5 在全新干净环境执行安装与 import 验证，作为解除 `abacus-agent-tools`、`abacustest` 等 legacy 运行时依赖的发布门禁。
 

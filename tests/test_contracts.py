@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import json
 import re
 
 import pytest
 
 from abacus_forge import contracts
+from abacus_forge import (
+    RelaxCollectRequest,
+    RelaxExecuteRequest,
+    RelaxModifyRequest,
+    RelaxPrepareRequest,
+)
 from abacus_forge.contracts import (
     ArtifactRecord,
     ArtifactRef,
@@ -34,6 +41,32 @@ from abacus_forge.errors import ForgeRequestError
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
+RELAX_CAPABILITIES = ("relax", "cell-relax")
+
+
+RELAX_REQUEST_CASES = (
+    (RelaxPrepareRequest, "prepare", {"structure_path_rel": "source.STRU"}),
+    (RelaxModifyRequest, "modify", {}),
+    (RelaxExecuteRequest, "execute", {}),
+    (RelaxCollectRequest, "collect", {}),
+)
+
+
+SCF_WIRE_KEYS = {
+    ScfPrepareRequest: {
+        "schema_version", "operation", "operation_id", "workspace_rel",
+        "structure_path_rel", "structure_format", "parameters",
+    },
+    ScfModifyRequest: {
+        "schema_version", "operation", "operation_id", "workspace_rel",
+        "input_updates", "remove_parameters",
+    },
+    ScfExecuteRequest: {
+        "schema_version", "operation", "operation_id", "workspace_rel",
+        "executable", "mpi_ranks", "omp_threads", "timeout_seconds", "dry_run",
+    },
+    ScfCollectRequest: {"schema_version", "operation", "operation_id", "workspace_rel"},
+}
 
 
 def _outcome() -> OperationOutcome:
@@ -393,10 +426,10 @@ def test_capability_descriptor_rejects_invalid_values() -> None:
         CapabilityDescriptor(**{**kwargs, "schema_version": "forge.capability/v2"})
 
 
-def test_capabilities_document_is_fresh_and_advertises_scf_and_atst_neb() -> None:
+def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> None:
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
-    assert [item["name"] for item in payload["capabilities"]] == ["scf", "atst-neb"]
+    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax", "atst-neb"]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
@@ -551,7 +584,7 @@ def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> 
     assert re.fullmatch(pattern, path_value) is None
 
 
-@pytest.mark.parametrize("capability,operation", [("relax", "prepare"), ("scf", "postprocess")])
+@pytest.mark.parametrize("capability,operation", [("md", "prepare"), ("scf", "postprocess")])
 def test_unknown_schema_selector_raises_request_error(capability: str, operation: str) -> None:
     with pytest.raises(ForgeRequestError):
         request_schema_document(capability, operation)
@@ -579,3 +612,229 @@ def test_result_envelope_rejects_duplicate_artifacts_and_missing_metric_sources(
 def test_from_dict_normalizes_malformed_shapes_to_value_error(factory, payload) -> None:
     with pytest.raises(ValueError):
         factory(payload)
+
+
+def _relax_constructor_kwargs(request_type, *, capability: str = "relax") -> dict[str, object]:
+    kwargs: dict[str, object] = {
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "capability": capability,
+    }
+    if request_type is RelaxPrepareRequest:
+        kwargs["structure_path_rel"] = "source.STRU"
+    return kwargs
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+@pytest.mark.parametrize(
+    "request_type,operation,base_kwargs",
+    RELAX_REQUEST_CASES,
+)
+def test_relax_requests_round_trip_with_capability(
+    request_type, operation: str, base_kwargs: dict[str, object], capability: str
+) -> None:
+    kwargs = _relax_constructor_kwargs(request_type, capability=capability)
+    kwargs.update(base_kwargs)
+    if request_type is RelaxPrepareRequest:
+        kwargs["parameters"] = {"calculation": capability, "nested": {"items": [1]}}
+    elif request_type is RelaxModifyRequest:
+        kwargs["input_updates"] = {"calculation": capability, "nested": {"items": [1]}}
+
+    request = request_type(**kwargs)
+
+    assert request.operation == operation
+    assert request.to_dict()["capability"] == capability
+    assert request_type.from_dict(json.loads(json.dumps(request.to_dict()))) == request
+    assert dataclasses.is_dataclass(request)
+    assert not hasattr(request, "__dict__")
+    assert next(item for item in dataclasses.fields(request_type) if item.name == "capability").kw_only
+    assert inspect.signature(request_type).parameters["capability"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+@pytest.mark.parametrize(
+    "request_type",
+    [RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest],
+)
+@pytest.mark.parametrize("bad_capability", ["scf", "RELAX", "", None, 1, ["relax"], {"name": "relax"}])
+def test_relax_requests_require_a_known_string_capability(request_type, bad_capability) -> None:
+    kwargs = _relax_constructor_kwargs(request_type)
+    with pytest.raises(ValueError, match="capability"):
+        request_type(**{**kwargs, "capability": bad_capability})
+
+    valid = request_type(**kwargs)
+    payload = valid.to_dict()
+    payload["capability"] = bad_capability
+    with pytest.raises(ValueError, match="capability"):
+        request_type.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "request_type",
+    [RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest],
+)
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+def test_relax_requests_require_capability_and_reject_unknown_fields(request_type, capability: str) -> None:
+    request = request_type(**_relax_constructor_kwargs(request_type, capability=capability))
+    payload = request.to_dict()
+
+    missing_capability = dict(payload)
+    missing_capability.pop("capability")
+    with pytest.raises(ValueError):
+        request_type.from_dict(missing_capability)
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**payload, "extra": True})
+    with pytest.raises(ValueError, match="operation"):
+        request_type.from_dict({**payload, "operation": "export"})
+
+
+@pytest.mark.parametrize(
+    "request_type",
+    [RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest],
+)
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+@pytest.mark.parametrize("field,value", [("operation_id", "x"), ("workspace_rel", "../outside")])
+def test_relax_requests_reuse_scf_identity_validation(
+    request_type, capability: str, field: str, value: str
+) -> None:
+    kwargs = _relax_constructor_kwargs(request_type, capability=capability)
+    with pytest.raises(ValueError):
+        request_type(**{**kwargs, field: value})
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+@pytest.mark.parametrize("path_rel", ["../outside", "/tmp/STRU", "a/../STRU", "a/./STRU", "."])
+def test_relax_prepare_reuses_scf_structure_path_validation(capability: str, path_rel: str) -> None:
+    kwargs = _relax_constructor_kwargs(RelaxPrepareRequest, capability=capability)
+    with pytest.raises(ValueError, match="structure_path_rel|path_rel"):
+        RelaxPrepareRequest(**{**kwargs, "structure_path_rel": path_rel})
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+def test_relax_prepare_requires_matching_calculation(capability: str) -> None:
+    kwargs = _relax_constructor_kwargs(RelaxPrepareRequest, capability=capability)
+    request = RelaxPrepareRequest(**{**kwargs, "parameters": {"calculation": capability}})
+    assert RelaxPrepareRequest.from_dict(request.to_dict()) == request
+
+    for calculation in ("scf", "relax" if capability == "cell-relax" else "cell-relax", None, 1):
+        contradictory = {"calculation": calculation}
+        with pytest.raises(ValueError, match="calculation"):
+            RelaxPrepareRequest(**{**kwargs, "parameters": contradictory})
+        payload = request.to_dict()
+        payload["parameters"] = contradictory
+        with pytest.raises(ValueError, match="calculation"):
+            RelaxPrepareRequest.from_dict(payload)
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+def test_relax_modify_requires_matching_calculation_and_cannot_remove_it(capability: str) -> None:
+    kwargs = _relax_constructor_kwargs(RelaxModifyRequest, capability=capability)
+    request = RelaxModifyRequest(**{**kwargs, "input_updates": {"calculation": capability}})
+    assert RelaxModifyRequest.from_dict(request.to_dict()) == request
+
+    for calculation in ("scf", "relax" if capability == "cell-relax" else "cell-relax", None, 1):
+        contradictory = {"calculation": calculation}
+        with pytest.raises(ValueError, match="calculation"):
+            RelaxModifyRequest(**{**kwargs, "input_updates": contradictory})
+        payload = request.to_dict()
+        payload["input_updates"] = contradictory
+        with pytest.raises(ValueError, match="calculation"):
+            RelaxModifyRequest.from_dict(payload)
+
+    with pytest.raises(ValueError, match="calculation"):
+        RelaxModifyRequest(**{**kwargs, "remove_parameters": ("calculation",)})
+    payload = request.to_dict()
+    payload["remove_parameters"] = ["calculation"]
+    with pytest.raises(ValueError, match="calculation"):
+        RelaxModifyRequest.from_dict(payload)
+
+
+@pytest.mark.parametrize("request_type,field", [(RelaxPrepareRequest, "parameters"), (RelaxModifyRequest, "input_updates")])
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+def test_relax_parameter_payloads_reject_non_json_values(request_type, field: str, capability: str) -> None:
+    kwargs = _relax_constructor_kwargs(request_type, capability=capability)
+    value = {"value": object()}
+    with pytest.raises(ValueError, match="JSON-safe"):
+        request_type(**{**kwargs, field: value})
+
+    valid = request_type(**kwargs)
+    payload = valid.to_dict()
+    payload[field] = {"value": float("nan")}
+    with pytest.raises(ValueError, match="JSON-safe"):
+        request_type.from_dict(payload)
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+@pytest.mark.parametrize(
+    "request_type",
+    [RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest],
+)
+def test_relax_requests_are_frozen_and_deeply_immutable(request_type, capability: str) -> None:
+    kwargs = _relax_constructor_kwargs(request_type, capability=capability)
+    if request_type is RelaxPrepareRequest:
+        kwargs["parameters"] = {"nested": {"items": [1]}}
+    elif request_type is RelaxModifyRequest:
+        kwargs["input_updates"] = {"nested": {"items": [1]}}
+    request = request_type(**kwargs)
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        request.capability = "scf"  # type: ignore[misc]
+    if request_type is RelaxPrepareRequest:
+        with pytest.raises(TypeError):
+            request.parameters["nested"] = {}  # type: ignore[index]
+        with pytest.raises(TypeError):
+            request.parameters["nested"]["items"] = []  # type: ignore[index]
+        with pytest.raises(AttributeError):
+            request.parameters["nested"]["items"].append(2)  # type: ignore[union-attr]
+    if request_type is RelaxModifyRequest:
+        with pytest.raises(TypeError):
+            request.input_updates["nested"] = {}  # type: ignore[index]
+        with pytest.raises(TypeError):
+            request.input_updates["nested"]["items"] = []  # type: ignore[index]
+        with pytest.raises(AttributeError):
+            request.input_updates["nested"]["items"].append(2)  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("capability", RELAX_CAPABILITIES)
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("executable", ""),
+        ("executable", ["abacus"]),
+        ("mpi_ranks", 0),
+        ("mpi_ranks", -1),
+        ("mpi_ranks", True),
+        ("mpi_ranks", "4"),
+        ("omp_threads", 0),
+        ("omp_threads", -1),
+        ("omp_threads", True),
+        ("omp_threads", "2"),
+        ("timeout_seconds", 0.0),
+        ("timeout_seconds", -1.0),
+        ("timeout_seconds", float("inf")),
+        ("timeout_seconds", float("nan")),
+        ("timeout_seconds", "120"),
+        ("dry_run", "false"),
+    ],
+)
+def test_relax_execute_reuses_scf_resource_validation(capability: str, field: str, value: object) -> None:
+    request = RelaxExecuteRequest(**_relax_constructor_kwargs(RelaxExecuteRequest, capability=capability))
+    payload = request.to_dict()
+    payload[field] = value
+    with pytest.raises(ValueError, match=field):
+        RelaxExecuteRequest.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "request_type,expected_keys",
+    SCF_WIRE_KEYS.items(),
+)
+def test_scf_request_wire_keys_remain_unchanged(request_type, expected_keys: set[str]) -> None:
+    # Use the legacy constructor directly: no Relax selector belongs on SCF requests.
+    kwargs = {"operation_id": OPERATION_ID, "workspace_rel": "job"}
+    if request_type is ScfPrepareRequest:
+        kwargs["structure_path_rel"] = "source.STRU"
+    request = request_type(**kwargs)
+    assert set(request.to_dict()) == expected_keys
+    assert "capability" not in request.to_dict()
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**request.to_dict(), "capability": "relax"})

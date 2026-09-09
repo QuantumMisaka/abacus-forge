@@ -97,7 +97,7 @@
       <div class="decision"><p><strong>决策 1：渐进替换，而非推倒重写。</strong>现有解析器、结构处理和测试是可迁移资产。先添加新 contracts 与 adapter，再把旧 API 收敛为 shim；这避免在物理逻辑和接口迁移中同时引入不确定性。</p><p><strong>替代方案：</strong>全新仓库或一次性重写会降低历史耦合，却会丢失当前回归资产并使 benchmark 归因困难，因此不采用。</p></div>
       <div class="decision"><p><strong>决策 2：Forge schema 与 ATP evidence 同构但不相同。</strong>Forge 负责可追溯的计算事实、解析观察和产物引用；ATP adapter 负责平台端的 producer、路径发布、报告与展示投影。Forge schema 不出现 Tool、task_id、AiiDA、MCP、科学接受结论或站点字段。</p><p><strong>替代方案：</strong>让 Forge 直接产出 ATP evidence 会污染其独立 CLI/Python 边界，因此不采用。</p></div>
       <div class="decision"><p><strong>决策 3：核心 API 是显式动词与 request/result，不是 task number。</strong>核心操作为 prepare、modify、execute、collect、export；<code>scf</code>、<code>relax</code>、band/DOS 与 pack 只能提供具名单元操作和参数便利封装。机器调用始终消费显式 schema 和路径；人类可通过快捷命令或 TUI 获得导航、提问和结果展示。</p><p><strong>替代方案：</strong>借鉴 VASPKIT/AbacusCopilot 的菜单和 Task-ID 作为人类 UX 是合理的，但它们不成为 Forge 的能力协议；TUI 必须套在 Python API 或结构化 CLI envelope 之上，不复制执行、收集或状态语义。</p></div>
-      <div class="decision"><p><strong>决策 4：单工作目录操作一致性，全部多步编排在 Forge 外。</strong>Forge 不提供把多个 operation 串起来的 sequence。operation 的顺序、依赖、重试、续算以及 SCF→NSCF 等链路由人类/Agent/上层 workflow 以 artifact reference 显式执行；Forge 的 workspace 锁只保护本地文件和审计一致性。未来可提供可选的 atst-tools NEB engine adapter，将 NEB 图像/链路编排及并行执行语义委托给 atst-tools，并映射为 Forge 的显式 <code>prepare</code>、<code>execute</code>、<code>postprocess</code> 单元；Forge 只记录请求、执行/收集事实和产物，不实现 atst 内部算法、站点启动器或 Slurm。</p></div>
+      <div class="decision"><p><strong>决策 4：单工作目录操作一致性，全部多步编排在 Forge 外。</strong>Forge 不提供把多个 operation 串起来的 sequence。operation 的顺序、依赖、重试、续算以及 SCF→NSCF 等链路由人类/Agent/上层 workflow 以 artifact reference 显式执行；Forge 的 workspace 锁只保护本地文件和审计一致性。可选的 atst-tools NEB engine adapter 将 NEB 图像/链路编排及并行执行语义委托给 atst-tools，并映射为 Forge 的显式 <code>prepare</code>、<code>execute</code>、<code>postprocess</code> 单元；Forge 只记录请求、执行/收集事实和产物，不实现 atst 内部算法、站点启动器或 Slurm。</p></div>
     </section>
 
     <section id="architecture">
@@ -119,7 +119,7 @@ OperationOutcome ──► ForgeResultEnvelope + observations
         <li><code>contracts/</code>：版本化 request/result/workspace/artifact/status 模型与 JSON validation。</li>
         <li><code>core/</code>：结构、ABACUS 文本、资产归一化；不依赖 runner 或平台。</li>
         <li><code>services/</code>：以单一 request/result 调用 core、engine 和 workspace。</li>
-        <li><code>engines/</code>：ABACUS、PyATB 等程序特定桥接；未来可选的 atst-tools 适配器只委托 NEB 图像工作流并返回原始事实，不决定上层流程或平台调度。</li>
+        <li><code>engines/</code>：ABACUS、PyATB 等程序特定桥接；可选的 atst-tools 适配器只委托 NEB 图像工作流并返回原始事实，不决定上层流程或平台调度。</li>
         <li><code>packs/</code>：stable 与 experimental task pack，必须声明所需 artifact 和真实运行证据等级。</li>
         <li><code>cli/</code>：只做参数/JSON 解码、服务调度、JSON 输出和 exit mapping。</li>
       </ul>
@@ -147,7 +147,7 @@ OperationOutcome ──► ForgeResultEnvelope + observations
       <ul>
         <li>contracts：request/result/artifact/status 的 JSON round-trip、版本和路径 containment；状态只覆盖 execution/collection，观察字段保持原始来源。</li>
         <li>core：INPUT/STRU/KPT、结构与解析器 fixture；保留 ABACUS 固定宽度原始日志。</li>
-        <li>services/CLI：prepare/modify/execute/collect 的行为、stdout/stderr、exit class、幂等与覆盖策略。</li>
+        <li>services/CLI：prepare/modify/execute/collect 的行为、stdout/stderr、exit class、重复 operation ID 拒绝与追加事件。</li>
         <li>compat：与 ABACUS/abacustest 的参考 fixture 比对，不形成运行时依赖。</li>
         <li>adapter contract：Forge result 到 Paimon ATP typed outputs/result evidence 的投影测试；可选 atst-tools NEB 适配器另需针对其稳定 API、配置校验、图像执行和后处理产物的契约与真实 smoke。</li>
         <li>benchmark 与 real_smoke：显式运行；用于确认操作、解析和兼容性，不能替代人类/Agent 的科学判断。</li>

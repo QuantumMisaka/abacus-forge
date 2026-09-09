@@ -1,5 +1,7 @@
 # Forge PBE Default and ATST NEB Boundary Implementation Plan
 
+> **Scope record:** This plan records the PBE-default slice and the boundary decision that preceded the dedicated ATST implementation. The optional adapter deferred here is implemented and verified by `2026-09-09-forge-atst-neb-adapter.md`; the deferred wording below remains the historical scope of this plan and is not a claim that the current Forge branch lacks the adapter.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Forge's ABACUS preparation policy explicitly default to PBE and freeze a future, optional atst-tools-backed NEB adapter without moving Slurm, site scheduling, or scientific judgement into Forge.
