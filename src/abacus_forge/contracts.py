@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass, field, fields
 from pathlib import PurePosixPath
 from types import MappingProxyType
-from typing import Literal, Mapping, Sequence, TypeAlias
+from typing import ClassVar, Literal, Mapping, Sequence, TypeAlias
 
 
 JSONValue: TypeAlias = None | bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"]
@@ -599,6 +599,174 @@ class ScfCollectRequest(_ScfRequest):
     @classmethod
     def from_dict(cls, payload: Mapping[str, JSONValue]) -> ScfCollectRequest:
         return cls._from_dict(payload, "collect")
+
+
+@dataclass(frozen=True, slots=True)
+class _AtstNebRequest(OperationRef):
+    """Shared portable contract for the optional ATST NEB adapter."""
+
+    capability: ClassVar[str] = "atst-neb"
+    schema_version: str = REQUEST_SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        OperationRef.__post_init__(self)
+        _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "schema_version": self.schema_version,
+            "capability": self.capability,
+            "operation": self.operation,
+            "operation_id": self.operation_id,
+            "workspace_rel": self.workspace_rel,
+        }
+
+    @classmethod
+    def _from_dict(cls, payload: Mapping[str, JSONValue], expected_operation: str):
+        values = _mapping_payload(payload, f"ATST NEB {expected_operation} request")
+        operation = values.pop("operation", None)
+        if operation != expected_operation:
+            raise ValueError(f"ATST NEB {expected_operation} request operation must be {expected_operation!r}")
+        capability = values.pop("capability", None)
+        if capability != cls.capability:
+            raise ValueError(f"ATST NEB request capability must be {cls.capability!r}")
+        return _construct_strict(cls, values, f"ATST NEB {expected_operation} request")
+
+    @staticmethod
+    def _validate_file_path(value: str, field_name: str) -> None:
+        if not value or canonical_relative_path(value) == ".":
+            raise ValueError(f"{field_name} must identify a workspace-relative file")
+
+    @staticmethod
+    def _validate_output_path(value: str, field_name: str) -> None:
+        _AtstNebRequest._validate_file_path(value, field_name)
+
+
+@dataclass(frozen=True, slots=True)
+class AtstNebPrepareRequest(_AtstNebRequest):
+    init_structure_path_rel: str = ""
+    final_structure_path_rel: str = ""
+    n_images: int = 1
+    chain_path_rel: str = "inputs/init_neb_chain.traj"
+    method: Literal["IDPP", "linear"] = "IDPP"
+    no_align: bool = False
+
+    def __post_init__(self) -> None:
+        _AtstNebRequest.__post_init__(self)
+        self._validate_file_path(self.init_structure_path_rel, "init_structure_path_rel")
+        self._validate_file_path(self.final_structure_path_rel, "final_structure_path_rel")
+        self._validate_output_path(self.chain_path_rel, "chain_path_rel")
+        if isinstance(self.n_images, bool) or not isinstance(self.n_images, int) or self.n_images < 1:
+            raise ValueError("n_images must be a positive integer")
+        if self.method not in {"IDPP", "linear"}:
+            raise ValueError("method must be one of: IDPP, linear")
+        if not isinstance(self.no_align, bool):
+            raise ValueError("no_align must be a boolean")
+
+    @property
+    def operation(self) -> Literal["prepare"]:
+        return "prepare"
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _AtstNebRequest.to_dict(self)
+        payload.update({
+            "init_structure_path_rel": self.init_structure_path_rel,
+            "final_structure_path_rel": self.final_structure_path_rel,
+            "n_images": self.n_images,
+            "chain_path_rel": self.chain_path_rel,
+            "method": self.method,
+            "no_align": self.no_align,
+        })
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> AtstNebPrepareRequest:
+        return cls._from_dict(payload, "prepare")
+
+
+@dataclass(frozen=True, slots=True)
+class AtstNebExecuteRequest(_AtstNebRequest):
+    config_path_rel: str = ""
+    dry_run: bool = False
+    check_input: bool = False
+    check_input_timeout: float = 30.0
+    abacus_executable: str | None = None
+    timeout_seconds: float | None = None
+
+    def __post_init__(self) -> None:
+        _AtstNebRequest.__post_init__(self)
+        self._validate_file_path(self.config_path_rel, "config_path_rel")
+        if not isinstance(self.dry_run, bool) or not isinstance(self.check_input, bool):
+            raise ValueError("dry_run and check_input must be booleans")
+        if self.check_input and not self.dry_run:
+            raise ValueError("check_input requires dry_run")
+        for value, name in ((self.check_input_timeout, "check_input_timeout"), (self.timeout_seconds, "timeout_seconds")):
+            if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0 or not math.isfinite(value)):
+                raise ValueError(f"{name} must be a positive finite number or None")
+        if self.abacus_executable is not None:
+            _require_nonempty_string(self.abacus_executable, "abacus_executable")
+
+    @property
+    def operation(self) -> Literal["execute"]:
+        return "execute"
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _AtstNebRequest.to_dict(self)
+        payload.update({"config_path_rel": self.config_path_rel, "dry_run": self.dry_run, "check_input": self.check_input,
+                        "check_input_timeout": self.check_input_timeout, "abacus_executable": self.abacus_executable,
+                        "timeout_seconds": self.timeout_seconds})
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> AtstNebExecuteRequest:
+        return cls._from_dict(payload, "execute")
+
+
+@dataclass(frozen=True, slots=True)
+class AtstNebPostprocessRequest(_AtstNebRequest):
+    trajectory_path_rel: str = ""
+    n_max: int = 0
+    summary_path_rel: str = "reports/atst/neb-summary.json"
+    output_prefix: str = "outputs/atst/neb-ts"
+    write_latest: bool = False
+    write_neb_init_chain: bool = False
+    plot: bool = False
+    plot_label: str | None = None
+    energy_profile: bool = False
+    vib_analysis: bool = False
+    vib_thr: float = 0.01
+    strict_band: bool = False
+
+    def __post_init__(self) -> None:
+        _AtstNebRequest.__post_init__(self)
+        self._validate_file_path(self.trajectory_path_rel, "trajectory_path_rel")
+        self._validate_output_path(self.summary_path_rel, "summary_path_rel")
+        self._validate_output_path(self.output_prefix, "output_prefix")
+        if isinstance(self.n_max, bool) or not isinstance(self.n_max, int) or self.n_max < 0:
+            raise ValueError("n_max must be a non-negative integer")
+        for value, name in ((self.write_latest, "write_latest"), (self.write_neb_init_chain, "write_neb_init_chain"),
+                            (self.plot, "plot"), (self.energy_profile, "energy_profile"), (self.vib_analysis, "vib_analysis"),
+                            (self.strict_band, "strict_band")):
+            if not isinstance(value, bool):
+                raise ValueError(f"{name} must be a boolean")
+        if self.plot_label is not None:
+            _require_nonempty_string(self.plot_label, "plot_label")
+        if isinstance(self.vib_thr, bool) or not isinstance(self.vib_thr, (int, float)) or self.vib_thr <= 0 or not math.isfinite(self.vib_thr):
+            raise ValueError("vib_thr must be a positive finite number")
+
+    @property
+    def operation(self) -> Literal["postprocess"]:
+        return "postprocess"
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _AtstNebRequest.to_dict(self)
+        payload.update({name: getattr(self, name) for name in ("trajectory_path_rel", "n_max", "summary_path_rel", "output_prefix",
+            "write_latest", "write_neb_init_chain", "plot", "plot_label", "energy_profile", "vib_analysis", "vib_thr", "strict_band")})
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> AtstNebPostprocessRequest:
+        return cls._from_dict(payload, "postprocess")
 
 
 @dataclass(frozen=True, slots=True)

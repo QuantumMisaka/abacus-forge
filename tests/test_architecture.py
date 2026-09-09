@@ -104,12 +104,14 @@ def test_forbidden_imports_reports_import_forms_in_sorted_path_order(tmp_path: P
     ]
 
 
-def test_machine_discovery_advertises_only_experimental_scf() -> None:
+def test_machine_discovery_advertises_experimental_scf_and_atst_neb() -> None:
     result = run_cli("capabilities")
     assert result.returncode == 0
     assert result.stderr == ""
     payload = json.loads(result.stdout)
-    assert [item["name"] for item in payload["capabilities"]] == ["scf"]
+    assert [item["name"] for item in payload["capabilities"]] == ["scf", "atst-neb"]
+    assert payload["capabilities"][1]["maturity"] == "experimental"
+    assert payload["capabilities"][1]["engine"] == "atst-tools"
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
 

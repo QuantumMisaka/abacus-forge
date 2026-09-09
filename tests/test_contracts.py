@@ -392,10 +392,10 @@ def test_capability_descriptor_rejects_invalid_values() -> None:
         CapabilityDescriptor(**{**kwargs, "schema_version": "forge.capability/v2"})
 
 
-def test_capabilities_document_is_fresh_and_advertises_only_scf() -> None:
+def test_capabilities_document_is_fresh_and_advertises_scf_and_atst_neb() -> None:
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
-    assert [item["name"] for item in payload["capabilities"]] == ["scf"]
+    assert [item["name"] for item in payload["capabilities"]] == ["scf", "atst-neb"]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
@@ -403,6 +403,36 @@ def test_capabilities_document_is_fresh_and_advertises_only_scf() -> None:
     payload["capabilities"][0]["inputs"]["prepare"].append("mutated")
     assert capabilities_document()["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert capabilities_document()["capabilities"][0]["inputs"]["prepare"] == ["structure"]
+
+
+def test_atst_neb_requests_round_trip_strictly() -> None:
+    from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest
+    requests = (
+        AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif"),
+        AtstNebExecuteRequest(operation_id=OPERATION_ID, workspace_rel=".", config_path_rel="workflow.yaml", dry_run=True, check_input=True),
+        AtstNebPostprocessRequest(operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel="neb.traj", plot=True, energy_profile=True, vib_analysis=True, strict_band=True),
+    )
+    for request in requests:
+        payload = request.to_dict()
+        assert payload["capability"] == "atst-neb"
+        assert type(request).from_dict(json.loads(json.dumps(payload))) == request
+        with pytest.raises(ValueError, match="unknown"):
+            type(request).from_dict({**payload, "unknown": True})
+
+
+def test_atst_neb_request_rejects_wrong_capability_and_invalid_options() -> None:
+    from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPrepareRequest, AtstNebPostprocessRequest
+    request = AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif")
+    with pytest.raises(ValueError, match="capability"):
+        AtstNebPrepareRequest.from_dict({**request.to_dict(), "capability": "scf"})
+    with pytest.raises(ValueError):
+        AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif", n_images=0)
+    with pytest.raises(ValueError):
+        AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif", method="bad")
+    with pytest.raises(ValueError, match="dry_run"):
+        AtstNebExecuteRequest(operation_id=OPERATION_ID, workspace_rel=".", config_path_rel="workflow.yaml", check_input=True)
+    with pytest.raises(ValueError):
+        AtstNebPostprocessRequest(operation_id=OPERATION_ID, workspace_rel=".", trajectory_path_rel="../neb.traj")
 
 
 def _discovery_request(operation: str):
