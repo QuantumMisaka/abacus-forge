@@ -15,6 +15,12 @@ from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.postprocess_services import (
+    BandPostprocessService,
+    DosPostprocessService,
+    PostprocessService,
+    PostprocessServiceSet,
+)
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from abacus_forge.services import (
     CollectService,
@@ -48,6 +54,7 @@ __all__ = [
     "AtstNebPrepareService",
     "AtstNebServiceSet",
     "BandPostprocessRequest",
+    "BandPostprocessService",
     "CapabilityDescriptor",
     "BandData",
     "CollectionResult",
@@ -56,6 +63,7 @@ __all__ = [
     "DOSData",
     "DOSFamilyData",
     "DosPostprocessRequest",
+    "DosPostprocessService",
     "ForgeRequest",
     "ForgeErrorEnvelope",
     "ForgeResultEnvelope",
@@ -71,6 +79,8 @@ __all__ = [
     "OperationRef",
     "OperationStatus",
     "PDOSData",
+    "PostprocessService",
+    "PostprocessServiceSet",
     "PrepareService",
     "RunResult",
     "RelaxCollectRequest",

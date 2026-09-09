@@ -37,6 +37,7 @@ from abacus_forge.errors import (
 from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.postprocess_services import PostprocessServiceSet
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -313,7 +314,16 @@ def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelo
 
 
 def _dispatch(operation: str, request: object, services: object) -> ServiceResult:
-    service = getattr(services, operation)
+    service: object
+    if operation == "postprocess" and isinstance(services, PostprocessServiceSet):
+        if isinstance(request, BandPostprocessRequest):
+            service = services.band
+        elif isinstance(request, DosPostprocessRequest):
+            service = services.dos
+        else:
+            service = services
+    else:
+        service = getattr(services, operation)
     method = getattr(service, operation)
     return method(request)
 
@@ -399,7 +409,7 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | None = None,
     atst_services: AtstNebServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
@@ -450,6 +460,8 @@ def run_machine_cli(
             service_set = services
         elif isinstance(request, (AtstNebPrepareRequest, AtstNebExecuteRequest, AtstNebPostprocessRequest)):
             service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, (BandPostprocessRequest, DosPostprocessRequest)):
+            service_set = PostprocessServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):
             service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _MD_REQUEST_TYPES):
