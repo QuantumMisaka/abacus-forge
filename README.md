@@ -74,11 +74,16 @@ typed service 与旧 API 共用 `preparation.py`、`collection.py` 和 INPUT 编
 路径、错误及事件持久化由 `service_support.py` 提供通用支持。旧 API 保留原有
 task/sequence 分发与兼容记录，不再是 typed service 的底层依赖。
 
-typed prepare 当前接收结构路径和参数，不提供赝势/轨道文件映射或自动搬运接口。
-调用方需要自行组织 workspace 中的资产并核对引用位置；prepare 返回成功不代表
-赝势/轨道已备齐。需要显式 `pseudo_path`、`orbital_path` 和 `copy/link` 选项时，
-使用现有 `prepare(...)` API。typed 资产接口的后续范围见
-[内核收口 PLAN](./docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)。
+typed prepare 可通过 `pseudo_sources` 与 `orbital_sources` 显式提供按元素映射，
+并以 `asset_mode=copy|link` 控制搬运方式。相对来源路径按 operation workspace 根目录
+解析，绝对路径也可作为显式来源；默认 `copy`，`link` 仅允许 workspace 内来源并写入
+相对链接。缺失来源、后缀或 basename 冲突、以及不安全或不允许的链接均 fail-closed，
+不会留下部分资产；结果 diagnostics、`forge-unit.json`（仅显式映射）和事件记录包含
+来源/目标及 SHA-256 provenance。映射只对列出的元素生效，未映射的 STRU 引用保留，
+但 Forge 不声明资产集合因此完整。
+
+legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推断，默认使用
+`link`；需要该兼容行为时继续使用 legacy API。
 
 ## Agent-first CLI
 

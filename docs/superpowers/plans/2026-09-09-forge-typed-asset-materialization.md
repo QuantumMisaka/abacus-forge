@@ -41,10 +41,10 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 
 **Test strategy:** Extend contract round-trip and invalid-field cases; assert static `schema` contains the three fields, `additionalProperties=false`, object value types, and default copy. Add machine CLI decode regression for valid/invalid asset fields and stable request.schema/exit 2.
 
-- [ ] Write RED tests for round-trip, defaults, invalid map types/empty entries and schema exposure.
-- [ ] Implement fields and static schema.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_cli_process.py`; expect pass.
-- [ ] Commit and report exact output/revision; independent task review follows.
+- [x] Write RED tests for round-trip, defaults, invalid map types/empty entries and schema exposure.
+- [x] Implement fields and static schema.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_cli_process.py`; expect pass.
+- [x] Commit and report exact output/revision; independent task review follows.
 
 ## Task 2: Safe asset materialization core
 
@@ -60,10 +60,10 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 
 **Test strategy:** Hand-created temporary workspace and external source files test copy bytes, relative in-workspace source, external copy, relative internal link, external-link rejection, missing source, invalid suffix, basename collision, existing conflicting destination, same-source dedup and SHA-256. Tests must assert no partial writes after validation failure.
 
-- [ ] Write RED tests for each named boundary.
-- [ ] Implement validation/materialization/provenance with no directory inference.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_assets.py`; expect pass.
-- [ ] Commit and report raw output/revision; independent task review follows.
+- [x] Write RED tests for each named boundary.
+- [x] Implement validation/materialization/provenance with no directory inference.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_assets.py`; expect pass.
+- [x] Commit and report raw output/revision; independent task review follows.
 
 ## Task 3: Integrate typed prepare and provenance
 
@@ -77,10 +77,10 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 
 **Test strategy:** Add service/API/process cases with a structure containing Si/O, external Si.upf/O.upf/Si.orb/O.orb; assert final STRU names, bytes, artifact records, diagnostics, event payload and source/destination hashes. Cover partial map preserving source metadata, unknown element, missing source, collision and external link rejection. Reuse existing operation IDs and isolated workspaces to avoid admission conflicts.
 
-- [ ] Write RED integration tests against Task1/2 contracts.
-- [ ] Integrate typed path and prove legacy regression stays green.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_api.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_assets.py`; expect pass.
-- [ ] Commit and report exact raw output/revision; independent task review follows.
+- [x] Write RED integration tests against Task1/2 contracts.
+- [x] Integrate typed path and prove legacy regression stays green.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_api.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_assets.py`; exact revision `ec3d84d` passed `492` tests in `46.51s`.
+- [x] Commit and report exact raw output/revision; independent task review passed at `ec3d84d`.
 
 ## Task 4: Documentation and final verification
 
@@ -92,8 +92,8 @@ The read-only evidence is in `docs/superpowers/plans/2026-09-09-forge-core-fidel
 
 **Verification:** Run the full offline gate after Task3/Task4 docs with exact interpreter/flags, `git diff --check`, and review packages. No real ABACUS run is required for this file/materialization boundary.
 
-- [ ] Update docs concisely after code behavior is fixed.
-- [ ] Run full offline pytest and diff check; retain raw output.
-- [ ] Obtain task reviews and whole-branch review; close all Critical/Important findings before delivery.
+- [x] Update docs concisely after code behavior is fixed.
+- [ ] Run full offline pytest and diff check; retain raw output (主代理在文档提交后独立重跑全量 gate)。
+- [x] Obtain task reviews and whole-branch review; close all Critical/Important findings before delivery; Task 3 review passed at `ec3d84d`.
 
 **Plan self-review:** Checked against the two SPECs at branch `80d197a`, current contracts/discovery/service seams, Paimon v1.2 asset pipeline, abacustest map behavior and current Forge legacy tests. New fields are optional and preserve request v1. Asset writes are isolated below typed service, explicit and fail-closed. The plan deliberately excludes directory inference for typed requests, science validation, orchestration, scheduler behavior and real execution. No unresolved public behavior decision remains after the user’s “进行推进” authorization.

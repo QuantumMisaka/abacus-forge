@@ -20,9 +20,9 @@
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 - 可选 typed Relax real smoke 只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；未提供真实输入时不产生 release evidence。
+- typed prepare 已支持显式 `pseudo_sources` / `orbital_sources` 资产映射：默认 copy，contained-only relative link，缺失与冲突 fail-closed，并在 typed diagnostics、manifest 和事件中记录来源/目标及哈希 provenance；未映射 STRU 引用保留且不声明完整。
 
 ## 近期方向
-- 后续单独收敛 typed prepare 的 PP/ORB 映射和资产搬运：明确来源、覆盖优先级、copy/link、路径包含性、重名与缺失诊断；保留 STRU 引用不等于自动备齐计算资产。
 - 继续增强 CLI 与文档的一致性，确保 README、`--help`、pytest 同步。
 - 继续补强 diagnostics 与错误报告的清晰度。
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
