@@ -440,9 +440,11 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 不完整只反映 collection 状态。
 
 typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
-和事实收集；它不提供 trajectory 转换、monitor、restart/resume 或独立
-`postprocess`/`export`。这些能力、PyATB engine boundary 和更多真实 property-pack smoke
-仍是后续批次；Stage 5 的 legacy 依赖解除与稳定发布门禁也尚未完成。
+和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立
+`postprocess`/`export`。独立 `postprocess`/`export` 仍按 SPEC 作为后续 Forge 批次；PyATB
+engine boundary 和更多真实 property-pack smoke 也仍待后续交付。监控、workflow 编排、
+恢复/重试、调度和科学判断由 Forge 外部的人类或 Agent 负责；Stage 5 的 legacy 依赖
+解除与稳定发布门禁也尚未完成。
 
 ## Typed MD operations
 
@@ -471,8 +473,9 @@ request = MdPrepareRequest(
 
 默认 profile 使用 PBE 与 NVE；调用方或 Agent 负责选择和覆盖物理参数。`collect` 只在
 可用时返回 `MD_dump` 与日志中的解析事实、指标和 artifact 引用，不判断轨迹或物理结果
-是否可接受。trajectory 转换、monitor、restart/resume、独立 `postprocess`/`export`、
-调度以及科学判断均由 Forge 外部的人类或 Agent 负责。
+是否可接受。本批次不包含 MD 专用 trajectory 转换或独立 `postprocess`/`export`；后者
+仍可在后续 Forge operation 批次交付。monitor、workflow 编排、restart/resume、调度以及
+科学判断由 Forge 外部的人类或 Agent 负责。
 
 ## 作为 Python 库使用
 

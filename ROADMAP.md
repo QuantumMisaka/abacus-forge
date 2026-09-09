@@ -29,7 +29,7 @@
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
 - 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
-- typed MD 当前只交付单工作目录的准备、修改、一次本地执行和事实收集；`MD_dump`/日志只作为可用事实返回。trajectory conversion、monitor、restart/resume、独立 `postprocess`/`export`、调度与科学判断仍在 Forge 外，后续批次仍包括 PyATB engine boundary 和更多 property-pack 的真实 smoke。
+- typed MD 当前只交付单工作目录的准备、修改、一次本地执行和事实收集；`MD_dump`/日志只作为可用事实返回。本批次尚未交付 MD 专用 trajectory conversion 或独立 `postprocess`/`export`，后者仍是后续 Forge operation 批次；monitor、workflow 编排、restart/resume、调度与科学判断保持在 Forge 外。后续批次仍包括 PyATB engine boundary 和更多 property-pack 的真实 smoke。
 - 固化 SCF->NSCF artifact handoff 规则：电荷、矩阵、最终结构、DOS/PyATB 后处理所需文件要有明确 manifest，而不是只依赖目录名约定。
 - 扩展 PyATB artifact schema：区分 spin up/down band data、band PDF/PNG、`band_info.dat` 指标和 PyATB `Out/input.json`，并把 spin-polarized shared overlap matrix 场景纳入回归。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
