@@ -43,10 +43,10 @@
 
 **Test strategy:** Extend the owning contract/machine suites. Cover round-trip/defaults, immutability, nspin/path cardinality, finite numbers and line-point validation, unknown fields/selectors, discovery descriptor/schema exactness, and CLI decoder selection. Do not add a generic PyATB function selector or modify legacy CLI parsing.
 
-- [ ] Write RED tests for request round-trips, invalid payloads, schema/discovery and decoder routing.
-- [ ] Implement the three request classes and registry wiring.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py`; expect all selected tests to pass.
-- [ ] Commit and report exact output/revision; independent task review follows.
+- [x] Write RED tests for request round-trips, invalid payloads, schema/discovery and decoder routing.
+- [x] Implement the three request classes and registry wiring.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py tests/test_cli_process.py`; `396 passed`.
+- [x] Commit and report exact output/revision; independent review CLEAN/APPROVED at `d49c515`.
 
 ## Task 2: Explicit PyATB handoff and collection algorithms
 
