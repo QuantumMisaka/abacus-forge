@@ -159,19 +159,19 @@
 **Files:**
 - No new production files; update this plan's evidence block only.
 
-- [ ] **Step 1: Run the focused gate**
+- [x] **Step 1: Run the focused gate**
   - `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_contracts.py tests/test_md_services.py tests/test_md_machine_cli.py tests/test_machine_cli.py tests/test_service_status.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_architecture.py`
-- [ ] **Step 2: Run the full offline suite**
+- [x] **Step 2: Run the full offline suite**
   - `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider`
   - Expected: all existing and new tests pass; any real-smoke skips remain explicit and do not become release evidence.
-- [ ] **Step 3: Run hygiene checks**
+- [x] **Step 3: Run hygiene checks**
   - `git diff --check`
   - `rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" src/abacus_forge pyproject.toml`
   - Expected: no new forbidden runtime dependency/import; only pre-existing documentation/test references remain.
-- [ ] **Step 4: Request independent task and whole-branch review**
+- [x] **Step 4: Request independent task and whole-branch review**
   - Review the frozen diff against this PLAN and the SPEC sections listed above.
   - Reviewer must specifically check: MD cannot fall through to SCF, `calculation` fencing is symmetric, descriptors do not advertise postprocess/export, collection remains factual, and no scheduler/restart/science policy leaked in.
-- [ ] **Step 5: Record evidence**
+- [x] **Step 5: Record evidence**
   - Add exact HEAD, focused/full test counts, hygiene output and review result here. Do not claim stable maturity or Paimon migration.
 
 ## Self-review record
@@ -181,14 +181,14 @@
 - **Compatibility checks:** no changes to generic `ForgeRequest` operation set, legacy `run_md`, legacy CLI, output layout, error classes, status values or artifact roles. `MdServiceSet` is a new typed entry only.
 - **Known limitations intentionally retained:** collection completeness still follows the existing factual collector rules and does not claim trajectory completeness; real ABACUS/MD smoke and Paimon v1.3 promotion remain later gates.
 
-## Execution ledger (Tasks 1–4)
+## Execution ledger (Tasks 1–5)
 
-- Task 1 contracts: `85babc5` and calculation-fencing fix `574563e`; contract and adjacent regression run: `252 passed`.
-- Task 2 services: `6383e97`; service/status/result/task regression run: `172 passed`.
-- Task 3 discovery and machine surface: `97a181c`; MD/machine CLI parity run after registry expectation update: `81 passed`.
-- Task 4 documentation: this commit; `capabilities` output verified that `md` is `experimental`, advertises exactly `prepare`/`modify`/`execute`/`collect`, and uses artifact roles `input`/`provenance_manifest`/`output`.
-- Task 5 final focused/full gates and independent review remain pending; this ledger does not constitute release or stable-maturity evidence.
+- Task 1 contracts: `85babc5`, calculation-fencing fix `574563e`, and contract-strengthening tests `bbd487b`; contract/structure regression: `252 passed`, later MD focused suites: `33 passed`.
+- Task 2 services: `6383e97` plus the LocalRunner fact test in `2c7737e`; service/status/result/task regression: `172 passed`.
+- Task 3 discovery and machine surface: `97a181c`, type annotation fix `3e70b50`, registry/architecture expectation updates `4ada4d7`, `2836de8`, `ad669eb`; in-process and subprocess/API parity plus fake-runner evidence in `2c7737e` and `7223d0c`.
+- Task 4 documentation: `104b759` and boundary-clarification fix `e5461b7`; `capabilities` output verified that `md` is `experimental`, advertises exactly `prepare`/`modify`/`execute`/`collect`, and uses artifact roles `input`/`provenance_manifest`/`output`.
+- Task 5 final focused gate: **561 passed**; full offline suite: **760 passed, 3 skipped**. `git diff --check` passed. The forbidden-import scan reported only pre-existing compatibility text (`pyproject.toml:45`) and a path-filter string (`src/abacus_forge/collectors/abacus.py:416`), with no forbidden production import. Independent review by `typed_md_final_review` approved the corrected boundary and parity evidence at `e5461b7`; the final tests-only delta is `bbd487b`. This batch remains experimental and is not real-ABACUS or stable-release evidence.
 
 ## Completion evidence
 
-_To be filled during execution. This section must name the final code revision, focused/full test commands and results, `git diff --check`, forbidden-import scan, and independent review verdict._
+Final code revision under test: `bbd487b` (the evidence update itself is documentation-only). Focused gate: the exact command in Task 5 Step 1, **561 passed**. Full offline gate: the exact command in Task 5 Step 2, **760 passed, 3 skipped**. `git diff --check`: passed. Forbidden-import scan: no new runtime import; only the two pre-existing matches recorded above. Independent reviewer: `typed_md_final_review`, approved after the documentation-boundary and four-operation subprocess/API parity corrections; no blocker or remaining Important finding. `md` remains `experimental`; this is not real-ABACUS validation or Paimon v1.3 stable-maturity evidence.
