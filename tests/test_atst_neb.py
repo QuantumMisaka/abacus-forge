@@ -142,6 +142,14 @@ def test_stale_output_does_not_count_but_overwrite_does(tmp_path: Path) -> None:
     fresh = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj"))
     assert isinstance(fresh, OperationOutcome) and fresh.status.collection == "complete"
 
+def test_postprocess_init_chain_uses_exact_traj_path(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("x")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).postprocess.postprocess(
+        AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", write_neb_init_chain=True))
+    assert isinstance(result, OperationOutcome) and result.status.collection == "complete"
+    assert any(item.path_rel == "outputs/atst/neb-init-chain.traj" for item in result.envelope.artifacts)
+    assert (tmp_path / "outputs/atst/neb-init-chain.traj").is_file()
+
 def test_discovery_plot_label_condition_has_three_validated_branches() -> None:
     schema = request_schema_document("atst-neb", "postprocess")
     condition = schema["request_schema"]["allOf"][0]
