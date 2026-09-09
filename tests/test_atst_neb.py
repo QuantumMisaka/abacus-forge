@@ -122,6 +122,17 @@ def test_derived_output_symlink_cannot_overwrite_trajectory(tmp_path: Path) -> N
     assert result.error_class == "request.invalid"
     assert trajectory.read_text() == "keep trajectory"
 
+def test_derived_output_targets_must_not_alias_each_other(tmp_path: Path) -> None:
+    (tmp_path / "neb.traj").write_text("trajectory")
+    output_dir = tmp_path / "outputs" / "atst"
+    output_dir.mkdir(parents=True)
+    (output_dir / "neb-latest.traj").symlink_to(output_dir / "ts.cif")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="/bin/true").postprocess.postprocess(
+        AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="outputs/atst/ts", write_latest=True)
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+
 def test_postprocess_cannot_overwrite_forge_audit_or_external_derived_targets(tmp_path: Path) -> None:
     (tmp_path / "neb.traj").write_text("trajectory")
     external = tmp_path.parent / f"{tmp_path.name}-derived-external"
