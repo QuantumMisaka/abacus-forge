@@ -127,11 +127,20 @@ class AtstNebExecuteService:
 
 class AtstNebPostprocessService:
     def __init__(self, context: _AtstContext) -> None: self._context = context
+    @staticmethod
+    def _prefixes_overlap(left: Path, right: Path) -> bool:
+        return left == right or left.parent == right.parent and (left.name.startswith(right.name + ".") or right.name.startswith(left.name + "."))
     def postprocess(self, request: AtstNebPostprocessRequest) -> ServiceResult:
         if not isinstance(request, AtstNebPostprocessRequest):
             return _ScfServiceContext.error("request.invalid", "expected AtstNebPostprocessRequest", None)
-        if request.plot_label is not None and request.plot_label == request.output_prefix:
-            return _ScfServiceContext.error("request.invalid", "plot_label must not equal output_prefix", request)
+        requested = [Path(request.output_prefix)]
+        if request.write_latest: requested.append(Path("outputs/atst/neb-latest"))
+        if request.write_neb_init_chain: requested.append(Path("outputs/atst/neb-init-chain.traj"))
+        if request.plot_label: requested.append(Path(request.plot_label))
+        if any(self._prefixes_overlap(left, right) for i, left in enumerate(requested) for right in requested[i + 1:]):
+            return _ScfServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
+        if any(self._context.matches_prefix(Path(request.summary_path_rel), item) for item in requested):
+            return _ScfServiceContext.error("request.invalid", "summary_path_rel overlaps output prefix", request)
         try:
             workspace = self._context.workspace(request.workspace_rel)
             trajectory = self._context.path(workspace, request.trajectory_path_rel, "trajectory_path_rel")
@@ -143,6 +152,8 @@ class AtstNebPostprocessService:
                 before_outputs = {p.resolve(): (p.stat().st_size, p.stat().st_mtime_ns) for p in workspace.root.rglob("*") if p.is_file()}
                 summary.parent.mkdir(parents=True, exist_ok=True)
                 prefix.parent.mkdir(parents=True, exist_ok=True)
+                log_paths = {workspace.root / "reports/atst" / f"{request.operation_id}-{suffix}-stdout.log" for suffix in ("summary", "post")}
+                log_paths |= {workspace.root / "reports/atst" / f"{request.operation_id}-{suffix}-stderr.log" for suffix in ("summary", "post")}
                 summary_cmd = [executable, "neb", "summary", str(trajectory), "--format", "json", "--output", str(summary)]
                 if request.n_max:
                     summary_cmd[4:4] = ["--n-max", str(request.n_max)]
@@ -179,7 +190,7 @@ class AtstNebPostprocessService:
                 changed_outputs: dict[Path, list[Path]] = {item.resolve(): [] for item in prefixes}
                 for candidate in sorted(workspace.root.rglob("*")):
                     key = candidate.resolve()
-                    changed = candidate.is_file() and not str(key).startswith(str((workspace.root / "reports" / "atst").resolve())) and (key not in post_before or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != post_before[key])
+                    changed = candidate.is_file() and key not in {item.resolve() for item in log_paths} and (key not in post_before or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != post_before[key])
                     if changed and any(self._context.matches_prefix(key, item.resolve()) for item in prefixes):
                         rel = candidate.relative_to(workspace.root).as_posix()
                         entries.append((f"atst-{hashlib.sha256(rel.encode()).hexdigest()[:12]}", rel, "output"))
