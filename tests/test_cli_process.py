@@ -505,11 +505,49 @@ def test_machine_process_discovery_emits_one_json_document_and_no_diagnostics() 
         ("schema", "scf", "collect"),
         ("schema", "relax", "prepare"),
         ("schema", "cell-relax", "modify"),
+        ("schema", "band", "postprocess"),
+        ("schema", "dos", "postprocess"),
     ):
         result = run_cli(*argv)
         assert result.returncode == 0
         assert result.stderr == ""
         assert len(_parse_concatenated_json_values(result.stdout)) == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "schema_version": "forge.request/v1",
+            "operation": "postprocess",
+            "operation_id": "123e4567-e89b-42d3-a456-426614174240",
+            "workspace_rel": ".",
+            "source_paths_rel": ["BANDS_1.dat"],
+        },
+        {
+            "schema_version": "forge.request/v1",
+            "capability": "band",
+            "operation": "export",
+            "operation_id": "123e4567-e89b-42d3-a456-426614174241",
+            "workspace_rel": ".",
+            "source_paths_rel": ["BANDS_1.dat"],
+        },
+    ],
+)
+def test_machine_process_rejects_capabilityless_or_unsupported_postprocess_without_service(
+    tmp_path: Path, payload: dict[str, object]
+) -> None:
+    command_operation = "postprocess" if payload["operation"] == "postprocess" else "export"
+    result = run_cli(
+        "operation",
+        command_operation,
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(payload),
+    )
+    assert result.returncode == 2
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "request.invalid"
 
 
 def test_machine_process_decodes_valid_typed_prepare_asset_fields_before_preconditions(

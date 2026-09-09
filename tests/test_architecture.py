@@ -189,13 +189,13 @@ def test_forbidden_imports_reports_import_forms_in_sorted_path_order(tmp_path: P
     ]
 
 
-def test_machine_discovery_advertises_experimental_scf_relax_atst_neb_and_md() -> None:
+def test_machine_discovery_advertises_experimental_scf_relax_atst_neb_md_and_postprocess() -> None:
     result = run_cli("capabilities")
     assert result.returncode == 0
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos",
     ]
     for capability in payload["capabilities"][:3]:
         assert capability["maturity"] == "experimental"
@@ -212,6 +212,19 @@ def test_machine_discovery_advertises_experimental_scf_relax_atst_neb_and_md() -
     assert md["engine"] == "abacus"
     assert md["operations"] == ["prepare", "modify", "execute", "collect"]
     assert md["artifact_roles"] == ["input", "provenance_manifest", "output"]
+
+
+def test_machine_discovery_advertises_only_band_and_dos_postprocess_operations() -> None:
+    payload = json.loads(run_cli("capabilities").stdout)
+    descriptors = {item["name"]: item for item in payload["capabilities"]}
+    assert descriptors["band"]["operations"] == ["postprocess"]
+    assert descriptors["dos"]["operations"] == ["postprocess"]
+    for name in ("band", "dos"):
+        descriptor = descriptors[name]
+        assert descriptor["engine"] == "abacus"
+        assert descriptor["maturity"] == "experimental"
+        assert descriptor["artifact_roles"] == ["input", "output"]
+        assert set(descriptor["inputs"]) == {"postprocess"}
 
 
 def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) -> None:

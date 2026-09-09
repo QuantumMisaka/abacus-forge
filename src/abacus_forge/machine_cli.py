@@ -36,6 +36,7 @@ from abacus_forge.errors import (
 )
 from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
+from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -68,12 +69,17 @@ _MD_DECODERS = {
     "execute": MdExecuteRequest.from_dict,
     "collect": MdCollectRequest.from_dict,
 }
+_POSTPROCESS_DECODERS = {
+    "band": {"postprocess": BandPostprocessRequest.from_dict},
+    "dos": {"postprocess": DosPostprocessRequest.from_dict},
+}
 _CAPABILITY_DECODERS = {
     "scf": _SCF_DECODERS,
     "relax": _RELAX_DECODERS,
     "cell-relax": _RELAX_DECODERS,
     "atst-neb": _ATST_NEB_DECODERS,
     "md": _MD_DECODERS,
+    **_POSTPROCESS_DECODERS,
 }
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,

@@ -9,6 +9,8 @@ import pytest
 
 from abacus_forge import contracts
 from abacus_forge import (
+    BandPostprocessRequest,
+    DosPostprocessRequest,
     RelaxCollectRequest,
     RelaxExecuteRequest,
     RelaxModifyRequest,
@@ -33,6 +35,8 @@ from abacus_forge.contracts import (
 )
 from abacus_forge.discovery import (
     ATST_NEB_REQUEST_TYPES,
+    POSTPROCESS_REQUEST_TYPES,
+    REQUEST_TYPES_BY_CAPABILITY,
     SCF_REQUEST_TYPES,
     capabilities_document,
     request_schema_document,
@@ -498,7 +502,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos",
     ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
@@ -511,6 +515,8 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert payload["capabilities"][4]["engine"] == "abacus"
     assert payload["capabilities"][4]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    assert payload["capabilities"][5]["operations"] == ["postprocess"]
+    assert payload["capabilities"][6]["operations"] == ["postprocess"]
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:
@@ -928,3 +934,160 @@ def test_scf_request_wire_keys_remain_unchanged(request_type, expected_keys: set
     assert "capability" not in request.to_dict()
     with pytest.raises(ValueError, match="unknown"):
         request_type.from_dict({**request.to_dict(), "capability": "relax"})
+
+
+POSTPROCESS_REQUEST_CASES = (
+    (
+        BandPostprocessRequest,
+        {
+            "source_paths_rel": ["outputs/OUT.ABACUS/BANDS_1.dat"],
+            "output_dir_rel": "outputs/band",
+        },
+    ),
+    (
+        DosPostprocessRequest,
+        {
+            "dos_paths_rel": ["outputs/OUT.ABACUS/DOS1_smearing.dat"],
+            "pdos_path_rel": "outputs/OUT.ABACUS/PDOS",
+            "tdos_path_rel": "outputs/OUT.ABACUS/TDOS",
+            "output_dir_rel": "outputs/dos",
+            "include_tdos": True,
+            "include_pdos": True,
+            "pdos_mode": "atoms",
+            "pdos_atom_indices": [0, 2],
+            "plot_emin": -4.0,
+            "plot_emax": 6.0,
+            "save_data": True,
+            "save_plot": False,
+            "suffix": "selected",
+        },
+    ),
+)
+
+
+@pytest.mark.parametrize("request_type,extra", POSTPROCESS_REQUEST_CASES)
+def test_postprocess_requests_round_trip_strictly_and_remain_immutable(request_type, extra) -> None:
+    request = request_type(
+        operation_id=OPERATION_ID,
+        workspace_rel="job",
+        **extra,
+    )
+
+    payload = request.to_dict()
+    assert payload["schema_version"] == "forge.request/v1"
+    assert payload["capability"] == request.capability
+    assert payload["operation"] == "postprocess"
+    assert request_type.from_dict(json.loads(json.dumps(payload))) == request
+    assert dataclasses.is_dataclass(request)
+    assert not hasattr(request, "__dict__")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        request.operation_id = OPERATION_ID  # type: ignore[misc]
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**payload, "unknown": True})
+
+
+def test_postprocess_request_registries_are_separate_from_legacy_scf() -> None:
+    expected = {
+        "band": {"postprocess": BandPostprocessRequest},
+        "dos": {"postprocess": DosPostprocessRequest},
+    }
+    assert POSTPROCESS_REQUEST_TYPES == expected
+    assert REQUEST_TYPES_BY_CAPABILITY["band"] is POSTPROCESS_REQUEST_TYPES["band"]
+    assert REQUEST_TYPES_BY_CAPABILITY["dos"] is POSTPROCESS_REQUEST_TYPES["dos"]
+    assert "postprocess" not in SCF_REQUEST_TYPES
+    assert set(contracts._OPERATIONS) == {"prepare", "modify", "execute", "collect", "export"}
+
+
+@pytest.mark.parametrize(
+    ("request_type", "field", "value"),
+    [
+        (BandPostprocessRequest, "source_paths_rel", []),
+        (BandPostprocessRequest, "source_paths_rel", ["."]),
+        (BandPostprocessRequest, "source_paths_rel", ["../outside"]),
+        (BandPostprocessRequest, "source_paths_rel", ["a/../BANDS.dat"]),
+        (BandPostprocessRequest, "source_paths_rel", ["a\\BANDS.dat"]),
+        (BandPostprocessRequest, "source_paths_rel", "BANDS.dat"),
+        (DosPostprocessRequest, "dos_paths_rel", []),
+        (DosPostprocessRequest, "dos_paths_rel", ["/tmp/DOS.dat"]),
+        (DosPostprocessRequest, "pdos_path_rel", "."),
+        (DosPostprocessRequest, "tdos_path_rel", "a/./TDOS"),
+        (DosPostprocessRequest, "output_dir_rel", "../outside"),
+        (DosPostprocessRequest, "output_dir_rel", "a\\b"),
+        (DosPostprocessRequest, "pdos_atom_indices", [0, -1]),
+        (DosPostprocessRequest, "pdos_atom_indices", [True]),
+        (DosPostprocessRequest, "pdos_atom_indices", ["0"]),
+        (DosPostprocessRequest, "pdos_mode", "unknown"),
+        (BandPostprocessRequest, "plot_emin", float("nan")),
+        (DosPostprocessRequest, "plot_emax", float("inf")),
+        (BandPostprocessRequest, "save_data", 1),
+        (DosPostprocessRequest, "include_pdos", "true"),
+        (DosPostprocessRequest, "suffix", ""),
+        (DosPostprocessRequest, "suffix", "../escape"),
+        (DosPostprocessRequest, "suffix", "a\\b"),
+        (DosPostprocessRequest, "suffix", "."),
+        (DosPostprocessRequest, "suffix", ".."),
+    ],
+)
+def test_postprocess_requests_reject_invalid_paths_types_bounds_and_suffix(
+    request_type, field: str, value: object
+) -> None:
+    base = {
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "source_paths_rel": ["BANDS_1.dat"],
+    }
+    if request_type is DosPostprocessRequest:
+        base.pop("source_paths_rel")
+        base["dos_paths_rel"] = ["DOS1_smearing.dat"]
+    with pytest.raises(ValueError, match=field):
+        request_type(**{**base, field: value})
+
+
+def test_postprocess_requests_reject_inverted_or_non_numeric_plot_bounds() -> None:
+    with pytest.raises(ValueError, match="plot_emin|plot_emax"):
+        BandPostprocessRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            source_paths_rel=["BANDS_1.dat"],
+            plot_emin=1.0,
+            plot_emax=1.0,
+        )
+    with pytest.raises(ValueError, match="plot_emin|plot_emax"):
+        DosPostprocessRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            dos_paths_rel=["DOS1_smearing.dat"],
+            plot_emin=3.0,
+            plot_emax=-3.0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type"),
+    [("band", BandPostprocessRequest), ("dos", DosPostprocessRequest)],
+)
+def test_postprocess_schema_matches_dataclass_wire_and_rejects_extra_fields(
+    capability: str, request_type
+) -> None:
+    if capability == "band":
+        request = request_type(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            source_paths_rel=["BANDS_1.dat"],
+        )
+    else:
+        request = request_type(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            dos_paths_rel=["DOS1_smearing.dat"],
+        )
+    schema = request_schema_document(capability, "postprocess")["request_schema"]
+    assert schema["additionalProperties"] is False
+    assert set(schema["properties"]) == set(request.to_dict())
+    assert set(schema["required"]) >= {
+        "schema_version",
+        "capability",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+    }

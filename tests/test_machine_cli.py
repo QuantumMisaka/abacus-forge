@@ -22,6 +22,7 @@ from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
 )
+from abacus_forge import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_atst_neb_request, decode_scf_request, exit_code_for, run_machine_cli
 from abacus_forge.errors import (
@@ -129,6 +130,13 @@ class _AllRecordingServices:
         self.collect = _RecordingOperationService(self, "collect")
 
 
+class _AllRecordingPostprocessServices:
+    def __init__(self, results: dict[str, object]) -> None:
+        self.results = results
+        self.calls: list[tuple[str, object]] = []
+        self.postprocess = _RecordingOperationService(self, "postprocess")
+
+
 def _atst_payload(operation: str, operation_id: str = OPERATION_ID) -> dict[str, object]:
     payload: dict[str, object] = {
         "schema_version": "forge.request/v1",
@@ -189,7 +197,7 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
 def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
     assert [descriptor["name"] for descriptor in descriptors] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos",
     ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"
@@ -204,6 +212,28 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[4]["engine"] == "abacus"
     assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert descriptors[4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    assert descriptors[5:] == [
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "band",
+            "maturity": "experimental",
+            "engine": "abacus",
+            "operations": ["postprocess"],
+            "inputs": {"postprocess": ["band_files"]},
+            "artifact_roles": ["input", "output"],
+            "optional_dependencies": [],
+        },
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "dos",
+            "maturity": "experimental",
+            "engine": "abacus",
+            "operations": ["postprocess"],
+            "inputs": {"postprocess": ["dos_files", "pdos", "tdos"]},
+            "artifact_roles": ["input", "output"],
+            "optional_dependencies": [],
+        },
+    ]
 
 
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
@@ -485,6 +515,106 @@ def test_decode_scf_request_uses_strict_typed_decoder() -> None:
         decode_scf_request("postprocess", _request())
     with pytest.raises(ForgePathError):
         decode_scf_request("collect", {**_request(), "workspace_rel": "../escape"})
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "payload_extra"),
+    [
+        ("band", BandPostprocessRequest, {"source_paths_rel": ["BANDS_1.dat"]}),
+        ("dos", DosPostprocessRequest, {"dos_paths_rel": ["DOS1_smearing.dat"]}),
+    ],
+)
+def test_decode_operation_request_routes_explicit_postprocess_capabilities(
+    capability: str, request_type: type[object], payload_extra: dict[str, object]
+) -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "capability": capability,
+        "operation": "postprocess",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        **payload_extra,
+    }
+    request = _decode_operation_request("postprocess", payload)
+    assert isinstance(request, request_type)
+    assert request.to_dict() == payload | {
+        "output_dir_rel": "outputs",
+        "plot_emin": -10.0,
+        "plot_emax": 10.0,
+        "save_data": True,
+        "save_plot": True,
+        **(
+            {
+                "pdos_path_rel": None,
+                "tdos_path_rel": None,
+                "include_tdos": True,
+                "include_pdos": True,
+                "pdos_mode": "species",
+                "pdos_atom_indices": [],
+                "suffix": None,
+            }
+            if capability == "dos"
+            else {}
+        ),
+    }
+
+
+def test_machine_dispatches_explicit_postprocess_to_injected_service() -> None:
+    for capability, request_type, extra in (
+        ("band", BandPostprocessRequest, {"source_paths_rel": ["BANDS_1.dat"]}),
+        ("dos", DosPostprocessRequest, {"dos_paths_rel": ["DOS1_smearing.dat"]}),
+    ):
+        result = _outcome_for("postprocess", OPERATION_ID)
+        services = _AllRecordingPostprocessServices({"postprocess": result})
+        payload = {
+            "schema_version": "forge.request/v1",
+            "capability": capability,
+            "operation": "postprocess",
+            "operation_id": OPERATION_ID,
+            "workspace_rel": ".",
+            **extra,
+        }
+        code, output, diagnostics = _invoke(
+            ["operation", "postprocess", "--stdin"],
+            request_text=json.dumps(payload),
+            services=services,
+        )
+        assert code == 0
+        assert diagnostics == ""
+        assert json.loads(output) == result.to_dict()
+        assert len(services.calls) == 1
+        assert isinstance(services.calls[0][1], request_type)
+
+
+def test_machine_rejects_postprocess_without_capability_or_with_unsupported_operation_before_service() -> None:
+    services = _AllRecordingPostprocessServices({"postprocess": _outcome_for("postprocess", OPERATION_ID)})
+    capabilityless = {
+        "schema_version": "forge.request/v1",
+        "operation": "postprocess",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "source_paths_rel": ["BANDS_1.dat"],
+    }
+    code, output, _ = _invoke(
+        ["operation", "postprocess", "--stdin"],
+        request_text=json.dumps(capabilityless),
+        services=services,
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    unsupported = {
+        **capabilityless,
+        "capability": "band",
+        "operation": "export",
+    }
+    code, output, _ = _invoke(
+        ["operation", "export", "--stdin"],
+        request_text=json.dumps(unsupported),
+        services=services,
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    assert services.calls == []
 @pytest.mark.parametrize(
     ("operation", "request_type"),
     [("prepare", AtstNebPrepareRequest), ("execute", AtstNebExecuteRequest), ("postprocess", AtstNebPostprocessRequest)],

@@ -24,6 +24,7 @@ from abacus_forge.md_contracts import (
     MdModifyRequest,
     MdPrepareRequest,
 )
+from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -60,12 +61,17 @@ MD_REQUEST_TYPES = {
     "execute": MdExecuteRequest,
     "collect": MdCollectRequest,
 }
+POSTPROCESS_REQUEST_TYPES = {
+    "band": {"postprocess": BandPostprocessRequest},
+    "dos": {"postprocess": DosPostprocessRequest},
+}
 
 REQUEST_TYPES_BY_CAPABILITY = {
     "scf": SCF_REQUEST_TYPES,
     "relax": RELAX_REQUEST_TYPES,
     "cell-relax": RELAX_REQUEST_TYPES,
     "md": MD_REQUEST_TYPES,
+    **POSTPROCESS_REQUEST_TYPES,
 }
 
 REQUIRED_WIRE_FIELDS = {
@@ -73,6 +79,7 @@ REQUIRED_WIRE_FIELDS = {
     "modify": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
     "execute": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
     "collect": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
+    "postprocess": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
 }
 
 _SCF_DESCRIPTOR = CapabilityDescriptor(
@@ -114,6 +121,24 @@ _MD_DESCRIPTOR = CapabilityDescriptor(
         "collect": ("workspace_outputs",),
     },
     artifact_roles=("input", "provenance_manifest", "output"),
+    optional_dependencies=(),
+)
+_BAND_DESCRIPTOR = CapabilityDescriptor(
+    name="band",
+    maturity="experimental",
+    engine="abacus",
+    operations=("postprocess",),
+    inputs={"postprocess": ("band_files",)},
+    artifact_roles=("input", "output"),
+    optional_dependencies=(),
+)
+_DOS_DESCRIPTOR = CapabilityDescriptor(
+    name="dos",
+    maturity="experimental",
+    engine="abacus",
+    operations=("postprocess",),
+    inputs={"postprocess": ("dos_files", "pdos", "tdos")},
+    artifact_roles=("input", "output"),
     optional_dependencies=(),
 )
 
@@ -170,7 +195,44 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     properties = _base_properties(operation)
     if capability != "scf":
         properties["capability"] = {"type": "string", "const": capability}
-    if operation == "prepare":
+    if capability == "band" and operation == "postprocess":
+        properties.update(
+            {
+                "source_paths_rel": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                },
+                "output_dir_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN, "default": "outputs"},
+                "plot_emin": {"type": "number", "default": -10.0},
+                "plot_emax": {"type": "number", "default": 10.0},
+                "save_data": {"type": "boolean", "default": True},
+                "save_plot": {"type": "boolean", "default": True},
+            }
+        )
+    elif capability == "dos" and operation == "postprocess":
+        properties.update(
+            {
+                "dos_paths_rel": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                },
+                "pdos_path_rel": {"type": ["string", "null"], "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN, "default": None},
+                "tdos_path_rel": {"type": ["string", "null"], "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN, "default": None},
+                "output_dir_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN, "default": "outputs"},
+                "include_tdos": {"type": "boolean", "default": True},
+                "include_pdos": {"type": "boolean", "default": True},
+                "pdos_mode": {"type": "string", "enum": ["species", "species+shell", "species+orbital", "atom", "atoms"], "default": "species"},
+                "pdos_atom_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}, "default": []},
+                "plot_emin": {"type": "number", "default": -10.0},
+                "plot_emax": {"type": "number", "default": 10.0},
+                "save_data": {"type": "boolean", "default": True},
+                "save_plot": {"type": "boolean", "default": True},
+                "suffix": {"type": ["string", "null"], "minLength": 1, "pattern": r"^(?!\.{1,2}$)[^/\\]+$", "default": None},
+            }
+        )
+    elif operation == "prepare":
         parameters: dict[str, JSONValue] = {
             "type": "object",
             "propertyNames": {"type": "string"},
@@ -294,7 +356,11 @@ def _representative_request(capability: str, operation: str) -> Any:
     }
     if operation == "prepare":
         kwargs["structure_path_rel"] = "source.STRU"
-    if capability != "scf":
+    elif capability == "band" and operation == "postprocess":
+        kwargs["source_paths_rel"] = ("BANDS_1.dat",)
+    elif capability == "dos" and operation == "postprocess":
+        kwargs["dos_paths_rel"] = ("DOS1_smearing.dat",)
+    if capability not in {"scf", "band", "dos"}:
         kwargs["capability"] = capability
     return request_type(**kwargs)
 
@@ -315,6 +381,8 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
     request_type = REQUEST_TYPES_BY_CAPABILITY[capability][operation]
     request = _representative_request(capability, operation)
     field_names = {record_field.name for record_field in dataclasses.fields(request_type)} | {"operation"}
+    if capability != "scf":
+        field_names.add("capability")
     wire_names = set(request.to_dict())
     if field_names != wire_names:
         raise RuntimeError(
@@ -340,6 +408,10 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         if name in REQUIRED_WIRE_FIELDS[operation]
         or (name == "capability" and capability != "scf")
     ]
+    if capability == "band" and operation == "postprocess":
+        required.append("source_paths_rel")
+    elif capability == "dos" and operation == "postprocess":
+        required.append("dos_paths_rel")
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": request_type.__name__,
@@ -386,7 +458,7 @@ def capabilities_document() -> dict[str, JSONValue]:
             "schema_version": CAPABILITIES_SCHEMA_VERSION,
             "capabilities": [
                 descriptor.to_dict()
-                for descriptor in (*_CAPABILITY_DESCRIPTORS, _ATST_NEB_DESCRIPTOR, _MD_DESCRIPTOR)
+                for descriptor in (*_CAPABILITY_DESCRIPTORS, _ATST_NEB_DESCRIPTOR, _MD_DESCRIPTOR, _BAND_DESCRIPTOR, _DOS_DESCRIPTOR)
             ],
         }
     )
