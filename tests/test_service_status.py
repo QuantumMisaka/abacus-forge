@@ -29,6 +29,7 @@ from abacus_forge import (
     Workspace,
 )
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from abacus_forge.errors import ForgeRequestError
 from abacus_forge.input_io import read_input
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.result import RunResult
@@ -1092,6 +1093,104 @@ def test_typed_prepare_partial_maps_override_only_named_species_and_retain_sourc
     assert [item["species"] for item in provenance] == ["Si", "Si"]
     assert not (workspace / "inputs/O.external.upf").exists()
     assert not (workspace / "inputs/O.external.orb").exists()
+
+
+def test_typed_prepare_preflight_stru_failure_writes_no_assets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+
+    def fail_preflight(*args: object, **kwargs: object) -> str:
+        del args, kwargs
+        raise ForgeRequestError("STRU preflight failed")
+
+    monkeypatch.setattr(preparation_module.AbacusStructure, "to_stru", fail_preflight)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174236",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / assets["Si_upf"].name).exists()
+
+
+def test_typed_prepare_uses_one_preflight_stru_render_before_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+    original_to_stru = preparation_module.AbacusStructure.to_stru
+    calls = 0
+
+    def fail_if_rendered_after_materialization(self: object, *args: object, **kwargs: object) -> str:
+        nonlocal calls
+        calls += 1
+        rendered = original_to_stru(self, *args, **kwargs)
+        if calls > 1:
+            raise RuntimeError("STRU rendered after asset materialization")
+        return rendered
+
+    monkeypatch.setattr(
+        preparation_module.AbacusStructure,
+        "to_stru",
+        fail_if_rendered_after_materialization,
+    )
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174237",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert calls == 1
+    assert (tmp_path / "scf/inputs" / assets["Si_upf"].name).read_bytes() == assets["Si_upf"].read_bytes()
+
+
+def test_typed_prepare_unexpected_non_stru_parser_failure_is_internal_and_writes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "scf"
+    workspace.mkdir(parents=True)
+    source = workspace / "source.cif"
+    source.write_text("not parsed", encoding="utf-8")
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+
+    def fail_parser(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise RuntimeError("unexpected parser defect")
+
+    monkeypatch.setattr(preparation_module.AbacusStructure, "from_input", classmethod(fail_parser))
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174238",
+        workspace_rel="scf",
+        structure_path_rel=source.name,
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+    inputs = workspace / "inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / assets["Si_upf"].name).exists()
 
 
 @pytest.mark.parametrize(

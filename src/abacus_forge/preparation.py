@@ -157,7 +157,7 @@ def prepare_with_assets(
     if structure is not None:
         try:
             structure_payload = AbacusStructure.from_input(structure, structure_format=structure_format)
-        except Exception:
+        except (OSError, ValueError):
             structure_payload = None
             if _is_recognized_stru_source(structure, structure_format):
                 raise
@@ -196,7 +196,7 @@ def prepare_with_assets(
             # Render once before materialization.  In particular, this checks
             # that a partial orbital map can still produce a complete final
             # STRU from source metadata before any asset is written.
-            preflight_stru = structure_payload.to_stru(
+            final_stru = structure_payload.to_stru(
                 pp_map={species: Path(source).name for species, source in pseudo_map.items()},
                 orb_map={species: Path(source).name for species, source in orbital_map.items()},
             )
@@ -208,25 +208,6 @@ def prepare_with_assets(
                     orbital_sources=orbital_map,
                     mode=asset_mode,
                 )
-                pp_overrides = {
-                    record.species: Path(record.destination).name
-                    for record in materialization
-                    if record.family == "pseudo"
-                }
-                orb_overrides = {
-                    record.species: Path(record.destination).name
-                    for record in materialization
-                    if record.family == "orbital"
-                }
-                # The materializer derives destination names from validated
-                # source paths.  Re-render with those exact basenames rather
-                # than trusting a raw request spelling.
-                final_stru = structure_payload.to_stru(
-                    pp_map=pp_overrides,
-                    orb_map=orb_overrides,
-                )
-            else:
-                final_stru = preflight_stru
             ws.write_text("inputs/STRU", final_stru)
             structure_info = structure_payload.metadata().to_dict()
         elif explicit_assets:
