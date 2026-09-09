@@ -40,10 +40,10 @@ Vacuum detection for full periodic cells uses the largest circular fractional ga
 
 **Test strategy:** Extend the three owning suites with hand-derived fixtures; no new test file or runtime reference imports. Tests compare output fields/geometries, not source strings.
 
-- [ ] Add regression cases and record RED for metadata loss, nonunit Cartesian scale, unsupported mode, periodic vacuum and move-flag retention.
-- [ ] Implement bounded fixes, consulting the named source implementations.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_structure.py tests/test_modify.py tests/test_api.py`; expect pass.
-- [ ] Commit reviewed task changes; report reference evidence, RED/GREEN, revision and remaining limits.
+- [x] Add regression cases and record RED for metadata loss, nonunit Cartesian scale, unsupported mode, periodic vacuum and move-flag retention.
+- [x] Implement bounded fixes, consulting the named source implementations.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_structure.py tests/test_modify.py tests/test_api.py`; 57 passed at `2c9e198`.
+- [x] Commit reviewed task changes; report reference evidence, RED/GREEN, revision and remaining limits. Independent task review approved; original intermediate RED patch was not retained as a checkout, while raw output and final GREEN were retained.
 
 ## Task 2: Common typed collection projection
 
@@ -57,10 +57,10 @@ Enforce source containment before reading selected logs or parsing artifacts; fi
 
 **Test strategy:** Existing service tests cover output-only directories, marker-only partial, energy with nonconverged complete, missing convergence observation, repeated collect excluding older audit events, symlink aliases; one process parity regression guards machine transport.
 
-- [ ] Record RED for false completeness and audit artifact leakage.
-- [ ] Implement common projection and wire SCF/Relax.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_cli_process.py tests/test_result_contract.py tests/test_contracts.py tests/test_workspace.py`; expect pass.
-- [ ] Commit and provide revision-bound evidence.
+- [x] Record RED for false completeness and audit artifact leakage.
+- [x] Implement common projection and wire SCF/Relax.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_cli_process.py tests/test_result_contract.py tests/test_contracts.py tests/test_workspace.py`; 407 passed at `dc2dc8a`.
+- [x] Commit and provide revision-bound evidence. Independent task review approved without findings.
 
 ## Task 3: Extract neutral operation core
 
