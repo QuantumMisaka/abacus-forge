@@ -10,6 +10,12 @@ import pytest
 
 from abacus_forge.api import prepare
 from abacus_forge.atst_neb import AtstNebServiceSet
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
+from abacus_forge.pyatb_services import PyatbBandServiceSet
 from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
@@ -376,6 +382,112 @@ def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp
         json.loads(process.stdout), operation_id=request.operation_id, workspace_root=cli_workspace.root.parent
     ) == _normalize_operation_identity(
         direct.to_dict(), operation_id=request.operation_id, workspace_root=api_workspace.root.parent
+    )
+
+
+def _write_typed_pyatb_fixture(root: Path) -> None:
+    workspace = root / "job"
+    source = workspace / "source"
+    source.mkdir(parents=True, exist_ok=True)
+    source.joinpath("STRU").write_text(_STRU_TEXT, encoding="utf-8")
+    for name, content in (("hr.csr", "hr"), ("sr.csr", "sr"), ("rr.csr", "rr")):
+        source.joinpath(name).write_text(content, encoding="utf-8")
+
+
+def _write_fake_typed_pyatb(path: Path) -> Path:
+    return _write_script(
+        path,
+        """
+from pathlib import Path
+out = Path.cwd() / 'Out' / 'Band_Structure'
+out.mkdir(parents=True, exist_ok=True)
+(out / 'band_info.dat').write_text('Band gap is 1.5\\n', encoding='utf-8')
+(out / 'band.dat').write_text('bands\\n', encoding='utf-8')
+(out / 'band.png').write_bytes(b'picture')
+print('typed pyatb done')
+""",
+    )
+
+
+def test_typed_pyatb_prepare_execute_collect_machine_parity(tmp_path: Path) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    _write_typed_pyatb_fixture(api_root)
+    _write_typed_pyatb_fixture(cli_root)
+    executable = _write_fake_typed_pyatb(tmp_path / "fake-pyatb")
+
+    prepare_kwargs = {
+        "structure_path_rel": "source/STRU",
+        "hr_paths_rel": ("source/hr.csr",),
+        "sr_path_rel": "source/sr.csr",
+        "rr_path_rel": "source/rr.csr",
+        "fermi_energy": 1.25,
+        "line_kpoints": (
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ),
+    }
+    prepare_request = PyatbBandPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174260",
+        workspace_rel="job",
+        **prepare_kwargs,
+    )
+    direct_services = PyatbBandServiceSet.default(workspace_root=api_root)
+    direct_prepare = direct_services.prepare.prepare(prepare_request)
+    process_prepare = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(prepare_request.to_dict()),
+    )
+    assert process_prepare.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_prepare.stdout), operation_id=prepare_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_prepare.to_dict(), operation_id=prepare_request.operation_id, workspace_root=api_root
+    )
+
+    execute_request = PyatbBandExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174261",
+        workspace_rel="job",
+        executable=str(executable),
+        omp_threads=2,
+    )
+    direct_execute = direct_services.execute.execute(execute_request)
+    process_execute = run_cli(
+        "operation",
+        "execute",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(execute_request.to_dict()),
+    )
+    assert process_execute.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_execute.stdout), operation_id=execute_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_execute.to_dict(), operation_id=execute_request.operation_id, workspace_root=api_root
+    )
+
+    collect_request = PyatbBandCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174262",
+        workspace_rel="job",
+        band_data_paths_rel=("inputs/Out/Band_Structure/band.dat",),
+        band_picture_paths_rel=("inputs/Out/Band_Structure/band.png",),
+    )
+    direct_collect = direct_services.collect.collect(collect_request)
+    process_collect = run_cli(
+        "operation",
+        "collect",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(collect_request.to_dict()),
+    )
+    assert process_collect.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_collect.stdout), operation_id=collect_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_collect.to_dict(), operation_id=collect_request.operation_id, workspace_root=api_root
     )
 
 

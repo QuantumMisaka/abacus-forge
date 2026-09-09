@@ -1,18 +1,24 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import stat
 import uuid
 from pathlib import Path
 
 import pytest
 
 from abacus_forge import (
+    ForgeErrorEnvelope,
     ForgeResultEnvelope,
     PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
+    PyatbBandServiceSet,
     Workspace,
 )
+from abacus_forge.contracts import OperationOutcome
 from abacus_forge.errors import ForgePathError, ForgePreconditionError, ForgeRequestError
 from abacus_forge.pyatb import (
     collect_typed_pyatb_band,
@@ -460,3 +466,171 @@ def test_typed_collect_omits_escaped_symlink_outputs(tmp_path: Path) -> None:
     assert result.diagnostics["escaped_output_paths_rel"] == (
         "inputs/Out/Band_Structure/band_info.dat",
     )
+
+
+def _write_executable(path: Path, body: str) -> Path:
+    path.write_text("#!/usr/bin/env python3\n" + body + "\n", encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
+def _typed_service_prepare(
+    root: Path,
+    *,
+    operation_id: str | None = None,
+    handoff_mode: str = "link",
+) -> tuple[PyatbBandServiceSet, PyatbBandPrepareRequest, OperationOutcome]:
+    _sources(root)
+    request = _prepare_request(
+        operation_id=operation_id or _id(),
+        handoff_mode=handoff_mode,
+    )
+    services = PyatbBandServiceSet.default(workspace_root=root)
+    result = services.prepare.prepare(request)
+    assert isinstance(result, OperationOutcome)
+    return services, request, result
+
+
+def test_typed_prepare_service_persists_manifest_facts_and_refs_once(tmp_path: Path) -> None:
+    _, request, result = _typed_service_prepare(tmp_path)
+
+    assert result.status.execution == "not_run"
+    assert result.status.collection == "not_collected"
+    assert result.status.scientific == "unassessed"
+    assert result.envelope.workspace_rel == "."
+    assert result.envelope.diagnostics["task"] == "band"
+    assert result.envelope.diagnostics["unit"] == "pyatb"
+    assert result.envelope.diagnostics["engine"] == "pyatb"
+    json.dumps(result.to_dict(), allow_nan=False)
+    refs = result.envelope.diagnostics["artifact_refs"]
+    assert {ref["artifact_id"] for ref in refs} == {artifact.id for artifact in result.envelope.artifacts}
+    manifest = json.loads((tmp_path / "forge-unit.json").read_text(encoding="utf-8"))
+    assert manifest["task"] == "band"
+    assert manifest["unit"] == "pyatb"
+    assert manifest["engine"] == "pyatb"
+    assert manifest["metadata"]["pyatb_handoff"]
+    events = sorted((tmp_path / "reports/events").glob("*.json"))
+    assert len(events) == 1
+    assert json.loads(events[0].read_text(encoding="utf-8"))["id"] == request.operation_id
+
+
+def test_typed_execute_service_uses_only_request_runner_fields_and_records_runtime_facts(
+    tmp_path: Path,
+) -> None:
+    services, _, _ = _typed_service_prepare(tmp_path)
+    executable = _write_executable(
+        tmp_path / "fake-pyatb.py",
+        "from pathlib import Path\n"
+        "out = Path.cwd() / 'Out' / 'Band_Structure'\n"
+        "out.mkdir(parents=True, exist_ok=True)\n"
+        "(out / 'band_info.dat').write_text('Band gap is 1.5\\n', encoding='utf-8')\n"
+        "(out / 'band.dat').write_text('bands\\n', encoding='utf-8')\n"
+        "(out / 'band.png').write_bytes(b'picture')\n"
+        "print('typed pyatb done')",
+    )
+    request = PyatbBandExecuteRequest(
+        operation_id=_id(),
+        workspace_rel=".",
+        executable=str(executable),
+        mpi_ranks=1,
+        omp_threads=3,
+        timeout_seconds=5,
+    )
+
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert result.status.scientific == "unassessed"
+    assert result.status.collection == "not_collected"
+    assert (tmp_path / "outputs/stdout.log").is_file()
+    assert (tmp_path / "outputs/stderr.log").is_file()
+    assert "typed pyatb done" in (tmp_path / "outputs/stdout.log").read_text(encoding="utf-8")
+    assert next(metric for metric in result.envelope.metrics if metric.name == "returncode").value == 0
+    assert result.envelope.diagnostics["termination"] == "exited"
+    assert result.envelope.diagnostics["artifact_refs"]
+    assert json.loads((tmp_path / "forge-result.json").read_text(encoding="utf-8"))["engine"] == "pyatb"
+
+
+def test_typed_execute_missing_executable_is_precondition_and_nonzero_is_failed(
+    tmp_path: Path,
+) -> None:
+    services, _, _ = _typed_service_prepare(tmp_path)
+    missing = services.execute.execute(
+        PyatbBandExecuteRequest(operation_id=_id(), workspace_rel=".", executable="definitely-missing-pyatb")
+    )
+    assert isinstance(missing, ForgeErrorEnvelope)
+    assert missing.error_class == "precondition.missing"
+
+    failing = _write_executable(tmp_path / "fail-pyatb.py", "raise SystemExit(17)")
+    failed = services.execute.execute(
+        PyatbBandExecuteRequest(operation_id=_id(), workspace_rel=".", executable=str(failing))
+    )
+    assert isinstance(failed, OperationOutcome)
+    assert failed.status.execution == "failed"
+    assert next(metric for metric in failed.envelope.metrics if metric.name == "returncode").value == 17
+
+
+def test_typed_execute_timeout_and_dry_run_do_not_reuse_stale_logs(tmp_path: Path) -> None:
+    services, _, _ = _typed_service_prepare(tmp_path)
+    sleeper = _write_executable(
+        tmp_path / "sleep-pyatb.py",
+        "import time\n"
+        "print('before timeout')\n"
+        "time.sleep(0.3)",
+    )
+    timed = services.execute.execute(
+        PyatbBandExecuteRequest(
+            operation_id=_id(), workspace_rel=".", executable=str(sleeper), timeout_seconds=0.02
+        )
+    )
+    assert isinstance(timed, OperationOutcome)
+    assert timed.status.execution == "failed"
+    assert timed.envelope.diagnostics["termination"] == "timeout"
+
+    stdout = tmp_path / "outputs/stdout.log"
+    stderr = tmp_path / "outputs/stderr.log"
+    stdout.write_text("stale stdout", encoding="utf-8")
+    stderr.write_text("stale stderr", encoding="utf-8")
+    dry = services.execute.execute(
+        PyatbBandExecuteRequest(
+            operation_id=_id(), workspace_rel=".", executable="also-missing", dry_run=True
+        )
+    )
+    assert isinstance(dry, OperationOutcome)
+    assert dry.status.execution == "skipped"
+    assert stdout.read_text(encoding="utf-8") == "stale stdout"
+    assert stderr.read_text(encoding="utf-8") == "stale stderr"
+
+
+def test_typed_service_collect_is_independent_and_persists_one_event(tmp_path: Path) -> None:
+    services, _, _ = _typed_service_prepare(tmp_path)
+    _write_band_outputs(tmp_path)
+    request = PyatbBandCollectRequest(
+        operation_id=_id(),
+        workspace_rel=".",
+        band_data_paths_rel=("inputs/Out/Band_Structure/band.dat",),
+        band_picture_paths_rel=("inputs/Out/Band_Structure/band.png",),
+    )
+
+    result = services.collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "not_run"
+    assert result.status.collection == "complete"
+    assert result.status.scientific == "unassessed"
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} == {
+        "inputs/Out/Band_Structure/band_info.dat",
+        "inputs/Out/Band_Structure/band.dat",
+        "inputs/Out/Band_Structure/band.png",
+    }
+    assert len(list((tmp_path / "reports/events").glob("*.json"))) == 2
+    assert all(ref["operation_id"] == request.operation_id for ref in result.envelope.diagnostics["artifact_refs"])
+
+
+def test_typed_prepare_duplicate_operation_id_is_durable_conflict(tmp_path: Path) -> None:
+    services, request, first = _typed_service_prepare(tmp_path)
+    assert first.status.execution == "not_run"
+    second = services.prepare.prepare(request)
+    assert isinstance(second, ForgeErrorEnvelope)
+    assert second.error_class == "operation.conflict"

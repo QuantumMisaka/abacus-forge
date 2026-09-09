@@ -857,3 +857,48 @@ def test_machine_process_pyatb_schema_and_capability_discovery_are_single_docume
         assert code == 0
         assert diagnostics == ""
         assert isinstance(json.loads(output), dict)
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_type", "payload"),
+    [
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        (
+            "execute",
+            PyatbBandExecuteRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "execute",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+        (
+            "collect",
+            PyatbBandCollectRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "collect",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+    ],
+)
+def test_machine_dispatches_typed_pyatb_band_to_injected_operation_service(
+    operation: str, request_type: type[object], payload: dict[str, object]
+) -> None:
+    result = _outcome_for(operation, OPERATION_ID)
+    services = _AllRecordingServices({operation: result})
+    code, output, diagnostics = _invoke(
+        ["operation", operation, "--stdin"],
+        request_text=json.dumps(payload),
+        services=services,
+    )
+    assert code == 0
+    assert diagnostics == ""
+    assert json.loads(output) == result.to_dict()
+    assert len(services.calls) == 1
+    assert isinstance(services.calls[0][1], request_type)
