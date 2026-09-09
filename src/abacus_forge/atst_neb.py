@@ -177,9 +177,10 @@ class AtstNebPostprocessService:
                         post_cmd += ["--write-neb-init-chain", str(chain)]
                     for flag, value in (("--plot", request.plot), ("--energy-profile", request.energy_profile), ("--vib-analysis", request.vib_analysis), ("--strict-band", request.strict_band)):
                         if value: post_cmd.append(flag)
-                    if request.plot_label: post_cmd += ["--plot-label", str(self._context.path(workspace, request.plot_label, "plot_label"))]
+                    plot_prefix = self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label")
+                    if request.plot: post_cmd += ["--plot-label", str(plot_prefix)]
                     if request.plot_label:
-                        self._context.path(workspace, request.plot_label, "plot_label").parent.mkdir(parents=True, exist_ok=True)
+                        plot_prefix.parent.mkdir(parents=True, exist_ok=True)
                     if request.n_max: post_cmd += ["--n-max", str(request.n_max)]
                     post_cmd += ["--vib-thr", str(request.vib_thr)]
                     rc2, _, err2, timeout2 = self._context.run(workspace, post_cmd, request.operation_id + "-post", None)
@@ -203,7 +204,11 @@ class AtstNebPostprocessService:
                             if self._context.matches_prefix(key, item.resolve()):
                                 changed_outputs[item.resolve()].append(key)
                 artifacts = self._context.artifacts(workspace, entries)
-                output_exists = all(changed_outputs[item.resolve()] for item in prefixes)
+                required = [prefix.with_suffix(".cif"), prefix.with_suffix(".stru")]
+                if request.write_latest: required += [workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"]
+                if request.write_neb_init_chain: required.append(workspace.root / "outputs/atst/neb-init-chain.traj")
+                if request.plot: required.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label").with_suffix(".pdf"))
+                output_exists = all(path.is_file() and (path.resolve() not in post_before or (path.stat().st_size, path.stat().st_mtime_ns) != post_before[path.resolve()]) for path in required)
                 collection = "complete" if rc == 0 and summary_changed and output_exists else ("missing_output" if rc == 0 else "partial")
                 envelope = ForgeResultEnvelope("postprocess", request.workspace_rel, _status(rc, timeout1 or timeout2, collection=collection), artifacts=artifacts, diagnostics={"summary_command": summary_cmd, "postprocess_command": post_cmd, "returncode": rc, "stderr": "\n".join(x for x in (err1, err2) if x), "summary_returncode": rc1, "postprocess_returncode": rc2})
                 return self._context.persist(workspace, request, envelope, token)

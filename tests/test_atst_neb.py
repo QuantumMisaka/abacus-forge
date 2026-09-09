@@ -18,7 +18,7 @@ if args[:2] == ["neb", "make"]:
 if args[:2] == ["neb", "summary"]:
     p = pathlib.Path(args[args.index("--output") + 1]); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("{}")
 if args[:2] == ["neb", "post"]:
-    p = pathlib.Path(args[args.index("--output-prefix") + 1] + ".cif"); p.parent.mkdir(parents=True, exist_ok=True); p.write_text("post")
+    p = pathlib.Path(args[args.index("--output-prefix") + 1]); p.parent.mkdir(parents=True, exist_ok=True); p.with_suffix(".cif").write_text("post"); p.with_suffix(".stru").write_text("post")
 print("ok")
 """.replace("MODE_PLACEHOLDER", mode), encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
@@ -57,7 +57,7 @@ def test_nonzero_and_timeout_are_failed_outcomes(tmp_path: Path) -> None:
 def test_postprocess_rejects_overlapping_prefixes_and_log_summary(tmp_path: Path) -> None:
     (tmp_path / "neb.traj").write_text("trajectory")
     service = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path)))
-    overlap = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="reports/custom/x", plot_label="reports/custom/x.pdf"))
+    overlap = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", output_prefix="reports/custom/x", plot=True, plot_label="reports/custom/x.pdf"))
     assert isinstance(overlap, ForgeErrorEnvelope) and overlap.error_class == "request.invalid"
     op_id = _id()
     collision = service.postprocess.postprocess(AtstNebPostprocessRequest(operation_id=op_id, workspace_rel=".", trajectory_path_rel="neb.traj", summary_path_rel=f"reports/atst/{op_id}-summary-stdout.log"))

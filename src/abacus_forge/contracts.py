@@ -753,6 +753,8 @@ class AtstNebPostprocessRequest(_AtstNebRequest):
                 raise ValueError(f"{name} must be a boolean")
         if self.plot_label is not None:
             self._validate_output_path(self.plot_label, "plot_label")
+            if not self.plot:
+                raise ValueError("plot_label requires plot=True")
         if isinstance(self.vib_thr, bool) or not isinstance(self.vib_thr, (int, float)) or self.vib_thr <= 0 or not math.isfinite(self.vib_thr):
             raise ValueError("vib_thr must be a positive finite number")
 
