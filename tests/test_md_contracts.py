@@ -53,14 +53,24 @@ def test_md_prepare_accepts_only_md_calculation_when_explicit():
         )
 
 
-def test_md_modify_rejects_calculation_update_or_removal():
-    with pytest.raises(ValueError, match="calculation"):
-        MdModifyRequest(
-            operation_id=OPERATION_ID,
-            workspace_rel="md",
-            capability="md",
-            input_updates={"calculation": "md"},
-        )
+def test_md_modify_allows_same_calculation_but_rejects_other_values_or_removal():
+    request = MdModifyRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="md",
+        capability="md",
+        input_updates={"calculation": "md"},
+    )
+    assert request.input_updates["calculation"] == "md"
+
+    for value in ("scf", 1, None):
+        with pytest.raises(ValueError, match="calculation"):
+            MdModifyRequest(
+                operation_id=OPERATION_ID,
+                workspace_rel="md",
+                capability="md",
+                input_updates={"calculation": value},
+            )
+
     with pytest.raises(ValueError, match="calculation"):
         MdModifyRequest(
             operation_id=OPERATION_ID,

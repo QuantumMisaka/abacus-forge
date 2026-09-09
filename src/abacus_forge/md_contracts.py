@@ -63,8 +63,7 @@ class MdModifyRequest(_MdCapabilityMixin, ScfModifyRequest):
 
     def __post_init__(self) -> None:
         super(MdModifyRequest, self).__post_init__()
-        if "calculation" in self.input_updates:
-            raise ValueError("input_updates cannot include calculation")
+        _require_md_calculation(self.input_updates, "input_updates")
         if "calculation" in self.remove_parameters:
             raise ValueError("remove_parameters cannot include calculation")
 
