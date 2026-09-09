@@ -53,6 +53,25 @@ def test_md_prepare_accepts_only_md_calculation_when_explicit():
         )
 
 
+def test_md_prepare_preserves_asset_maps_and_json_parameters():
+    request = MdPrepareRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="md",
+        capability="md",
+        structure_path_rel="source.STRU",
+        parameters={"calculation": "md", "md_type": "nvt", "thermostat": {"target": 300}},
+        pseudo_sources={"Si": "assets/Si.upf"},
+        orbital_sources={"Si": "assets/Si.orb"},
+        asset_mode="link",
+    )
+
+    restored = MdPrepareRequest.from_dict(request.to_dict())
+    assert restored.parameters == request.parameters
+    assert restored.pseudo_sources == request.pseudo_sources
+    assert restored.orbital_sources == request.orbital_sources
+    assert restored.asset_mode == "link"
+
+
 def test_md_modify_allows_same_calculation_but_rejects_other_values_or_removal():
     request = MdModifyRequest(
         operation_id=OPERATION_ID,
@@ -85,3 +104,12 @@ def test_md_requests_reject_other_capabilities(request_type):
     extra = {"structure_path_rel": "source.STRU"} if request_type is MdPrepareRequest else {}
     with pytest.raises(ValueError, match="capability"):
         request_type(operation_id=OPERATION_ID, workspace_rel="md", capability="scf", **extra)
+
+
+@pytest.mark.parametrize("request_type", [MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest])
+def test_md_requests_reject_unknown_serialized_fields(request_type):
+    extra = {"structure_path_rel": "source.STRU"} if request_type is MdPrepareRequest else {}
+    request = request_type(operation_id=OPERATION_ID, workspace_rel="md", capability="md", **extra)
+
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**request.to_dict(), "unknown": True})

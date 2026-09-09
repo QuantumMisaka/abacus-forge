@@ -97,6 +97,10 @@ def test_md_modify_and_collect_are_factual_and_unassessed(tmp_path: Path) -> Non
     assert modified.envelope.diagnostics["task"] == "md"
     assert collected.envelope.status.scientific == "unassessed"
     assert collected.envelope.metrics
+    metric_names = {metric.name for metric in collected.envelope.metrics}
+    assert {"md_steps", "md_last_temperature", "md_last_total_energy"} <= metric_names
+    assert "md_dump_summary" in collected.envelope.diagnostics["legacy_metrics"]
+    assert any(observation.name == "md_dump_summary" for observation in collected.observations)
     assert "trajectory" not in collected.to_dict()
 
 
