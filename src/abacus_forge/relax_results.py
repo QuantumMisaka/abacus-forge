@@ -12,6 +12,7 @@ from abacus_forge.contracts import (
     OperationStatus,
 )
 from abacus_forge.result import CollectionResult
+from abacus_forge.structure import AbacusStructure
 
 
 _LEGACY_CONVERGENCE_NAMES = frozenset({"converged", "converge"})
@@ -29,7 +30,7 @@ def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeRe
     """
     projected = _projection_result(result)
     legacy_envelope = projected.to_envelope()
-    electronic_convergence = _electronic_convergence(result)
+    electronic_convergence = _electronic_convergence(projected)
 
     metrics = legacy_envelope.metrics
     checks = legacy_envelope.checks
@@ -51,24 +52,23 @@ def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeRe
         metrics=metrics,
         checks=checks,
         warnings=legacy_envelope.warnings,
-        diagnostics=_projection_diagnostics(
-            result, legacy_envelope.to_dict()["diagnostics"]  # type: ignore[arg-type]
-        ),
+        diagnostics=legacy_envelope.to_dict()["diagnostics"],  # type: ignore[arg-type]
     )
-    return _with_collection_status(envelope, _collection_status(result, envelope))
+    return _with_collection_status(envelope, _collection_status(projected, envelope))
 
 
 def collection_observations(result: CollectionResult) -> tuple[Observation, ...]:
     """Return parser/file facts that do not fit the scalar result records."""
+    projected = _projection_result(result)
     observations: list[Observation] = []
-    metrics = _projection_metrics(result.metrics)
+    metrics = _projection_metrics(projected.metrics)
 
     for name, value in metrics.items():
         if name in _LEGACY_CONVERGENCE_NAMES:
             continue
         observations.append(Observation(name=str(name), value=value, source="parser"))
 
-    electronic_convergence = _electronic_convergence(result)
+    electronic_convergence = _electronic_convergence(projected)
     if electronic_convergence is not None:
         observations.append(
             Observation(
@@ -79,16 +79,16 @@ def collection_observations(result: CollectionResult) -> tuple[Observation, ...]
         )
 
     for name, snapshot in (
-        ("structure_snapshot", result.structure_snapshot),
-        ("final_structure_snapshot", result.final_structure_snapshot),
+        ("structure_snapshot", projected.structure_snapshot),
+        ("final_structure_snapshot", projected.final_structure_snapshot),
     ):
         if (
             not isinstance(snapshot, Mapping)
             or "parse_error" in snapshot
-            or not _snapshot_source_is_contained(result, snapshot)
+            or not _snapshot_source_is_contained(projected, snapshot)
         ):
             continue
-        if name == "final_structure_snapshot" and not _final_snapshot_is_output(result, snapshot):
+        if name == "final_structure_snapshot" and not _final_snapshot_is_output(projected, snapshot):
             continue
         observations.append(Observation(name=name, value=dict(snapshot), source="file"))
 
@@ -96,16 +96,80 @@ def collection_observations(result: CollectionResult) -> tuple[Observation, ...]
 
 
 def _projection_result(result: CollectionResult) -> CollectionResult:
+    final_structure_snapshot, final_structure_diagnostics = _project_final_structure(result)
+    diagnostics = dict(result.diagnostics)
+    diagnostics.update(final_structure_diagnostics)
+    metrics = _projection_metrics(result.metrics)
+    relax_summary = metrics.get("relax_summary")
+    if isinstance(relax_summary, Mapping):
+        summary_copy = dict(relax_summary)
+        summary_copy["final_structure_path"] = final_structure_diagnostics["final_structure_path"]
+        metrics["relax_summary"] = summary_copy
     return CollectionResult(
         workspace=result.workspace,
         status=result.status,
-        metrics=_projection_metrics(result.metrics),
-        artifacts=dict(result.artifacts),
-        diagnostics=dict(result.diagnostics),
+        metrics=metrics,
+        artifacts=_projection_artifacts(result),
+        diagnostics=diagnostics,
         inputs_snapshot=dict(result.inputs_snapshot),
         structure_snapshot=result.structure_snapshot,
-        final_structure_snapshot=result.final_structure_snapshot,
+        final_structure_snapshot=final_structure_snapshot,
     )
+
+
+def _projection_artifacts(result: CollectionResult) -> dict[str, str]:
+    """Keep domain artifacts, excluding mutable operation bookkeeping."""
+    return {
+        relative: raw_path
+        for relative, raw_path in result.artifacts.items()
+        if isinstance(relative, str)
+        and isinstance(raw_path, str)
+        and not _is_internal_artifact(relative)
+    }
+
+
+def _is_internal_artifact(relative: str) -> bool:
+    normalized = relative.replace("\\", "/")
+    return (
+        normalized == "reports/forge-workspace.json"
+        or normalized in {"reports/.forge-operation.lock", "reports/.forge-workspace.lock"}
+        or normalized.startswith("reports/claims/")
+    )
+
+
+def _project_final_structure(
+    result: CollectionResult,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Select and parse one contained output structure independently.
+
+    ``api.collect`` intentionally keeps its legacy first-suffix selection.  A
+    Relax projection must not mistake ``inputs/STRU`` for a final output, so
+    it selects from the contained, non-input artifact index again.
+    """
+    candidates = _final_structure_candidates(result)
+    diagnostics: dict[str, Any] = {
+        "final_structure_candidates": [str(path) for _, path in candidates],
+        "final_structure_selection_ambiguous": len(candidates) > 1,
+    }
+    if len(candidates) != 1:
+        diagnostics["final_structure_path"] = None
+        return None, diagnostics
+
+    relative, path = candidates[0]
+    diagnostics["final_structure_path"] = str(path)
+    suffix = next(
+        suffix for suffix in _FINAL_STRUCTURE_SUFFIXES if relative.endswith(suffix)
+    )
+    diagnostics["final_structure_selected_suffix"] = suffix
+    try:
+        structure_format = "stru" if suffix in {"STRU_ION_D", "STRU"} else None
+        structure = AbacusStructure.from_input(path, structure_format=structure_format)
+        snapshot = structure.metadata().to_dict()
+        snapshot["source"] = str(path)
+        return snapshot, diagnostics
+    except Exception as error:
+        diagnostics["final_structure_parse_error"] = str(error)
+        return {"source": str(path), "parse_error": str(error)}, diagnostics
 
 
 def _projection_metrics(values: Mapping[str, Any]) -> dict[str, Any]:
@@ -174,34 +238,47 @@ def _collection_status(result: CollectionResult, envelope: ForgeResultEnvelope) 
     return "complete"
 
 
-def _projection_diagnostics(
-    result: CollectionResult, diagnostics: Mapping[str, Any]
-) -> dict[str, Any]:
-    projected = dict(diagnostics)
-    if "final_structure_selection_ambiguous" in projected:
-        projected["final_structure_selection_ambiguous"] = _final_structure_selection_is_ambiguous(result)
-    return projected
-
-
 def _final_structure_selection_is_ambiguous(result: CollectionResult) -> bool:
-    """Ignore the initial ``inputs/STRU`` and count every indexed output."""
-    artifact_candidates = _final_structure_artifact_candidates(result)
-    if artifact_candidates:
-        return len(artifact_candidates) > 1
-    return result.diagnostics.get("final_structure_selection_ambiguous") is True
+    """Ignore the initial ``inputs/STRU`` and count contained outputs."""
+    return len(_final_structure_candidates(result)) > 1
 
 
-def _final_structure_artifact_candidates(result: CollectionResult) -> tuple[str, ...]:
-    candidates: set[str] = set()
-    for relative in result.artifacts:
-        if not isinstance(relative, str):
+def _final_structure_candidates(result: CollectionResult) -> tuple[tuple[str, Path], ...]:
+    """Return unique, contained output candidates in suffix priority order."""
+    root = Path(result.workspace).resolve()
+    by_relative: dict[str, Path] = {}
+    for raw_relative, raw_path in result.artifacts.items():
+        if not isinstance(raw_relative, str) or not isinstance(raw_path, str):
             continue
-        normalized = relative.replace("\\", "/")
-        if normalized.startswith("inputs/"):
+        lexical = raw_relative.replace("\\", "/")
+        # Inputs and reports are not domain output candidates.  A root-level
+        # STRU remains valid for the legacy flat layout.
+        if lexical.startswith("inputs/") or lexical.startswith("reports/"):
             continue
-        if normalized.endswith(_FINAL_STRUCTURE_SUFFIXES):
-            candidates.add(normalized)
-    return tuple(sorted(candidates))
+        if not lexical.endswith(_FINAL_STRUCTURE_SUFFIXES):
+            continue
+        candidate = Path(raw_path)
+        try:
+            resolved = candidate.resolve()
+            relative = resolved.relative_to(root).as_posix()
+        except (OSError, RuntimeError, ValueError):
+            continue
+        if (
+            relative == "."
+            or relative.startswith("inputs/")
+            or relative.startswith("reports/")
+            or not resolved.is_file()
+            or not relative.endswith(_FINAL_STRUCTURE_SUFFIXES)
+        ):
+            continue
+        by_relative.setdefault(relative, resolved)
+
+    return tuple(
+        (relative, by_relative[relative])
+        for suffix in _FINAL_STRUCTURE_SUFFIXES
+        for relative in sorted(by_relative)
+        if relative.endswith(suffix)
+    )
 
 
 def _final_structure_artifact_is_contained(

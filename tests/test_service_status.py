@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 import fcntl
+import hashlib
 from pathlib import Path
 import json
 import signal
@@ -1623,3 +1624,81 @@ def test_relax_collection_parse_failure_and_escaped_final_symlink_are_partial(
     assert symlink_result.status.collection == "partial"
     assert all(artifact.path_rel != "outputs/OUT.ABACUS/STRU_ION_D" for artifact in symlink_result.envelope.artifacts)
     assert all(observation.name != "final_structure_snapshot" for observation in symlink_result.observations)
+
+
+@pytest.mark.parametrize(
+    ("capability", "operation_id"),
+    [
+        ("relax", "123e4567-e89b-42d3-a456-426614174148"),
+        ("cell-relax", "123e4567-e89b-42d3-a456-426614174149"),
+    ],
+)
+def test_relax_collect_returns_live_artifacts_with_current_hashes(
+    tmp_path: Path, capability: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    artifact_paths = {artifact.path_rel for artifact in result.envelope.artifacts}
+    assert "reports/forge-workspace.json" not in artifact_paths
+    assert not any(path.startswith("reports/claims/") for path in artifact_paths)
+    for artifact in result.envelope.artifacts:
+        path = workspace.root / artifact.path_rel
+        assert path.is_file(), artifact.path_rel
+        assert artifact.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert artifact.size_bytes == path.stat().st_size
+
+
+@pytest.mark.parametrize(
+    ("capability", "operation_id"),
+    [
+        ("relax", "123e4567-e89b-42d3-a456-426614174152"),
+        ("cell-relax", "123e4567-e89b-42d3-a456-426614174153"),
+    ],
+)
+def test_relax_collect_reselects_output_stru_after_input_stru(
+    tmp_path: Path, capability: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        capability=capability,
+        final_structure=None,
+    )
+    final_structure = Atoms(
+        "Si",
+        positions=[[0.5, 0.5, 0.5]],
+        cell=[5.0, 5.0, 5.0],
+        pbc=True,
+    )
+    workspace.write_text(
+        "outputs/OUT.ABACUS/STRU",
+        abacus_forge.AbacusStructure(final_structure, source_format="ase").to_stru(),
+    )
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    observations = {observation.name: observation for observation in result.observations}
+    final_snapshot = observations["final_structure_snapshot"].value
+    assert final_snapshot["source"].endswith("outputs/OUT.ABACUS/STRU")
+    assert final_snapshot["volume"] == pytest.approx(125.0)
+    assert result.envelope.diagnostics["final_structure_path"].endswith(
+        "outputs/OUT.ABACUS/STRU"
+    )
+    assert any(
+        artifact.path_rel == "outputs/OUT.ABACUS/STRU"
+        for artifact in result.envelope.artifacts
+    )
