@@ -119,13 +119,22 @@ def _projection_result(result: CollectionResult) -> CollectionResult:
 
 def _projection_artifacts(result: CollectionResult) -> dict[str, str]:
     """Keep domain artifacts, excluding mutable operation bookkeeping."""
-    return {
-        relative: raw_path
-        for relative, raw_path in result.artifacts.items()
-        if isinstance(relative, str)
-        and isinstance(raw_path, str)
-        and not _is_internal_artifact(relative)
-    }
+    root = Path(result.workspace).resolve()
+    projected: dict[str, str] = {}
+    for relative, raw_path in result.artifacts.items():
+        if not isinstance(relative, str) or not isinstance(raw_path, str):
+            continue
+        if _is_internal_artifact(relative):
+            continue
+        # ``_workspace_artifact_records`` resolves symlink aliases before
+        # serializing their path.  Apply the same resolution here so an
+        # output alias cannot expose bookkeeping that persistence removes or
+        # mutates after this projection is assembled.
+        resolved_relative = _resolved_artifact_relative(root, raw_path)
+        if resolved_relative is not None and _is_internal_artifact(resolved_relative):
+            continue
+        projected[relative] = raw_path
+    return projected
 
 
 def _is_internal_artifact(relative: str) -> bool:
@@ -135,6 +144,18 @@ def _is_internal_artifact(relative: str) -> bool:
         or normalized in {"reports/.forge-operation.lock", "reports/.forge-workspace.lock"}
         or normalized.startswith("reports/claims/")
     )
+
+
+def _resolved_artifact_relative(root: Path, raw_path: str) -> str | None:
+    candidate = Path(raw_path)
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    try:
+        return candidate.resolve().relative_to(root).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        # Preserve the existing contained-artifact conversion's behavior for
+        # escaped or otherwise unresolvable targets: it omits them later.
+        return None
 
 
 def _project_final_structure(

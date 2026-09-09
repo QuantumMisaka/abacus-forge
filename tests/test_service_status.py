@@ -1657,6 +1657,49 @@ def test_relax_collect_returns_live_artifacts_with_current_hashes(
 
 
 @pytest.mark.parametrize(
+    ("capability", "internal_target", "operation_id"),
+    [
+        ("relax", "claim", "123e4567-e89b-42d3-a456-426614174154"),
+        ("relax", "manifest", "123e4567-e89b-42d3-a456-426614174155"),
+        ("cell-relax", "claim", "123e4567-e89b-42d3-a456-426614174156"),
+        ("cell-relax", "manifest", "123e4567-e89b-42d3-a456-426614174157"),
+    ],
+)
+def test_relax_collect_filters_output_aliases_to_internal_bookkeeping(
+    tmp_path: Path, capability: str, internal_target: str, operation_id: str
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    target = (
+        workspace.reports_dir / "claims" / f"{operation_id}.json"
+        if internal_target == "claim"
+        else workspace.reports_dir / "forge-workspace.json"
+    )
+    alias = workspace.outputs_dir / f"{internal_target}-alias.json"
+    alias.symlink_to(target)
+    request = RelaxCollectRequest(
+        operation_id=operation_id,
+        workspace_rel="collection",
+        capability=capability,
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    for artifact in result.envelope.artifacts:
+        path = workspace.root / artifact.path_rel
+        resolved_rel = path.resolve().relative_to(workspace.root.resolve()).as_posix()
+        assert resolved_rel != "reports/forge-workspace.json"
+        assert not resolved_rel.startswith("reports/claims/")
+        assert resolved_rel not in {
+            "reports/.forge-operation.lock",
+            "reports/.forge-workspace.lock",
+        }
+        assert path.is_file(), artifact.path_rel
+        assert artifact.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert artifact.size_bytes == path.stat().st_size
+
+
+@pytest.mark.parametrize(
     ("capability", "operation_id"),
     [
         ("relax", "123e4567-e89b-42d3-a456-426614174152"),
