@@ -51,7 +51,7 @@ def materialize_assets(
     mode: str = "copy",
 ) -> tuple[AssetMaterialization, ...]:
     """Validate and materialize explicitly supplied pseudo/orbital assets."""
-    if mode not in {"copy", "link"}:
+    if not isinstance(mode, str) or mode not in {"copy", "link"}:
         raise ForgeRequestError(f"unsupported asset mode: {mode}")
     root = Path(workspace_root).resolve()
     target = Path(target_inputs)
@@ -62,8 +62,13 @@ def materialize_assets(
         target.relative_to(root)
     except ValueError:
         raise ForgePathError("target_inputs must remain under workspace root") from None
+    if target.exists() and not target.is_dir():
+        raise ForgeRequestError("target_inputs must be a directory")
     entries: list[tuple[str, str, Path]] = []
-    for family, mapping in (("pseudo", pseudo_sources or {}), ("orbital", orbital_sources or {})):
+    for family, supplied in (("pseudo", pseudo_sources), ("orbital", orbital_sources)):
+        mapping = {} if supplied is None else supplied
+        if not hasattr(mapping, "items"):
+            raise ForgeRequestError("asset sources must be mappings")
         for species, raw_source in mapping.items():
             if not isinstance(raw_source, (str, Path)) or not str(raw_source):
                 raise ForgeRequestError("asset source must be a non-empty path")
