@@ -95,6 +95,9 @@ class AtstNebPrepareService:
             init = self._context.path(workspace, request.init_structure_path_rel, "init_structure_path_rel")
             final = self._context.path(workspace, request.final_structure_path_rel, "final_structure_path_rel")
             chain = self._context.path(workspace, request.chain_path_rel, "chain_path_rel")
+            logs = {workspace.root / "reports/atst" / f"{request.operation_id}-{stream}.log" for stream in ("stdout", "stderr")}
+            if any(path.resolve() in {item.resolve() for item in logs} for path in (init, final, chain)):
+                return _ScfServiceContext.error("request.invalid", "prepare path collides with operation log", request)
             with workspace.operation_guard(request.operation_id, "prepare") as token:
                 self._context.require_file(init, request.init_structure_path_rel, "init_structure_path_rel")
                 self._context.require_file(final, request.final_structure_path_rel, "final_structure_path_rel")
@@ -115,6 +118,9 @@ class AtstNebExecuteService:
             return _ScfServiceContext.error("request.invalid", "expected AtstNebExecuteRequest", None)
         try:
             workspace = self._context.workspace(request.workspace_rel); config = self._context.path(workspace, request.config_path_rel, "config_path_rel")
+            logs = {workspace.root / "reports/atst" / f"{request.operation_id}-{stream}.log" for stream in ("stdout", "stderr")}
+            if config.resolve() in {item.resolve() for item in logs}:
+                return _ScfServiceContext.error("request.invalid", "execute path collides with operation log", request)
             with workspace.operation_guard(request.operation_id, "execute") as token:
                 self._context.require_file(config, request.config_path_rel, "config_path_rel")
                 command = [self._context.executable(), "run", str(config)]
@@ -140,7 +146,7 @@ class AtstNebPostprocessService:
         requested = [Path(request.output_prefix)]
         if request.write_latest: requested.append(Path("outputs/atst/neb-latest"))
         if request.write_neb_init_chain: requested.append(Path("outputs/atst/neb-init-chain.traj"))
-        if request.plot_label: requested.append(Path(request.plot_label))
+        if request.plot: requested.append(Path(request.plot_label or "outputs/atst/nebplots_chain"))
         if any(self._prefixes_overlap(left, right) for i, left in enumerate(requested) for right in requested[i + 1:]):
             return _ScfServiceContext.error("request.invalid", "postprocess output prefixes must not overlap", request)
         if any(self._context.matches_prefix(Path(request.summary_path_rel), item) for item in requested):
@@ -154,7 +160,7 @@ class AtstNebPostprocessService:
             prefix_paths = [prefix]
             if request.write_latest: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-latest", "write_latest"))
             if request.write_neb_init_chain: prefix_paths.append(self._context.path(workspace, "outputs/atst/neb-init-chain.traj", "write_neb_init_chain"))
-            if request.plot_label: prefix_paths.append(self._context.path(workspace, request.plot_label, "plot_label"))
+            if request.plot: prefix_paths.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"))
             if summary.resolve() == trajectory.resolve() or summary.resolve() in {item.resolve() for item in log_paths} or any(self._context.matches_prefix(path, item) for path in (summary, trajectory) for item in prefix_paths):
                 return _ScfServiceContext.error("request.invalid", "postprocess input/output paths collide", request)
             with workspace.operation_guard(request.operation_id, "postprocess") as token:
@@ -196,7 +202,7 @@ class AtstNebPostprocessService:
                 prefixes = [prefix]
                 if request.write_latest: prefixes.append(workspace.root / "outputs/atst/neb-latest")
                 if request.write_neb_init_chain: prefixes.append(workspace.root / "outputs/atst/neb-init-chain.traj")
-                if request.plot_label: prefixes.append(self._context.path(workspace, request.plot_label, "plot_label"))
+                if request.plot: prefixes.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"))
                 changed_outputs: dict[Path, list[Path]] = {item.resolve(): [] for item in prefixes}
                 for candidate in sorted(workspace.root.rglob("*")):
                     key = candidate.resolve()
