@@ -448,7 +448,7 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     services_module = __import__("abacus_forge.services", fromlist=["services"])
-    calls = {name: 0 for name in ("prepare", "modify_input", "collect")}
+    calls = {name: 0 for name in ("prepare_with_assets", "modify_input", "collect")}
     for name in calls:
         original = getattr(services_module, name)
 
@@ -498,10 +498,16 @@ def test_typed_scf_services_persist_request_ids_and_facts(
             parameters={"ecutwfc": 80},
         )
     )
-    assert json.loads((structure.parent / "forge-unit.json").read_text()) == {
+    expected_manifest = {
         "kind": "abacus-forge.unit", "task": "scf", "unit": "default",
         "engine": "abacus", "prepared": True, "source_workdir": None, "metadata": {},
     }
+    manifest_path = structure.parent / "forge-unit.json"
+    assert json.loads(manifest_path.read_text()) == expected_manifest
+    assert manifest_path.read_bytes() == json.dumps(
+        expected_manifest, indent=2, sort_keys=True
+    ).encode("utf-8")
+    assert prepared.envelope.to_dict()["diagnostics"]["asset_materialization"] == []
     assert json.loads((structure.parent / "meta.json").read_text())["metadata"] == {"unit": "default"}
     modified = services.modify_scf(
         _request(ScfModifyRequest, "scf", modify_id, input_updates={"ecutwfc": 90})
@@ -526,7 +532,7 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
     assert isinstance(modified, OperationOutcome)
     assert modified.status.execution == "not_run"
-    assert calls == {"prepare": 1, "modify_input": 1, "collect": 1}
+    assert calls == {"prepare_with_assets": 1, "modify_input": 1, "collect": 1}
     assert runner_calls == 1
     assert next(metric.value for metric in collected.envelope.metrics if metric.name == "total_energy") == -3.2
 
@@ -970,11 +976,174 @@ def test_typed_prepare_asset_fields_reach_service_precondition_validation(tmp_pa
     assert result.workspace_rel == request.workspace_rel
 
 
+_SI_O_TYPED_STRU = (
+    "ATOMIC_SPECIES\n"
+    "Si 28.085500 Si.source.upf\n"
+    "O 15.999000 O.source.upf\n\n"
+    "NUMERICAL_ORBITAL\n"
+    "Si.source.orb\n"
+    "O.source.orb\n\n"
+    "LATTICE_CONSTANT\n1.0\n"
+    "LATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+    "LATTICE_VECTORS\n"
+    "4 0 0\n0 4 0\n0 0 4\n\n"
+    "ATOMIC_POSITIONS\nDirect\n"
+    "Si\n0\n1\n0 0 0 m 1 1 1\n"
+    "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n"
+)
+
+
+def _typed_si_o_fixture(root: Path, workspace_rel: str = "scf") -> Path:
+    workspace = root / workspace_rel
+    workspace.mkdir(parents=True, exist_ok=True)
+    source = workspace / "source.STRU"
+    source.write_text(_SI_O_TYPED_STRU, encoding="utf-8")
+    return source
+
+
+def _external_typed_assets(root: Path) -> dict[str, Path]:
+    external = root.parent / f"{root.name}-external-assets"
+    external.mkdir(parents=True, exist_ok=True)
+    assets = {
+        "Si_upf": external / "Si.external.upf",
+        "O_upf": external / "O.external.upf",
+        "Si_orb": external / "Si.external.orb",
+        "O_orb": external / "O.external.orb",
+    }
+    for name, path in assets.items():
+        path.write_bytes(f"{name} bytes\n".encode("utf-8"))
+    return assets
+
+
+def test_typed_prepare_materializes_external_assets_and_persists_provenance(
+    tmp_path: Path,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174231",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"]), "O": str(assets["O_upf"])},
+        orbital_sources={"Si": str(assets["Si_orb"]), "O": str(assets["O_orb"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    workspace = tmp_path / "scf"
+    stru = (workspace / "inputs/STRU").read_text(encoding="utf-8")
+    assert "Si 28.085500 Si.external.upf" in stru
+    assert "O 15.999000 O.external.upf" in stru
+    assert "Si.external.orb" in stru
+    assert "O.external.orb" in stru
+    provenance = result.envelope.to_dict()["diagnostics"]["asset_materialization"]
+    assert isinstance(provenance, list)
+    assert [item["destination"] for item in provenance] == [
+        "inputs/Si.external.upf",
+        "inputs/O.external.upf",
+        "inputs/Si.external.orb",
+        "inputs/O.external.orb",
+    ]
+    assert all(item["mode"] == "copy" for item in provenance)
+    for item in provenance:
+        source = Path(item["source"])
+        destination = workspace / item["destination"]
+        assert source.read_bytes() == destination.read_bytes()
+        assert item["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+        assert item["destination_sha256"] == hashlib.sha256(destination.read_bytes()).hexdigest()
+        artifact = next(record for record in result.envelope.artifacts if record.path_rel == item["destination"])
+        assert artifact.sha256 == item["destination_sha256"]
+
+    manifest = json.loads((workspace / "forge-unit.json").read_text(encoding="utf-8"))
+    assert manifest["metadata"]["asset_materialization"] == provenance
+    event = json.loads(
+        (workspace / "reports/events" / f"{request.operation_id}-prepare.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert event["payload"] == result.to_dict()
+    assert event["payload"]["envelope"]["diagnostics"]["asset_materialization"] == provenance
+
+
+def test_typed_prepare_partial_maps_override_only_named_species_and_retain_source_metadata(
+    tmp_path: Path,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174232",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+        orbital_sources={"Si": str(assets["Si_orb"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    workspace = tmp_path / "scf"
+    stru = (workspace / "inputs/STRU").read_text(encoding="utf-8")
+    assert "Si 28.085500 Si.external.upf" in stru
+    assert "O 15.999000 O.source.upf" in stru
+    assert "Si.external.orb" in stru
+    assert "O.source.orb" in stru
+    provenance = result.envelope.to_dict()["diagnostics"]["asset_materialization"]
+    assert [item["species"] for item in provenance] == ["Si", "Si"]
+    assert not (workspace / "inputs/O.external.upf").exists()
+    assert not (workspace / "inputs/O.external.orb").exists()
+
+
+@pytest.mark.parametrize(
+    ("case", "asset_mode", "pseudo_sources", "expected_error"),
+    [
+        ("unknown", "copy", {"C": "unknown.upf"}, "request.invalid"),
+        ("missing", "copy", {"Si": "missing.upf"}, "precondition.missing"),
+        ("collision", "copy", {"Si": "one/Same.upf", "O": "two/Same.upf"}, "request.invalid"),
+        ("external-link", "link", {"Si": "__external__/Si.external.upf"}, "request.invalid"),
+    ],
+)
+def test_typed_prepare_asset_failures_are_fail_closed_before_domain_writes(
+    tmp_path: Path,
+    case: str,
+    asset_mode: str,
+    pseudo_sources: dict[str, str],
+    expected_error: str,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    if case == "collision":
+        (tmp_path / "scf/one").mkdir()
+        (tmp_path / "scf/two").mkdir()
+        (tmp_path / "scf/one/Same.upf").write_bytes(b"one")
+        (tmp_path / "scf/two/Same.upf").write_bytes(b"two")
+    elif case == "external-link":
+        external = tmp_path.parent / f"{tmp_path.name}-external-link.upf"
+        external.write_bytes(b"external")
+        pseudo_sources = {"Si": str(external)}
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174233",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources=pseudo_sources,
+        asset_mode=asset_mode,
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == expected_error
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not any(path.suffix in {".upf", ".orb", ".vp"} for path in inputs.iterdir())
+    assert assets["Si_upf"].exists()
+
+
 @pytest.mark.parametrize(
     ("operation", "primitive_name", "error_type"),
     [
-        ("prepare", "prepare", TypeError),
-        ("prepare", "prepare", ValueError),
+        ("prepare", "prepare_with_assets", TypeError),
+        ("prepare", "prepare_with_assets", ValueError),
         ("modify", "modify_input", TypeError),
         ("modify", "modify_input", ValueError),
     ],

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
-from abacus_forge.preparation import prepare
+from abacus_forge.preparation import prepare_with_assets
 from abacus_forge.modify import modify_input
 from abacus_forge.compatibility_records import unit_manifest, modification_record
 from abacus_forge.service_support import (
@@ -143,15 +143,27 @@ class _PrepareService:
                     structure_path, typed_request.structure_path_rel, "structure_path_rel"  # type: ignore[attr-defined]
                 )
                 task = self._context.task_for(typed_request)
-                prepare(
+                _, materialization = prepare_with_assets(
                     workspace,
                     task=task,
                     structure=structure_path,
                     structure_format=typed_request.structure_format,  # type: ignore[attr-defined]
                     parameters=dict(typed_request.parameters),  # type: ignore[attr-defined]
                     metadata={"unit": "default"},
+                    pseudo_sources=dict(typed_request.pseudo_sources),  # type: ignore[attr-defined]
+                    orbital_sources=dict(typed_request.orbital_sources),  # type: ignore[attr-defined]
+                    asset_mode=typed_request.asset_mode,  # type: ignore[attr-defined]
                 )
-                workspace.write_json("forge-unit.json", unit_manifest(task=task))
+                asset_provenance = [record.to_dict() for record in materialization]
+                manifest_metadata = (
+                    {"asset_materialization": asset_provenance}
+                    if asset_provenance
+                    else None
+                )
+                workspace.write_json(
+                    "forge-unit.json",
+                    unit_manifest(task=task, metadata=manifest_metadata),
+                )
                 envelope = ForgeResultEnvelope(
                     operation="prepare",
                     workspace_rel=typed_request.workspace_rel,  # type: ignore[attr-defined]
@@ -163,6 +175,7 @@ class _PrepareService:
                         "task": task,
                         "unit": "default",
                         "prepare_manifest": "forge-unit.json",
+                        "asset_materialization": asset_provenance,
                     },
                 )
                 return self._context.persist(

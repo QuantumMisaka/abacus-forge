@@ -120,6 +120,32 @@ def test_prepare_filters_pseudo_and_orbital_assets_by_file_family(tmp_path: Path
     assert "Ni_gga_7au_100Ry_4s2p2d1f.orb" in (workspace.inputs_dir / "STRU").read_text(encoding="utf-8")
 
 
+def test_legacy_prepare_keeps_directory_inference_and_default_link_mode(tmp_path: Path) -> None:
+    structure = Atoms(
+        symbols=["Si"],
+        positions=[[0.0, 0.0, 0.0]],
+        cell=[4.0, 4.0, 4.0],
+        pbc=True,
+    )
+    asset_dir = tmp_path / "legacy-assets"
+    asset_dir.mkdir()
+    pseudo = asset_dir / "Si_legacy.upf"
+    pseudo.write_bytes(b"legacy pseudo")
+
+    workspace = prepare(
+        tmp_path / "legacy-case",
+        structure=structure,
+        pseudo_path=asset_dir,
+    )
+
+    staged = workspace.inputs_dir / pseudo.name
+    assert staged.is_symlink()
+    assert staged.resolve() == pseudo.resolve()
+    assert f"Si 28.085000 {pseudo.name}" in (workspace.inputs_dir / "STRU").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_run_and_collect_parse_enhanced_metrics(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "run-case")
     structure = Atoms(

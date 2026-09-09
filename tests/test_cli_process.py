@@ -14,8 +14,10 @@ from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
     AtstNebPrepareRequest,
+    OperationOutcome,
     ScfCollectRequest,
     ScfExecuteRequest,
+    ScfPrepareRequest,
 )
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -156,6 +158,23 @@ _STRU_TEXT = (
     "LATTICE_CONSTANT_UNIT\nAngstrom\n\nLATTICE_VECTORS\n"
     "4 0 0\n0 4 0\n0 0 4\n\nATOMIC_POSITIONS\nDirect\nSi\n0\n1\n"
     "0 0 0 m 1 1 1\n"
+)
+
+
+_TYPED_SI_O_STRU_TEXT = (
+    "ATOMIC_SPECIES\n"
+    "Si 28.085500 Si.source.upf\n"
+    "O 15.999000 O.source.upf\n\n"
+    "NUMERICAL_ORBITAL\n"
+    "Si.source.orb\n"
+    "O.source.orb\n\n"
+    "LATTICE_CONSTANT\n1.0\n"
+    "LATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+    "LATTICE_VECTORS\n"
+    "4 0 0\n0 4 0\n0 0 4\n\n"
+    "ATOMIC_POSITIONS\nDirect\n"
+    "Si\n0\n1\n0 0 0 m 1 1 1\n"
+    "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n"
 )
 
 
@@ -515,6 +534,62 @@ def test_machine_process_decodes_valid_typed_prepare_asset_fields_before_precond
     assert result.returncode == 3
     assert result.stderr == ""
     assert json.loads(result.stdout)["error"]["class"] == "precondition.missing"
+
+
+def test_machine_typed_prepare_matches_direct_service_for_asset_materialization(
+    tmp_path: Path,
+) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    for root in (api_root, cli_root):
+        (root / "scf").mkdir(parents=True)
+        (root / "scf/source.STRU").write_text(_TYPED_SI_O_STRU_TEXT, encoding="utf-8")
+    external_dir = tmp_path / "external-assets"
+    external_dir.mkdir()
+    assets = {
+        "Si": external_dir / "Si.external.upf",
+        "O": external_dir / "O.external.upf",
+    }
+    for species, path in assets.items():
+        path.write_bytes(f"{species} external pseudo\n".encode("utf-8"))
+    operation_id = "123e4567-e89b-42d3-a456-426614174234"
+    request = ScfPrepareRequest(
+        operation_id=operation_id,
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={species: str(path) for species, path in assets.items()},
+    )
+
+    direct = ScfServiceSet.default(workspace_root=api_root).prepare.prepare(request)
+    process = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert process.returncode == 0
+    assert process.stderr == ""
+    assert isinstance(direct, OperationOutcome)
+    direct_payload = direct.to_dict()
+    process_payload = json.loads(process.stdout)
+    assert _normalize_operation_identity(
+        process_payload,
+        operation_id=operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_payload,
+        operation_id=operation_id,
+        workspace_root=api_root,
+    )
+    for name in ("Si.external.upf", "O.external.upf"):
+        assert (cli_root / "scf/inputs" / name).read_bytes() == (
+            api_root / "scf/inputs" / name
+        ).read_bytes()
+    assert (cli_root / "scf/inputs/STRU").read_text(encoding="utf-8") == (
+        api_root / "scf/inputs/STRU"
+    ).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(
