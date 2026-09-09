@@ -34,7 +34,8 @@ from abacus_forge.errors import (
     normalize_error_message,
     OperationConflictError,
 )
-from abacus_forge.services import ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -61,11 +62,18 @@ _RELAX_DECODERS = {
     "execute": RelaxExecuteRequest.from_dict,
     "collect": RelaxCollectRequest.from_dict,
 }
+_MD_DECODERS = {
+    "prepare": MdPrepareRequest.from_dict,
+    "modify": MdModifyRequest.from_dict,
+    "execute": MdExecuteRequest.from_dict,
+    "collect": MdCollectRequest.from_dict,
+}
 _CAPABILITY_DECODERS = {
     "scf": _SCF_DECODERS,
     "relax": _RELAX_DECODERS,
     "cell-relax": _RELAX_DECODERS,
     "atst-neb": _ATST_NEB_DECODERS,
+    "md": _MD_DECODERS,
 }
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,
@@ -73,6 +81,7 @@ _RELAX_REQUEST_TYPES = (
     RelaxExecuteRequest,
     RelaxCollectRequest,
 )
+_MD_REQUEST_TYPES = (MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest)
 _MACHINE_OPERATIONS = ("prepare", "modify", "execute", "collect", "postprocess", "export")
 _ERROR_EXIT_CODES = {
     "request.invalid": 2,
@@ -437,6 +446,8 @@ def run_machine_cli(
             service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):
             service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, _MD_REQUEST_TYPES):
+            service_set = MdServiceSet.default(workspace_root=Path(cwd))
         else:
             service_set = ScfServiceSet.default(workspace_root=Path(cwd))
         result = _dispatch(args.operation, request, service_set)

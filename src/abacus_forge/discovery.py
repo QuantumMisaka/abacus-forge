@@ -18,6 +18,12 @@ from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
 )
+from abacus_forge.md_contracts import (
+    MdCollectRequest,
+    MdExecuteRequest,
+    MdModifyRequest,
+    MdPrepareRequest,
+)
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -48,11 +54,18 @@ RELAX_REQUEST_TYPES = {
     "execute": RelaxExecuteRequest,
     "collect": RelaxCollectRequest,
 }
+MD_REQUEST_TYPES = {
+    "prepare": MdPrepareRequest,
+    "modify": MdModifyRequest,
+    "execute": MdExecuteRequest,
+    "collect": MdCollectRequest,
+}
 
 REQUEST_TYPES_BY_CAPABILITY = {
     "scf": SCF_REQUEST_TYPES,
     "relax": RELAX_REQUEST_TYPES,
     "cell-relax": RELAX_REQUEST_TYPES,
+    "md": MD_REQUEST_TYPES,
 }
 
 REQUIRED_WIRE_FIELDS = {
@@ -88,6 +101,20 @@ _ATST_NEB_DESCRIPTOR = CapabilityDescriptor(
     },
     artifact_roles=("input", "output"),
     optional_dependencies=("atst-tools",),
+)
+_MD_DESCRIPTOR = CapabilityDescriptor(
+    name="md",
+    maturity="experimental",
+    engine="abacus",
+    operations=("prepare", "modify", "execute", "collect"),
+    inputs={
+        "prepare": ("structure",),
+        "modify": ("prepared_workspace",),
+        "execute": ("prepared_workspace",),
+        "collect": ("workspace_outputs",),
+    },
+    artifact_roles=("input", "provenance_manifest", "output"),
+    optional_dependencies=(),
 )
 
 
@@ -359,7 +386,7 @@ def capabilities_document() -> dict[str, JSONValue]:
             "schema_version": CAPABILITIES_SCHEMA_VERSION,
             "capabilities": [
                 descriptor.to_dict()
-                for descriptor in (*_CAPABILITY_DESCRIPTORS, _ATST_NEB_DESCRIPTOR)
+                for descriptor in (*_CAPABILITY_DESCRIPTORS, _ATST_NEB_DESCRIPTOR, _MD_DESCRIPTOR)
             ],
         }
     )
