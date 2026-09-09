@@ -74,10 +74,10 @@ Extraction seams: move `prepare` and preparation-only helpers into `preparation.
 
 **Test strategy:** Extend AST import graph gate to reject direct/transitive neutral-core or typed-service dependence on legacy API and forbidden platform modules; retain behavioral unit/service and compatibility tests. New AST gate must fail against baseline. Inspect monkeypatch seams rather than preserving arbitrary private names blindly.
 
-- [ ] Add architecture regression and establish RED.
-- [ ] Extract narrow modules; use prior two tasks' fixed primitives without duplication.
-- [ ] Run full offline suite with the interpreter/flags above; expect all pass with only opt-in skips, plus `git diff --check` exit 0.
-- [ ] Commit and report exact moved responsibilities and verification.
+- [x] Add architecture regression and establish RED.
+- [x] Extract narrow modules; use prior two tasks' fixed primitives without duplication.
+- [x] Run full offline suite with the interpreter/flags above; 631 passed, 3 opt-in skips at `c5c2ce6`; `git diff --check` exit 0.
+- [x] Commit and report exact moved responsibilities and verification. Independent task review approved without findings.
 
 ## Task 4: Preserve metadata across primitive/conventional standardization
 
