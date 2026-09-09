@@ -1,6 +1,7 @@
 from __future__ import annotations
 import stat
 import uuid
+import pytest
 from pathlib import Path
 from abacus_forge import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest, AtstNebServiceSet, ForgeErrorEnvelope, OperationOutcome
 from abacus_forge.discovery import request_schema_document
@@ -97,6 +98,27 @@ def test_missing_latest_extxyz_is_missing_output(tmp_path: Path) -> None:
     fake.write_text(fake.read_text().replace('pathlib.Path(str(q)+".extxyz").write_text("xyz")', ''))
     result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(fake)).postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb.traj", write_latest=True))
     assert isinstance(result, OperationOutcome) and result.status.collection == "missing_output"
+
+def test_prepare_chain_collision_and_exact_output(tmp_path: Path) -> None:
+    (tmp_path / "init").write_text("i"); (tmp_path / "final").write_text("f")
+    op = _id(); log = f"reports/atst/{op}-stdout.log"
+    bad = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).prepare.prepare(AtstNebPrepareRequest(operation_id=op, workspace_rel=".", init_structure_path_rel="init", final_structure_path_rel="final", chain_path_rel="init"))
+    assert isinstance(bad, ForgeErrorEnvelope)
+    good = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path))).prepare.prepare(AtstNebPrepareRequest(operation_id=_id(), workspace_rel=".", init_structure_path_rel="init", final_structure_path_rel="final", chain_path_rel="nested/chain.traj"))
+    assert isinstance(good, OperationOutcome) and any(a.path_rel == "nested/chain.traj" for a in good.envelope.artifacts)
+
+def test_execute_input_log_collision_is_rejected(tmp_path: Path) -> None:
+    op = _id(); rel = f"reports/atst/{op}-stdout.log"; (tmp_path / rel).parent.mkdir(parents=True); (tmp_path / rel).write_text("x")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").execute.execute(AtstNebExecuteRequest(operation_id=op, workspace_rel=".", config_path_rel=rel))
+    assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
+
+def test_resolved_symlink_prefix_overlap_is_rejected(tmp_path: Path) -> None:
+    real = tmp_path / "real"; real.mkdir()
+    try: (tmp_path / "alias").symlink_to(real, target_is_directory=True)
+    except OSError: pytest.skip("symlinks unavailable")
+    (tmp_path / "neb").write_text("x")
+    result = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable="missing").postprocess.postprocess(AtstNebPostprocessRequest(operation_id=_id(), workspace_rel=".", trajectory_path_rel="neb", output_prefix="real/x", plot=True, plot_label="alias/x"))
+    assert isinstance(result, ForgeErrorEnvelope) and result.error_class == "request.invalid"
 
 def test_discovery_plot_label_condition_has_three_validated_branches() -> None:
     schema = request_schema_document("atst-neb", "postprocess")
