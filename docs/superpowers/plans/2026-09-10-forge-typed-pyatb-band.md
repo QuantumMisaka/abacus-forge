@@ -67,10 +67,10 @@
 
 **Test strategy:** New owning suite uses temporary workspaces and hand-authored STRU/matrix files. Cover copy/link provenance, source containment, collision/no-partial-write, spin-1/spin-2 routes, generated Input/KPT contents, malformed STRU, explicit output artifacts, parser facts, missing/partial collection and no scientific acceptance. Include a regression that legacy `tests/test_pyatb.py` remains unchanged and passing.
 
-- [ ] Write RED algorithm tests for handoff, route rendering, spin handling, collection facts and safety.
-- [ ] Implement only the explicit helpers; retain legacy path discovery and absolute-link compatibility.
-- [ ] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py`; expect all selected tests to pass.
-- [ ] Commit and report exact output/revision; independent task review follows.
+- [x] Write RED algorithm tests for handoff, route rendering, spin handling, collection facts and safety.
+- [x] Implement only the explicit helpers; retain legacy path discovery and absolute-link compatibility.
+- [x] Run `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py`; `35 passed` after the R1 boundary fixes.
+- [x] Commit and report exact output/revision; implementation `940706a`, fix `ec97e35`, report `a487557`; scoped re-review CLEAN/APPROVED.
 
 ## Task 3: Typed service set and machine/API parity
 
