@@ -28,7 +28,7 @@
 - Modify `src/abacus_forge/discovery.py`: register `md`, its four request schemas, descriptor and representative request.
 - Modify `src/abacus_forge/machine_cli.py`: decode and route `md` requests; no second CLI implementation.
 - Modify `src/abacus_forge/__init__.py`: export the typed MD request classes and service set without changing legacy exports.
-- Create or extend `tests/test_md.py`: own MD contract, service, collection-fact and API/CLI parity coverage; extend `tests/test_machine_cli.py` only for registry-level assertions if shared fixtures are clearer.
+- Create `tests/test_md_contracts.py`, `tests/test_md_services.py`, and `tests/test_md_machine_cli.py`: keep contract, service/collection-fact, and machine/API parity coverage in independently reviewable suites; extend `tests/test_machine_cli.py` only for registry-level assertions if shared fixtures are clearer.
 - Modify `README.md` and `ROADMAP.md`: describe the experimental typed MD surface and explicitly defer MD postprocess, monitoring, restart and scheduling.
 - Modify `docs/superpowers/plans/2026-09-10-forge-typed-md-operations.md`: check off completed tasks and append verification/review evidence; do not duplicate the SPEC.
 
@@ -36,7 +36,7 @@
 
 **Files:**
 - Create: `src/abacus_forge/md_contracts.py`
-- Modify: `tests/test_md.py`
+- Create: `tests/test_md_contracts.py`
 
 **Test strategy:** Contract round-trip and rejection tests own this new public boundary. Use the existing `tests/test_contracts.py` patterns and the approved Relax contract shape as references. No temporary probes.
 
@@ -50,7 +50,7 @@
   - Assert prepare rejects `parameters={"calculation": "scf"}` and modify rejects an update to another calculation or removal of `calculation`.
   - Assert unknown serialized fields are rejected and `capability != "md"` is rejected.
 - [ ] **Step 2: Run the owning tests and verify RED**
-  - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md.py`
+  - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_contracts.py`
   - Expected: collection/import or assertion failures because the MD request module/types do not exist.
 - [ ] **Step 3: Implement the minimal contracts**
   - Mirror the Relax mixin, but use a single literal capability `md`.
@@ -62,14 +62,14 @@
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_structure.py`
   - Expected: existing contract and structure tests remain green.
 - [ ] **Step 6: Commit**
-  - `git add src/abacus_forge/md_contracts.py tests/test_md.py && git commit -m "feat: add typed MD request contracts"`
+  - `git add src/abacus_forge/md_contracts.py tests/test_md_contracts.py && git commit -m "feat: add typed MD request contracts"`
 
 ## Task 2: Route MD through typed services
 
 **Files:**
 - Modify: `src/abacus_forge/services.py`
 - Modify: `src/abacus_forge/__init__.py`
-- Modify: `tests/test_md.py`
+- Create: `tests/test_md_services.py`
 
 **Test strategy:** Use the existing fake ABACUS executable and workspace helpers from `tests/support`. Verify only operation mechanics and factual output. Include a negative test that a typed MD request cannot be accepted by `ScfServiceSet`.
 
@@ -84,26 +84,26 @@
   - `MdServiceSet.collect` accepts an externally prepared workspace with `calculation=md`, returns existing `md_steps`/`md_dump_summary` parser facts when available, and never adds a scientific acceptance conclusion.
   - `ScfServiceSet` rejects `Md*Request` as `request.invalid`; `MdServiceSet` rejects SCF/Relax request types.
 - [ ] **Step 2: Run tests and verify RED**
-  - Run the focused `tests/test_md.py` command from Task 1; expected: missing service/routing failures.
+  - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_services.py`; expected: missing service/routing failures.
 - [ ] **Step 3: Implement minimal routing**
   - Extend `_AbacusServiceContext.task_for` to return `md` for MD requests.
   - Extend `accepts_request` exclusions so SCF never consumes Relax or MD subclasses and each capability set accepts only its own request type.
   - Add `MdServiceSet` using `validate_input_calculation=True`, exactly like Relax, without adding a new service implementation or facade.
   - Export `MdServiceSet` and MD request classes from `abacus_forge.__init__`.
 - [ ] **Step 4: Run tests and verify GREEN**
-  - Run focused `tests/test_md.py`; expected: all service tests pass.
+  - Run focused `tests/test_md_services.py`; expected: all service tests pass.
 - [ ] **Step 5: Run service/status regressions**
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_service_status.py tests/test_result_contract.py tests/test_tasks.py`
   - Expected: existing SCF/Relax/legacy behavior remains green.
 - [ ] **Step 6: Commit**
-  - `git add src/abacus_forge/services.py src/abacus_forge/__init__.py tests/test_md.py && git commit -m "feat: expose typed MD services"`
+  - `git add src/abacus_forge/services.py src/abacus_forge/__init__.py tests/test_md_services.py && git commit -m "feat: expose typed MD services"`
 
 ## Task 3: Add discovery and machine-CLI parity
 
 **Files:**
 - Modify: `src/abacus_forge/discovery.py`
 - Modify: `src/abacus_forge/machine_cli.py`
-- Modify: `tests/test_md.py`
+- Create: `tests/test_md_machine_cli.py`
 - Modify: `tests/test_machine_cli.py`
 
 **Test strategy:** Discovery/schema tests verify dataclass-to-wire parity and truthful descriptors. Process tests send the same request through the machine CLI and direct MD service using isolated workspaces/IDs. Unknown capabilities and unsupported MD operations must use existing `request.invalid`/exit 2 semantics.
@@ -118,7 +118,7 @@
   - Machine `operation prepare|modify|execute|collect` decodes `capability=md`, routes to `MdServiceSet`, emits one JSON envelope, and has the same status/artifact facts as direct service invocation in an isolated workspace.
   - `schema md postprocess` and `schema md export` return `request.invalid`/2; `operation postprocess|export` with `capability=md` also returns `request.invalid`/2.
 - [ ] **Step 2: Run tests and verify RED**
-  - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md.py tests/test_machine_cli.py`
+  - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_machine_cli.py tests/test_machine_cli.py`
   - Expected: MD is absent from discovery/decoder/routing.
 - [ ] **Step 3: Implement registry and routing**
   - Add `MD_REQUEST_TYPES`/decoder entries, the descriptor and representative request to discovery.
@@ -130,7 +130,7 @@
   - Run: `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_cli_process.py tests/test_architecture.py`
   - Expected: stdout/error envelope, exit classes, forbidden-import and CLI architecture gates remain green.
 - [ ] **Step 6: Commit**
-  - `git add src/abacus_forge/discovery.py src/abacus_forge/machine_cli.py tests/test_md.py tests/test_machine_cli.py && git commit -m "feat: expose typed MD machine capability"`
+  - `git add src/abacus_forge/discovery.py src/abacus_forge/machine_cli.py tests/test_md_machine_cli.py tests/test_machine_cli.py && git commit -m "feat: expose typed MD machine capability"`
 
 ## Task 4: Document the bounded experimental surface
 
@@ -160,7 +160,7 @@
 - No new production files; update this plan's evidence block only.
 
 - [ ] **Step 1: Run the focused gate**
-  - `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md.py tests/test_machine_cli.py tests/test_service_status.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_architecture.py`
+  - `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_contracts.py tests/test_md_services.py tests/test_md_machine_cli.py tests/test_machine_cli.py tests/test_service_status.py tests/test_cli_process.py tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_architecture.py`
 - [ ] **Step 2: Run the full offline suite**
   - `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider`
   - Expected: all existing and new tests pass; any real-smoke skips remain explicit and do not become release evidence.
