@@ -189,12 +189,14 @@ def test_forbidden_imports_reports_import_forms_in_sorted_path_order(tmp_path: P
     ]
 
 
-def test_machine_discovery_advertises_experimental_scf_relax_and_atst_neb() -> None:
+def test_machine_discovery_advertises_experimental_scf_relax_atst_neb_and_md() -> None:
     result = run_cli("capabilities")
     assert result.returncode == 0
     assert result.stderr == ""
     payload = json.loads(result.stdout)
-    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax", "atst-neb"]
+    assert [item["name"] for item in payload["capabilities"]] == [
+        "scf", "relax", "cell-relax", "atst-neb", "md",
+    ]
     for capability in payload["capabilities"][:3]:
         assert capability["maturity"] == "experimental"
         assert capability["engine"] == "abacus"
@@ -205,6 +207,11 @@ def test_machine_discovery_advertises_experimental_scf_relax_and_atst_neb() -> N
     assert atst["engine"] == "atst-tools"
     assert atst["operations"] == ["prepare", "execute", "postprocess"]
     assert atst["artifact_roles"] == ["input", "output"]
+    md = payload["capabilities"][4]
+    assert md["maturity"] == "experimental"
+    assert md["engine"] == "abacus"
+    assert md["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert md["artifact_roles"] == ["input", "provenance_manifest", "output"]
 
 
 def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) -> None:
