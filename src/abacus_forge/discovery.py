@@ -164,12 +164,14 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "parameters": parameters,
                 "pseudo_sources": {
                     "type": "object",
-                    "additionalProperties": {"type": "string"},
+                    "propertyNames": {"type": "string", "minLength": 1},
+                    "additionalProperties": {"type": "string", "minLength": 1},
                     "default": {},
                 },
                 "orbital_sources": {
                     "type": "object",
-                    "additionalProperties": {"type": "string"},
+                    "propertyNames": {"type": "string", "minLength": 1},
+                    "additionalProperties": {"type": "string", "minLength": 1},
                     "default": {},
                 },
                 "asset_mode": {

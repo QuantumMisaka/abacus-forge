@@ -659,7 +659,8 @@ def test_prepare_schema_exposes_typed_asset_fields(capability: str) -> None:
 
     for field_name in ("pseudo_sources", "orbital_sources"):
         assert properties[field_name]["type"] == "object"
-        assert properties[field_name]["additionalProperties"] == {"type": "string"}
+        assert properties[field_name]["propertyNames"] == {"type": "string", "minLength": 1}
+        assert properties[field_name]["additionalProperties"] == {"type": "string", "minLength": 1}
         assert properties[field_name]["default"] == {}
     assert properties["asset_mode"]["type"] == "string"
     assert properties["asset_mode"]["enum"] == ["copy", "link"]

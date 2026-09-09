@@ -952,6 +952,24 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
     assert "input_snapshot_after" in modified.envelope.diagnostics
 
 
+def test_typed_prepare_asset_fields_reach_service_precondition_validation(tmp_path: Path) -> None:
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174230",
+        workspace_rel="scf",
+        structure_path_rel="missing.STRU",
+        pseudo_sources={"Si": "missing.upf"},
+        orbital_sources={"Si": "missing.orb"},
+        asset_mode="copy",
+    )
+
+    result = ForgeServices.default(workspace_root=tmp_path).prepare_scf(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert result.operation_id == request.operation_id
+    assert result.workspace_rel == request.workspace_rel
+
+
 @pytest.mark.parametrize(
     ("operation", "primitive_name", "error_type"),
     [
