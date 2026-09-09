@@ -25,6 +25,7 @@ from abacus_forge.services import (
     ScfPrepareService,
     ScfServiceSet,
 )
+from abacus_forge.atst_neb import AtstNebExecuteService, AtstNebPostprocessService, AtstNebPrepareService, AtstNebServiceSet
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.tasks import run_band, run_band_sequence, run_cell_relax, run_dos, run_dos_sequence, run_md, run_relax, run_scf, run_task
@@ -37,6 +38,10 @@ __all__ = [
     "AtstNebExecuteRequest",
     "AtstNebPostprocessRequest",
     "AtstNebPrepareRequest",
+    "AtstNebExecuteService",
+    "AtstNebPostprocessService",
+    "AtstNebPrepareService",
+    "AtstNebServiceSet",
     "CapabilityDescriptor",
     "BandData",
     "CollectionResult",
