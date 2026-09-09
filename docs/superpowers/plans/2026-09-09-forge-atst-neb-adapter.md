@@ -78,13 +78,13 @@ Files: ROADMAP.md, relevant SPEC/plan wording only if implementation evidence re
 
 ## Verification and self-review checklist
 
-- [ ] Every new request round-trips and rejects unknown keys.
-- [ ] Discovery advertises only the implemented experimental ATST operations and truthful artifact roles.
-- [ ] Direct service and machine CLI produce equivalent envelopes for the same isolated fixture.
-- [ ] Missing preconditions, process failures, and malformed requests map to the frozen classes/exits.
-- [ ] No required dependency or import of atst_tools was added.
-- [ ] No Slurm/site scheduler or scientific judgment entered the Forge boundary.
-- [ ] Full tests, boundary scan, and diff hygiene are green before claiming completion.
+- [x] Every new request round-trips and rejects unknown keys.
+- [x] Discovery advertises only the implemented experimental ATST operations and truthful artifact roles.
+- [x] Direct service and machine CLI produce equivalent envelopes for the same isolated fixture.
+- [x] Missing preconditions, process failures, and malformed requests map to the frozen classes/exits.
+- [x] No required dependency or import of atst_tools was added.
+- [x] No Slurm/site scheduler or scientific judgment entered the Forge boundary.
+- [x] Full tests, boundary scan, and diff hygiene are green before claiming completion.
 
 ## Task 4 execution evidence
 
