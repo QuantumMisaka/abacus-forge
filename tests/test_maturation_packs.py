@@ -8,22 +8,27 @@ import pytest
 from ase import Atoms
 from ase.io import write as ase_write
 
+import abacus_forge.composite.properties as property_module
 from abacus_forge.api import prepare
 from abacus_forge.cli import main
 from abacus_forge.composite import (
     post_bec,
+    post_charge_density,
+    post_charge_diff,
     post_convergence,
     post_spin_density,
     post_vacancy,
     post_workfunc,
     prepare_bec,
+    prepare_charge_diff,
+    prepare_charge_density,
     prepare_convergence,
     prepare_spin_density,
     prepare_vacancy,
     prepare_workfunc,
 )
 from abacus_forge.cube import CubeData, subtract_cubes
-from abacus_forge.input_io import read_input
+from abacus_forge.input_io import read_input, write_input
 from abacus_forge.modify import modify_stru
 from abacus_forge.structure import AbacusStructure
 
@@ -107,6 +112,171 @@ def test_cube_subtraction_and_spin_density_postprocess(tmp_path: Path) -> None:
     assert posted.status == "completed"
     assert posted.summary["spin_density_file"].endswith("spin_density.cube")
     assert CubeData.from_file(workspace.root / "reports" / "spin_density.cube").data.reshape(-1).tolist() == [2.0, 2.5]
+    manifest = posted.diagnostics["property_manifest"]
+    assert manifest["schema_version"] == "forge.property-manifest/v1"
+    assert {entry["spin"] for entry in manifest["inputs"]} == {"up", "down"}
+    derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
+    assert derived["path_rel"] == "reports/spin_density.cube"
+    assert len(derived["source_artifact_ids"]) == 2
+    assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
+
+
+def test_property_post_does_not_read_escaped_cube_symlinks(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "escaped-spin-root")
+    prepare_spin_density(workspace.root)
+    outside_up = tmp_path / "outside-up.cube"
+    outside_down = tmp_path / "outside-down.cube"
+    _write_cube(outside_up, [3.0, 4.0])
+    _write_cube(outside_down, [1.0, 1.5])
+    output_dir = workspace.root / "spin-density" / "scf" / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        (output_dir / "SPIN1_CHG.cube").symlink_to(outside_up)
+        (output_dir / "SPIN2_CHG.cube").symlink_to(outside_down)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+
+    posted = post_spin_density(workspace.root)
+
+    assert posted.status == "degraded"
+    assert posted.summary["spin_density_file"] is None
+    assert not (workspace.root / "reports" / "spin_density.cube").exists()
+    manifest = posted.diagnostics["property_manifest"]
+    cube_reasons = {entry["reason"] for entry in manifest["missing"] if entry["kind"] == "cube"}
+    assert "escaped" in cube_reasons
+
+
+def test_charge_density_manifest_records_canonical_missing_source(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-root")
+    prepare_charge_density(workspace.root)
+
+    posted = post_charge_density(workspace.root)
+
+    assert posted.status == "degraded"
+    manifest = posted.diagnostics["property_manifest"]
+    assert manifest["inputs"] == []
+    assert manifest["missing"] == [
+        {
+            "path_rel": "charge-density/scf/inputs/OUT.ABACUS/SPIN1_CHG.cube",
+            "kind": "cube",
+            "role": "input",
+            "origin": "source",
+            "spin": "unknown",
+            "reason": "missing",
+        }
+    ]
+    assert any(entry["path_rel"] == "reports/metrics_charge_density.json" for entry in manifest["outputs"])
+
+
+@pytest.mark.parametrize(
+    ("suffix", "expected_suffix"),
+    (("CUSTOM", "CUSTOM"), ("../escape", "ABACUS"), ("", "ABACUS")),
+)
+def test_property_manifest_canonical_suffix_is_safe_and_deterministic(
+    tmp_path: Path, suffix: str, expected_suffix: str
+) -> None:
+    workspace = _prepared_workspace(tmp_path / "suffix-root")
+    parameters = read_input(workspace.root / "inputs" / "INPUT")
+    parameters["suffix"] = suffix
+    write_input(workspace.root / "inputs" / "INPUT", parameters)
+    prepare_charge_density(workspace.root)
+
+    posted = post_charge_density(workspace.root)
+
+    assert posted.diagnostics["property_manifest"]["missing"][0]["path_rel"] == (
+        f"charge-density/scf/inputs/OUT.{expected_suffix}/SPIN1_CHG.cube"
+    )
+
+
+def test_charge_diff_manifest_links_three_sources_to_derived_cube(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "diff-root")
+    prepare_charge_diff(workspace.root)
+    for name, values in (("full", [4.0, 5.0]), ("subsystem1", [1.0, 1.5]), ("subsystem2", [2.0, 2.5])):
+        _write_cube(workspace.root / "charge-diff" / name / "outputs" / "SPIN1_CHG.cube", values)
+
+    posted = post_charge_diff(workspace.root)
+
+    assert posted.status == "completed"
+    manifest = posted.diagnostics["property_manifest"]
+    source_paths = {entry["path_rel"] for entry in manifest["inputs"]}
+    assert source_paths == {
+        "charge-diff/full/outputs/SPIN1_CHG.cube",
+        "charge-diff/subsystem1/outputs/SPIN1_CHG.cube",
+        "charge-diff/subsystem2/outputs/SPIN1_CHG.cube",
+    }
+    derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
+    assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
+
+
+def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "spin-parity")
+    prepare_spin_density(workspace.root)
+    for filename, values in (("SPIN1_CHG.cube", [3.0, 4.0]), ("SPIN2_CHG.cube", [1.0, 1.5])):
+        _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / filename, values)
+    direct = post_spin_density(workspace.root)
+
+    assert main(["spin-density", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
+    assert set(direct.to_dict()) == {"task", "workspace", "status", "subtasks", "summary", "artifacts", "diagnostics"}
+
+
+def test_charge_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-parity")
+    prepare_charge_density(workspace.root)
+    _write_cube(workspace.root / "charge-density" / "scf" / "outputs" / "SPIN1_CHG.cube", [3.0, 4.0])
+    direct = post_charge_density(workspace.root)
+
+    assert main(["charge-density", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
+
+
+def test_charge_diff_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-diff-parity")
+    prepare_charge_diff(workspace.root)
+    for name, values in (("full", [4.0, 5.0]), ("subsystem1", [1.0, 1.5]), ("subsystem2", [2.0, 2.5])):
+        _write_cube(workspace.root / "charge-diff" / name / "outputs" / "SPIN1_CHG.cube", values)
+    direct = post_charge_diff(workspace.root)
+
+    assert main(["charge-diff", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
+
+
+def test_property_manifest_projection_failure_preserves_legacy_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace = _prepared_workspace(tmp_path / "projection-failure")
+    prepare_spin_density(workspace.root)
+    _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / "SPIN1_CHG.cube", [3.0, 4.0])
+    _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / "SPIN2_CHG.cube", [1.0, 1.5])
+
+    def fail_manifest(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("injected projection failure")
+
+    monkeypatch.setattr(property_module, "build_property_manifest", fail_manifest)
+    result = post_spin_density(workspace.root)
+
+    assert result.status == "completed"
+    assert result.summary["spin_density_file"].endswith("spin_density.cube")
+    assert "reports/spin_density.cube" in result.artifacts
+    assert "property_manifest" not in result.diagnostics
+    assert any("projection unavailable" in warning for warning in result.diagnostics["warnings"])
+    json.dumps(result.to_dict(), allow_nan=False)
 
 
 def test_workfunc_prepare_and_postprocess(tmp_path: Path) -> None:

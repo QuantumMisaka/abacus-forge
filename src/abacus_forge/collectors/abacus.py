@@ -15,6 +15,15 @@ _REGISTRY = MetricRegistry()
 _KBAR_TO_EV_PER_ANGSTROM3 = 3.398927420868445e-6 * 27.211396132 / 0.52917721092**3
 _KS_SOLVER_LIST = {"DA", "DS", "GE", "GV", "BP", "CG", "CU", "PE", "LA"}
 _NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+_NATIVE_FINAL_ETOT = re.compile(rf"!FINAL_ETOT_IS\s*[=:]*\s*({_NUMBER})\s*eV", re.IGNORECASE)
+_MD_THERMO_HEADER = re.compile(
+    r"Energy(?:\s*\(Ry\))?\s+Potential(?:\s*\(Ry\))?\s+Kinetic(?:\s*\(Ry\))?\s+"
+    r"Temperature(?:\s*\(K\))?(?:\s+Pressure(?:\s*\(kbar\))?)?",
+    re.IGNORECASE,
+)
+_MD_ENERGY_HEADER = re.compile(r"Energy(?:\s*\(Ry\))?\s+Potential(?:\s*\(Ry\))?\s+Kinetic(?:\s*\(Ry\))?", re.IGNORECASE)
+_MD_TEMPERATURE_HEADER = re.compile(r"Temperature(?:\s*\(K\))?(?:\s+Pressure(?:\s*\(kbar\))?)?", re.IGNORECASE)
+_RY_TO_EV = 13.605698
 
 _METRIC_PATTERNS = {
     "total_energy": re.compile(rf"TOTAL\s+ENERGY\s*=\s*({_NUMBER})", re.IGNORECASE),
@@ -73,12 +82,37 @@ def collect_abacus_metrics(
     artifacts: dict[str, str],
     workspace_root: Path,
     structure_volume: float | None = None,
+    main_log_path: Path | None = None,
+    output_log_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Collect metrics and diagnostics from logs and artifacts."""
 
     main_content = main_log_text or ""
     output_content = output_log_text or ""
     metrics = _REGISTRY.extract(main_content)
+    metric_origins: dict[str, str] = {}
+    derived_metrics: set[str] = set()
+    main_source = str(main_log_path) if main_log_path is not None else None
+    output_source = str(output_log_path) if output_log_path is not None else None
+
+    def mark_main(names: object) -> None:
+        if main_source is None:
+            return
+        if isinstance(names, dict):
+            names = names.keys()
+        try:
+            for name in names:  # type: ignore[union-attr]
+                if str(name) in metrics:
+                    metric_origins[str(name)] = main_source
+        except TypeError:
+            return
+
+    mark_main(metrics)
+    native_final = _NATIVE_FINAL_ETOT.findall(main_content)
+    if native_final:
+        metrics["total_energy"] = float(native_final[-1])
+        if main_source is not None:
+            metric_origins["total_energy"] = main_source
     positive_matches, negative_matches = _collect_convergence_matches(main_content)
     diagnostics: dict[str, Any] = {
         "log_sources": len([blob for blob in (main_log_text, output_log_text) if blob]),
@@ -87,13 +121,25 @@ def collect_abacus_metrics(
         "warnings": [],
         "report_json_absent": [],
     }
+    if native_final:
+        diagnostics["native_final_energy_markers"] = len(native_final)
+    native_md = _native_md_metrics(main_content)
+    metrics.update(native_md["metrics"])
+    mark_main(native_md["metrics"])
+    diagnostics.update(native_md["diagnostics"])
     force_metrics = _force_metrics(main_content)
     stress_metrics = _stress_metrics(main_content, volume=structure_volume)
     metrics.update(force_metrics)
     metrics.update(stress_metrics)
+    mark_main(force_metrics)
+    mark_main(stress_metrics)
+    if "pressure" in stress_metrics:
+        derived_metrics.add("pressure")
     output_metrics = _output_metrics(output_content)
     for key, value in output_metrics.items():
         metrics.setdefault(key, value)
+        if key not in metric_origins and output_source is not None and key in metrics:
+            metric_origins[key] = output_source
     if structure_volume is not None:
         diagnostics["structure_volume"] = structure_volume
     if not positive_matches:
@@ -105,6 +151,9 @@ def collect_abacus_metrics(
     if "energy_per_atom" not in metrics and metrics.get("total_energy") is not None and metrics.get("natom"):
         try:
             metrics["energy_per_atom"] = float(metrics["total_energy"]) / int(metrics["natom"])
+            if "total_energy" in metric_origins:
+                metric_origins["energy_per_atom"] = metric_origins["total_energy"]
+            derived_metrics.add("energy_per_atom")
         except Exception:
             diagnostics["warnings"].append("Failed to derive energy_per_atom from total_energy/natom.")
 
@@ -114,6 +163,13 @@ def collect_abacus_metrics(
             payload = json.loads(time_path.read_text(encoding="utf-8"))
             metrics["total_time"] = payload.get("total")
             diagnostics["time_json"] = str(time_path)
+            if payload.get("total") is not None:
+                metric_origins["total_time"] = str(time_path)
+            else:
+                # The JSON artifact still follows the legacy assignment
+                # behavior, but it did not provide a metric value.  Do not
+                # leave an earlier output-log provenance attached to None.
+                metric_origins.pop("total_time", None)
         except Exception:
             diagnostics["time_json_error"] = str(time_path)
             diagnostics["warnings"].append("Failed to parse time.json.")
@@ -199,10 +255,19 @@ def collect_abacus_metrics(
         try:
             metrics["md_dump_summary"] = _md_dump_summary(md_dump)
             metrics["md_steps"] = metrics["md_dump_summary"]["steps"]
-            if metrics["md_dump_summary"].get("last_temperature") is not None:
+            metrics["md_dump_frames"] = metrics["md_dump_summary"]["steps"]
+            metrics["md_dump_steps"] = metrics["md_dump_summary"].get("last_step")
+            if not diagnostics.get("native_md_block_complete") and metrics["md_dump_summary"].get("last_temperature") is not None:
                 metrics["md_last_temperature"] = metrics["md_dump_summary"]["last_temperature"]
-            if metrics["md_dump_summary"].get("last_total_energy") is not None:
+            if not diagnostics.get("native_md_block_complete") and metrics["md_dump_summary"].get("last_total_energy") is not None:
                 metrics["md_last_total_energy"] = metrics["md_dump_summary"]["last_total_energy"]
+            for name in ("md_steps", "md_dump_frames", "md_dump_steps"):
+                if name in metrics:
+                    metric_origins[name] = str(md_dump)
+            if not diagnostics.get("native_md_block_complete"):
+                for name in ("md_last_temperature", "md_last_total_energy"):
+                    if name in metrics:
+                        metric_origins[name] = str(md_dump)
             diagnostics["md_dump"] = str(md_dump)
         except Exception:
             diagnostics["warnings"].append("Failed to parse MD_dump.")
@@ -215,6 +280,11 @@ def collect_abacus_metrics(
     if not diagnostics["report_json_files"] if "report_json_files" in diagnostics else True:
         diagnostics["warnings"].append("No report JSON artifacts found.")
     diagnostics["workspace"] = str(workspace_root)
+    # These keys are consumed by collection.py into non-serialized
+    # CollectionResult sidecars.  Keeping them private here lets the parser
+    # communicate branch provenance without changing the legacy diagnostics.
+    diagnostics["_metric_origins"] = metric_origins
+    diagnostics["_derived_metrics"] = sorted(derived_metrics)
     return metrics, diagnostics
 
 
@@ -498,6 +568,83 @@ def _md_dump_summary(path: Path) -> dict[str, Any]:
         "last_total_energy": energies[-1] if energies else None,
         "path": str(path),
     }
+
+
+def _native_md_metrics(content: str) -> dict[str, dict[str, Any]]:
+    """Parse ABACUS's native MD thermodynamic blocks into factual series."""
+    rows: list[dict[str, float]] = []
+    lines = content.splitlines()
+    def numeric_tokens(row: str) -> list[str] | None:
+        tokens = row.split()
+        if not tokens or any(re.fullmatch(_NUMBER, token) is None for token in tokens):
+            return None
+        return tokens
+    for index, line in enumerate(lines):
+        header = _MD_THERMO_HEADER.search(line)
+        energy_header = _MD_ENERGY_HEADER.search(line)
+        if not header and not energy_header:
+            continue
+        has_pressure = "pressure" in line.lower()
+        energy_values: list[str] | None = None
+        temperature_values: list[str] | None = None
+        if header:
+            for row in lines[index + 1 : index + 5]:
+                values = numeric_tokens(row)
+                if values is not None and len(values) >= (5 if has_pressure else 4):
+                    energy_values, temperature_values = values[:3], values[3:]
+                    break
+        else:
+            energy_index = next(
+                (pos for pos in range(index + 1, min(index + 5, len(lines)))
+                 if (tokens := numeric_tokens(lines[pos])) is not None and len(tokens) >= 3), None
+            )
+            if energy_index is not None:
+                energy_values = numeric_tokens(lines[energy_index])[:3]  # type: ignore[index]
+                temp_header_index = next(
+                    (pos for pos in range(energy_index + 1, min(energy_index + 5, len(lines)))
+                     if _MD_TEMPERATURE_HEADER.search(lines[pos])), None
+                )
+                if temp_header_index is not None:
+                    has_pressure = "pressure" in lines[temp_header_index].lower()
+                    temp_index = next(
+                        (pos for pos in range(temp_header_index + 1, min(temp_header_index + 4, len(lines)))
+                         if (tokens := numeric_tokens(lines[pos])) is not None and len(tokens) >= (2 if has_pressure else 1)), None
+                    )
+                    if temp_index is not None:
+                        temperature_values = numeric_tokens(lines[temp_index])[:2]  # type: ignore[index]
+        if energy_values is None or temperature_values is None:
+            continue
+        try:
+            item = {
+                "total_energy": float(energy_values[0]) * _RY_TO_EV,
+                "potential_energy": float(energy_values[1]) * _RY_TO_EV,
+                "kinetic_energy": float(energy_values[2]) * _RY_TO_EV,
+                "temperature": float(temperature_values[0]),
+            }
+            if has_pressure:
+                if len(temperature_values) < 2:
+                    continue
+                item["pressure"] = float(temperature_values[1])
+        except ValueError:
+            continue
+        rows.append(item)
+    if not rows:
+        return {"metrics": {}, "diagnostics": {"native_md_block_present": bool(_MD_ENERGY_HEADER.search(content)), "native_md_block_complete": False, "native_md_rows": 0}}
+    last = rows[-1]
+    metrics: dict[str, Any] = {
+        "md_total_energy_series": [row["total_energy"] for row in rows],
+        "md_potential_energy_series": [row["potential_energy"] for row in rows],
+        "md_kinetic_energy_series": [row["kinetic_energy"] for row in rows],
+        "md_temperature_series": [row["temperature"] for row in rows],
+        "md_last_total_energy": last["total_energy"],
+        "md_last_potential_energy": last["potential_energy"],
+        "md_last_kinetic_energy": last["kinetic_energy"],
+        "md_last_temperature": last["temperature"],
+    }
+    if "pressure" in last:
+        metrics["md_pressure_series"] = [row["pressure"] for row in rows if "pressure" in row]
+        metrics["md_last_pressure"] = last["pressure"]
+    return {"metrics": metrics, "diagnostics": {"native_md_block_present": True, "native_md_block_complete": True, "native_md_rows": len(rows)}}
 
 
 def _collect_convergence_matches(content: str) -> tuple[list[str], list[str]]:

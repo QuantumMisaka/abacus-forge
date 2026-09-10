@@ -3,10 +3,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from abacus_forge import LocalRunner
 from abacus_forge.api import UnitSpec, collect, prepare, prepare_unit, run
 from abacus_forge.result import CollectionResult, RunResult, TaskResult
 from tests.support.fake_executables import write_fake_abacus
+
+
+@pytest.mark.parametrize("text,status", [("SCF CONVERGED\n", "complete"), ("TOTAL ENERGY = -4.2\nSCF NOT CONVERGED\n", "partial")])
+def test_legacy_collection_keeps_historical_completeness(tmp_path: Path, text: str, status: str) -> None:
+    workspace = prepare(tmp_path / "legacy", task="scf")
+    workspace.write_text("outputs/stdout.log", text)
+    assert collect(workspace).to_envelope().status.collection == status
 
 
 def test_collection_result_to_dict_has_stable_agent_fields(tmp_path: Path) -> None:
@@ -74,6 +83,35 @@ def test_collection_result_projects_a_v1_result_envelope(tmp_path: Path) -> None
     assert payload["status"]["scientific"] == "unassessed"
     assert payload["checks"] == [{"name": "converged", "status": "passed", "message": None}]
     assert any(item["id"] == "stdout_log" and item["path_rel"] == "outputs/stdout.log" for item in payload["artifacts"])
+
+
+def test_collection_result_sidecars_are_internal_and_legacy_metadata_stays_generic(tmp_path: Path) -> None:
+    result = CollectionResult(
+        tmp_path,
+        "completed",
+        metrics={"total_energy": -5.0, "energy_per_atom": -2.5},
+        metric_origins={"total_energy": str(tmp_path / "outputs" / "running_scf.log")},
+        derived_metrics={"energy_per_atom"},
+    )
+
+    payload = result.to_dict()
+    envelope = result.to_envelope()
+
+    assert set(payload) == {
+        "workspace",
+        "status",
+        "metrics",
+        "artifacts",
+        "diagnostics",
+        "inputs_snapshot",
+        "structure_snapshot",
+        "final_structure_snapshot",
+    }
+    assert "metric_origins" not in payload
+    assert "derived_metrics" not in payload
+    assert all(metric.unit is None for metric in envelope.metrics)
+    assert all(metric.kind == "reported" for metric in envelope.metrics)
+    assert all(metric.source_artifact_id is None for metric in envelope.metrics)
 
 
 def test_dry_run_collection_projects_skipped_axes(tmp_path: Path) -> None:

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABACUS-Forge typed export 设计</title>
+  <style>
+    :root { --ink:#20242b; --muted:#5e6875; --line:#d9dee5; --wash:#f4f7fa; --accent:#246b9c; --warn:#9a641c; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1060px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+    h1,h2,h3 { line-height:1.25; }
+    h1 { margin-bottom:.3rem; }
+    h2 { margin-top:2.2rem; border-bottom:1px solid var(--line); padding-bottom:.35rem; }
+    h3 { margin-top:1.5rem; }
+    code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    code { background:var(--wash); padding:.08rem .25rem; border-radius:3px; }
+    pre { overflow:auto; background:#111820; color:#edf3f7; padding:1rem; border-radius:6px; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid var(--line); padding:.55rem .65rem; text-align:left; vertical-align:top; }
+    th { background:var(--wash); }
+    .meta { color:var(--muted); }
+    .decision { border-left:4px solid var(--accent); padding:.65rem .85rem; background:var(--wash); border-radius:0 4px 4px 0; }
+    .warning { border-left-color:var(--warn); }
+    footer { color:var(--muted); margin-top:2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ABACUS-Forge typed <code>export</code></h1>
+  <p class="meta"><strong>日期：</strong>2026-09-10　<strong>状态：</strong>Approved</p>
+  <p class="meta"><strong>实现状态：</strong>typed export 已按本 SPEC 与对应 PLAN 完成代码实现和
+    Task 级审查；当前仍为 <code>experimental</code>，本状态不构成真实 ABACUS 运行或科学验证证据。</p>
+
+  <section id="summary">
+    <h2>摘要</h2>
+    <p>Forge 已有 typed operation、workspace event、<code>ArtifactRecord</code> 和
+      <code>ArtifactRef</code>；本 SPEC 在保留 legacy 行为的同时，新增一个独立、显式来源、可审计的
+      typed <code>export</code> operation。</p>
+    <div class="decision">
+      <p><strong>核心决策：</strong>首版 typed export 是“显式来源的结果 JSON 文档导出”，不是
+        最近结果发现器，也不是二进制 artifact 打包器。请求显式给出同一 workspace 内一个既有
+        operation 的 <code>ArtifactRef</code> 列表；Forge 解析对应 immutable event，验证这些
+        refs 确实属于该 outcome，然后在当前 workspace 内原子写出一个新的
+        <code>forge.export/v1</code> JSON 文档，并将该文档作为新的 output artifact 记录到
+        export event。</p>
+    </div>
+    <p>这保持了 legacy <code>export(result)</code> 的“结果序列化”直觉，同时让 Agent 获得
+      显式来源、路径 containment、冲突语义和审计证据。二进制复制、压缩包、多 operation
+      聚合和发布报告另行设计。</p>
+  </section>
+
+  <section id="context">
+    <h2>依据与边界</h2>
+    <ul>
+      <li>2026-09-01/09-02 approved Forge SPEC 已冻结 <code>export</code> operation、
+        workspace-relative artifact、event 和 facts-only 边界。</li>
+      <li>现有 legacy <code>api.export()</code> 可写任意目标、静默覆盖、不产生 event；这些
+        行为只能留在兼容入口，不能复制到 typed service。</li>
+      <li>现有 <code>ArtifactRef</code> 只表达 <code>{operation_id, artifact_id}</code>，不改变
+        它的字段；typed export 通过 workspace event payload 解析 ref，不增加 task ID、
+        workflow edge 或平台字段。</li>
+      <li>科学验证、结果接受、任务编排、重试/恢复、平台调度和发布策略均由人类或 Agent
+        负责；export 只交付序列化事实。</li>
+    </ul>
+  </section>
+
+  <section id="scope">
+    <h2>目标与非目标</h2>
+    <h3>目标</h3>
+    <ul>
+      <li>新增显式 typed <code>export</code> request、Python service、machine CLI route 和
+        discovery/schema descriptor。</li>
+      <li>只从显式 <code>ArtifactRef</code> 解析一个既有 operation outcome；同一 workspace、
+        同一 source operation，ref 必须真实存在于该 event 的 envelope。</li>
+      <li>只支持 <code>format="json"</code>；目标为 canonical workspace-relative 文件，默认
+        <code>overwrite_policy="fail"</code>，已存在目标不得静默替换。</li>
+      <li>输出 JSON、output artifact、artifact refs、operation event 和 API/CLI 等价事实。</li>
+    </ul>
+    <h3>非目标</h3>
+    <ul>
+      <li>不读取 latest event、目录中的“最近结果”或未声明文件；不隐式执行 collect、
+        postprocess 或任何上游 operation。</li>
+      <li>不复制 artifact bytes、不制作 zip/tar、不跨 workspace 读取、不接受绝对路径。</li>
+      <li>不生成科学报告、接受/拒绝结论、平台发布记录、调度状态或 workflow 关系。</li>
+      <li>不改变 <code>forge.result/v1</code>、<code>forge.operation-outcome/v1</code>、
+        <code>ArtifactRecord</code>、<code>ArtifactRef</code>、legacy API/CLI 或既有错误值。</li>
+    </ul>
+  </section>
+
+  <section id="request">
+    <h2>Typed request</h2>
+    <p>请求使用既有 <code>forge.request/v1</code> 顶层字段，并显式声明
+      <code>capability="export"</code> 与 <code>operation="export"</code>：</p>
+    <pre>{
+  "schema_version": "forge.request/v1",
+  "capability": "export",
+  "operation": "export",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174123",
+  "workspace_rel": "runs/Si_scf",
+  "source_artifact_refs": [
+    {"operation_id": "123e4567-e89b-42d3-a456-426614174010", "artifact_id": "artifact-energy"}
+  ],
+  "destination_path_rel": "exports/scf-result.json",
+  "format": "json",
+  "pretty": true,
+  "overwrite_policy": "fail"
+}</pre>
+    <table>
+      <thead><tr><th>字段</th><th>约束</th><th>语义</th></tr></thead>
+      <tbody>
+        <tr><td><code>source_artifact_refs</code></td><td>非空数组；每项是既有 ArtifactRef；所有 operation_id 相同</td><td>来源 operation 与需要显式证明的 artifact 集合；不接受跨 operation 聚合</td></tr>
+        <tr><td><code>destination_path_rel</code></td><td>canonical workspace-relative 文件路径</td><td>新 export JSON 文档的位置；父目录可由 service 创建</td></tr>
+        <tr><td><code>format</code></td><td>当前唯一值 <code>json</code></td><td>输出 <code>forge.export/v1</code> 文档</td></tr>
+        <tr><td><code>pretty</code></td><td>布尔值，默认 false</td><td>只改变 JSON 空白，不改变文档语义</td></tr>
+        <tr><td><code>overwrite_policy</code></td><td>当前唯一值 <code>fail</code></td><td>目标存在即 request error；replace/merge 需另行 SPEC</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="document">
+    <h2>Export document</h2>
+    <p>目标文件是可移植的单 JSON 文档。它保留来源 outcome 的完整事实，并把请求中的
+      refs 固定写入文档；它不声称复制了来源文件内容。</p>
+    <pre>{
+  "schema_version": "forge.export/v1",
+  "source_operation_id": "123e4567-e89b-42d3-a456-426614174010",
+  "source_artifact_refs": [
+    {"operation_id": "123e4567-e89b-42d3-a456-426614174010", "artifact_id": "artifact-energy"}
+  ],
+  "source_outcome": {
+    "schema_version": "forge.operation-outcome/v1",
+    "operation_id": "123e4567-e89b-42d3-a456-426614174010",
+    "envelope": {
+      "schema_version": "forge.result/v1",
+      "operation": "collect",
+      "workspace_rel": "runs/Si_scf",
+      "status": {"execution": "not_run", "scientific": "unassessed", "collection": "complete"},
+      "artifacts": [{
+        "id": "artifact-energy",
+        "path_rel": "outputs/energy.dat",
+        "role": "output",
+        "stage": "collect",
+        "availability": "available",
+        "media_type": "text/plain",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size_bytes": 32
+      }],
+      "metrics": [],
+      "checks": [],
+      "warnings": [],
+      "diagnostics": {}
+    },
+    "observations": []
+  }
+}</pre>
+    <p><code>source_outcome</code> 必须是从 immutable event payload 解码后重新序列化的
+      exact outcome；export 不重新计算 metrics、不重写 status、不添加 scientific 判断。
+      <code>source_artifact_refs</code> 是 provenance/selection facts，消费者可据此选择
+      envelope 中的 artifact。</p>
+  </section>
+
+  <section id="resolution">
+    <h2>来源解析与数据流</h2>
+    <pre>typed ExportRequest
+  │
+  ├─ validate request, containment and reserved paths
+  ├─ admit export operation_id (existing operation guard)
+  ├─ resolve source operation_id in reports/forge-workspace.json
+  ├─ read exactly that reports/events/*.json payload
+  ├─ verify every ArtifactRef against source envelope.artifacts
+  ├─ atomically write destination forge.export/v1 JSON
+  ├─ build one output ArtifactRecord (hash/size, stage=export)
+  └─ existing ServiceContext.persist → artifact_refs + one export event</pre>
+    <ul>
+      <li>manifest index lookup是按显式 operation_id 的定点解析，不是 latest/排序扫描；事件
+        path 必须来自 workspace manifest 且仍 contained。来源 <code>ArtifactRecord.path_rel</code>
+        只按历史记录校验为 canonical/contained，不要求来源文件当前仍存在，也不重新读取或
+        比对当前 hash。</li>
+      <li>源 event 和目标文件必须位于当前 workspace；ArtifactRef 的 operation_id 不携带外部
+        workspace，因此跨 workspace ref 直接拒绝。来源 artifact 文件本身是历史事实，删除、
+        修改或替换不会被 export 隐式重新解释。</li>
+      <li>source event 只读；export 不修改源 event、源 artifact 或上游状态。</li>
+      <li>目标不得覆盖 <code>reports/forge-workspace.json</code>、<code>reports/events</code>、
+        <code>reports/claims</code>、锁文件、兼容审计文件、源 artifact 或其父级审计目录。</li>
+    </ul>
+  </section>
+
+  <section id="outcome">
+    <h2>Typed outcome</h2>
+    <ul>
+      <li>成功返回既有 <code>forge.operation-outcome/v1</code>，operation 为
+        <code>export</code>，<code>execution="completed"</code>、<code>collection="complete"</code>、
+        <code>scientific="unassessed"</code>。</li>
+      <li>envelope 只包含新写出的 JSON output artifact；其 <code>path_rel</code>、hash、size
+        来自同一写入结果。diagnostics 记录 source refs、source operation、destination、
+        format 和 overwrite policy。</li>
+      <li>持久化仍由现有 <code>ServiceContext.persist()</code> 单点注入 export operation 的
+        artifact_refs 并追加一个 event；不直接写第二份 event 或修改 source event。</li>
+      <li>API 与 machine CLI 走同一 service。CLI stdout 仍是单 JSON outcome/error，
+        <code>--pretty</code>/<code>--format=text</code> 只改变显示。</li>
+    </ul>
+  </section>
+
+  <section id="errors">
+    <h2>错误与退出语义</h2>
+    <table>
+      <thead><tr><th>情形</th><th>Forge error class / exit</th><th>副作用</th></tr></thead>
+      <tbody>
+        <tr><td>字段、schema、ref 数组形状或 format 错误</td><td><code>request.schema</code> / 2</td><td>不 admission、不写目标、不写 event</td></tr>
+        <tr><td>workspace、source/target 非 canonical、越界、symlink escape、保留审计路径</td><td><code>request.path</code> / 2</td><td>不写领域文件</td></tr>
+        <tr><td>source event、source outcome 或请求的 artifact ref 不存在/不可解码</td><td><code>precondition.missing</code> / 3</td><td>在 admission 后发现时保留 admission tombstone；使用新 operation_id 重试</td></tr>
+        <tr><td>目标已存在且 policy=fail，或目标与源 artifact 冲突</td><td><code>request.invalid</code> / 2</td><td>不覆盖目标；已 admission 时不写成功 event</td></tr>
+        <tr><td>重复 export operation_id</td><td><code>operation.conflict</code> / 2</td><td>不触碰源或目标</td></tr>
+        <tr><td>目标/事件/manifest 持久化失败</td><td><code>persistence.failure</code> / 5</td><td>按既有规则保留 admission；不自动重试</td></tr>
+        <tr><td>其他 Forge 内部异常</td><td><code>internal.failure</code> / 5</td><td>按既有 tombstone 规则处理</td></tr>
+      </tbody>
+    </table>
+    <p>export 本身不启动外部进程；不存在 process returncode 或科学失败判断。目标写入若已
+      成功而 event/manifest 之后失败，继续沿用既有持久化失败语义，不以同一 operation_id
+      自动重放。</p>
+  </section>
+
+  <section id="compatibility">
+    <h2>兼容、发现与成熟度</h2>
+    <ul>
+      <li>新增 discovery capability <code>export</code>，只宣称 operation <code>export</code>、
+        engine <code>forge</code>、maturity <code>experimental</code>、input/output artifact
+        roles 和上述 request schema。</li>
+      <li>无 capability 的机器 <code>operation export</code> 请求继续按现有未支持路径返回
+        <code>request.invalid</code>/2；legacy 顶层 <code>abacus-forge export</code> 的隐式
+        collect、任意输出路径和默认 JSON 保持不变。</li>
+      <li>本设计不提升任何 ABACUS/PyATB capability 的 maturity，也不构成真实计算或科学
+        验证证据。</li>
+    </ul>
+  </section>
+
+  <section id="testing">
+    <h2>验收与门禁</h2>
+    <ul>
+      <li>contract：request、ArtifactRef 列表、<code>forge.export/v1</code> 文档 round-trip，
+        unknown field、非 JSON、绝对/越界路径、混合 operation ref 和仅支持 JSON 的拒绝。</li>
+      <li>source resolution：明确 operation event、缺失 event、坏 payload、缺失 artifact、
+        外部 symlink 和跨 workspace ref；不触发 collect/postprocess。</li>
+      <li>destination：父目录创建、contained target、audit/source overlap、已有目标、
+        atomic write、hash/size 与输出 artifact 一致。</li>
+      <li>service/event：admission、单 event、source event 不变、失败 tombstone、artifact
+        refs 单点注入和科学状态始终 unassessed。</li>
+      <li>API/CLI parity：隔离 workspace 中同一 request 得到等价 outcome、目标文件、诊断和
+        event；stdout 单 JSON，text/pretty 不改语义。</li>
+      <li>compat/architecture：legacy export/API/CLI 回归、discovery/schema、forbidden-import
+        AST gate、全量离线 pytest、<code>git diff --check</code>；不把 fake 或 legacy smoke
+        当作真实科学证据。</li>
+    </ul>
+  </section>
+
+  <section id="alternatives">
+    <h2>替代方案与后续边界</h2>
+    <ul>
+      <li><strong>隐式 latest/result 文件：</strong>否决；不可审计且会把 workspace 状态变成
+        隐藏协议。</li>
+      <li><strong>直接修改 ArtifactRecord 增加 export 字段：</strong>否决；扩大通用 v1 契约，
+        本切片只在 export diagnostics/document 中表达来源。</li>
+      <li><strong>二进制 artifact copy 或 archive：</strong>暂缓；它需要目标目录布局、冲突、
+        link/copy 和多文件原子性的新契约，另立 SPEC。</li>
+      <li><strong>多 operation 聚合：</strong>暂缓；当前所有 refs 必须来自一个 source operation，
+        上层负责跨 operation 编排。</li>
+    </ul>
+  </section>
+
+  <section id="decision">
+    <h2>决策记录</h2>
+    <div class="decision">
+      <p>决策已收敛：typed export 首版按“显式来源的结果 JSON 文档导出”落地，不做
+        artifact 文件复制/打包。批准来源为本线程持续推进 Forge 开发的执行授权；本 SPEC
+        的公共边界、legacy 兼容和 facts-only 约束保持不变。后续实现按独立 PLAN 执行。</p>
+    </div>
+  </section>
+</main>
+<footer><p>本地 SPEC 是规范源；本切片不改变既有 Forge、Paimon 或 legacy 行为。</p></footer>
+</body>
+</html>

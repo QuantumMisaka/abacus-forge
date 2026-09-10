@@ -9,6 +9,9 @@ import pytest
 
 from abacus_forge import contracts
 from abacus_forge import (
+    BandPostprocessRequest,
+    DosPostprocessRequest,
+    MdPostprocessRequest,
     RelaxCollectRequest,
     RelaxExecuteRequest,
     RelaxModifyRequest,
@@ -33,15 +36,41 @@ from abacus_forge.contracts import (
 )
 from abacus_forge.discovery import (
     ATST_NEB_REQUEST_TYPES,
+    MD_REQUEST_TYPES,
+    POSTPROCESS_REQUEST_TYPES,
+    REQUEST_TYPES_BY_CAPABILITY,
     SCF_REQUEST_TYPES,
     capabilities_document,
     request_schema_document,
+)
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
 )
 from abacus_forge.errors import ForgeRequestError
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
 RELAX_CAPABILITIES = ("relax", "cell-relax")
+
+
+def _pyatb_prepare_request(**updates: object) -> PyatbBandPrepareRequest:
+    values: dict[str, object] = {
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "structure_path_rel": "inputs/STRU",
+        "hr_paths_rel": ["inputs/HR.dat"],
+        "sr_path_rel": "inputs/SR.dat",
+        "rr_path_rel": "inputs/rR.dat",
+        "fermi_energy": 1.25,
+        "line_kpoints": [
+            {"coords": [0, 0, 0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ],
+    }
+    values.update(updates)
+    return PyatbBandPrepareRequest(**values)
 
 
 RELAX_REQUEST_CASES = (
@@ -56,6 +85,7 @@ SCF_WIRE_KEYS = {
     ScfPrepareRequest: {
         "schema_version", "operation", "operation_id", "workspace_rel",
         "structure_path_rel", "structure_format", "parameters",
+        "pseudo_sources", "orbital_sources", "asset_mode",
     },
     ScfModifyRequest: {
         "schema_version", "operation", "operation_id", "workspace_rel",
@@ -301,7 +331,74 @@ def test_typed_prepare_request_requires_workspace_relative_structure() -> None:
     )
     assert request.to_dict()["structure_path_rel"] == "source/STRU"
     assert request.to_dict()["parameters"] == {"ecutwfc": 80}
+    assert request.to_dict()["pseudo_sources"] == {}
+    assert request.to_dict()["orbital_sources"] == {}
+    assert request.to_dict()["asset_mode"] == "copy"
     assert ScfPrepareRequest.from_dict(request.to_dict()) == request
+
+
+def test_typed_prepare_request_round_trips_and_freezes_asset_sources() -> None:
+    pseudo_sources = {"Si": "/assets/Si.upf"}
+    orbital_sources = {"Si": "assets/Si.orb"}
+    request = ScfPrepareRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources=pseudo_sources,
+        orbital_sources=orbital_sources,
+        asset_mode="link",
+    )
+
+    pseudo_sources["Si"] = "/assets/changed.upf"
+    orbital_sources.clear()
+
+    assert request.pseudo_sources == {"Si": "/assets/Si.upf"}
+    assert request.orbital_sources == {"Si": "assets/Si.orb"}
+    with pytest.raises(TypeError):
+        request.pseudo_sources["Si"] = "/assets/changed.upf"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        request.orbital_sources["Si"] = "assets/changed.orb"  # type: ignore[index]
+    assert ScfPrepareRequest.from_dict(json.loads(json.dumps(request.to_dict()))) == request
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("pseudo_sources", None),
+        ("pseudo_sources", []),
+        ("pseudo_sources", "Si.upf"),
+        ("pseudo_sources", {"": "Si.upf"}),
+        ("pseudo_sources", {"Si": ""}),
+        ("pseudo_sources", {1: "Si.upf"}),
+        ("pseudo_sources", {"Si": 1}),
+        ("orbital_sources", None),
+        ("orbital_sources", []),
+        ("orbital_sources", "Si.orb"),
+        ("orbital_sources", {"": "Si.orb"}),
+        ("orbital_sources", {"Si": ""}),
+        ("orbital_sources", {1: "Si.orb"}),
+        ("orbital_sources", {"Si": 1}),
+    ],
+)
+def test_typed_prepare_request_rejects_invalid_asset_source_maps(field: str, value: object) -> None:
+    with pytest.raises(ValueError, match=field):
+        ScfPrepareRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="scf",
+            structure_path_rel="source.STRU",
+            **{field: value},
+        )
+
+
+@pytest.mark.parametrize("asset_mode", ["", "symlink", None, 1, [], {"mode": "copy"}])
+def test_typed_prepare_request_rejects_invalid_asset_mode(asset_mode: object) -> None:
+    with pytest.raises(ValueError, match="asset_mode"):
+        ScfPrepareRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="scf",
+            structure_path_rel="source.STRU",
+            asset_mode=asset_mode,  # type: ignore[arg-type]
+        )
 
 
 def test_typed_modify_request_exposes_narrow_input_changes() -> None:
@@ -429,7 +526,9 @@ def test_capability_descriptor_rejects_invalid_values() -> None:
 def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> None:
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
-    assert [item["name"] for item in payload["capabilities"]] == ["scf", "relax", "cell-relax", "atst-neb"]
+    assert [item["name"] for item in payload["capabilities"]] == [
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
+    ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert payload["capabilities"][0]["artifact_roles"] == ["input", "provenance_manifest", "output"]
@@ -437,6 +536,13 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload["capabilities"][0]["inputs"]["prepare"].append("mutated")
     assert capabilities_document()["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert capabilities_document()["capabilities"][0]["inputs"]["prepare"] == ["structure"]
+    assert payload["capabilities"][4]["maturity"] == "experimental"
+    assert payload["capabilities"][4]["engine"] == "abacus"
+    assert payload["capabilities"][4]["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
+    assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    assert payload["capabilities"][5]["operations"] == ["postprocess"]
+    assert payload["capabilities"][6]["operations"] == ["postprocess"]
+    assert payload["capabilities"][7]["operations"] == ["prepare", "execute", "collect"]
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:
@@ -584,7 +690,23 @@ def test_prepare_schema_describes_canonical_structure_paths(path_value: str) -> 
     assert re.fullmatch(pattern, path_value) is None
 
 
-@pytest.mark.parametrize("capability,operation", [("md", "prepare"), ("scf", "postprocess")])
+@pytest.mark.parametrize("capability", ["scf", "relax", "cell-relax", "md"])
+def test_prepare_schema_exposes_typed_asset_fields(capability: str) -> None:
+    schema = request_schema_document(capability, "prepare")["request_schema"]
+    properties = schema["properties"]
+
+    for field_name in ("pseudo_sources", "orbital_sources"):
+        assert properties[field_name]["type"] == "object"
+        assert properties[field_name]["propertyNames"] == {"type": "string", "minLength": 1}
+        assert properties[field_name]["additionalProperties"] == {"type": "string", "minLength": 1}
+        assert properties[field_name]["default"] == {}
+    assert properties["asset_mode"]["type"] == "string"
+    assert properties["asset_mode"]["enum"] == ["copy", "link"]
+    assert properties["asset_mode"]["default"] == "copy"
+    assert schema["additionalProperties"] is False
+
+
+@pytest.mark.parametrize("capability,operation", [("unknown", "prepare"), ("scf", "postprocess")])
 def test_unknown_schema_selector_raises_request_error(capability: str, operation: str) -> None:
     with pytest.raises(ForgeRequestError):
         request_schema_document(capability, operation)
@@ -838,3 +960,252 @@ def test_scf_request_wire_keys_remain_unchanged(request_type, expected_keys: set
     assert "capability" not in request.to_dict()
     with pytest.raises(ValueError, match="unknown"):
         request_type.from_dict({**request.to_dict(), "capability": "relax"})
+
+
+POSTPROCESS_REQUEST_CASES = (
+    (
+        BandPostprocessRequest,
+        {
+            "source_paths_rel": ["outputs/OUT.ABACUS/BANDS_1.dat"],
+            "output_dir_rel": "outputs/band",
+        },
+    ),
+    (
+        DosPostprocessRequest,
+        {
+            "dos_paths_rel": ["outputs/OUT.ABACUS/DOS1_smearing.dat"],
+            "pdos_path_rel": "outputs/OUT.ABACUS/PDOS",
+            "tdos_path_rel": "outputs/OUT.ABACUS/TDOS",
+            "output_dir_rel": "outputs/dos",
+            "include_tdos": True,
+            "include_pdos": True,
+            "pdos_mode": "atoms",
+            "pdos_atom_indices": [0, 2],
+            "plot_emin": -4.0,
+            "plot_emax": 6.0,
+            "save_data": True,
+            "save_plot": False,
+            "suffix": "selected",
+        },
+    ),
+)
+
+
+@pytest.mark.parametrize("request_type,extra", POSTPROCESS_REQUEST_CASES)
+def test_postprocess_requests_round_trip_strictly_and_remain_immutable(request_type, extra) -> None:
+    request = request_type(
+        operation_id=OPERATION_ID,
+        workspace_rel="job",
+        **extra,
+    )
+
+    payload = request.to_dict()
+    assert payload["schema_version"] == "forge.request/v1"
+    assert payload["capability"] == request.capability
+    assert payload["operation"] == "postprocess"
+    assert request_type.from_dict(json.loads(json.dumps(payload))) == request
+    assert dataclasses.is_dataclass(request)
+    assert not hasattr(request, "__dict__")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        request.operation_id = OPERATION_ID  # type: ignore[misc]
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**payload, "unknown": True})
+
+
+def test_postprocess_request_registries_are_separate_from_legacy_scf() -> None:
+    expected = {
+        "band": {"postprocess": BandPostprocessRequest},
+        "dos": {"postprocess": DosPostprocessRequest},
+    }
+    assert POSTPROCESS_REQUEST_TYPES == expected
+    assert REQUEST_TYPES_BY_CAPABILITY["band"] is POSTPROCESS_REQUEST_TYPES["band"]
+    assert REQUEST_TYPES_BY_CAPABILITY["dos"] is POSTPROCESS_REQUEST_TYPES["dos"]
+    assert "postprocess" not in SCF_REQUEST_TYPES
+    assert set(contracts._OPERATIONS) == {"prepare", "modify", "execute", "collect", "export"}
+
+
+def test_md_postprocess_request_registry_is_typed_and_capability_scoped() -> None:
+    assert MD_REQUEST_TYPES["postprocess"] is MdPostprocessRequest
+    assert REQUEST_TYPES_BY_CAPABILITY["md"] is MD_REQUEST_TYPES
+    assert "postprocess" not in SCF_REQUEST_TYPES
+
+
+@pytest.mark.parametrize(
+    ("request_type", "field", "value"),
+    [
+        (BandPostprocessRequest, "source_paths_rel", []),
+        (BandPostprocessRequest, "source_paths_rel", ["."]),
+        (BandPostprocessRequest, "source_paths_rel", ["../outside"]),
+        (BandPostprocessRequest, "source_paths_rel", ["a/../BANDS.dat"]),
+        (BandPostprocessRequest, "source_paths_rel", ["a\\BANDS.dat"]),
+        (BandPostprocessRequest, "source_paths_rel", "BANDS.dat"),
+        (DosPostprocessRequest, "dos_paths_rel", []),
+        (DosPostprocessRequest, "dos_paths_rel", ["/tmp/DOS.dat"]),
+        (DosPostprocessRequest, "pdos_path_rel", "."),
+        (DosPostprocessRequest, "tdos_path_rel", "a/./TDOS"),
+        (DosPostprocessRequest, "output_dir_rel", "../outside"),
+        (DosPostprocessRequest, "output_dir_rel", "a\\b"),
+        (DosPostprocessRequest, "pdos_atom_indices", [0, -1]),
+        (DosPostprocessRequest, "pdos_atom_indices", [True]),
+        (DosPostprocessRequest, "pdos_atom_indices", ["0"]),
+        (DosPostprocessRequest, "pdos_mode", "unknown"),
+        (BandPostprocessRequest, "plot_emin", float("nan")),
+        (DosPostprocessRequest, "plot_emax", float("inf")),
+        (BandPostprocessRequest, "save_data", 1),
+        (DosPostprocessRequest, "include_pdos", "true"),
+        (DosPostprocessRequest, "suffix", ""),
+        (DosPostprocessRequest, "suffix", "../escape"),
+        (DosPostprocessRequest, "suffix", "a\\b"),
+        (DosPostprocessRequest, "suffix", "."),
+        (DosPostprocessRequest, "suffix", ".."),
+    ],
+)
+def test_postprocess_requests_reject_invalid_paths_types_bounds_and_suffix(
+    request_type, field: str, value: object
+) -> None:
+    base = {
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "source_paths_rel": ["BANDS_1.dat"],
+    }
+    if request_type is DosPostprocessRequest:
+        base.pop("source_paths_rel")
+        base["dos_paths_rel"] = ["DOS1_smearing.dat"]
+    with pytest.raises(ValueError, match=field):
+        request_type(**{**base, field: value})
+
+
+def test_postprocess_requests_reject_inverted_or_non_numeric_plot_bounds() -> None:
+    with pytest.raises(ValueError, match="plot_emin|plot_emax"):
+        BandPostprocessRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            source_paths_rel=["BANDS_1.dat"],
+            plot_emin=1.0,
+            plot_emax=1.0,
+        )
+    with pytest.raises(ValueError, match="plot_emin|plot_emax"):
+        DosPostprocessRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            dos_paths_rel=["DOS1_smearing.dat"],
+            plot_emin=3.0,
+            plot_emax=-3.0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type"),
+    [("band", BandPostprocessRequest), ("dos", DosPostprocessRequest)],
+)
+def test_postprocess_schema_matches_dataclass_wire_and_rejects_extra_fields(
+    capability: str, request_type
+) -> None:
+    if capability == "band":
+        request = request_type(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            source_paths_rel=["BANDS_1.dat"],
+        )
+    else:
+        request = request_type(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            dos_paths_rel=["DOS1_smearing.dat"],
+        )
+    schema = request_schema_document(capability, "postprocess")["request_schema"]
+    assert schema["additionalProperties"] is False
+    assert set(schema["properties"]) == set(request.to_dict())
+    assert set(schema["required"]) >= {
+        "schema_version",
+        "capability",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+    }
+
+
+def test_pyatb_band_requests_round_trip_with_defaults_and_frozen_payloads() -> None:
+    request = _pyatb_prepare_request()
+    payload = request.to_dict()
+    assert payload["schema_version"] == "forge.request/v1"
+    assert payload["capability"] == "pyatb-band"
+    assert payload["operation"] == "prepare"
+    assert payload["nspin"] == 1
+    assert payload["line_segments"] == 20
+    assert payload["max_kpoint_num"] == 4000
+    assert payload["handoff_mode"] == "link"
+    assert PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(payload))) == request
+    payload["line_kpoints"][0]["coords"][0] = 99  # type: ignore[index]
+    assert request.line_kpoints[0]["coords"][0] == 0
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        request.fermi_energy = 2.0  # type: ignore[misc]
+    with pytest.raises(ValueError, match="unknown"):
+        PyatbBandPrepareRequest.from_dict({**request.to_dict(), "unknown": True})
+
+    execute = PyatbBandExecuteRequest(operation_id=OPERATION_ID, workspace_rel="job")
+    collect = PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job")
+    assert execute.to_dict()["executable"] == "pyatb"
+    assert collect.to_dict()["band_info_path_rel"] == "inputs/Out/Band_Structure/band_info.dat"
+    assert PyatbBandExecuteRequest.from_dict(json.loads(json.dumps(execute.to_dict()))) == execute
+    assert PyatbBandCollectRequest.from_dict(json.loads(json.dumps(collect.to_dict()))) == collect
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("nspin", 3),
+        ("hr_paths_rel", ["inputs/HR1.dat", "inputs/HR2.dat"]),
+        ("hr_paths_rel", []),
+        ("line_kpoints", [{"coords": [0, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0, 0], "extra": 1}, {"coords": [1, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0, float("nan")]}, {"coords": [1, 0, 0]}]),
+        ("line_kpoints", [{"coords": [0, 0]}, {"coords": [1, 0, 0]}]),
+        ("structure_path_rel", "../STRU"),
+        ("sr_path_rel", "a/../SR.dat"),
+        ("rr_path_rel", "/tmp/rR.dat"),
+        ("fermi_energy", float("inf")),
+        ("handoff_mode", "move"),
+    ],
+)
+def test_pyatb_band_prepare_rejects_invalid_cardinality_numbers_and_paths(
+    field: str, value: object
+) -> None:
+    with pytest.raises(ValueError, match=field):
+        _pyatb_prepare_request(**{field: value})
+
+
+def test_pyatb_band_prepare_accepts_spin_two_only_with_two_hr_paths() -> None:
+    request = _pyatb_prepare_request(nspin=2, hr_paths_rel=["inputs/HR1.dat", "inputs/HR2.dat"])
+    assert request.nspin == 2
+    assert request.hr_paths_rel == ("inputs/HR1.dat", "inputs/HR2.dat")
+    with pytest.raises(ValueError, match="hr_paths_rel"):
+        _pyatb_prepare_request(nspin=2)
+
+
+def test_pyatb_band_prepare_nspin4_accepts_one_hr_path_and_round_trips() -> None:
+    request = _pyatb_prepare_request(nspin=4)
+
+    assert request.nspin == 4
+    assert request.hr_paths_rel == ("inputs/HR.dat",)
+    assert PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(request.to_dict()))) == request
+
+
+def test_pyatb_band_prepare_rejects_boolean_nspin() -> None:
+    with pytest.raises(ValueError, match="nspin"):
+        _pyatb_prepare_request(nspin=True)
+
+
+@pytest.mark.parametrize("hr_paths_rel", [[], ["inputs/HR1.dat", "inputs/HR2.dat"]])
+def test_pyatb_band_prepare_nspin4_rejects_non_single_hr_cardinality(
+    hr_paths_rel: list[str],
+) -> None:
+    with pytest.raises(ValueError):
+        _pyatb_prepare_request(nspin=4, hr_paths_rel=hr_paths_rel)
+
+
+def test_pyatb_band_collect_rejects_invalid_output_path_lists() -> None:
+    with pytest.raises(ValueError, match="band_data_paths_rel"):
+        PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job", band_data_paths_rel=["../band.dat"])
+    with pytest.raises(ValueError, match="band_picture_paths_rel"):
+        PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job", band_picture_paths_rel=["a//band.png"])

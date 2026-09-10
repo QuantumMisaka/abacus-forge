@@ -1,5 +1,9 @@
 # Forge Relax Operations Implementation Plan
 
+**Status:** Implemented and reviewed. The unchecked boxes below are the
+historical execution template; the Task 4 completion record and its linked
+reports are authoritative for delivered scope and evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver experimental relax/cell-relax prepare, modify, execute and collect through the same typed Python services and machine CLI, with factual collection and portable artifacts.

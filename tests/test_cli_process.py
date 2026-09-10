@@ -10,12 +10,20 @@ import pytest
 
 from abacus_forge.api import prepare
 from abacus_forge.atst_neb import AtstNebServiceSet
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
+from abacus_forge.pyatb_services import PyatbBandServiceSet
 from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
     AtstNebPrepareRequest,
+    OperationOutcome,
     ScfCollectRequest,
     ScfExecuteRequest,
+    ScfPrepareRequest,
 )
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -159,6 +167,23 @@ _STRU_TEXT = (
 )
 
 
+_TYPED_SI_O_STRU_TEXT = (
+    "ATOMIC_SPECIES\n"
+    "Si 28.085500 Si.source.upf\n"
+    "O 15.999000 O.source.upf\n\n"
+    "NUMERICAL_ORBITAL\n"
+    "Si.source.orb\n"
+    "O.source.orb\n\n"
+    "LATTICE_CONSTANT\n1.0\n"
+    "LATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+    "LATTICE_VECTORS\n"
+    "4 0 0\n0 4 0\n0 0 4\n\n"
+    "ATOMIC_POSITIONS\nDirect\n"
+    "Si\n0\n1\n0 0 0 m 1 1 1\n"
+    "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n"
+)
+
+
 def _write_relax_scenario(root: Path, capability: str, operation: str) -> Workspace:
     workspace = Workspace(root / "job").ensure_layout()
     if operation == "prepare":
@@ -296,9 +321,10 @@ def test_parser_error_has_nonzero_exit_and_empty_stdout() -> None:
     assert "invalid choice" in error_result.stderr
 
 
-def test_operation_stdin_matches_direct_collect_api(tmp_path: Path) -> None:
-    api_workspace = _write_prepared_scf(tmp_path / "api")
-    cli_workspace = _write_prepared_scf(tmp_path / "cli")
+@pytest.mark.parametrize("stdout,collection", [("SCF CONVERGED\n", "partial"), ("TOTAL ENERGY = -4.2\n", "complete")])
+def test_operation_stdin_matches_direct_collect_api(tmp_path: Path, stdout: str, collection: str) -> None:
+    api_workspace = _write_prepared_scf(tmp_path / "api", stdout=stdout)
+    cli_workspace = _write_prepared_scf(tmp_path / "cli", stdout=stdout)
     api_request = ScfCollectRequest(
         operation_id="123e4567-e89b-42d3-a456-426614174201",
         workspace_rel="scf",
@@ -320,6 +346,7 @@ def test_operation_stdin_matches_direct_collect_api(tmp_path: Path) -> None:
     assert process.returncode == 0
     assert process.stderr == ""
     assert len(_parse_concatenated_json_values(process.stdout)) == 1
+    assert json.loads(process.stdout)["envelope"]["status"]["collection"] == collection
     assert _normalize_operation_identity(
         json.loads(process.stdout), operation_id=cli_request.operation_id, workspace_root=cli_workspace.root.parent
     ) == _normalize_operation_identity(
@@ -355,6 +382,188 @@ def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp
         json.loads(process.stdout), operation_id=request.operation_id, workspace_root=cli_workspace.root.parent
     ) == _normalize_operation_identity(
         direct.to_dict(), operation_id=request.operation_id, workspace_root=api_workspace.root.parent
+    )
+
+
+def _write_typed_pyatb_fixture(root: Path) -> None:
+    workspace = root / "job"
+    source = workspace / "source"
+    source.mkdir(parents=True, exist_ok=True)
+    source.joinpath("STRU").write_text(_STRU_TEXT, encoding="utf-8")
+    for name, content in (("hr.csr", "hr"), ("sr.csr", "sr"), ("rr.csr", "rr")):
+        source.joinpath(name).write_text(content, encoding="utf-8")
+
+
+def _write_fake_typed_pyatb(path: Path) -> Path:
+    return _write_script(
+        path,
+        """
+from pathlib import Path
+out = Path.cwd() / 'Out' / 'Band_Structure'
+out.mkdir(parents=True, exist_ok=True)
+(out / 'band_info.dat').write_text('Band gap is 1.5\\n', encoding='utf-8')
+(out / 'band.dat').write_text('bands\\n', encoding='utf-8')
+(out / 'band.png').write_bytes(b'picture')
+print('typed pyatb done')
+""",
+    )
+
+
+def test_typed_pyatb_prepare_execute_collect_machine_parity(tmp_path: Path) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    _write_typed_pyatb_fixture(api_root)
+    _write_typed_pyatb_fixture(cli_root)
+    executable = _write_fake_typed_pyatb(tmp_path / "fake-pyatb")
+
+    prepare_kwargs = {
+        "structure_path_rel": "source/STRU",
+        "hr_paths_rel": ("source/hr.csr",),
+        "sr_path_rel": "source/sr.csr",
+        "rr_path_rel": "source/rr.csr",
+        "fermi_energy": 1.25,
+        "line_kpoints": (
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ),
+    }
+    prepare_request = PyatbBandPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174260",
+        workspace_rel="job",
+        **prepare_kwargs,
+    )
+    direct_services = PyatbBandServiceSet.default(workspace_root=api_root)
+    direct_prepare = direct_services.prepare.prepare(prepare_request)
+    process_prepare = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(prepare_request.to_dict()),
+    )
+    assert process_prepare.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_prepare.stdout), operation_id=prepare_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_prepare.to_dict(), operation_id=prepare_request.operation_id, workspace_root=api_root
+    )
+
+    execute_request = PyatbBandExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174261",
+        workspace_rel="job",
+        executable=str(executable),
+        omp_threads=2,
+    )
+    direct_execute = direct_services.execute.execute(execute_request)
+    process_execute = run_cli(
+        "operation",
+        "execute",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(execute_request.to_dict()),
+    )
+    assert process_execute.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_execute.stdout), operation_id=execute_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_execute.to_dict(), operation_id=execute_request.operation_id, workspace_root=api_root
+    )
+
+    collect_request = PyatbBandCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174262",
+        workspace_rel="job",
+        band_data_paths_rel=("inputs/Out/Band_Structure/band.dat",),
+        band_picture_paths_rel=("inputs/Out/Band_Structure/band.png",),
+    )
+    direct_collect = direct_services.collect.collect(collect_request)
+    process_collect = run_cli(
+        "operation",
+        "collect",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(collect_request.to_dict()),
+    )
+    assert process_collect.returncode == 0
+    assert _normalize_operation_identity(
+        json.loads(process_collect.stdout), operation_id=collect_request.operation_id, workspace_root=cli_root
+    ) == _normalize_operation_identity(
+        direct_collect.to_dict(), operation_id=collect_request.operation_id, workspace_root=api_root
+    )
+    process_collect_manifest = json.loads(process_collect.stdout)["envelope"]["diagnostics"]["pyatb_manifest"]
+    direct_collect_manifest = direct_collect.to_dict()["envelope"]["diagnostics"]["pyatb_manifest"]
+    assert process_collect_manifest == direct_collect_manifest
+
+
+def test_typed_pyatb_nspin4_prepare_machine_api_parity_without_execution(tmp_path: Path) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    _write_typed_pyatb_fixture(api_root)
+    _write_typed_pyatb_fixture(cli_root)
+    request = PyatbBandPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174263",
+        workspace_rel="job",
+        structure_path_rel="source/STRU",
+        hr_paths_rel=("source/hr.csr",),
+        sr_path_rel="source/sr.csr",
+        rr_path_rel="source/rr.csr",
+        fermi_energy=1.25,
+        line_kpoints=(
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ),
+        nspin=4,
+    )
+
+    direct = PyatbBandServiceSet.default(workspace_root=api_root).prepare.prepare(request)
+    process = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert process.returncode == 0
+    assert process.stderr == ""
+    process_outcome = json.loads(process.stdout)
+    direct_outcome = direct.to_dict()
+    assert _normalize_operation_identity(
+        process_outcome,
+        operation_id=request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_outcome,
+        operation_id=request.operation_id,
+        workspace_root=api_root,
+    )
+    process_envelope = process_outcome["envelope"]
+    direct_envelope = direct_outcome["envelope"]
+    process_diagnostics = process_envelope["diagnostics"]
+    direct_diagnostics = direct_envelope["diagnostics"]
+    process_facts = {
+        "status": process_envelope["status"],
+        "artifacts": process_envelope["artifacts"],
+        "diagnostics": {
+            key: process_diagnostics[key]
+            for key in ("task", "unit", "engine", "pyatb_manifest", "artifact_refs")
+        },
+    }
+    direct_facts = {
+        "status": direct_envelope["status"],
+        "artifacts": direct_envelope["artifacts"],
+        "diagnostics": {
+            key: direct_diagnostics[key]
+            for key in ("task", "unit", "engine", "pyatb_manifest", "artifact_refs")
+        },
+    }
+    assert _normalize_operation_identity(
+        process_facts,
+        operation_id=request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_facts,
+        operation_id=request.operation_id,
+        workspace_root=api_root,
     )
 
 
@@ -484,11 +693,162 @@ def test_machine_process_discovery_emits_one_json_document_and_no_diagnostics() 
         ("schema", "scf", "collect"),
         ("schema", "relax", "prepare"),
         ("schema", "cell-relax", "modify"),
+        ("schema", "band", "postprocess"),
+        ("schema", "dos", "postprocess"),
+        ("schema", "pyatb-band", "prepare"),
+        ("schema", "pyatb-band", "execute"),
+        ("schema", "pyatb-band", "collect"),
     ):
         result = run_cli(*argv)
         assert result.returncode == 0
         assert result.stderr == ""
         assert len(_parse_concatenated_json_values(result.stdout)) == 1
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "schema_version": "forge.request/v1",
+            "operation": "postprocess",
+            "operation_id": "123e4567-e89b-42d3-a456-426614174240",
+            "workspace_rel": ".",
+            "source_paths_rel": ["BANDS_1.dat"],
+        },
+        {
+            "schema_version": "forge.request/v1",
+            "capability": "band",
+            "operation": "export",
+            "operation_id": "123e4567-e89b-42d3-a456-426614174241",
+            "workspace_rel": ".",
+            "source_paths_rel": ["BANDS_1.dat"],
+        },
+    ],
+)
+def test_machine_process_rejects_capabilityless_or_unsupported_postprocess_without_service(
+    tmp_path: Path, payload: dict[str, object]
+) -> None:
+    command_operation = "postprocess" if payload["operation"] == "postprocess" else "export"
+    result = run_cli(
+        "operation",
+        command_operation,
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(payload),
+    )
+    assert result.returncode == 2
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "request.invalid"
+
+
+def test_machine_process_decodes_valid_typed_prepare_asset_fields_before_preconditions(
+    tmp_path: Path,
+) -> None:
+    request = _operation_request(
+        "prepare",
+        "123e4567-e89b-42d3-a456-426614174228",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": "assets/Si.upf"},
+        orbital_sources={"Si": "assets/Si.orb"},
+        asset_mode="link",
+    )
+    result = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(request),
+    )
+
+    assert result.returncode == 3
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "precondition.missing"
+
+
+def test_machine_typed_prepare_matches_direct_service_for_asset_materialization(
+    tmp_path: Path,
+) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    for root in (api_root, cli_root):
+        (root / "scf").mkdir(parents=True)
+        (root / "scf/source.STRU").write_text(_TYPED_SI_O_STRU_TEXT, encoding="utf-8")
+    external_dir = tmp_path / "external-assets"
+    external_dir.mkdir()
+    assets = {
+        "Si": external_dir / "Si.external.upf",
+        "O": external_dir / "O.external.upf",
+    }
+    for species, path in assets.items():
+        path.write_bytes(f"{species} external pseudo\n".encode("utf-8"))
+    operation_id = "123e4567-e89b-42d3-a456-426614174234"
+    request = ScfPrepareRequest(
+        operation_id=operation_id,
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={species: str(path) for species, path in assets.items()},
+    )
+
+    direct = ScfServiceSet.default(workspace_root=api_root).prepare.prepare(request)
+    process = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert process.returncode == 0
+    assert process.stderr == ""
+    assert isinstance(direct, OperationOutcome)
+    direct_payload = direct.to_dict()
+    process_payload = json.loads(process.stdout)
+    assert _normalize_operation_identity(
+        process_payload,
+        operation_id=operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_payload,
+        operation_id=operation_id,
+        workspace_root=api_root,
+    )
+    for name in ("Si.external.upf", "O.external.upf"):
+        assert (cli_root / "scf/inputs" / name).read_bytes() == (
+            api_root / "scf/inputs" / name
+        ).read_bytes()
+    assert (cli_root / "scf/inputs/STRU").read_text(encoding="utf-8") == (
+        api_root / "scf/inputs/STRU"
+    ).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("pseudo_sources", {"Si": 1}),
+        ("orbital_sources", {"Si": ""}),
+        ("asset_mode", "hardlink"),
+    ],
+)
+def test_machine_process_rejects_invalid_typed_prepare_asset_fields_as_request_schema(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    request = _operation_request(
+        "prepare",
+        "123e4567-e89b-42d3-a456-426614174229",
+        structure_path_rel="source.STRU",
+        **{field: value},
+    )
+    result = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(request),
+    )
+
+    assert result.returncode == 2
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "request.schema"
 
 
 def test_atst_neb_machine_process_supports_stdin_prepare_and_request_file_execute(tmp_path: Path) -> None:

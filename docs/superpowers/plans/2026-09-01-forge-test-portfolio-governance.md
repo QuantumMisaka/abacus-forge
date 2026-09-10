@@ -2,6 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Historical implementation plan. The unchecked checklist is retained
+as the original execution template; the completion evidence below and the
+current repository test portfolio are authoritative for delivered scope.
+
 **Goal:** 将 `abacus-forge` 的现有测试治理为分层、可解释、可复现的质量门禁，保留真实 ABACUS 输入/输出操作契约，补齐 Agent-first CLI 与迁移兼容证据，并把真实 ABACUS smoke/benchmark 从默认离线回归中明确隔离。
 
 **Spec:** none - requirements supplied directly by the user and constrained by `../AGENTS.md` plus this repository's `AGENTS.md`; the user explicitly confirmed large-scale test governance and requested TDD plus subagent-driven execution.
@@ -827,6 +831,32 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 ```
 
 Expected: all commands exit 0; the deterministic suite has no warning summary; benchmark projection passes only under its explicit flag; experimental and real-smoke tests are excluded from the stable gate unless explicitly selected. The final whole-branch review must also confirm that no runtime dependency or scheduler integration was introduced and that every removed helper/test has surviving mutation evidence.
+
+### Follow-up migration evidence (2026-09-10)
+
+The benchmark portfolio now includes a typed SCF collection projection beside
+the legacy `abacustest` fixture projection. It compares the parser's factual
+observations and portable artifact inventory, while keeping execution
+`not_run` and scientific status `unassessed`; this remains migration evidence,
+not real-ABACUS or scientific-validation evidence.
+
+```text
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider --run-benchmark tests/benchmark/test_abacustest_compatibility.py
+2 passed
+```
+
+The same portfolio was replayed from the current `forge-core-fidelity` HEAD
+after the MD reader hardening:
+
+```text
+full offline gate: 1179 passed, 4 skipped
+benchmark gate: 2 passed, 1181 deselected
+stable selection gate: 1140 passed, 43 deselected
+```
+
+The skipped cases are still explicitly gated real-smoke/benchmark evidence;
+these results do not promote any capability to `stable` and do not constitute
+scientific validation.
 
 ## Plan Self-Review
 

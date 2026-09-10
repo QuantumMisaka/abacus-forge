@@ -220,11 +220,12 @@ def _find_first_artifact(workspace: Workspace, pattern: str) -> Path | None:
     return matches[0] if matches else None
 
 
-def _write_band_table(band_data: BandData, destination: Path) -> None:
+def _write_band_table(band_data: BandData, destination: Path, *, include_source_paths: bool = True) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as handle:
         for path in band_data.paths:
-            handle.write(f"# {path}\n")
+            label = path if include_source_paths else path.name
+            handle.write(f"# {label}\n")
             for row in _read_numeric_rows(path):
                 handle.write(" ".join(f"{value:g}" for value in row) + "\n")
 

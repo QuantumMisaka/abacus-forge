@@ -125,6 +125,16 @@ def test_source_symlink_and_target_file_fail_without_writes(tmp_path):
     target = root / "target"; target.write_bytes(b"not-dir")
     with pytest.raises(ForgeRequestError): materialize_assets(target, root, {"Si": source})
 
+@pytest.mark.parametrize("basename", ["bad name.upf", "bad\tname.upf", "#hidden.upf"])
+def test_typed_asset_basename_must_be_a_single_stru_token(tmp_path, basename):
+    root = tmp_path / "w"; root.mkdir(); target = root / "target"
+    source = root / basename; source.write_bytes(b"x")
+
+    with pytest.raises(ForgeRequestError):
+        materialize_assets(target, root, {"Si": source})
+
+    assert not target.exists()
+
 
 @pytest.mark.parametrize("supplied", [[], "", False])
 def test_falsy_non_mapping_sources_are_rejected_before_target_creation(tmp_path, supplied):

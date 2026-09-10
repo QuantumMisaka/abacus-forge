@@ -14,6 +14,28 @@ from abacus_forge.result import CollectionResult, RunResult
 from abacus_forge.runner import LocalRunner
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
+from abacus_forge import pyatb_typed as _pyatb_typed
+from abacus_forge.contracts import ForgeResultEnvelope, JSONValue
+
+# Keep the historical module-level names available to callers/tests while the
+# implementation lives in the neutral typed module.  The small collection
+# wrapper also preserves the old private hash-helper monkeypatch seam.
+_sha256_file = _pyatb_typed._sha256_file
+
+
+def prepare_typed_pyatb_band(
+    workspace: str | Path | Workspace,
+    request: Any,
+) -> tuple[Workspace, tuple[dict[str, JSONValue], ...]]:
+    return _pyatb_typed.prepare_typed_pyatb_band(workspace, request)
+
+
+def collect_typed_pyatb_band(
+    workspace: str | Path | Workspace,
+    request: Any,
+) -> ForgeResultEnvelope:
+    _pyatb_typed._sha256_file = _sha256_file
+    return _pyatb_typed.collect_typed_pyatb_band(workspace, request)
 
 
 def prepare_pyatb_band(

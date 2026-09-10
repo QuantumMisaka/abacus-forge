@@ -91,6 +91,23 @@ def test_modify_stru_supports_supercell_and_validate_shapes() -> None:
         modify_stru(structure, move_flags=[[1, 1, 1], [0, 0, 0]])
 
 
+def test_modify_stru_remaps_move_flags_after_supercell_and_vacancy() -> None:
+    atoms = Atoms(
+        symbols=["O", "Si"],
+        positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        cell=[[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]],
+        pbc=True,
+    )
+    atoms.set_masses([17.0, 29.0])
+    atoms.info["abacus_move_flags"] = [[1, 0, 0], [0, 1, 1]]
+
+    modified = modify_stru(atoms, supercell=(2, 1, 1), vacancy_indices=[2])
+
+    assert modified.atoms.get_chemical_symbols() == ["O", "O", "Si"]
+    assert modified.atoms.get_masses().tolist() == pytest.approx([17.0, 17.0, 29.0])
+    assert modified.atoms.info["abacus_move_flags"] == [[1, 0, 0], [1, 0, 0], [0, 1, 1]]
+
+
 def test_modify_stru_supports_element_defaults_and_afm(tmp_path) -> None:
     atoms = Atoms(
         symbols=["Fe", "Fe", "O"],
@@ -129,3 +146,35 @@ def test_modify_stru_explicit_magmoms_override_element_defaults_and_afm() -> Non
     )
 
     assert modified.atoms.get_initial_magnetic_moments().tolist() == pytest.approx([1.0, 1.5, -0.2])
+
+
+def test_modify_stru_standardization_keeps_distinct_species_resources(tmp_path) -> None:
+    # Conventional rocksalt NiO has four fcc sites of each species.
+    atoms = Atoms(
+        "Ni4O4", cell=[4.2, 4.2, 4.2], pbc=True,
+        scaled_positions=[
+            [0, 0, 0], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0],
+            [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0, 0.5], [0, 0.5, 0],
+        ],
+    )
+    atoms.set_masses([60.0] * 4 + [17.0] * 4)
+    atoms.set_initial_magnetic_moments([2.0] * 4 + [0.5] * 4)
+    atoms.info["abacus_species_meta"] = {
+        "Ni": {"mass": 60.0, "pp": "Ni.upf", "orb": "Ni.orb"},
+        "O": {"mass": 17.0, "pp": "O.upf", "orb": "O.orb"},
+    }
+    destination = tmp_path / "STRU.primitive"
+
+    modify_stru(atoms, standardization="primitive", destination=destination)
+    recovered = AbacusStructure.from_input(destination, structure_format="stru")
+
+    assert recovered.atoms.get_chemical_symbols() == ["O", "Ni"]
+    assert recovered.atoms.get_volume() == pytest.approx(18.522)
+    assert recovered.atoms.get_distance(0, 1, mic=True) == pytest.approx(2.1)
+    assert recovered.atoms.get_masses() == pytest.approx([17.0, 60.0])
+    assert recovered.atoms.get_initial_magnetic_moments() == pytest.approx([0.5, 2.0])
+    assert recovered.atoms.info["abacus_species_meta"] == {
+        "O": {"mass": 17.0, "pp": "O.upf", "orb": "O.orb"},
+        "Ni": {"mass": 60.0, "pp": "Ni.upf", "orb": "Ni.orb"},
+    }
+    assert recovered.atoms.info["abacus_move_flags"] == [[1, 1, 1], [1, 1, 1]]

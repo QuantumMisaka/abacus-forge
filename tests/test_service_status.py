@@ -30,6 +30,7 @@ from abacus_forge import (
     Workspace,
 )
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
+from abacus_forge.errors import ForgeRequestError
 from abacus_forge.input_io import read_input
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.result import RunResult
@@ -230,6 +231,43 @@ def test_local_runner_resolves_basename_from_relative_override_path(
     assert result.command == ["fake-abacus"]
 
 
+def test_local_runner_resolves_empty_path_component_from_process_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["CALLER CWD"])
+    write_fake_abacus(workspace.inputs_dir / "fake-abacus", stdout_lines=["WORKSPACE CWD"])
+
+    result = LocalRunner(
+        executable="fake-abacus",
+        env_overrides={"PATH": os.pathsep.join(("", str(Path(sys.executable).parent)))},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "CALLER CWD"
+
+
+def test_local_runner_preserves_symlink_lexical_parent_for_relative_executable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "real" / "sub").mkdir(parents=True)
+    (tmp_path / "link").symlink_to(tmp_path / "real" / "sub", target_is_directory=True)
+    write_fake_abacus(tmp_path / "real" / "fake-abacus", stdout_lines=["LEXICAL TARGET"])
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMALIZED TARGET"])
+
+    result = LocalRunner(executable="link/../fake-abacus").run(workspace)
+
+    assert result.status == "completed"
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "LEXICAL TARGET"
+    assert result.command == ["link/../fake-abacus"]
+
 def test_local_runner_preserves_relative_symlink_argv_zero(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -251,6 +289,53 @@ def test_local_runner_preserves_relative_symlink_argv_zero(
     assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == str(link)
     assert result.command == ["bin/link-abacus"]
 
+
+def test_local_runner_treats_dot_slash_engine_as_explicit_path_with_absolute_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["DOT ENGINE"])
+
+    result = LocalRunner(
+        executable="./fake-abacus",
+        env_overrides={"PATH": str(Path(sys.executable).parent)},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "DOT ENGINE"
+    assert result.command == ["./fake-abacus"]
+    assert executable.exists()
+
+
+def test_local_runner_treats_dot_slash_launcher_as_explicit_path_with_mixed_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["DOT LAUNCHER"])
+    launcher = tmp_path / "launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os\nimport sys\nos.execv(sys.argv[1], sys.argv[1:])\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+
+    result = LocalRunner(
+        executable="./fake-abacus",
+        launcher=("./launcher",),
+        env_overrides={"PATH": os.pathsep.join((str(Path(sys.executable).parent), "relative-bin"))},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "DOT LAUNCHER"
+    assert result.command == ["./launcher", "./fake-abacus"]
 
 def test_relax_service_set_exposes_typed_operations(tmp_path: Path) -> None:
     service_set_type = getattr(abacus_forge, "RelaxServiceSet", None)
@@ -542,7 +627,7 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     services_module = __import__("abacus_forge.services", fromlist=["services"])
-    calls = {name: 0 for name in ("prepare_unit", "modify_unit", "execute", "collect")}
+    calls = {name: 0 for name in ("prepare_with_assets", "modify_input", "collect")}
     for name in calls:
         original = getattr(services_module, name)
 
@@ -552,6 +637,15 @@ def test_typed_scf_services_persist_request_ids_and_facts(
 
         monkeypatch.setattr(services_module, name, counted)
 
+    runner_calls = 0
+    original_run = LocalRunner.run
+
+    def counted_run(self, *args, **kwargs):
+        nonlocal runner_calls
+        runner_calls += 1
+        return original_run(self, *args, **kwargs)
+
+    monkeypatch.setattr(LocalRunner, "run", counted_run)
     executable = write_fake_abacus(
         tmp_path / "fake-abacus",
         stdout_lines=["TOTAL ENERGY = -3.2", "SCF CONVERGED", "NORMAL END"],
@@ -583,9 +677,27 @@ def test_typed_scf_services_persist_request_ids_and_facts(
             parameters={"ecutwfc": 80},
         )
     )
+    expected_manifest = {
+        "kind": "abacus-forge.unit", "task": "scf", "unit": "default",
+        "engine": "abacus", "prepared": True, "source_workdir": None, "metadata": {},
+    }
+    manifest_path = structure.parent / "forge-unit.json"
+    assert json.loads(manifest_path.read_text()) == expected_manifest
+    assert manifest_path.read_bytes() == json.dumps(
+        expected_manifest, indent=2, sort_keys=True
+    ).encode("utf-8")
+    assert prepared.envelope.to_dict()["diagnostics"]["asset_materialization"] == []
+    assert json.loads((structure.parent / "meta.json").read_text())["metadata"] == {"unit": "default"}
     modified = services.modify_scf(
         _request(ScfModifyRequest, "scf", modify_id, input_updates={"ecutwfc": 90})
     )
+    assert read_input(structure.parent / "inputs/INPUT")["ecutwfc"] == "90"
+    assert json.loads((structure.parent / "forge-result.json").read_text()) == {
+        "step": "modify", "workspace": str(structure.parent), "task": "scf",
+        "unit": "default", "engine": "abacus", "status": "completed",
+        "modified_files": ["INPUT"],
+        "changes": {"INPUT": {"updates": {"ecutwfc": 90}, "removed": []}},
+    }
     executed = services.execute_scf(_request(ScfExecuteRequest, "scf", execute_id))
     collected = services.collect_scf(_request(ScfCollectRequest, "scf", collect_id))
 
@@ -599,9 +711,9 @@ def test_typed_scf_services_persist_request_ids_and_facts(
     assert [event["operation"] for event in manifest["events"]] == ["prepare", "modify", "execute", "collect"]
     assert isinstance(modified, OperationOutcome)
     assert modified.status.execution == "not_run"
-    # Typed execution calls LocalRunner.run directly; the legacy ``execute``
-    # API remains imported for compatibility but is not part of this path.
-    assert calls == {"prepare_unit": 1, "modify_unit": 1, "execute": 0, "collect": 1}
+    assert calls == {"prepare_with_assets": 1, "modify_input": 1, "collect": 1}
+    assert runner_calls == 1
+    assert next(metric.value for metric in collected.envelope.metrics if metric.name == "total_energy") == -3.2
 
 
 def test_typed_scf_service_returns_structured_error_without_event(tmp_path: Path) -> None:
@@ -698,7 +810,7 @@ def test_typed_scf_missing_inputs_are_admitted_preconditions(
     def fail_modify(*args, **kwargs):
         raise AssertionError("missing-input precondition must stop before modify primitive")
 
-    monkeypatch.setattr(services_module, "modify_unit", fail_modify)
+    monkeypatch.setattr(services_module, "modify_input", fail_modify)
 
     class FailRunner:
         def preflight(self, workspace):
@@ -1025,13 +1137,371 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
     assert "input_snapshot_after" in modified.envelope.diagnostics
 
 
+def test_typed_prepare_asset_fields_reach_service_precondition_validation(tmp_path: Path) -> None:
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174230",
+        workspace_rel="scf",
+        structure_path_rel="missing.STRU",
+        pseudo_sources={"Si": "missing.upf"},
+        orbital_sources={"Si": "missing.orb"},
+        asset_mode="copy",
+    )
+
+    result = ForgeServices.default(workspace_root=tmp_path).prepare_scf(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert result.operation_id == request.operation_id
+    assert result.workspace_rel == request.workspace_rel
+
+
+_SI_O_TYPED_STRU = (
+    "ATOMIC_SPECIES\n"
+    "Si 28.085500 Si.source.upf\n"
+    "O 15.999000 O.source.upf\n\n"
+    "NUMERICAL_ORBITAL\n"
+    "Si.source.orb\n"
+    "O.source.orb\n\n"
+    "LATTICE_CONSTANT\n1.0\n"
+    "LATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+    "LATTICE_VECTORS\n"
+    "4 0 0\n0 4 0\n0 0 4\n\n"
+    "ATOMIC_POSITIONS\nDirect\n"
+    "Si\n0\n1\n0 0 0 m 1 1 1\n"
+    "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n"
+)
+
+
+def _typed_si_o_fixture(root: Path, workspace_rel: str = "scf") -> Path:
+    workspace = root / workspace_rel
+    workspace.mkdir(parents=True, exist_ok=True)
+    source = workspace / "source.STRU"
+    source.write_text(_SI_O_TYPED_STRU, encoding="utf-8")
+    return source
+
+
+def _external_typed_assets(root: Path) -> dict[str, Path]:
+    external = root.parent / f"{root.name}-external-assets"
+    external.mkdir(parents=True, exist_ok=True)
+    assets = {
+        "Si_upf": external / "Si.external.upf",
+        "O_upf": external / "O.external.upf",
+        "Si_orb": external / "Si.external.orb",
+        "O_orb": external / "O.external.orb",
+    }
+    for name, path in assets.items():
+        path.write_bytes(f"{name} bytes\n".encode("utf-8"))
+    return assets
+
+
+def test_typed_prepare_materializes_external_assets_and_persists_provenance(
+    tmp_path: Path,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174231",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"]), "O": str(assets["O_upf"])},
+        orbital_sources={"Si": str(assets["Si_orb"]), "O": str(assets["O_orb"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    workspace = tmp_path / "scf"
+    stru = (workspace / "inputs/STRU").read_text(encoding="utf-8")
+    assert "Si 28.085500 Si.external.upf" in stru
+    assert "O 15.999000 O.external.upf" in stru
+    assert "Si.external.orb" in stru
+    assert "O.external.orb" in stru
+    provenance = result.envelope.to_dict()["diagnostics"]["asset_materialization"]
+    assert isinstance(provenance, list)
+    assert [item["destination"] for item in provenance] == [
+        "inputs/Si.external.upf",
+        "inputs/O.external.upf",
+        "inputs/Si.external.orb",
+        "inputs/O.external.orb",
+    ]
+    assert all(item["mode"] == "copy" for item in provenance)
+    for item in provenance:
+        source = Path(item["source"])
+        destination = workspace / item["destination"]
+        assert source.read_bytes() == destination.read_bytes()
+        assert item["source_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+        assert item["destination_sha256"] == hashlib.sha256(destination.read_bytes()).hexdigest()
+        artifact = next(record for record in result.envelope.artifacts if record.path_rel == item["destination"])
+        assert artifact.sha256 == item["destination_sha256"]
+
+    manifest = json.loads((workspace / "forge-unit.json").read_text(encoding="utf-8"))
+    assert manifest["metadata"]["asset_materialization"] == provenance
+    event = json.loads(
+        (workspace / "reports/events" / f"{request.operation_id}-prepare.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert event["payload"] == result.to_dict()
+    assert event["payload"]["envelope"]["diagnostics"]["asset_materialization"] == provenance
+
+
+def test_typed_prepare_partial_maps_override_only_named_species_and_retain_source_metadata(
+    tmp_path: Path,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174232",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+        orbital_sources={"Si": str(assets["Si_orb"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    workspace = tmp_path / "scf"
+    stru = (workspace / "inputs/STRU").read_text(encoding="utf-8")
+    assert "Si 28.085500 Si.external.upf" in stru
+    assert "O 15.999000 O.source.upf" in stru
+    assert "Si.external.orb" in stru
+    assert "O.source.orb" in stru
+    provenance = result.envelope.to_dict()["diagnostics"]["asset_materialization"]
+    assert [item["species"] for item in provenance] == ["Si", "Si"]
+    assert not (workspace / "inputs/O.external.upf").exists()
+    assert not (workspace / "inputs/O.external.orb").exists()
+
+
+def test_typed_prepare_preflight_stru_failure_writes_no_assets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+
+    def fail_preflight(*args: object, **kwargs: object) -> str:
+        del args, kwargs
+        raise ForgeRequestError("STRU preflight failed")
+
+    monkeypatch.setattr(preparation_module.AbacusStructure, "to_stru", fail_preflight)
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174236",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / assets["Si_upf"].name).exists()
+
+
+def test_typed_prepare_uses_one_preflight_stru_render_before_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+    original_to_stru = preparation_module.AbacusStructure.to_stru
+    calls = 0
+
+    def fail_if_rendered_after_materialization(self: object, *args: object, **kwargs: object) -> str:
+        nonlocal calls
+        calls += 1
+        rendered = original_to_stru(self, *args, **kwargs)
+        if calls > 1:
+            raise RuntimeError("STRU rendered after asset materialization")
+        return rendered
+
+    monkeypatch.setattr(
+        preparation_module.AbacusStructure,
+        "to_stru",
+        fail_if_rendered_after_materialization,
+    )
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174237",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert calls == 1
+    assert (tmp_path / "scf/inputs" / assets["Si_upf"].name).read_bytes() == assets["Si_upf"].read_bytes()
+
+
+def test_typed_prepare_unexpected_non_stru_parser_failure_is_internal_and_writes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "scf"
+    workspace.mkdir(parents=True)
+    source = workspace / "source.cif"
+    source.write_text("not parsed", encoding="utf-8")
+    assets = _external_typed_assets(tmp_path)
+    preparation_module = __import__("abacus_forge.preparation", fromlist=["preparation"])
+
+    def fail_parser(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise RuntimeError("unexpected parser defect")
+
+    monkeypatch.setattr(preparation_module.AbacusStructure, "from_input", classmethod(fail_parser))
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174238",
+        workspace_rel="scf",
+        structure_path_rel=source.name,
+        pseudo_sources={"Si": str(assets["Si_upf"])},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "internal.failure"
+    inputs = workspace / "inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / assets["Si_upf"].name).exists()
+
+
+@pytest.mark.parametrize(
+    ("case", "asset_mode", "pseudo_sources", "expected_error"),
+    [
+        ("unknown", "copy", {"C": "unknown.upf"}, "request.invalid"),
+        ("missing", "copy", {"Si": "missing.upf"}, "precondition.missing"),
+        ("collision", "copy", {"Si": "one/Same.upf", "O": "two/Same.upf"}, "request.invalid"),
+        ("external-link", "link", {"Si": "__external__/Si.external.upf"}, "request.invalid"),
+    ],
+)
+def test_typed_prepare_asset_failures_are_fail_closed_before_domain_writes(
+    tmp_path: Path,
+    case: str,
+    asset_mode: str,
+    pseudo_sources: dict[str, str],
+    expected_error: str,
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    assets = _external_typed_assets(tmp_path)
+    if case == "collision":
+        (tmp_path / "scf/one").mkdir()
+        (tmp_path / "scf/two").mkdir()
+        (tmp_path / "scf/one/Same.upf").write_bytes(b"one")
+        (tmp_path / "scf/two/Same.upf").write_bytes(b"two")
+    elif case == "external-link":
+        external = tmp_path.parent / f"{tmp_path.name}-external-link.upf"
+        external.write_bytes(b"external")
+        pseudo_sources = {"Si": str(external)}
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174233",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources=pseudo_sources,
+        asset_mode=asset_mode,
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == expected_error
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not any(path.suffix in {".upf", ".orb", ".vp"} for path in inputs.iterdir())
+    assert assets["Si_upf"].exists()
+
+
+@pytest.mark.parametrize("basename", ["bad name.upf", "#hidden.upf"])
+def test_typed_prepare_rejects_non_token_asset_basename_before_writes(
+    tmp_path: Path, basename: str
+) -> None:
+    _typed_si_o_fixture(tmp_path)
+    source = tmp_path / "scf" / basename
+    source.write_bytes(b"invalid basename")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174239",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(source)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = tmp_path / "scf/inputs"
+    assert not (inputs / "STRU").exists()
+    assert not any(inputs.iterdir())
+
+
+def test_typed_prepare_disambiguates_case_folded_artifact_ids(tmp_path: Path) -> None:
+    _typed_si_o_fixture(tmp_path)
+    first = tmp_path / "scf" / "a" / "atom.upf"
+    second = tmp_path / "scf" / "b" / "ATOM.upf"
+    first.parent.mkdir(); second.parent.mkdir()
+    first.write_bytes(b"first"); second.write_bytes(b"second")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174240",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        pseudo_sources={"Si": str(first), "O": str(second)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    input_artifacts = [a for a in result.envelope.artifacts if a.role == "input"]
+    ids = [a.id for a in input_artifacts]
+    assert len(ids) == len(set(ids))
+    assert "input-stru" in ids
+    assert "input-input" in ids
+    assert "input-atom.upf" not in ids
+    assert sum(item.startswith("input-atom.upf-") for item in ids) == 2
+
+
+def test_typed_prepare_rejects_partial_orbital_map_without_orbital_metadata(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "scf"
+    workspace.mkdir(parents=True)
+    (workspace / "source.STRU").write_text(
+        "ATOMIC_SPECIES\nSi 28.085500 Si.upf\nO 15.999000 O.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\nLATTICE_CONSTANT_UNIT\nAngstrom\n\n"
+        "LATTICE_VECTORS\n4 0 0\n0 4 0\n0 0 4\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0 m 1 1 1\n"
+        "O\n0\n1\n0.5 0.5 0.5 m 1 1 1\n",
+        encoding="utf-8",
+    )
+    orbital = workspace / "Si.orb"
+    orbital.write_bytes(b"si orbital")
+    request = ScfPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174241",
+        workspace_rel="scf",
+        structure_path_rel="source.STRU",
+        orbital_sources={"Si": str(orbital)},
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    inputs = workspace / "inputs"
+    assert not (inputs / "STRU").exists()
+    assert not (inputs / orbital.name).exists()
+
+
 @pytest.mark.parametrize(
     ("operation", "primitive_name", "error_type"),
     [
-        ("prepare", "prepare_unit", TypeError),
-        ("prepare", "prepare_unit", ValueError),
-        ("modify", "modify_unit", TypeError),
-        ("modify", "modify_unit", ValueError),
+        ("prepare", "prepare_with_assets", TypeError),
+        ("prepare", "prepare_with_assets", ValueError),
+        ("modify", "modify_input", TypeError),
+        ("modify", "modify_input", ValueError),
     ],
 )
 def test_primitive_internal_error_is_not_request_error(
@@ -1244,6 +1714,180 @@ def test_collect_delivers_false_convergence_without_scientific_projection(tmp_pa
     assert isinstance(result, OperationOutcome)
     assert result.status.scientific == "unassessed"
     assert all(observation.value not in ("accepted", "guarded", "rejected") for observation in result.observations)
+
+
+@pytest.mark.parametrize(
+    "log_text,expected",
+    [(None, "missing_output"), ("", "missing_output"),
+     ("SCF CONVERGED\n", "partial"), ("NORMAL END\n", "partial"),
+     ("TOTAL ENERGY = -4.2\n", "complete"),
+     ("TOTAL ENERGY = -4.2\nSCF NOT CONVERGED\n", "complete"),
+     ("TOTAL ENERGY = 1e999\nSCF CONVERGED\n", "partial")],
+)
+def test_scf_collection_factual_completeness(tmp_path: Path, log_text: str | None, expected: str) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    if log_text is not None:
+        workspace.write_text("outputs/stdout.log", log_text)
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174301", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == expected
+    if log_text == "TOTAL ENERGY = -4.2\n":
+        assert {item.name for item in result.observations}.isdisjoint(
+            {"converged", "converge", "electronic_convergence"}
+        )
+        assert not result.envelope.checks
+    if log_text and "NOT CONVERGED" in log_text:
+        assert {item.name: item.value for item in result.observations}["electronic_convergence"] is False
+
+
+@pytest.mark.parametrize("defect", ["report", "time", "ambiguous"])
+def test_scf_collection_parse_degradation_is_partial(tmp_path: Path, defect: str) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    workspace.write_text("outputs/stdout.log", "TOTAL ENERGY = -4.2\nSCF CONVERGED\n")
+    if defect == "ambiguous":
+        workspace.write_text("outputs/out.log", "TOTAL ENERGY = -9.0\n")
+    else:
+        workspace.write_text("reports/metrics_relax.json" if defect == "report" else "outputs/time.json", "{broken")
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174302", workspace_rel="scf")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "partial"
+
+
+def test_scf_collection_preserves_array_and_structure_observations(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability="scf",
+        log_text="TOTAL ENERGY = -4.2\nTOTAL-FORCE (eV/Angstrom)\nSi1 0.1 0.2 0.3\n",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174303", workspace_rel="collection")
+    )
+    assert isinstance(result, OperationOutcome)
+    observations = {item.name: item for item in result.observations}
+    assert observations["forces"].to_dict()["value"] == [[0.1, 0.2, 0.3]]
+    assert observations["structure_snapshot"].source == "file"
+    assert observations["final_structure_snapshot"].source == "file"
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+def test_typed_collection_excludes_prior_audit_and_resolved_aliases(tmp_path: Path, capability: str) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability)
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    first = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174304", workspace_rel="collection", **extra
+    ))
+    assert isinstance(first, OperationOutcome)
+    for index, target in enumerate((
+        "reports/events/123e4567-e89b-42d3-a456-426614174304-collect.json",
+        "reports/forge-workspace.json", "reports/.forge-operation.lock", "reports/.forge-workspace.lock",
+        "reports/claims/123e4567-e89b-42d3-a456-426614174305.json",
+    )):
+        (workspace.outputs_dir / f"alias-{index}.json").symlink_to(workspace.root / target)
+    second = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174305", workspace_rel="collection", **extra
+    ))
+    assert isinstance(second, OperationOutcome)
+    paths = {item.path_rel for item in second.envelope.artifacts}
+    assert paths == {item.path_rel for item in first.envelope.artifacts}
+    assert not any(path.startswith(("reports/events/", "reports/claims/")) for path in paths)
+    assert paths.isdisjoint({"reports/forge-workspace.json", "reports/.forge-operation.lock", "reports/.forge-workspace.lock"})
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+@pytest.mark.parametrize("log_name", ["stdout.log", "OUT.ABACUS/running_scf.log", "banner.log"])
+def test_typed_collection_does_not_parse_external_log_aliases(
+    tmp_path: Path, capability: str, log_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, capability=capability, log_text=None)
+    outside = tmp_path / "outside.log"
+    outside.write_text("WELCOME TO ABACUS\nTOTAL ENERGY = -777.0\nSCF CONVERGED\n", encoding="utf-8")
+    (workspace.outputs_dir / log_name).symlink_to(outside)
+    original_read_text = Path.read_text
+    external_reads = []
+    def guarded_read(path: Path, *args: object, **kwargs: object) -> str:
+        if path.resolve() == outside.resolve():
+            external_reads.append(str(path))
+        return original_read_text(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", guarded_read)
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    result = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174306", workspace_rel="collection", **extra
+    ))
+    assert isinstance(result, OperationOutcome)
+    assert external_reads == []
+    assert result.status.collection == "missing_output"
+    assert all(item.name != "total_energy" for item in result.observations)
+
+
+@pytest.mark.parametrize("capability", ["scf", "relax"])
+@pytest.mark.parametrize("discovery", ["fallback", "banner"])
+@pytest.mark.parametrize("same_source", [True, False], ids=["alias", "distinct"])
+def test_typed_collection_log_ambiguity_counts_resolved_sources(
+    tmp_path: Path, capability: str, discovery: str, same_source: bool
+) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability=capability,
+        log_text="TOTAL ENERGY = -4.2\n" if discovery == "banner" else None,
+    )
+    source_name, other_name = ("stdout.log", "out.log") if discovery == "fallback" else ("z-banner.log", "a-banner.log")
+    source = workspace.outputs_dir / source_name
+    other = workspace.outputs_dir / other_name
+    text = "Atomic-orbital Based Ab-initio\nTOTAL ENERGY = -4.2\n"
+    source.write_text(text, encoding="utf-8")
+    if same_source:
+        other.symlink_to(source)
+    else:
+        other.write_text(text, encoding="utf-8")
+
+    services = (ScfServiceSet if capability == "scf" else RelaxServiceSet).default(workspace_root=tmp_path)
+    request_type = ScfCollectRequest if capability == "scf" else RelaxCollectRequest
+    extra = {} if capability == "scf" else {"capability": capability}
+    result = services.collect.collect(request_type(
+        operation_id="123e4567-e89b-42d3-a456-426614174308", workspace_rel="collection", **extra
+    ))
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == ("complete" if same_source else "partial")
+    assert {item.name: item.value for item in result.observations}["total_energy"] == -4.2
+    diagnostics = result.envelope.diagnostics
+    assert diagnostics["output_log_selection_ambiguous"] is (not same_source)
+    assert diagnostics["log_selection_ambiguous"] is False
+    expected_sources = {str(source)} if same_source else {str(source), str(other)}
+    assert set(diagnostics["output_log_candidates"]) == expected_sources
+    assert len(diagnostics["output_log_candidates"]) == len(expected_sources)
+    if same_source:
+        assert diagnostics["output_log_path"] == str(source)
+        assert not diagnostics["output_log_ignored_paths"]
+    if discovery == "fallback":
+        assert set(diagnostics["fallback_log_candidates"]) == expected_sources
+        assert diagnostics["selected_log_path"] == str(source)
+        if same_source:
+            assert not diagnostics["ignored_log_paths"]
+
+    legacy = abacus_forge.collect(workspace)
+    assert legacy.diagnostics["output_log_selection_ambiguous"] is True
+    assert legacy.diagnostics["output_log_path"] == str(other)
+
+
+def test_typed_collection_domain_alias_preserves_report_facts(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path, capability="scf", relax_report={"ionic_steps": [1, 2]}
+    )
+    (workspace.outputs_dir / "report-alias.json").symlink_to(workspace.reports_dir / "metrics_relax.json")
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(operation_id="123e4567-e89b-42d3-a456-426614174307", workspace_rel="collection")
+    )
+    assert isinstance(result, OperationOutcome)
+    observations = {item.name: item for item in result.observations}
+    assert observations["relax_metrics"].to_dict()["value"] == {"ionic_steps": [1, 2]}
+    assert [item.path_rel for item in result.envelope.artifacts].count("reports/metrics_relax.json") == 1
 
 
 def test_missing_prepare_structure_is_admitted_before_precondition_check(tmp_path: Path) -> None:
@@ -1614,6 +2258,37 @@ def test_relax_collection_preserves_explicit_ionic_convergence_and_nested_facts(
     assert observations["relax_summary"].value["converged"] is True
     assert any(artifact.path_rel == "outputs/OUT.ABACUS/STRU_ION_D" for artifact in result.envelope.artifacts)
     assert all(not Path(artifact.path_rel).is_absolute() for artifact in result.envelope.artifacts)
+
+
+def test_relax_collection_preserves_scalar_metadata_and_nested_report_shape(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        log_text=(
+            "!FINAL_ETOT_IS -8.0 eV\nNATOM = 2\n"
+            "TOTAL-STRESS (KBAR)\n"
+            "1 2 3\n4 5 6\n7 8 9\n"
+        ),
+        relax_report={"converged": True, "ionic_steps": [1, 2]},
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174142",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    assert metrics["total_energy"].unit == "eV"
+    assert metrics["pressure"].unit == "kbar"
+    assert metrics["pressure"].kind == "derived"
+    assert metrics["total_energy"].source_artifact_id is not None
+    assert metrics["pressure"].source_artifact_id == metrics["total_energy"].source_artifact_id
+    nested = result.envelope.to_dict()["diagnostics"]["legacy_metrics"]["relax_metrics"]
+    assert nested == {"converged": True, "ionic_steps": [1, 2]}
+    report_observation = next(item for item in result.observations if item.name == "relax_metrics")
+    assert report_observation.to_dict()["value"] == {"converged": True, "ionic_steps": [1, 2]}
 
 
 def test_relax_collection_external_output_without_forge_manifest_is_supported(tmp_path: Path) -> None:
