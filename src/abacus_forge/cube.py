@@ -13,7 +13,12 @@ import numpy as np
 
 @dataclass(slots=True)
 class CubeData:
-    """Minimal Gaussian cube payload with volumetric data."""
+    """Minimal single-field Gaussian cube payload with volumetric data.
+
+    Gaussian cube files with a negative atom count encode orbital metadata and
+    are deliberately rejected because this value object represents one scalar
+    volumetric field only.
+    """
 
     comments: list[str]
     natoms: int
@@ -64,6 +69,8 @@ class CubeData:
         if len(origin_parts) < 4:
             raise ValueError("cube origin record is incomplete")
         natoms = _integer_token(origin_parts[0], "cube natoms")
+        if natoms < 0:
+            raise ValueError("cube orbital datasets with negative natoms are not supported")
         origin = [float(value) for value in origin_parts[1:4]]
         grid = []
         shape = []

@@ -8,13 +8,20 @@ import pytest
 from abacus_forge.cube import CubeData, subtract_cubes
 
 
-def _cube(path: Path, *, origin: tuple[float, float, float] = (0.0, 0.0, 0.0), first_count: int = 1, value: str = "1.0") -> Path:
+def _cube(
+    path: Path,
+    *,
+    origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    natoms: int = 1,
+    first_count: int = 1,
+    value: str = "1.0",
+) -> Path:
     path.write_text(
         "\n".join(
             [
                 "Forge cube fixture",
                 "OUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z",
-                f"1 {origin[0]} {origin[1]} {origin[2]}",
+                f"{natoms} {origin[0]} {origin[1]} {origin[2]}",
                 f"{first_count} 1.0 0.0 0.0",
                 "1 0.0 1.0 0.0",
                 "1 0.0 0.0 1.0",
@@ -50,3 +57,8 @@ def test_cube_with_data_rejects_nonfinite_values(tmp_path: Path):
     cube = CubeData.from_file(_cube(tmp_path / "base.cube"))
     with pytest.raises(ValueError, match="finite"):
         cube.with_data(np.array([float("inf")]))
+
+
+def test_cube_reader_rejects_unsupported_orbital_datasets(tmp_path: Path):
+    with pytest.raises(ValueError, match="orbital"):
+        CubeData.from_file(_cube(tmp_path / "orbital.cube", natoms=-1))
