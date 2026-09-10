@@ -24,8 +24,8 @@
 
 ## Task 1: Add the typed MD smoke
 
-**Files:** `tests/real_smoke/test_abacus_smoke.py`, `tests/conftest.py`  
-**Dependencies:** existing typed MD contracts/services/machine CLI on this branch.  
+**Files:** `tests/real_smoke/test_abacus_smoke.py`, `tests/conftest.py`
+**Dependencies:** existing typed MD contracts/services/machine CLI on this branch.
 **Behavior:** copy a supplied prepared MD workspace, run typed `execute` and `collect` through the subprocess CLI, and assert factual/audit invariants.
 
 - [x] 先写 focused test：环境缺失时 skip；workspace/executable 无效时 fail；输入 `calculation=md` 缺失或不匹配时 fail。
@@ -37,8 +37,8 @@
 
 ## Task 2: Document and verify the gate
 
-**Files:** `tests/real_smoke/README.md`, `tests/README.md`, `README.md`, `ROADMAP.md`, this plan.  
-**Dependencies:** Task 1.  
+**Files:** `tests/real_smoke/README.md`, `tests/README.md`, `README.md`, `ROADMAP.md`, this plan.
+**Dependencies:** Task 1.
 **Behavior:** consumers can discover how to opt in to the MD smoke and understand that it is operation evidence, not scientific validation.
 
 - [x] 文档说明 MD workspace 必须已含 `inputs/INPUT`、`inputs/STRU`、`inputs/KPT` 和可执行所需资产，变量名和命令与测试一致。
