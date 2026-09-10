@@ -216,6 +216,13 @@ def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[f
             if not isinstance(raw, list) or not raw or any(isinstance(x, bool) or not isinstance(x, int) or x < 1 or x > len(symbols) for x in raw):
                 raise ValueError("selection.indices must be non-empty 1-based atom indices")
             selected_indices = {x - 1 for x in raw}
+    elif isinstance(selection, list):
+        for item in selection:
+            if not isinstance(item, str) or item.count("-") not in (1, 2):
+                raise ValueError("selection list entries must be A-B or A-B-C strings")
+            (pairs if item.count("-") == 1 else angles).append(item)
+    elif selection is not None:
+        raise ValueError("selection must be an object or list")
     pairs = [pairs] if isinstance(pairs, str) else list(pairs); angles = [angles] if isinstance(angles, str) else list(angles)
     if not pairs: pairs = sorted({f"{a}-{b}" for a in symbols for b in symbols if a <= b})
     if not angles: angles = sorted({f"{a}-{b}-{c}" for a in symbols for b in symbols for c in symbols})
