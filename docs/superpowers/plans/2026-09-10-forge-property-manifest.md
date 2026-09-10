@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Proposed implementation plan; execution requires explicit approval of the companion Draft SPEC.
+**Status:** Implemented provisionally on `forge-core-fidelity`; the companion SPEC remains Draft for review, so this execution record does not by itself promote the manifest to a normative or stable Forge contract.
 
 **Goal:** Add a facts-only `forge.property-manifest/v1` projection to the legacy `charge-density`, `spin-density`, and `charge-diff` post operations without changing the generic result contract, property CLI syntax, or Forge's scientific/workflow boundary.
 
@@ -44,7 +44,7 @@
 - Produce frozen `PropertyManifest(task, inputs=(), outputs=(), missing=())` with strict `to_dict()`/`from_dict()` using root keys `schema_version`, `task`, `inputs`, `outputs`, and `missing`.
 - Produce implementation-facing frozen `PropertyArtifactSpec(path, kind, role, origin, spin="unknown", parse_status=None, source_paths=())`; its `path` may be an absolute `Path` selected by legacy post or a canonical workspace-relative string. It is not re-exported as a stable top-level API.
 
-- [ ] **Step 1: Write the failing pure-contract tests.** Cover every allowed kind, role, origin, and spin (SPEC R2/R3); lowercase SHA-256 and non-negative size; canonical path rejection; strict unknown/root-field rejection; present/missing mutual exclusion; parse-status literals; derived-cube non-empty source-ref rule (SPEC R5); report-derived entries without refs; and round-trip JSON (SPEC R1/R4).
+- [x] **Step 1: Write the failing pure-contract tests.** Cover every allowed kind, role, origin, and spin (SPEC R2/R3); lowercase SHA-256 and non-negative size; canonical path rejection; strict unknown/root-field rejection; present/missing mutual exclusion; parse-status literals; derived-cube non-empty source-ref rule (SPEC R5); report-derived entries without refs; and round-trip JSON (SPEC R1/R4).
 
 ```python
 def test_property_manifest_round_trip_and_derived_cube_refs() -> None:
@@ -78,7 +78,7 @@ def test_report_derived_entry_may_omit_source_refs() -> None:
     assert entry.to_dict()["kind"] == "report"
 ```
 
-- [ ] **Step 2: Run the pure tests to verify RED.**
+- [x] **Step 2: Run the pure tests to verify RED.**
 
 Run:
 
@@ -88,7 +88,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: collection fails because `abacus_forge.property_manifest` and its value objects do not yet exist.
 
-- [ ] **Step 3: Implement the minimal value-object module.** Reuse `canonical_relative_path`, `_construct_strict`, `_mapping_payload`, and `_require_nonempty_string` from `contracts.py`; use a lowercase-hex SHA-256 regex; normalize all sequence fields to tuples; omit `None` optionals in `to_dict()`; require exactly the three root arrays in `from_dict()`. Enforce that a missing entry has `reason` and no artifact facts, that a present entry has no `reason`, and that only a `kind="cube"`, `origin="derived"` entry requires non-empty `source_artifact_ids`.
+- [x] **Step 3: Implement the minimal value-object module.** Reuse `canonical_relative_path`, `_construct_strict`, `_mapping_payload`, and `_require_nonempty_string` from `contracts.py`; use a lowercase-hex SHA-256 regex; normalize all sequence fields to tuples; omit `None` optionals in `to_dict()`; require exactly the three root arrays in `from_dict()`. Enforce that a missing entry has `reason` and no artifact facts, that a present entry has no `reason`, and that only a `kind="cube"`, `origin="derived"` entry requires non-empty `source_artifact_ids`.
 
 ```python
 PROPERTY_MANIFEST_SCHEMA_VERSION = "forge.property-manifest/v1"
@@ -116,13 +116,13 @@ class PropertyManifestEntry:
     reason: str | None = None
 ```
 
-- [ ] **Step 4: Run the pure tests to verify GREEN.**
+- [x] **Step 4: Run the pure tests to verify GREEN.**
 
 Run the same command from Step 2. Expected: all tests in `tests/test_property_manifest.py` pass and serialization emits only JSON values.
 
-- [ ] **Step 5: Refactor duplicate validation only inside the new module, run `git diff --check`, and confirm `git diff -- src/abacus_forge/contracts.py src/abacus_forge/result.py` is empty.**
+- [x] **Step 5: Refactor duplicate validation only inside the new module, run `git diff --check`, and confirm `git diff -- src/abacus_forge/contracts.py src/abacus_forge/result.py` is empty.**
 
-- [ ] **Step 6: Commit Task 1.**
+- [x] **Step 6: Commit Task 1.**
 
 ```bash
 git add src/abacus_forge/property_manifest.py src/abacus_forge/__init__.py tests/conftest.py tests/test_property_manifest.py
@@ -149,7 +149,7 @@ git commit -m "feat: add legacy property manifest contract"
 - Produce `build_property_manifest(workspace: Path, *, task: str, inputs: Sequence[PropertyArtifactSpec], outputs: Sequence[PropertyArtifactSpec], artifacts: Sequence[ArtifactRecord]) -> PropertyManifest`.
 - Produce `_attach_property_manifest(result: TaskResult, *, inputs: Sequence[PropertyArtifactSpec], outputs: Sequence[PropertyArtifactSpec]) -> TaskResult`, which catches projection exceptions and appends a string warning without changing the legacy result.
 
-- [ ] **Step 1: Write RED builder tests.** Use one contained present file and an `ArtifactRecord` with the expected ID/hash/size; assert present entries copy those facts verbatim (SPEC R2). Use a non-existent canonical path for `missing`, an external resolved symlink for `escaped`, a directory or artifact-less path for `unavailable` (SPEC R4/R7), and a derived cube with two `source_paths` to assert same-result source IDs (SPEC R5). Assert a report with `origin="derived"` does not require refs.
+- [x] **Step 1: Write RED builder tests.** Use one contained present file and an `ArtifactRecord` with the expected ID/hash/size; assert present entries copy those facts verbatim (SPEC R2). Use a non-existent canonical path for `missing`, an external resolved symlink for `escaped`, a directory or artifact-less path for `unavailable` (SPEC R4/R7), and a derived cube with two `source_paths` to assert same-result source IDs (SPEC R5). Assert a report with `origin="derived"` does not require refs.
 
 ```python
 def test_build_property_manifest_classifies_explicit_paths_and_missing(tmp_path: Path) -> None:
@@ -177,7 +177,7 @@ def test_build_property_manifest_classifies_explicit_paths_and_missing(tmp_path:
     assert "artifact_id" not in manifest.missing[0].to_dict()
 ```
 
-- [ ] **Step 2: Run the focused builder tests to verify RED.**
+- [x] **Step 2: Run the focused builder tests to verify RED.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_property_manifest.py -k build
@@ -185,7 +185,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: failures because the builder and `PropertyArtifactSpec` are not implemented.
 
-- [ ] **Step 3: Implement explicit builder resolution.** Canonicalize each spec path against the workspace root; resolve strict symlinks; classify failures as `missing`, `escaped`, or `unavailable` (SPEC R4/R6/R7); never walk a directory or glob. For a present path, look up the already-projected `ArtifactRecord` by canonical `path_rel` and copy its ID/hash/size (SPEC R2). Map MIME from the explicit kind (`cube`/`other` → `application/octet-stream`, `report` → `application/json`, `text` → `text/plain`). For a present derived cube, canonicalize every `source_paths` item and require all source IDs in the same `artifacts` tuple (SPEC R5); raise `ForgeInternalError` if that invariant is impossible. Deduplicate repeated declarations in declaration order and reject a path appearing in both present arrays.
+- [x] **Step 3: Implement explicit builder resolution.** Canonicalize each spec path against the workspace root; resolve strict symlinks; classify failures as `missing`, `escaped`, or `unavailable` (SPEC R4/R6/R7); never walk a directory or glob. For a present path, look up the already-projected `ArtifactRecord` by canonical `path_rel` and copy its ID/hash/size (SPEC R2). Map MIME from the explicit kind (`cube`/`other` → `application/octet-stream`, `report` → `application/json`, `text` → `text/plain`). For a present derived cube, canonicalize every `source_paths` item and require all source IDs in the same `artifacts` tuple (SPEC R5); raise `ForgeInternalError` if that invariant is impossible. Deduplicate repeated declarations in declaration order and reject a path appearing in both present arrays.
 
 ```python
 def build_property_manifest(
@@ -207,7 +207,7 @@ def build_property_manifest(
     )
 ```
 
-- [ ] **Step 4: Add legacy post projection without changing selection/arithmetic.** In `properties.py`, derive the safe suffix from each prepared subtask `inputs/INPUT` (`ABACUS` when missing/empty); construct only the canonical paths listed in SPEC R6. Pass the actual path returned by existing `_find_first` when it exists, otherwise pass its canonical path. Attach the metrics report for every call. For spin and charge-diff always declare the derived report/cube expected paths; a missing derived cube becomes a missing manifest fact, while a present derived cube references only the source cubes that were present in the same result (SPEC R5). Keep the existing summary, status, artifacts, diagnostics keys, and exceptions unchanged apart from the additive manifest/warning (SPEC R1/R7).
+- [x] **Step 4: Add legacy post projection without changing selection/arithmetic.** In `properties.py`, derive the safe suffix from each prepared subtask `inputs/INPUT` (`ABACUS` when missing/empty); construct only the canonical paths listed in SPEC R6. Pass the actual path returned by existing `_find_first` when it exists, otherwise pass its canonical path. Attach the metrics report for every call. For spin and charge-diff always declare the derived report/cube expected paths; a missing derived cube becomes a missing manifest fact, while a present derived cube references only the source cubes that were present in the same result (SPEC R5). Keep the existing summary, status, artifacts, diagnostics keys, and exceptions unchanged apart from the additive manifest/warning (SPEC R1/R7).
 
 ```python
 def _attach_property_manifest(result: TaskResult, *, inputs, outputs) -> TaskResult:
@@ -224,7 +224,7 @@ def _attach_property_manifest(result: TaskResult, *, inputs, outputs) -> TaskRes
     return result
 ```
 
-- [ ] **Step 5: Run the maturation/property suites to verify GREEN.**
+- [x] **Step 5: Run the maturation/property suites to verify GREEN.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_property_manifest.py tests/test_maturation_packs.py
@@ -232,9 +232,9 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: all pure builder and legacy property tests pass; existing cube arithmetic values and legacy statuses remain unchanged.
 
-- [ ] **Step 6: Refactor only local spec construction, run `git diff --check`, and inspect that no import of `abacustest`, `abacusagent`, scheduler, or external workflow package was added.**
+- [x] **Step 6: Refactor only local spec construction, run `git diff --check`, and inspect that no import of `abacustest`, `abacusagent`, scheduler, or external workflow package was added.**
 
-- [ ] **Step 7: Commit Task 2.**
+- [x] **Step 7: Commit Task 2.**
 
 ```bash
 git add src/abacus_forge/property_manifest.py src/abacus_forge/composite/properties.py tests/test_property_manifest.py tests/test_maturation_packs.py
@@ -259,7 +259,7 @@ git commit -m "feat: project legacy property artifact facts"
 - Consume the three post functions and the additive `diagnostics.property_manifest` object from Task 2.
 - Produce regression evidence that `TaskResult.to_dict()` still has exactly `task`, `workspace`, `status`, `subtasks`, `summary`, `artifacts`, and `diagnostics`; only the diagnostics value is additive for the three post operations.
 
-- [ ] **Step 1: Add parity and isolation tests.** Prepare isolated workspaces with the existing cube fixture under `outputs/` and compare the direct result's manifest to the JSON captured from `main(["spin-density", "post", ..., "--json"])` (SPEC R1/R6). Repeat for charge-density and charge-diff. Monkeypatch `build_property_manifest` to raise `RuntimeError` and assert the post result keeps its baseline status/summary/artifacts and contains a JSON-safe warning (SPEC R7).
+- [x] **Step 1: Add parity and isolation tests.** Prepare isolated workspaces with the existing cube fixture under `outputs/` and compare the direct result's manifest to the JSON captured from `main(["spin-density", "post", ..., "--json"])` (SPEC R1/R6). Repeat for charge-density and charge-diff. Monkeypatch `build_property_manifest` to raise `RuntimeError` and assert the post result keeps its baseline status/summary/artifacts and contains a JSON-safe warning (SPEC R7).
 
 ```python
 def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
@@ -275,7 +275,7 @@ def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path,
     assert set(direct.to_dict()) == {"task", "workspace", "status", "subtasks", "summary", "artifacts", "diagnostics"}
 ```
 
-- [ ] **Step 2: Run the focused parity tests against the Task 2 implementation.**
+- [x] **Step 2: Run the focused parity tests against the Task 2 implementation.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_maturation_packs.py tests/test_cli.py -k 'property_manifest or spin_density_api'
@@ -283,9 +283,9 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: all selected tests pass. A failure means the Task 2 projection has a parity or best-effort-isolation regression and must be corrected before documentation work; no new public production surface is added by this task.
 
-- [ ] **Step 3: Refactor only test helpers and fixture setup.** Use separate temporary API/CLI roots so no operation result is reused; compare only `property_manifest` for path-independent parity, while retaining exact relative paths, hashes, source IDs, missing reasons, and statuses. Do not change production contracts in this task.
+- [x] **Step 3: Refactor only test helpers and fixture setup.** Use one isolated workspace per API/CLI pair and invoke the direct API and legacy CLI sequentially. This keeps the metrics report (which contains legacy workspace-dependent values) and its hash identical; compare the complete `property_manifest` including relative paths, hashes, source IDs, missing reasons, and statuses. Do not change production contracts in this task.
 
-- [ ] **Step 4: Run the focused suites to verify GREEN.**
+- [x] **Step 4: Run the focused suites to verify GREEN.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_property_manifest.py tests/test_maturation_packs.py tests/test_cli.py tests/test_result_contract.py
@@ -293,7 +293,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: all selected tests pass; no legacy CLI top-level flags or JSON keys are changed.
 
-- [ ] **Step 5: Commit Task 3.**
+- [x] **Step 5: Commit Task 3.**
 
 ```bash
 git add tests/test_maturation_packs.py tests/test_cli.py tests/test_result_contract.py
@@ -321,11 +321,11 @@ git commit -m "test: lock legacy property manifest parity"
 - Consume the completed value objects, builder, and legacy post projection from Tasks 1–3.
 - Produce an approved SPEC/PLAN record, current documentation, architecture evidence, and a clean offline branch; no new runtime wire object beyond `diagnostics.property_manifest`.
 
-- [ ] **Step 1: Update README and ROADMAP after behavior is green.** Show one JSON fragment with `schema_version`, `task`, `inputs`, `outputs`, and `missing`; state that actual variant paths are preserved, canonical paths are only missing facts, and scientific validation/orchestration/scheduling remain outside Forge.
+- [x] **Step 1: Update README and ROADMAP after behavior is green.** Show one JSON fragment with `schema_version`, `task`, `inputs`, `outputs`, and `missing`; state that actual variant paths are preserved, canonical paths are only missing facts, and scientific validation/orchestration/scheduling remain outside Forge.
 
-- [ ] **Step 2: Add the architecture root and test.** Extend the neutral service roots with `abacus_forge.property_manifest`; assert `dependency_violations` is empty and that the module imports neither `abacus_forge.api` nor any forbidden upper layer. Do not add property to machine discovery because this slice is legacy diagnostics, not a typed capability.
+- [x] **Step 2: Add the architecture root and test.** Extend the neutral service roots with `abacus_forge.property_manifest`; assert `dependency_violations` is empty and that the module imports neither `abacus_forge.api` nor any forbidden upper layer. Do not add property to machine discovery because this slice is legacy diagnostics, not a typed capability.
 
-- [ ] **Step 3: Run the architecture and documentation checks.**
+- [x] **Step 3: Run the architecture and documentation checks.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_architecture.py tests/test_property_manifest.py tests/test_maturation_packs.py tests/test_cli.py
@@ -334,7 +334,7 @@ git diff --check
 
 Expected: zero failures and no diff-check output; discovery continues to list only the already implemented typed capabilities.
 
-- [ ] **Step 4: Run the complete deterministic gate and retain raw output.**
+- [x] **Step 4: Run the complete deterministic gate and retain raw output.**
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider
@@ -343,9 +343,9 @@ git diff --check
 
 Expected: pytest exits 0, the only skipped tests are the pre-existing opt-in real-smoke/benchmark tests, and `git diff --check` is clean. Do not represent this offline gate as scientific validation.
 
-- [ ] **Step 5: Self-review the approved SPEC/PLAN against the implementation.** Verify every R1–R7 row has a test or explicit unchanged boundary, canonical paths match `properties.py`, present IDs come from the same envelope artifact tuple, reports do not fabricate refs, and no typed discovery entry was added.
+- [x] **Step 5: Self-review the Draft SPEC/PLAN against the implementation.** Verify every R1–R7 row has a test or explicit unchanged boundary, canonical paths match `properties.py`, present IDs come from the same envelope artifact tuple, reports do not fabricate refs, and no typed discovery entry was added.
 
-- [ ] **Step 6: Request an independent task-scoped review and whole-branch review.** Bind any finding to the approved SPEC and exact diff, fix Critical/Important findings, record justified Minor deferrals in this plan, and rerun the complete gate after each fix wave. No cross-model review or real-smoke claim is required unless separately requested or supplied.
+- [x] **Step 6: Request an independent task-scoped review and whole-branch review.** Bind any finding to the Draft SPEC and exact diff, fix Critical/Important findings, record justified Minor deferrals in this plan, and rerun the complete gate after each fix wave. No cross-model review or real-smoke claim is required unless separately requested or supplied.
 
 - [ ] **Step 7: Commit documentation and verification evidence.**
 
@@ -361,4 +361,36 @@ git commit -m "docs: close legacy property artifact manifest"
 - Scope check: one additive diagnostics projection for three existing legacy post packs; no typed property capability, scheduler, workflow, scientific judgement, or cross-operation provenance is introduced.
 - Type consistency: Task 1 defines the exact manifest records/spec and Task 2 consumes them; Task 3 compares the same `property_manifest` key; Task 4 documents the same root and entry vocabulary.
 - Placeholder scan: no execution step depends on an unnamed file, unbounded discovery rule, or unspecified command; every verification command is offline and deterministic.
-- Approval boundary: the companion SPEC remains `Draft for review`; after this plan is reviewed, execution still requires explicit human approval followed by the selected execution mode.
+- Approval boundary: the companion SPEC remains `Draft for review`; this
+  provisional implementation does not promote it to a normative contract, and
+  explicit human approval is still required before treating the slice as an
+  approved/stable Forge surface.
+
+## Execution record (provisional)
+
+The implementation was carried out on `forge-core-fidelity` under the
+continuation instruction for this workstream. The following commits contain
+the executed slice and its regression coverage:
+
+- `db8bbdc` — manifest value objects and strict JSON contract;
+- `c1f600e` — explicit builder and charge/spin/charge-diff legacy projections;
+- `8d52533` — legacy API/CLI parity and projection-failure isolation;
+- `4cfdc9b` — neutral-core architecture import boundary;
+- `44612e9` — containment-path fidelity, source-path input hardening, complete
+  parity coverage, safe suffix coverage, and unavailable-artifact coverage.
+
+The latest gates are recorded in
+`.superpowers/sdd/2026-09-10-forge-property-manifest/task-4-report.md`:
+
+- focused contract/property/CLI/result/architecture gate: `80 passed`;
+- complete deterministic offline gate: `1172 passed, 3 skipped`;
+- `git diff --check`: clean.
+
+The companion SPEC is intentionally still `Draft for review`; no execution
+record here substitutes for its explicit human approval. The independent
+review first found the planned cross-array duplicate-path gap and two smaller
+parity/provenance test gaps; all were fixed in `8fe2478`, and its final
+follow-up reported no Critical, Important, or new Minor findings. The only
+remaining plan item is the final documentation commit. Real ABACUS execution,
+scientific validation, workflow orchestration, retry/resume, and
+scheduler/platform behavior remain outside this slice.

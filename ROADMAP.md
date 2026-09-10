@@ -44,7 +44,8 @@
 - 已落地可选、实验性的 atst-tools NEB engine adapter：以 Forge 的 `prepare -> execute -> postprocess` 单元承接配置、图像执行事实、链路日志和后处理产物；NEB 图像/链路编排及并行执行委托 atst-tools。该能力暂不晋升稳定面；发布前仍须单独通过 atst-tools 安装与版本/API 锁定、干净环境 import/process 验证，以及真实 NEB smoke 门禁。
 - 2026-09-09 已用当前 `atst-tools` `2.2.4` 可执行文件完成 Forge machine-CLI 的实际进程契约 smoke（`prepare`、`execute --dry-run`、`postprocess`）及临时 workspace 产物/审计检查；该检查未启动 ABACUS，不构成真实 NEB workflow 证据。
 - 2026-09-09 已通过 Forge wheel 在全新 Python 3.13 venv 中的安装/import/console-entry-point 检查，且未安装或导入 `abacus-agent-tools`、`abacustest`、AiiDA 或 `atst-tools`；这只覆盖 Forge 自身的 clean package gate，不替代 ATST 进程隔离与真实 NEB workflow 门禁。
-- 为 cube family 补齐更严格的 artifact manifest：明确 charge cube、spin cube、potential cube、ELF cube、Bader 输出和后处理派生产物的来源。
+- 2026-09-10 已落地实验性的 `forge.property-manifest/v1` legacy diagnostics projection：`charge-density`、`spin-density` 和 `charge-diff` post 记录明确选中的 cube source、派生 cube、metrics report 以及 missing/escaped/unavailable 事实；artifact id、哈希和大小复用同一结果的 artifact projection。该增量不新增 typed property capability，不做目录扫描、科学验收、workflow 编排或调度。
+- cube family 的 potential/ELF/Bader 输出、更多 property 语义、nspin 4、跨 operation 聚合和真实运行证据仍须各自独立 SPEC/PLAN，不从当前 manifest 推断。
 - 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录；在此之前，typed `pyatb-band` 只保持 experimental，不声称真实运行或科学验证证据。
 
 ## 中期方向

@@ -153,7 +153,7 @@
     <section id="errors">
       <h2>错误处理</h2>
       <ul>
-        <li>文件不存在、resolved target 越界或不是普通文件：进入 <code>missing</code>，reason 分别为 <code>missing</code>、<code>escaped</code> 或 <code>unavailable</code>；不读取越界文件。</li>
+        <li>文件不存在、resolved target 越界或不是普通文件：进入 <code>missing</code>，reason 分别为 <code>missing</code>、<code>escaped</code> 或 <code>unavailable</code>；不读取越界文件。workspace 内声明但 resolved target 越界的 symlink 保留其 lexical workspace-relative <code>path_rel</code>，不记录外部 resolved target。</li>
         <li>文件存在但读取/哈希失败：进入 <code>missing</code>，reason 为 <code>unavailable</code>；不制造 artifact id。</li>
         <li>首批文件存在但 parser 发现结构不完整时，沿用当前 legacy parser 异常行为；manifest 不声称已经记录该文件。结构化 <code>parse_status="malformed"</code> 只有在后续计划明确捕获、降级和兼容策略后才能启用。</li>
         <li>manifest 自身投影/序列化失败：保留原本的 legacy <code>TaskResult</code> 和 status/exit，并以 diagnostics warning 说明 manifest 未生成；不自动重试，不改变其它已有结果字段。</li>

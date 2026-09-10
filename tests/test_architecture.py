@@ -243,7 +243,10 @@ def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) 
     assert "operation execute --request request.json" in section
     assert "operation execute --stdin" in section
 
-    examples = re.findall(r"```json\n(?P<payload>\{.*?\})\n```", section, flags=re.DOTALL)
+    examples = [
+        payload for payload in re.findall(r"```json\n(?P<payload>\{.*?\})\n```", section, flags=re.DOTALL)
+        if '"operation"' in payload
+    ]
     assert len(examples) == 2
     for index, example in enumerate(examples):
         payload = json.loads(example)

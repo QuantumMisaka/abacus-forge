@@ -252,6 +252,27 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 - property pack 从 `abacus-test CLI` 与 `ABACUS-agent-tools` 的底层能力拆解而来，只承接输入生成、本地子目录执行、cube/文本后处理和 JSON 结果汇总；不承接 Bohrium/dflow/Slurm 编排。
 - `bader post` 只调用本机已有 `bader` 可执行文件；缺失时返回 diagnostics，不自动安装外部程序。
 
+`charge-density`、`spin-density` 和 `charge-diff` 的 legacy `post` 结果会在
+`diagnostics.property_manifest` 中附加 `forge.property-manifest/v1` 文件事实索引：
+`inputs` 记录明确选中的 cube source，`outputs` 记录派生 cube 与 metrics report，
+`missing` 记录缺失、越界或不可读取的位置。manifest 使用同一结果中的 artifact id、
+SHA-256 和大小；ABACUS 默认的 `inputs/OUT.<suffix>/` 只作为没有实际文件时的
+canonical expected path，兼容 glob 找到的变体仍保留实际相对路径。该索引不新增 typed
+property capability，不做科学验收、workflow 编排、重试或调度；其他 property pack、
+nspin 4 和真实 ABACUS smoke 仍保持实验性/独立推进。
+
+最小 manifest 形态如下（具体 entry 会带同一结果的 artifact 事实）：
+
+```json
+{
+  "schema_version": "forge.property-manifest/v1",
+  "task": "spin-density",
+  "inputs": [],
+  "outputs": [],
+  "missing": []
+}
+```
+
 ## 安装与运行方式
 
 ### 开发态
