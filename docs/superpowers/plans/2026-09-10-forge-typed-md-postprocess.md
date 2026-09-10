@@ -169,3 +169,21 @@ the same finite common-element table when ASE supplies an invalid shape, NaN,
 or non-positive mass.  A public `load_frames()` regression covers this path;
 it aligns the reader with the Paimon v1.2 fallback without weakening the
 finite-positive `Frame` invariant or introducing a new scientific policy.
+
+The latest branch verification after this hardening and the typed collector
+migration benchmark is:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider
+1179 passed, 4 skipped
+
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider --run-benchmark -m benchmark
+2 passed, 1181 deselected
+
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider -m 'not experimental and not real_smoke and not benchmark'
+1140 passed, 43 deselected
+```
+
+These are offline compatibility and contract gates.  The four skipped tests
+remain opt-in real-smoke/benchmark boundaries; no real ABACUS execution or
+scientific acceptance claim is made.

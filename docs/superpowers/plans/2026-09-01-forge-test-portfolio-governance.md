@@ -845,6 +845,19 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider
 2 passed
 ```
 
+The same portfolio was replayed from the current `forge-core-fidelity` HEAD
+after the MD reader hardening:
+
+```text
+full offline gate: 1179 passed, 4 skipped
+benchmark gate: 2 passed, 1181 deselected
+stable selection gate: 1140 passed, 43 deselected
+```
+
+The skipped cases are still explicitly gated real-smoke/benchmark evidence;
+these results do not promote any capability to `stable` and do not constitute
+scientific validation.
+
 ## Plan Self-Review
 
 - Coverage: Task 1 makes the test portfolio and gates explicit; Task 2 removes duplicate test infrastructure; Task 3 covers the Agent-first process boundary and the one backward-compatible CLI behavior; Task 4 protects collector migration and serialized result contracts; Task 5 adds real ABACUS evidence without contaminating default CI.
