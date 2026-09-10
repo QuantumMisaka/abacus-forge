@@ -8,6 +8,7 @@ import pytest
 from ase import Atoms
 from ase.io import write as ase_write
 
+import abacus_forge.composite.properties as property_module
 from abacus_forge.api import prepare
 from abacus_forge.cli import main
 from abacus_forge.composite import (
@@ -159,6 +160,40 @@ def test_charge_diff_manifest_links_three_sources_to_derived_cube(tmp_path: Path
     }
     derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
     assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
+
+
+def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "spin-parity")
+    prepare_spin_density(workspace.root)
+    for filename, values in (("SPIN1_CHG.cube", [3.0, 4.0]), ("SPIN2_CHG.cube", [1.0, 1.5])):
+        _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / filename, values)
+    direct = post_spin_density(workspace.root)
+
+    assert main(["spin-density", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert set(direct.to_dict()) == {"task", "workspace", "status", "subtasks", "summary", "artifacts", "diagnostics"}
+
+
+def test_property_manifest_projection_failure_preserves_legacy_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace = _prepared_workspace(tmp_path / "projection-failure")
+    prepare_spin_density(workspace.root)
+    _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / "SPIN1_CHG.cube", [3.0, 4.0])
+    _write_cube(workspace.root / "spin-density" / "scf" / "outputs" / "SPIN2_CHG.cube", [1.0, 1.5])
+
+    def fail_manifest(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("injected projection failure")
+
+    monkeypatch.setattr(property_module, "build_property_manifest", fail_manifest)
+    result = post_spin_density(workspace.root)
+
+    assert result.status == "completed"
+    assert result.summary["spin_density_file"].endswith("spin_density.cube")
+    assert "reports/spin_density.cube" in result.artifacts
+    assert "property_manifest" not in result.diagnostics
+    assert any("projection unavailable" in warning for warning in result.diagnostics["warnings"])
+    json.dumps(result.to_dict(), allow_nan=False)
 
 
 def test_workfunc_prepare_and_postprocess(tmp_path: Path) -> None:
