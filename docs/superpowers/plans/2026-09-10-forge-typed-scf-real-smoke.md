@@ -77,10 +77,10 @@ until the real gate and other Stage 4 gates have their own evidence.
   runtime source.
 - [x] Default real-smoke selection skips cleanly when environment values are
   absent; supplied invalid values fail.
-- [ ] Focused machine/CLI suites and full offline suite pass; real evidence is
+- [x] Focused machine/CLI suites and full offline suite pass; real evidence is
   reported only when an external workspace and executable are actually
   supplied.
-- [ ] `git diff --check` passes and the branch remains unmerged/unpublished.
+- [x] `git diff --check` passes and the branch remains unmerged/unpublished.
 
 ## Implementation record (2026-09-10)
 
@@ -97,6 +97,11 @@ until the real gate and other Stage 4 gates have their own evidence.
 - Updated both test READMEs to distinguish legacy SCF compatibility evidence
   from typed SCF machine-path evidence. Scientific validation, scheduling,
   orchestration, and maturity promotion remain outside this gate.
+- Final verification on commit `2ad0c72`: machine/CLI plus typed-SCF selection
+  `111 passed, 1 skipped, 2 deselected`; explicit real-smoke selection
+  `3 skipped`; full deterministic offline suite `1179 passed, 5 skipped`.
+  `git diff --check` passed. The skipped real-smoke cases reflect the absence
+  of an external ABACUS workspace/executable in this environment.
 
 **Ruling:** This plan closes a release-evidence harness gap only. It does not
 promote SCF maturity, add typed MD/PyATB/NEB real smoke, or alter the approved
