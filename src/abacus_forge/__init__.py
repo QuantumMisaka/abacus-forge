@@ -16,6 +16,12 @@ from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteReques
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import PyatbBandCollectRequest, PyatbBandExecuteRequest, PyatbBandPrepareRequest
+from abacus_forge.pyatb_manifest import (
+    PYATB_MANIFEST_SCHEMA_VERSION,
+    PyatbManifest,
+    PyatbManifestEntry,
+    classify_pyatb_output,
+)
 from abacus_forge.pyatb_services import (
     PyatbBandCollectService,
     PyatbBandCollectServiceProtocol,
@@ -99,6 +105,10 @@ __all__ = [
     "PyatbBandPrepareService",
     "PyatbBandPrepareServiceProtocol",
     "PyatbBandServiceSet",
+    "PYATB_MANIFEST_SCHEMA_VERSION",
+    "PyatbManifest",
+    "PyatbManifestEntry",
+    "classify_pyatb_output",
     "PostprocessService",
     "PostprocessServiceSet",
     "PrepareService",
