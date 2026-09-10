@@ -103,10 +103,10 @@ git diff --check
 
 Also run the repository’s architecture/forbidden-import, discovery, clean archive and wheel/import gates for this public contract change; if an environment-specific gate cannot run, record the exact narrower boundary and failure rather than implying it passed. No command may be described as real PyATB/ABACUS or scientific evidence.
 
-- [ ] Bind focused and full outputs to the final revision.
-- [ ] Obtain an independent task/whole-branch review appropriate to the public request/schema change.
-- [ ] Repair every Critical/Important finding, or record evidence disproving it; leave only bounded Minor follow-up items.
-- [ ] Mark this plan complete only after current worktree status and `git diff --check` are clean.
+- [x] Bind focused and full outputs to the final revision.
+- [x] Obtain an independent task/whole-branch review appropriate to the public request/schema change.
+- [x] Repair every Critical/Important finding, or record evidence disproving it; leave only bounded Minor follow-up items.
+- [x] Mark this plan complete only after current worktree status and `git diff --check` are clean.
 
 ## Plan self-review and rulings
 
@@ -121,4 +121,5 @@ Also run the repository’s architecture/forbidden-import, discovery, clean arch
 - Test-only RED commits: `23d9951`, `743d211`; the expected baseline failures are recorded in the SDD ledger. Production contract/discovery commit: `b51728c`; docs alignment commits: `836e293`, `e588cd6`, `e184769`; complete process/API parity strengthening: `1af88c2`.
 - Focused nspin4 boundary after implementation: `8 passed, 457 deselected`; owning contract/CLI/PyATB/workspace suites: `506 passed`; full offline suite: `1218 passed, 5 skipped`.
 - Architecture/forbidden-import gate: `8 passed`; discovery process gate exposes `pyatb-band` as `experimental`, operations `prepare|execute|collect`, nspin enum `[1, 2, 4]`, and conditional HR cardinality `2→2`, `1/4/default→1`; `operation --help` exposes both `--request` and `--stdin`.
-- Clean archive and wheel/import gates are required to be rerun against the final closeout revision below. No real PyATB/ABACUS process or scientific validation is claimed by this plan.
+- Behavior/doc implementation closeout revision: `ace93b7`; this evidence-only update completes the plan. Clean archive owning suite: `506 passed in 71.03s`; wheel build produced `abacus_forge-0.1.0-py3-none-any.whl` (sha256 `a2f1bcdb8ab55e7379cd1e2204d336e6183a4ab92f863490324f100ffafd1cf7`), fresh venv import/console checks passed, and `abacus_agent_tools`, `abacustest`, `aiida`, and `atst_tools` were absent.
+- HTML gate: `xmllint --html --noout` passed for both changed SPEC files; placeholder scan and `git diff --check` passed. Independent whole-branch review of the implementation/doc diff found no Critical, Important, or substantive Minor findings. No real PyATB/ABACUS process or scientific validation is claimed by this plan.
