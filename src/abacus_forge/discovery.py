@@ -24,6 +24,7 @@ from abacus_forge.md_contracts import (
     MdModifyRequest,
     MdPrepareRequest,
 )
+from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
@@ -66,6 +67,7 @@ MD_REQUEST_TYPES = {
     "modify": MdModifyRequest,
     "execute": MdExecuteRequest,
     "collect": MdCollectRequest,
+    "postprocess": MdPostprocessRequest,
 }
 POSTPROCESS_REQUEST_TYPES = {
     "band": {"postprocess": BandPostprocessRequest},
@@ -128,12 +130,13 @@ _MD_DESCRIPTOR = CapabilityDescriptor(
     name="md",
     maturity="experimental",
     engine="abacus",
-    operations=("prepare", "modify", "execute", "collect"),
+    operations=("prepare", "modify", "execute", "collect", "postprocess"),
     inputs={
         "prepare": ("structure",),
         "modify": ("prepared_workspace",),
         "execute": ("prepared_workspace",),
         "collect": ("workspace_outputs",),
+        "postprocess": ("trajectory",),
     },
     artifact_roles=("input", "provenance_manifest", "output"),
     optional_dependencies=(),
@@ -347,6 +350,28 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "suffix": {"type": ["string", "null"], "minLength": 1, "pattern": r"^(?!\.{1,2}$)[^/\\]+$", "default": None},
             }
         )
+    elif capability == "md" and operation == "postprocess":
+        properties.update(
+            {
+                "trajectory_path_rel": {
+                    "type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN,
+                },
+                "analysis": {
+                    "type": "array", "minItems": 1, "uniqueItems": True,
+                    "items": {"type": "string", "minLength": 1},
+                },
+                "output_dir_rel": {
+                    "type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN,
+                    "default": "outputs/md-postprocess",
+                },
+                "start": {"type": "integer", "minimum": 0, "default": 0},
+                "end": {"type": ["integer", "null"], "exclusiveMinimum": 0, "default": None},
+                "stride": {"type": "integer", "minimum": 1, "default": 1},
+                "parameters": {
+                    "type": "object", "propertyNames": {"type": "string"}, "default": {},
+                },
+            }
+        )
     elif operation == "prepare":
         parameters: dict[str, JSONValue] = {
             "type": "object",
@@ -486,6 +511,8 @@ def _representative_request(capability: str, operation: str) -> Any:
         kwargs["source_paths_rel"] = ("BANDS_1.dat",)
     elif capability == "dos" and operation == "postprocess":
         kwargs["dos_paths_rel"] = ("DOS1_smearing.dat",)
+    elif capability == "md" and operation == "postprocess":
+        kwargs.update({"trajectory_path_rel": "outputs/md.traj", "analysis": ("rdf",)})
     elif capability == "export" and operation == "export":
         from abacus_forge.contracts import ArtifactRef
 
@@ -495,7 +522,9 @@ def _representative_request(capability: str, operation: str) -> Any:
                 "destination_path_rel": "exports/result.json",
             }
         )
-    if capability not in {"scf", "band", "dos", "pyatb-band"}:
+    if capability not in {"scf", "band", "dos", "pyatb-band"} and not (
+        capability == "md" and operation == "postprocess"
+    ):
         kwargs["capability"] = capability
     return request_type(**kwargs)
 
@@ -551,6 +580,8 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         required.append("source_paths_rel")
     elif capability == "dos" and operation == "postprocess":
         required.append("dos_paths_rel")
+    elif capability == "md" and operation == "postprocess":
+        required.extend(["trajectory_path_rel", "analysis"])
     elif capability == "export" and operation == "export":
         required.extend(["source_artifact_refs", "destination_path_rel"])
     return {

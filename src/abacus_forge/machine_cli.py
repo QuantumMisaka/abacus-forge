@@ -36,6 +36,7 @@ from abacus_forge.errors import (
 )
 from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
+from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
@@ -77,6 +78,7 @@ _MD_DECODERS = {
     "modify": MdModifyRequest.from_dict,
     "execute": MdExecuteRequest.from_dict,
     "collect": MdCollectRequest.from_dict,
+    "postprocess": MdPostprocessRequest.from_dict,
 }
 _POSTPROCESS_DECODERS = {
     "band": {"postprocess": BandPostprocessRequest.from_dict},

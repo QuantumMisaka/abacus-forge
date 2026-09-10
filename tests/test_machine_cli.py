@@ -215,7 +215,7 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[3]["artifact_roles"] == ["input", "output"]
     assert descriptors[4]["maturity"] == "experimental"
     assert descriptors[4]["engine"] == "abacus"
-    assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
     assert descriptors[4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
     assert descriptors[5:-1] == [
         {

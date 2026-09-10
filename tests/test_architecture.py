@@ -211,7 +211,7 @@ def test_machine_discovery_advertises_experimental_capabilities() -> None:
     md = payload["capabilities"][4]
     assert md["maturity"] == "experimental"
     assert md["engine"] == "abacus"
-    assert md["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert md["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
     assert md["artifact_roles"] == ["input", "provenance_manifest", "output"]
     pyatb_band = payload["capabilities"][7]
     assert pyatb_band["maturity"] == "experimental"

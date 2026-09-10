@@ -11,6 +11,7 @@ from abacus_forge import contracts
 from abacus_forge import (
     BandPostprocessRequest,
     DosPostprocessRequest,
+    MdPostprocessRequest,
     RelaxCollectRequest,
     RelaxExecuteRequest,
     RelaxModifyRequest,
@@ -35,6 +36,7 @@ from abacus_forge.contracts import (
 )
 from abacus_forge.discovery import (
     ATST_NEB_REQUEST_TYPES,
+    MD_REQUEST_TYPES,
     POSTPROCESS_REQUEST_TYPES,
     REQUEST_TYPES_BY_CAPABILITY,
     SCF_REQUEST_TYPES,
@@ -536,7 +538,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert capabilities_document()["capabilities"][0]["inputs"]["prepare"] == ["structure"]
     assert payload["capabilities"][4]["maturity"] == "experimental"
     assert payload["capabilities"][4]["engine"] == "abacus"
-    assert payload["capabilities"][4]["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert payload["capabilities"][4]["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
     assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
     assert payload["capabilities"][5]["operations"] == ["postprocess"]
     assert payload["capabilities"][6]["operations"] == ["postprocess"]
@@ -1020,6 +1022,12 @@ def test_postprocess_request_registries_are_separate_from_legacy_scf() -> None:
     assert REQUEST_TYPES_BY_CAPABILITY["dos"] is POSTPROCESS_REQUEST_TYPES["dos"]
     assert "postprocess" not in SCF_REQUEST_TYPES
     assert set(contracts._OPERATIONS) == {"prepare", "modify", "execute", "collect", "export"}
+
+
+def test_md_postprocess_request_registry_is_typed_and_capability_scoped() -> None:
+    assert MD_REQUEST_TYPES["postprocess"] is MdPostprocessRequest
+    assert REQUEST_TYPES_BY_CAPABILITY["md"] is MD_REQUEST_TYPES
+    assert "postprocess" not in SCF_REQUEST_TYPES
 
 
 @pytest.mark.parametrize(

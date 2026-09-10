@@ -16,6 +16,7 @@ from abacus_forge.perturbation import perturb_structure
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
+from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import PyatbBandCollectRequest, PyatbBandExecuteRequest, PyatbBandPrepareRequest
 from abacus_forge.pyatb_manifest import (
@@ -130,6 +131,7 @@ __all__ = [
     "MdExecuteRequest",
     "MdModifyRequest",
     "MdPrepareRequest",
+    "MdPostprocessRequest",
     "MdServiceSet",
     "ScfCollectRequest",
     "ScfExecuteRequest",

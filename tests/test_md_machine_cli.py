@@ -10,6 +10,7 @@ from abacus_forge import (
     MdCollectRequest,
     MdExecuteRequest,
     MdModifyRequest,
+    MdPostprocessRequest,
     MdPrepareRequest,
     MdServiceSet,
     OperationOutcome,
@@ -35,12 +36,12 @@ def _payload(operation: str, **extra: object) -> dict[str, object]:
     }
 
 
-def test_md_is_discoverable_and_has_four_operation_schemas() -> None:
+def test_md_is_discoverable_and_has_five_operation_schemas() -> None:
     descriptors = capabilities_document()["capabilities"]
     md = next(item for item in descriptors if item["name"] == "md")
     assert md["maturity"] == "experimental"
     assert md["engine"] == "abacus"
-    assert md["operations"] == ["prepare", "modify", "execute", "collect"]
+    assert md["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
     assert md["artifact_roles"] == ["input", "provenance_manifest", "output"]
     for operation in md["operations"]:
         schema = request_schema_document("md", operation)["request_schema"]
@@ -59,16 +60,22 @@ def test_md_request_is_decoded_by_capability(operation: str, request_type: type)
     assert request.capability == "md"
 
 
-def test_md_postprocess_and_export_are_rejected_as_request_invalid(tmp_path: Path) -> None:
-    for operation in ("postprocess", "export"):
-        stdout, stderr = io.StringIO(), io.StringIO()
-        code = run_machine_cli(
-            ["operation", operation, "--stdin"],
-            stdin=io.StringIO(json.dumps(_payload(operation))), stdout=stdout, stderr=stderr, cwd=tmp_path,
-        )
-        assert code == 2
-        assert json.loads(stdout.getvalue())["error"]["class"] == "request.invalid"
-        assert stderr.getvalue() == ""
+def test_md_postprocess_decodes_but_export_remains_rejected(tmp_path: Path) -> None:
+    request = decode_operation_request(
+        "postprocess",
+        _payload("postprocess", trajectory_path_rel="outputs/md.traj", analysis=["rdf"]),
+    )
+    assert isinstance(request, MdPostprocessRequest)
+    assert request.to_dict()["output_dir_rel"] == "outputs/md-postprocess"
+
+    stdout, stderr = io.StringIO(), io.StringIO()
+    code = run_machine_cli(
+        ["operation", "export", "--stdin"],
+        stdin=io.StringIO(json.dumps(_payload("export"))), stdout=stdout, stderr=stderr, cwd=tmp_path,
+    )
+    assert code == 2
+    assert json.loads(stdout.getvalue())["error"]["class"] == "request.invalid"
+    assert stderr.getvalue() == ""
 
 
 def test_md_dry_run_and_prepare_use_machine_envelope(tmp_path: Path) -> None:
