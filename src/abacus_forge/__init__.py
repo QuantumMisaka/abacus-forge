@@ -26,6 +26,11 @@ from abacus_forge.pyatb_manifest import (
     PyatbManifestEntry,
     classify_pyatb_output,
 )
+from abacus_forge.property_manifest import (
+    PROPERTY_MANIFEST_SCHEMA_VERSION,
+    PropertyManifest,
+    PropertyManifestEntry,
+)
 from abacus_forge.pyatb_services import (
     PyatbBandCollectService,
     PyatbBandCollectServiceProtocol,
@@ -118,6 +123,9 @@ __all__ = [
     "PYATB_MANIFEST_SCHEMA_VERSION",
     "PyatbManifest",
     "PyatbManifestEntry",
+    "PROPERTY_MANIFEST_SCHEMA_VERSION",
+    "PropertyManifest",
+    "PropertyManifestEntry",
     "classify_pyatb_output",
     "PostprocessService",
     "PostprocessServiceSet",
