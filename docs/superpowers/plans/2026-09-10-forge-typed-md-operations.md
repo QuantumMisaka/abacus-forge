@@ -1,5 +1,7 @@
 # Forge Typed MD Operations Implementation Plan
 
+> **Scope note (2026-09-10):** This completed plan covers the original four-operation typed MD slice. The standalone `md.postprocess` operation is now specified and implemented separately by `docs/superpowers/specs/2026-09-10-forge-typed-md-postprocess-design.html` and `docs/superpowers/plans/2026-09-10-forge-typed-md-postprocess.md`; the historical deferral below does not describe the current capability registry.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Expose an experimental `md` capability through the existing typed `prepare`/`modify`/`execute`/`collect` Python and machine-CLI surfaces without adding workflow, scheduler, restart, monitoring, or scientific-acceptance semantics.
