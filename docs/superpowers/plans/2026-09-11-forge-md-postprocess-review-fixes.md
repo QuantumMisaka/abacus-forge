@@ -54,7 +54,7 @@
 
 ## Completion evidence (2026-09-11)
 
-- Implementation/documentation range: `da1d4df..e6559ce`; review-fix commits are `b052649` (request validation and reported diffusion metric), `2aeec15` (mass/MIC/plot hardening), `a55b5b2` (Babai-localized MIC translation invariance), `36e14a6` (README and historical-plan alignment), and `4e642c5` (preserve pre-fix historical evidence). The final `07cf8f8` and `e6559ce` changes only correct and finalize the skip/range evidence in this ledger.
+- Implementation range: `da1d4df..4e642c5`; review-fix commits are `b052649` (request validation and reported diffusion metric), `2aeec15` (mass/MIC/plot hardening), `a55b5b2` (Babai-localized MIC translation invariance), `36e14a6` (README and historical-plan alignment), and `4e642c5` (preserve pre-fix historical evidence). The later `07cf8f8`, `e6559ce`, and ledger-only follow-ups only correct and finalize evidence; they do not change runtime behavior.
 - Focused contract/algorithm/service/machine/architecture gate: `174 passed in 62.46s`.
 - Full offline gate: `1252 passed, 5 skipped in 110.58s`; the skips are three opt-in real-smoke cases and two opt-in benchmark cases, none of which is scientific acceptance evidence.
 - Opt-in benchmark gate: `2 passed, 1255 deselected in 2.71s` with `--run-benchmark -m benchmark`.
