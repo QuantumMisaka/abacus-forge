@@ -70,5 +70,8 @@ provided; they are not maturity evidence.
 
 The candidate is therefore ready for a separate, explicit integration
 decision. `forge-mainline-integration` remains at `da1d4df`, `main` and the
-remote remain untouched. The post-review documentation-only commit `dadad05`
-records the acceptance state; it does not alter runtime behavior.
+remote remain untouched. The post-review documentation-only commits
+`dadad05`, `3c795e4`, `25a457b`, and `5afa934` record acceptance, the latest
+clean-package evidence, and the upper-layer library-family boundary; they do
+not alter runtime behavior. Each was checked with `git diff --check`, and the
+latest docs-only boundary was independently reviewed.
