@@ -53,6 +53,7 @@ Forge 的 Angstrom 单位扩展仍可读取。支持 `Direct`、`Cartesian`、
 - `collect(...)` / `abacus-forge collect`
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
+- `LocalRunner` 的 `executable`/`launcher` 带目录相对路径，以及 `PATH` 中的相对或空分量，均按调用进程的 cwd 解析；实际进程仍以 workspace 的 `inputs/` 为 cwd 启动，但使用同一解析结果。公开的 `command` 字段（包括 typed `forge-result`）保留调用方传入的原始请求字符串。
 
 ### Typed operation service boundary
 
