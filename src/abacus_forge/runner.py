@@ -73,6 +73,21 @@ class LocalRunner:
             self._resolve_program("mpirun", role="launcher")
         self._resolve_executable()
 
+    def _execution_command(self, workspace: Workspace) -> list[str]:
+        """Return the command with directory-qualified paths anchored to caller cwd."""
+
+        command = self.build_command(workspace)
+        if self.launcher and Path(command[0]).parent != Path():
+            command[0] = self._resolve_program(str(command[0]), role="launcher")
+        elif self.mpi_ranks > 1 and Path(command[0]).parent != Path():
+            command[0] = self._resolve_program(str(command[0]), role="launcher")
+        executable_index = len(self.launcher) if self.launcher else (3 if self.mpi_ranks > 1 else 0)
+        if Path(command[executable_index]).parent != Path():
+            command[executable_index] = self._resolve_program(
+                str(command[executable_index]), role="engine"
+            )
+        return command
+
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
         command = self.build_command(workspace)
@@ -113,6 +128,7 @@ class LocalRunner:
             )
 
         try:
+            command = self._execution_command(workspace)
             completed = subprocess.run(
                 command,
                 cwd=workspace.inputs_dir,
