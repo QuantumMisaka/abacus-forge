@@ -31,6 +31,7 @@
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 - 可选 typed SCF machine-path 与 typed Relax real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；两者使用各自的环境门禁，未提供真实输入时不产生 release evidence。legacy SCF smoke 不能替代 typed SCF 证据。
 - typed SCF real-smoke 在首次 execute 前校验输入 calculation profile，typed Relax execute/collect 使用长 parent-process 超时；这些都是 release-gate 检查，不改变生产 service 的兼容行为。
+- 本批 typed collection metadata 实现 revision 为 `5807af1`；`1209 passed, 5 skipped` 的全量离线门禁及 clean archive/wheel 记录见门禁文档 revision `beed6d1`。
 - typed prepare 已支持显式 `pseudo_sources` / `orbital_sources` 资产映射：默认 copy，contained-only relative link，缺失与冲突 fail-closed，并在 typed diagnostics、manifest 和事件中记录来源/目标及哈希 provenance；未映射 STRU 引用保留且不声明完整。
 
 ## 近期方向

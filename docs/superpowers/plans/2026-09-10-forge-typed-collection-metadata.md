@@ -236,6 +236,8 @@ entry-point checks passed in a fresh venv, with legacy packages absent. The
 real-smoke module itself reports `3 skipped` without supplied environment
 variables. `git diff --check` passed. No ABACUS executable or real workspace
 was supplied, so no real-execution or scientific-acceptance claim is made.
+Implementation code is at revision `5807af1`; the gate/documentation record
+was captured at revision `beed6d1`.
 
 **Ruling:** This plan closes a concrete facts-envelope fidelity gap and two
 release-gate hygiene defects while preserving Forge's narrow role as an
