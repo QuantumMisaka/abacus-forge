@@ -25,6 +25,8 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_cli.py": ("cli",),
     "test_cli_process.py": ("cli",),
     "test_machine_cli.py": ("cli",),
+    "test_export_machine_cli.py": ("cli",),
+    "test_export_services.py": ("integration",),
     "test_md_machine_cli.py": ("cli",),
     "test_result_contract.py": ("integration",),
     "test_service_status.py": ("integration",),
