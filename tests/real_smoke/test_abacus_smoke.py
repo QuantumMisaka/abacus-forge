@@ -363,10 +363,27 @@ def test_typed_md_machine_execute_and_collect(tmp_path: Path) -> None:
 
     metrics = collect_envelope["metrics"]
     assert isinstance(metrics, list)
+    metrics_by_name: dict[str, dict[str, object]] = {}
     for metric in metrics:
         assert isinstance(metric, dict)
-        assert isinstance(metric.get("name"), str)
+        name = metric.get("name")
+        assert isinstance(name, str)
         _assert_json_safe_finite(metric.get("value"))
+        metrics_by_name[name] = metric
+    required_native_md_metrics = {
+        "md_last_total_energy",
+        "md_last_potential_energy",
+        "md_last_kinetic_energy",
+        "md_last_temperature",
+    }
+    assert required_native_md_metrics <= metrics_by_name.keys(), (
+        "typed MD collection did not expose the required native parser facts: "
+        f"missing={sorted(required_native_md_metrics - metrics_by_name.keys())}"
+    )
+    for name in required_native_md_metrics:
+        value = metrics_by_name[name]["value"]
+        assert isinstance(value, (int, float)) and not isinstance(value, bool)
+        assert math.isfinite(float(value))
     diagnostics = collect_envelope["diagnostics"]
     assert isinstance(diagnostics, dict)
     legacy_metrics = diagnostics.get("legacy_metrics")
