@@ -184,6 +184,20 @@ def test_md_postprocess_rejects_non_json_parameters(field: str, value: object) -
         MdPostprocessRequest.from_dict(payload)
 
 
+@pytest.mark.parametrize("container_type", ["list", "dict"])
+def test_md_postprocess_rejects_cyclic_json_parameters(container_type: str) -> None:
+    if container_type == "list":
+        cyclic: list[object] | dict[str, object] = []
+        cyclic.append(cyclic)
+    else:
+        cyclic = {}
+        cyclic["self"] = cyclic
+    payload = _request().to_dict()
+    payload["parameters"] = {"cycle": cyclic}  # type: ignore[assignment]
+    with pytest.raises(ValueError, match="parameters|JSON-safe"):
+        MdPostprocessRequest.from_dict(payload)
+
+
 def test_md_postprocess_schema_matches_dataclass_and_wire_keys() -> None:
     request = _request()
     schema = request_schema_document("md", "postprocess")["request_schema"]

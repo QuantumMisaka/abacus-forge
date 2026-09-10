@@ -80,19 +80,34 @@ def _optional_positive_integer(value: object, field_name: str) -> int | None:
     return _sampling_integer(value, field_name, minimum=1)
 
 
-def _json_value(value: object) -> JSONValue:
+def _json_value(value: object, _active: set[int] | None = None) -> JSONValue:
     if value is None or isinstance(value, (bool, int, str)):
         return value
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("parameters must contain only finite JSON numbers")
         return value
+    active = _active if _active is not None else set()
     if isinstance(value, list):
-        return [_json_value(item) for item in value]
+        marker = id(value)
+        if marker in active:
+            raise ValueError("parameters must not contain cyclic containers")
+        active.add(marker)
+        try:
+            return [_json_value(item, active) for item in value]
+        finally:
+            active.remove(marker)
     if isinstance(value, dict):
-        if not all(isinstance(key, str) for key in value):
-            raise ValueError("parameters object keys must be strings")
-        return {key: _json_value(item) for key, item in value.items()}
+        marker = id(value)
+        if marker in active:
+            raise ValueError("parameters must not contain cyclic containers")
+        active.add(marker)
+        try:
+            if not all(isinstance(key, str) for key in value):
+                raise ValueError("parameters object keys must be strings")
+            return {key: _json_value(item, active) for key, item in value.items()}
+        finally:
+            active.remove(marker)
     raise ValueError("parameters must contain only JSON-safe values")
 
 
