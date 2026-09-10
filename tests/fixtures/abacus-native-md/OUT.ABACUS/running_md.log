@@ -1,0 +1,11 @@
+ABACUS VERSION: 3.8.0
+Energy (Ry)         Potential (Ry)      Kinetic (Ry)
+ -10.000000         -10.500000          0.500000
+Temperature (K)      Pressure (kbar)
+ 300.0                2.5
+Energy (Ry)         Potential (Ry)      Kinetic (Ry)
+ -9.500000          -10.000000          0.500000
+Temperature (K)      Pressure (kbar)
+ 310.0                3.0
+!FINAL_ETOT_IS -129.256631 eV
+NORMAL END
