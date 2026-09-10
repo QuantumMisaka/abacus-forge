@@ -62,3 +62,19 @@ def test_cube_with_data_rejects_nonfinite_values(tmp_path: Path):
 def test_cube_reader_rejects_unsupported_orbital_datasets(tmp_path: Path):
     with pytest.raises(ValueError, match="orbital"):
         CubeData.from_file(_cube(tmp_path / "orbital.cube", natoms=-1))
+
+
+def test_cube_value_rejects_unsupported_orbital_datasets():
+    with pytest.raises(ValueError, match="orbital"):
+        CubeData(
+            comments=["comment", "comment"],
+            natoms=-1,
+            origin=[0.0, 0.0, 0.0],
+            grid=[
+                {"count": 1, "vector": [1.0, 0.0, 0.0]},
+                {"count": 1, "vector": [0.0, 1.0, 0.0]},
+                {"count": 1, "vector": [0.0, 0.0, 1.0]},
+            ],
+            atom_lines=["1 0.0 0.0 0.0 0.0"],
+            data=np.zeros((1, 1, 1)),
+        )

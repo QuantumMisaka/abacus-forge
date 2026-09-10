@@ -30,6 +30,8 @@ class CubeData:
     def __post_init__(self) -> None:
         if isinstance(self.natoms, bool) or not isinstance(self.natoms, int):
             raise ValueError("cube natoms must be an integer")
+        if self.natoms < 0:
+            raise ValueError("cube orbital datasets with negative natoms are not supported")
         origin = np.asarray(self.origin, dtype=float)
         if origin.shape != (3,) or not np.isfinite(origin).all():
             raise ValueError("cube origin must contain three finite values")
