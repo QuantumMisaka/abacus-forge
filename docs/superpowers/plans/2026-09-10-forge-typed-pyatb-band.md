@@ -124,3 +124,21 @@ fix only; no production behavior or compatibility surface changed.
 - `Ruling: require explicit Fermi and workspace-relative matrix paths — PyATB consumes HR/SR/rR from one SCF handoff, while automatic SCF discovery/metric lookup is exactly the legacy workflow boundary; if wrong, callers can still materialize the same files and a later adapter can add a separate explicit source-reference contract.`
 - `Ruling: default relative link, copy as opt-in — matrix files can be large and same-workspace links preserve zero-copy handoff, while relative links satisfy workspace portability; if wrong, a future default change is confined to the new request default and docs.`
 - `Ruling: collect standard band outputs without scientific acceptance — `band_gap` may be emitted as a reported parser fact, but Forge does not classify it; this keeps the SPEC's facts-only status model and avoids importing abacus-agent-tools policy.`
+
+## Follow-up architecture hardening (2026-09-10)
+
+The typed PyATB helpers were extracted into
+`src/abacus_forge/pyatb_typed.py` so `PyatbBandServiceSet` no longer reaches
+the legacy `abacus_forge.api` facade through `pyatb.py`.  The historical
+`abacus_forge.pyatb.prepare_typed_pyatb_band` and
+`collect_typed_pyatb_band` names remain compatibility wrappers, including the
+existing private hash-helper test seam; legacy PyATB discovery and sequence
+helpers were not changed.  The architecture gate now traverses both
+`pyatb_services` and `pyatb_typed` and rejects a direct or transitive legacy
+API dependency.
+
+The hardening was delivered as `4778adb` with stale compatibility residue
+removed in `2d62f59`.  The focused PyATB/architecture/machine/service gate
+passed `325` tests, and the current full offline gate passed `1179 passed, 4
+skipped`.  These are compatibility and boundary results only; PyATB and
+ABACUS real-smoke evidence remains a separate release gate.
