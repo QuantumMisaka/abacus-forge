@@ -128,9 +128,9 @@ Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
 
-没有 capability 的 `postprocess` 以及 machine `export` 仍返回 `request.invalid`；typed
-band/DOS 请求必须分别声明 `capability="band"`/`"dos"`，typed export 必须显式声明
-`capability="export"`。legacy CLI 的默认输出和入口保持不变。
+没有 capability 的 `postprocess` 仍返回 `request.invalid`；typed
+band/DOS 请求必须分别声明 `capability="band"`/`"dos"`，typed postprocess/export 必须显式声明
+对应 capability。legacy CLI 的默认输出和入口保持不变。
 
 请求可以来自文件：
 
@@ -218,6 +218,8 @@ capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`pyatb-band`
 机器调用可使用 `abacus-forge operation <prepare|execute|postprocess> --request FILE`
 或 `--stdin`，并在请求中声明 `"capability": "atst-neb"`。也可用
 `abacus-forge capabilities` 和 `abacus-forge schema atst-neb <operation>` 查询契约。
+这里的三个 operation 是 `atst-neb` capability 自身支持的 operation 集，不是 Forge 全局
+operation 集。
 该 capability 通过外部 `atst` 可执行文件调用 `atst neb make`、`atst run` 和
 `atst neb summary/post`；Forge 本身不要求安装或导入 `atst-tools` Python 包。
 NEB 图像/链路编排与并行执行由 atst-tools 负责；外层任务调度、重试以及科学结果判定由调用方负责，

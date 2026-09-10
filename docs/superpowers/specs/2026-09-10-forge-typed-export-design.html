@@ -35,9 +35,8 @@
   <section id="summary">
     <h2>摘要</h2>
     <p>Forge 已有 typed operation、workspace event、<code>ArtifactRecord</code> 和
-      <code>ArtifactRef</code>，但 <code>export</code> 仍只有 legacy 的“把结果对象写成 JSON”
-      行为。这个 SPEC 为 typed 面补上一个最小、可审计的结果文档导出操作，同时保留
-      legacy API/CLI 的全部行为。</p>
+      <code>ArtifactRef</code>；本 SPEC 在保留 legacy 行为的同时，新增一个独立、显式来源、可审计的
+      typed <code>export</code> operation。</p>
     <div class="decision">
       <p><strong>核心决策：</strong>首版 typed export 是“显式来源的结果 JSON 文档导出”，不是
         最近结果发现器，也不是二进制 artifact 打包器。请求显式给出同一 workspace 内一个既有
