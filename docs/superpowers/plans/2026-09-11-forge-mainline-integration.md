@@ -47,4 +47,4 @@
 
 ## Completion record (2026-09-11)
 
-The isolated integration branch is complete and review-ready at `7de2d47` (merge `7f80804` plus the verification-plan record). Focused, full offline, architecture, clean-archive, wheel/fresh-venv, discovery, and diff-hygiene gates passed; independent whole-branch review returned no Critical/Important/Minor findings. `main` and the remote remain untouched. This record does not promote experimental capabilities or claim real ABACUS/PyATB/scientific acceptance.
+The isolated integration branch is complete and review-ready at `09c935c` (merge `7f80804` plus the verification-plan record and close-out evidence). Focused, full offline, architecture, clean-archive, wheel/fresh-venv, discovery, and diff-hygiene gates passed; independent whole-branch review of `b6d83ef..7de2d47` returned no Critical/Important/Minor findings, and the final docs-only close-out was re-archived successfully. `main` and the remote remain untouched. This record does not promote experimental capabilities or claim real ABACUS/PyATB/scientific acceptance.
