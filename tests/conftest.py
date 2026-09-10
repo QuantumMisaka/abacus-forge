@@ -19,6 +19,7 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_perturbation.py": ("core",),
     "test_dos_data.py": ("core",),
     "test_dos_postprocess.py": ("core",),
+    "test_cube.py": ("core",),
     "test_api.py": ("integration",),
     "test_tasks.py": ("integration",),
     "test_units.py": ("integration",),
