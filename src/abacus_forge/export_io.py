@@ -1,9 +1,10 @@
-"""I/O primitives for the explicit, typed export operation.
+"""Read-only source resolution and no-replace JSON publication for typed export.
 
-The resolver deliberately works from Forge's immutable operation history.  It
-does not inspect the current contents of an artifact referenced by that
-history: an export is a serialization of a recorded outcome, not a re-run of
-the operation that produced it.
+This module deliberately keeps the export I/O boundary small.  Source
+artifacts are historical records in an immutable operation event: resolving a
+source validates the recorded path, but never re-reads or re-stat's the file
+currently at that path.  The destination writer is separate and publishes a
+new document without replacing a path which appeared concurrently.
 """
 
 from __future__ import annotations
@@ -13,34 +14,39 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Mapping
 
-from .contracts import (
+from abacus_forge.contracts import (
     ArtifactRecord,
     ArtifactRef,
     OperationOutcome,
-    JSONValue,
     canonical_relative_path,
 )
-from .errors import ForgePathError, ForgePersistenceError, ForgePreconditionError, ForgeRequestError
-from .export_contracts import ExportDocument
-from .workspace import Workspace
+from abacus_forge.errors import (
+    ForgePathError,
+    ForgePersistenceError,
+    ForgePreconditionError,
+    ForgeRequestError,
+)
+from abacus_forge.export_contracts import ExportDocument
+from abacus_forge.workspace import Workspace
 
 
 @dataclass(frozen=True, slots=True)
 class ResolvedExportSource:
-    """The historical source outcome selected by an export request."""
+    """The immutable source facts selected by one export request."""
 
     operation_id: str
     artifact_refs: tuple[ArtifactRef, ...]
     outcome: OperationOutcome
     event_path_rel: str
+    artifacts: tuple[ArtifactRecord, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class WrittenExportDocument:
-    """The durable destination and its content identity."""
+    """Facts about the newly published export document."""
 
     path: Path
     path_rel: str
@@ -48,15 +54,15 @@ class WrittenExportDocument:
     size_bytes: int
 
 
-def _validate_refs(refs: object) -> tuple[ArtifactRef, ...]:
+def _normalize_refs(refs: object) -> tuple[ArtifactRef, ...]:
     if isinstance(refs, (str, bytes, Mapping)):
-        raise ForgePreconditionError("source artifact references must be a non-empty sequence")
+        raise ForgePreconditionError("source artifact references must be an array")
     try:
         values = tuple(refs)  # type: ignore[arg-type]
     except TypeError as error:
-        raise ForgePreconditionError("source artifact references must be a non-empty sequence") from error
+        raise ForgePreconditionError("source artifact references must be an array") from error
     if not values or not all(isinstance(ref, ArtifactRef) for ref in values):
-        raise ForgePreconditionError("source artifact references must contain ArtifactRef values")
+        raise ForgePreconditionError("source artifact references are invalid")
     identities = {(ref.operation_id, ref.artifact_id) for ref in values}
     if len(identities) != len(values):
         raise ForgePreconditionError("source artifact references must not contain duplicates")
@@ -66,135 +72,214 @@ def _validate_refs(refs: object) -> tuple[ArtifactRef, ...]:
     return values
 
 
-def _path_in_workspace(workspace: Workspace, value: object, *, what: str) -> tuple[str, Path]:
-    if not isinstance(value, str):
-        raise ForgePathError(f"{what} must be a canonical workspace-relative path")
+def _historical_path_is_contained(workspace: Workspace, path_rel: object) -> str:
+    """Validate a recorded artifact path without touching its current target."""
+
+    if not isinstance(path_rel, str):
+        raise ForgePreconditionError("source artifact path is invalid")
     try:
-        canonical = canonical_relative_path(value)
+        canonical = canonical_relative_path(path_rel)
     except ValueError as error:
-        raise ForgePathError(f"{what} must be a canonical workspace-relative path") from error
+        raise ForgePreconditionError("source artifact path is not canonical") from error
+    if canonical == ".":
+        raise ForgePreconditionError("source artifact path must not be the workspace root")
+
+    # ``canonical_relative_path`` rules out absolute paths and ``..``.  Keep
+    # this containment check lexical: resolving the current source path would
+    # turn a historical fact lookup into an implicit file read/symlink check.
+    candidate = workspace.root / Path(canonical)
+    try:
+        candidate.relative_to(workspace.root)
+    except ValueError as error:
+        raise ForgePreconditionError("source artifact path escapes workspace") from error
+    return canonical
+
+
+def _manifest(workspace: Workspace) -> Mapping[str, object]:
+    try:
+        manifest_path = workspace.ensure_manifest()
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (ForgePersistenceError, OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ForgePreconditionError("source workspace manifest is unavailable") from error
+    if not isinstance(payload, dict) or not isinstance(payload.get("events"), list):
+        raise ForgePreconditionError("source workspace manifest is malformed")
+    return payload
+
+
+def resolve_export_source(
+    workspace: Workspace,
+    refs: object,
+) -> ResolvedExportSource:
+    """Resolve exactly one source outcome from the workspace event index."""
+
+    normalized_refs = _normalize_refs(refs)
+    source_operation_id = normalized_refs[0].operation_id
+    manifest = _manifest(workspace)
+    matches = [
+        item
+        for item in manifest["events"]
+        if isinstance(item, dict) and item.get("id") == source_operation_id
+    ]
+    if len(matches) != 1:
+        raise ForgePreconditionError("source operation event is missing or ambiguous")
+    entry = matches[0]
+    path_rel = entry.get("path_rel")
+    operation = entry.get("operation")
+    if not isinstance(operation, str) or not operation:
+        raise ForgePreconditionError("source operation event is malformed")
+    if not isinstance(path_rel, str):
+        raise ForgePreconditionError("source operation event path is malformed")
+    try:
+        canonical_event_path = canonical_relative_path(path_rel)
+    except ValueError as error:
+        raise ForgePathError("source operation event path must be canonical") from error
+    if canonical_event_path == ".":
+        raise ForgePathError("source operation event path must name a file")
+    try:
+        event_path = workspace.resolve_relative(canonical_event_path)
+    except ForgePathError:
+        raise
+    try:
+        event_payload = json.loads(event_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ForgePreconditionError("source operation event is unavailable") from error
+    if not isinstance(event_payload, dict):
+        raise ForgePreconditionError("source operation event is malformed")
+    if (
+        event_payload.get("id") != source_operation_id
+        or event_payload.get("operation") != operation
+        or not isinstance(event_payload.get("payload"), dict)
+    ):
+        raise ForgePreconditionError("source operation event identity is inconsistent")
+    try:
+        outcome = OperationOutcome.from_dict(event_payload["payload"])
+    except (TypeError, ValueError, KeyError, AttributeError) as error:
+        raise ForgePreconditionError("source operation outcome is malformed") from error
+    if outcome.operation_id != source_operation_id or outcome.envelope.operation != operation:
+        raise ForgePreconditionError("source operation outcome identity is inconsistent")
+
+    artifacts_by_id: dict[str, ArtifactRecord] = {}
+    for artifact in outcome.envelope.artifacts:
+        _historical_path_is_contained(workspace, artifact.path_rel)
+        if artifact.id in artifacts_by_id:
+            raise ForgePreconditionError("source operation contains duplicate artifact ids")
+        artifacts_by_id[artifact.id] = artifact
+    selected: list[ArtifactRecord] = []
+    for ref in normalized_refs:
+        artifact = artifacts_by_id.get(ref.artifact_id)
+        if artifact is None:
+            raise ForgePreconditionError("source artifact reference is not in the outcome")
+        selected.append(artifact)
+    return ResolvedExportSource(
+        operation_id=source_operation_id,
+        artifact_refs=normalized_refs,
+        outcome=outcome,
+        event_path_rel=canonical_event_path,
+        artifacts=tuple(selected),
+    )
+
+
+_RESERVED_FILES = frozenset(
+    {
+        "reports/forge-workspace.json",
+        "reports/.forge-workspace.lock",
+        "reports/.forge-operation.lock",
+        "forge-unit.json",
+        "forge-result.json",
+    }
+)
+_RESERVED_DIRECTORIES = ("reports/events", "reports/claims")
+
+
+def _destination(workspace: Workspace, destination_path_rel: object) -> tuple[str, Path]:
+    if not isinstance(destination_path_rel, str):
+        raise ForgePathError("destination path must be canonical")
+    try:
+        canonical = canonical_relative_path(destination_path_rel)
+    except ValueError as error:
+        raise ForgePathError("destination path must be canonical") from error
+    if canonical == ".":
+        raise ForgePathError("destination path must name a file")
+    if canonical in _RESERVED_FILES or any(
+        canonical == directory or canonical.startswith(directory + "/")
+        for directory in _RESERVED_DIRECTORIES
+    ):
+        raise ForgePathError("destination path is reserved for Forge audit")
     try:
         path = workspace.resolve_relative(canonical)
     except ForgePathError:
         raise
-    except (OSError, RuntimeError) as error:
-        raise ForgePathError(f"{what} must remain contained by the workspace") from error
     return canonical, path
 
 
-def _read_json(path: Path, *, what: str) -> object:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise ForgePreconditionError(f"{what} is missing or invalid") from error
-
-
-def resolve_export_source(workspace: Workspace, refs: object) -> ResolvedExportSource:
-    """Resolve refs against the exact immutable event named by the manifest.
-
-    Historical artifact paths are validated for spelling and workspace
-    containment only.  In particular, this function never reads, stats, or
-    hashes the current artifact files.
-    """
-
-    values = _validate_refs(refs)
-    operation_id = values[0].operation_id
+def _overlaps_source_artifact(document: ExportDocument, destination_path_rel: str) -> bool:
+    """Return whether the destination is one of the recorded source paths."""
 
     try:
-        manifest_path = workspace.ensure_manifest()
-    except ForgePersistenceError as error:
-        raise ForgePreconditionError("workspace manifest is missing or invalid") from error
-    manifest_object = _read_json(manifest_path, what="workspace manifest")
-    if not isinstance(manifest_object, dict) or not isinstance(manifest_object.get("events"), list):
-        raise ForgePreconditionError("workspace manifest is missing or invalid")
-
-    matching = [
-        entry
-        for entry in manifest_object["events"]
-        if isinstance(entry, dict) and entry.get("id") == operation_id
-    ]
-    if len(matching) != 1:
-        raise ForgePreconditionError("source operation is not uniquely indexed in workspace history")
-    entry = matching[0]
-    if entry.get("operation") != "collect" and not isinstance(entry.get("operation"), str):
-        raise ForgePreconditionError("source event has invalid operation metadata")
-    event_path_rel, event_path = _path_in_workspace(workspace, entry.get("path_rel"), what="source event path")
-    event_object = _read_json(event_path, what="source event")
-    if not isinstance(event_object, dict):
-        raise ForgePreconditionError("source event is missing or invalid")
-    if event_object.get("id") != operation_id or not isinstance(event_object.get("operation"), str):
-        raise ForgePreconditionError("source event identity is inconsistent")
-    if event_object.get("operation") != entry.get("operation"):
-        raise ForgePreconditionError("source event operation is inconsistent")
-    payload = event_object.get("payload")
-    if not isinstance(payload, dict):
-        raise ForgePreconditionError("source event payload is missing or invalid")
-    try:
-        outcome = OperationOutcome.from_dict(payload)
-    except (TypeError, ValueError, KeyError) as error:
-        raise ForgePreconditionError("source event payload is not a valid operation outcome") from error
-    if outcome.operation_id != operation_id:
-        raise ForgePreconditionError("source outcome identity is inconsistent")
-
-    records = {artifact.id: artifact for artifact in outcome.envelope.artifacts}
-    if any(ref.artifact_id not in records for ref in values):
-        raise ForgePreconditionError("source artifact reference is absent from the recorded outcome")
-    for artifact in records.values():
-        _path_in_workspace(workspace, artifact.path_rel, what="recorded artifact path")
-
-    return ResolvedExportSource(
-        operation_id=operation_id,
-        artifact_refs=values,
-        outcome=outcome,
-        event_path_rel=event_path_rel,
+        source_payload = document.to_dict()["source_outcome"]
+        outcome = OperationOutcome.from_dict(source_payload)  # type: ignore[arg-type]
+    except (KeyError, TypeError, ValueError) as error:
+        # ExportDocument validates this invariant at construction time.  Keep
+        # the writer defensive if a future implementation changes that type.
+        raise ForgeRequestError("export document has an invalid source outcome") from error
+    return any(
+        artifact.path_rel == destination_path_rel
+        for artifact in outcome.envelope.artifacts
     )
 
 
-def _reserved_destination(path_rel: str, document: ExportDocument) -> bool:
-    components = PurePosixPath(path_rel).parts
-    # reports/ contains the manifest, immutable events, claims and locks.  It
-    # is an audit namespace, not an export destination namespace.
-    if components and components[0] == "reports":
-        return True
-    if PurePosixPath(path_rel).name in {"forge-unit.json", "forge-result.json"}:
-        return True
-    # ``ExportDocument`` retains its validated outcome immutably (using
-    # mapping proxies).  Round-trip through its public serializer before
-    # reconstructing the outcome so this check remains representation-safe.
-    source_payload = document.to_dict()["source_outcome"]
-    source_paths = {
-        artifact.path_rel
-        for artifact in OperationOutcome.from_dict(source_payload).envelope.artifacts  # type: ignore[arg-type]
-    }
-    return path_rel in source_paths
+def _fsync_directory(directory: Path) -> None:
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        try:
+            os.fsync(fd)
+        except OSError:
+            # Directory fsync is an optional durability enhancement; the
+            # file fsync and atomic link are still the publication boundary.
+            pass
+    finally:
+        os.close(fd)
 
 
 def write_export_document(
     workspace: Workspace,
-    destination_path_rel: str,
-    document: ExportDocument,
-    pretty: bool,
+    destination_path_rel: object,
+    document: object,
+    pretty: object,
 ) -> WrittenExportDocument:
-    """Write one typed export document with atomic no-replace publication."""
+    """Atomically publish one contained export document without replacement."""
 
     if not isinstance(document, ExportDocument):
-        raise ForgeRequestError("export document must be an ExportDocument")
+        raise ForgeRequestError("document must be an ExportDocument")
     if not isinstance(pretty, bool):
         raise ForgeRequestError("pretty must be a boolean")
-    path_rel, target = _path_in_workspace(workspace, destination_path_rel, what="export destination")
-    if path_rel == "." or _reserved_destination(path_rel, document):
-        raise ForgePathError("export destination is reserved or overlaps a source artifact")
-
+    path_rel, target = _destination(workspace, destination_path_rel)
+    if _overlaps_source_artifact(document, path_rel):
+        raise ForgePathError("destination overlaps a source artifact")
     try:
         if target.exists():
-            raise ForgeRequestError("export destination already exists")
+            raise ForgeRequestError("destination already exists")
+    except ForgeRequestError:
+        raise
+    except OSError as error:
+        raise ForgePersistenceError("unable to inspect export destination") from error
+
+    try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        # Re-check after creating the parent: a concurrent replacement of a
-        # parent directory must not cause a write through a symlink escape.
-        _, checked_target = _path_in_workspace(workspace, path_rel, what="export destination")
-        if checked_target != target:
-            raise ForgePathError("export destination changed during preparation")
-        serialized = json.dumps(
+    except OSError as error:
+        raise ForgePersistenceError("unable to create export destination directory") from error
+    # A parent can be replaced by a symlink between the initial containment
+    # check and directory creation.  Re-resolve immediately before creating a
+    # temporary file so a race cannot redirect the write outside the workspace.
+    _, checked_target = _destination(workspace, path_rel)
+    if checked_target != target:
+        raise ForgePathError("export destination changed during preparation")
+
+    try:
+        payload = json.dumps(
             document.to_dict(),
             sort_keys=True,
             ensure_ascii=False,
@@ -202,41 +287,55 @@ def write_export_document(
             indent=2 if pretty else None,
             separators=None if pretty else (",", ":"),
         ).encode("utf-8")
-    except ForgeRequestError:
-        raise
-    except (OSError, TypeError, ValueError) as error:
-        raise ForgePersistenceError("unable to prepare export document") from error
+    except (TypeError, ValueError) as error:
+        raise ForgeRequestError("export document is not JSON serializable") from error
 
     temporary_path: Path | None = None
     published = False
     try:
         with tempfile.NamedTemporaryFile(
-            mode="wb", dir=target.parent, prefix=f".{target.name}.", suffix=".tmp", delete=False
+            mode="wb",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
         ) as temporary:
             temporary_path = Path(temporary.name)
-            temporary.write(serialized)
+            temporary.write(payload)
             temporary.flush()
             os.fsync(temporary.fileno())
         try:
             os.link(temporary_path, target)
-            published = True
         except FileExistsError as error:
-            raise ForgeRequestError("export destination already exists") from error
+            raise ForgeRequestError("destination already exists") from error
         except OSError as error:
             raise ForgePersistenceError("unable to publish export document") from error
-        Workspace._fsync_directory(target.parent)
+        published = True
+        _fsync_directory(target.parent)
         try:
+            temporary_path.unlink()
+        except OSError as error:
+            raise ForgePersistenceError("unable to finalize export temporary file") from error
+        temporary_path = None
+        try:
+            contents = target.read_bytes()
             size_bytes = target.stat().st_size
-            digest = hashlib.sha256(target.read_bytes()).hexdigest()
         except OSError as error:
             raise ForgePersistenceError("unable to inspect published export document") from error
-        return WrittenExportDocument(path=target, path_rel=path_rel, sha256=digest, size_bytes=size_bytes)
+        return WrittenExportDocument(
+            path=target,
+            path_rel=path_rel,
+            sha256=hashlib.sha256(contents).hexdigest(),
+            size_bytes=size_bytes,
+        )
     except ForgeRequestError:
         raise
     except ForgePersistenceError:
         if published:
             try:
                 target.unlink()
+            except FileNotFoundError:
+                pass
             except OSError:
                 pass
         raise
@@ -244,6 +343,8 @@ def write_export_document(
         if published:
             try:
                 target.unlink()
+            except FileNotFoundError:
+                pass
             except OSError:
                 pass
         raise ForgePersistenceError("unable to write export document") from error
@@ -254,8 +355,6 @@ def write_export_document(
             except FileNotFoundError:
                 pass
             except OSError:
-                # The temporary link is an implementation detail; a failed
-                # cleanup is reported only if no more specific failure exists.
                 pass
 
 
