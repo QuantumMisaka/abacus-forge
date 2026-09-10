@@ -15,6 +15,7 @@ def run_cli(
     cwd: Path | None = None,
     env: Mapping[str, str] | None = None,
     input_text: str | None = None,
+    timeout: float = 30.0,
 ) -> subprocess.CompletedProcess[str]:
     merged_env = os.environ.copy()
     source_path = str(PROJECT_ROOT / "src")
@@ -27,7 +28,7 @@ def run_cli(
         "env": merged_env,
         "text": True,
         "capture_output": True,
-        "timeout": 30,
+        "timeout": timeout,
     }
     if input_text is None:
         options["stdin"] = subprocess.DEVNULL

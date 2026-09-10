@@ -13,6 +13,10 @@ from abacus_forge.api import UnitSpec, collect_unit, execute_unit
 from tests.support.process import run_cli
 
 
+_REAL_SMOKE_ENGINE_TIMEOUT_SECONDS = 1800.0
+_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS = _REAL_SMOKE_ENGINE_TIMEOUT_SECONDS + 30.0
+
+
 def _assert_contained_file(workspace_root: Path, path_rel: str) -> None:
     assert isinstance(path_rel, str)
     path = Path(path_rel)
@@ -95,7 +99,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
         "executable": executable,
         "mpi_ranks": 1,
         "omp_threads": 1,
-        "timeout_seconds": None,
+        "timeout_seconds": _REAL_SMOKE_ENGINE_TIMEOUT_SECONDS,
         "dry_run": False,
     }
     executed = run_cli(
@@ -104,6 +108,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
         "--stdin",
         cwd=tmp_path,
         input_text=json.dumps(execute_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
     )
     assert executed.returncode == 0, executed.stdout + executed.stderr
     assert executed.stderr == ""
@@ -116,6 +121,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
     execute_status = execute_envelope["status"]
     assert isinstance(execute_status, dict)
     assert execute_status["execution"] == "completed"
+    assert execute_status["collection"] == "not_collected"
     assert execute_status["scientific"] == "unassessed"
 
     collect_request = {
@@ -130,6 +136,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
         "--stdin",
         cwd=tmp_path,
         input_text=json.dumps(collect_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
     )
     assert collected.returncode == 0, collected.stdout + collected.stderr
     assert collected.stderr == ""
@@ -142,6 +149,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
     collect_status = collect_envelope["status"]
     assert isinstance(collect_status, dict)
     assert collect_status["collection"] == "complete"
+    assert collect_status["execution"] == "not_run"
     assert collect_status["scientific"] == "unassessed"
     metrics = collect_envelope["metrics"]
     assert isinstance(metrics, list)
@@ -210,6 +218,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
         assert event["operation"] == operation
         path_rel = event["path_rel"]
         assert isinstance(path_rel, str)
+        assert path_rel == f"reports/events/{operation_id}-{operation}.json"
         _assert_contained_file(workspace_root, path_rel)
 
 

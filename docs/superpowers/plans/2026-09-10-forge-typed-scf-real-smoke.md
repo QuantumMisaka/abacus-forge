@@ -22,7 +22,8 @@ suite. No stable-maturity promotion is made by this plan.
 ## Scope and boundaries
 
 - Change only `tests/real_smoke/test_abacus_smoke.py`, `tests/conftest.py`,
-  `tests/real_smoke/README.md`, `tests/README.md`, and this plan.
+  `tests/real_smoke/README.md`, `tests/README.md`, `tests/support/process.py`,
+  `README.md`, `ROADMAP.md`, and this plan.
 - Reuse `ABACUS_FORGE_REAL_SMOKE_WORKSPACE` and
   `ABACUS_FORGE_ABACUS_EXECUTABLE`; register the typed test explicitly in the
   real-smoke environment map.
@@ -37,6 +38,9 @@ suite. No stable-maturity promotion is made by this plan.
 - If the executable or source workspace is absent, the test is skipped by the
   existing real-smoke gate. If a supplied value is invalid, the test fails
   clearly; it must never turn an invalid environment into a passing result.
+- The test helper keeps its 30-second default for ordinary process tests; the
+  real SCF gate sets a 1800-second engine timeout and a 1830-second wrapper
+  timeout so the wrapper does not preempt the engine's own termination path.
 
 ## Task 1: Add typed SCF machine-path real smoke
 
@@ -102,6 +106,26 @@ until the real gate and other Stage 4 gates have their own evidence.
   `3 skipped`; full deterministic offline suite `1179 passed, 5 skipped`.
   `git diff --check` passed. The skipped real-smoke cases reflect the absence
   of an external ABACUS workspace/executable in this environment.
+
+## Review response (2026-09-10)
+
+The independent review found one Important timeout mismatch and three Minor
+assertion/documentation gaps. The timeout finding was valid: `run_cli` had a
+fixed 30-second wrapper around an unbounded request. The repair adds an
+optional helper timeout while preserving its 30-second default, sets the typed
+SCF request to 1800 seconds and its wrapper to 1830 seconds, and also pins
+manifest event paths and both execution/collection status components. The
+plan scope now includes the helper and the top-level documentation that was
+updated. Focused and full gates must be rerun after this repair before the
+package is accepted.
+
+Repair verification on the resulting worktree: a configurable `run_cli`
+timeout smoke passed; `tests/test_cli_process.py` plus the typed-SCF selection
+returned `36 passed, 1 skipped, 2 deselected`; explicit real-smoke selection
+returned `3 skipped`; and the full offline suite returned `1179 passed, 5
+skipped`. `git diff --check` passed. The review findings are therefore closed
+for this test/documentation package, while the absence of a supplied ABACUS
+workspace and executable still prevents a real execution claim.
 
 **Ruling:** This plan closes a release-evidence harness gap only. It does not
 promote SCF maturity, add typed MD/PyATB/NEB real smoke, or alter the approved
