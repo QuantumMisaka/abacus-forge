@@ -65,8 +65,8 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
   `reports/running_scf.log` case), verify the typed SCF smoke fails before
   execution.
 - [x] With `/bin/true` and stale Relax log/final structure (including the
-  ordinary `STRU` suffix), verify the typed Relax smoke fails before
-  execution.
+  ordinary `STRU` and a prefixed filename matching the collector's suffix
+  semantics), verify the typed Relax smoke fails before execution.
 - [x] Keep the existing stale MD log negative and verify the shared guard also
   rejects stale MD dump output.
 
@@ -94,7 +94,9 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 - `/bin/true` fail-fast probes reject stale `reports/running_scf.log`, stale
   `reports/running_relax.log` plus `outputs/OUT.ABACUS/STRU`, and stale MD
   `outputs/OUT.ABACUS/MD_dump`; the offline guard positive test allows explicit
-  `inputs/OUT.*` handoff files and non-domain report files.
+  `inputs/OUT.*` handoff files and non-domain report files. A prefixed
+  `outputs/OUT.ABACUS/final_STRU` probe also fails, proving suffix matching
+  follows the collector rather than exact basenames.
 - `git diff --check` passed before commit.
 
 ## Rulings

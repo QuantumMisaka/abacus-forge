@@ -11,6 +11,7 @@ import pytest
 
 from abacus_forge.api import UnitSpec, collect_unit, execute_unit
 from abacus_forge.input_io import read_input
+from abacus_forge.relax_results import _FINAL_STRUCTURE_SUFFIXES
 from tests.support.process import run_cli
 
 
@@ -69,7 +70,8 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
             if not path.is_file():
                 continue
             name = path.name
-            relative_parts = path.relative_to(workspace).parts
+            relative = path.relative_to(workspace).as_posix()
+            relative_parts = Path(relative).parts
             is_input_asset = bool(relative_parts and relative_parts[0] == "inputs")
             is_report_asset = bool(relative_parts and relative_parts[0] == "reports")
             generated = name == "out.log" and not is_input_asset and not is_report_asset
@@ -81,12 +83,12 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
                 generated = generated or (name.startswith("running_") and name.endswith(".log"))
                 if capability in {"relax", "cell-relax"}:
                     generated = generated or (
-                        name in {"STRU_ION_D", "STRU_NOW.cif", "STRU.cif", "STRU"}
+                        relative.endswith(_FINAL_STRUCTURE_SUFFIXES)
                         and not is_input_asset
                         and not is_report_asset
                     )
             if generated:
-                preexisting.append(path.relative_to(workspace).as_posix())
+                preexisting.append(relative)
     if preexisting:
         pytest.fail(
             f"typed {capability} smoke workspace must not contain pre-existing "

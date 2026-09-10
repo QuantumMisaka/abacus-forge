@@ -13,6 +13,7 @@ from tests.real_smoke.test_abacus_smoke import _assert_no_preexisting_generated_
         ("scf", "reports/running_scf.log"),
         ("relax", "reports/running_relax.log"),
         ("relax", "outputs/OUT.ABACUS/STRU"),
+        ("relax", "outputs/OUT.ABACUS/final_STRU"),
     ),
 )
 def test_freshness_guard_rejects_collector_visible_generated_outputs(
