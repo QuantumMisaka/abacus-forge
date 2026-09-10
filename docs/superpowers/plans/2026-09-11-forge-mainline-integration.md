@@ -31,12 +31,12 @@
 
 - [x] 运行冲突相关 owning tests，确认两类行为同时通过（`634 passed in 70.35s`）。
 - [x] 运行完整离线 suite、architecture gate 和 discovery/process checks（`1218 passed, 5 skipped in 111.00s`；architecture `8 passed in 7.91s`；capabilities/schema/operation help and unknown-schema envelope checks passed）。
-- [ ] 从整合提交生成 clean archive 并运行 owning tests。
-- [ ] 构建 wheel，在全新 venv 中安装 declared dependencies，验证 import/console entry point 且不引入 legacy Forge 运行时依赖。
+- [x] 从整合提交生成 clean archive 并运行 owning tests（`632 passed in 16.22s`）。
+- [x] 构建 wheel，在全新 venv 中安装 declared dependencies，验证 import/console entry point 且不引入 legacy Forge 运行时依赖（wheel `d5e6adefe41ec42d7f9d6d623fd0615b379cf414428e5a5dcf5698508c16e9d3`；fresh venv import/capabilities/schema/operation help passed；`abacus_agent_tools`, `abacustest`, `aiida`, `atst_tools` absent）。
 
 ## Task 3: Review and handoff
 
-- [ ] 由独立 reviewer 检查整合差异与两份批准 SPEC，确认没有公共契约漂移或边界越界。
+- [x] 由独立 reviewer 检查整合差异与两份批准 SPEC，确认没有公共契约漂移或边界越界（`b6d83ef..7de2d47`；Critical/Important/Minor 均无）。
 - [x] 将真实执行/科学验证明确保留为未完成的后续发布门禁，不把离线 fixture 结果晋升为成熟度证据。
 - [x] 保持 `main` 和远程状态不变；只有用户另行授权时才进入合并或推送。
 
@@ -44,3 +44,7 @@
 
 - `Ruling: union the two branches at the four concrete seams — both lines contain independently reviewed behavior; dropping either would regress a current security or compatibility guarantee. The cost if wrong is a bounded merge repair, not a public-main mutation.`
 - `Ruling: treat this as integration, not a new capability contract — the approved SPECs and existing capability plans remain normative, so no new wire field, schema version, manifest enum, or scientific policy is introduced.`
+
+## Completion record (2026-09-11)
+
+The isolated integration branch is complete and review-ready at `7de2d47` (merge `7f80804` plus the verification-plan record). Focused, full offline, architecture, clean-archive, wheel/fresh-venv, discovery, and diff-hygiene gates passed; independent whole-branch review returned no Critical/Important/Minor findings. `main` and the remote remain untouched. This record does not promote experimental capabilities or claim real ABACUS/PyATB/scientific acceptance.
