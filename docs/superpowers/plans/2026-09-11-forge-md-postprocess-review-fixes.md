@@ -47,10 +47,20 @@
 
 **Dependencies:** Tasks 1–2.
 
-- [ ] Update this plan with exact commit/range evidence and review rulings; update the approved MD SPEC only with concise clarified semantics (sampled-frame timestep, fail-closed mass, no placeholder plot) if the implementation requires normative wording.
-- [ ] Run focused owning suites, typed MD machine/API parity, architecture and complete offline gates in `conda run -n paimon`; record environment skips separately.
-- [ ] Dispatch independent task-scoped reviews for Packages A/B and one whole-branch review against the exact SPEC/plan diff. Resolve every Critical/Important finding; record justified Minor deferrals.
-- [ ] Keep `main`, formal integration branch, freshness candidate, and remote untouched until the user explicitly authorizes merge.
+- [x] Update this plan with exact commit/range evidence and review rulings; update the approved MD SPEC only with concise clarified semantics (sampled-frame timestep, fail-closed mass, no placeholder plot) if the implementation requires normative wording.
+- [x] Run focused owning suites, typed MD machine/API parity, architecture and complete offline gates in `conda run -n paimon`; record environment skips separately.
+- [x] Dispatch independent task-scoped reviews for Packages A/B and one whole-branch review against the exact SPEC/plan diff. Resolve every Critical/Important finding; record justified Minor deferrals.
+- [x] Keep `main`, formal integration branch, freshness candidate, and remote untouched until the user explicitly authorizes merge.
+
+## Completion evidence (2026-09-11)
+
+- Implementation range: `da1d4df..4e642c5`; review-fix commits are `b052649` (request validation and reported diffusion metric), `2aeec15` (mass/MIC/plot hardening), `a55b5b2` (Babai-localized MIC translation invariance), `36e14a6` (README and historical-plan alignment), and `4e642c5` (preserve pre-fix historical evidence).
+- Focused contract/algorithm/service/machine/architecture gate: `174 passed in 62.46s`.
+- Full offline gate: `1252 passed, 5 skipped in 110.58s`; skipped cases remain opt-in real-smoke boundaries, not scientific evidence.
+- Package-owner evidence: contract/service owner `179 passed`; algorithm owner `102 passed` after the MIC follow-up; both workers reported clean `git diff --check`.
+- Whole-branch review of `da1d4df..36e14a6`: no Critical/Important findings. The only Minor (historical evidence attribution) was fixed in `4e642c5`; reviewer independently checked the former MIC counterexample plus 45 random full/partial-PBC finite-enumeration cases and large lattice translations.
+- The approved MD SPEC now records sampled-frame `timestep`, fail-closed unknown symbols, truthful plot omission/partial collection, and the input/provenance/output artifact mapping. No new workflow, scheduler, scientific-validation, or dependency boundary was added.
+- Formal integration (`forge-mainline-integration` at `da1d4df`), `main`, freshness candidate, and remote remain untouched. No real ABACUS/PyATB execution was available or claimed.
 
 ## Rulings
 
