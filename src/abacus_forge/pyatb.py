@@ -125,7 +125,7 @@ def collect_pyatb(workspace: str | Path | Workspace) -> CollectionResult:
         ws.inputs_dir / "Out" / "Band_Structure" / "band_info.dat",
         ws.outputs_dir / "Out" / "Band_Structure" / "band_info.dat",
     )
-    if band_info is not None and band_info_rel in artifact_by_path:
+    if band_info is not None:
         diagnostics["pyatb_band_info_candidates"].append(str(band_info))
         metrics.update(_parse_band_info(band_info))
 
