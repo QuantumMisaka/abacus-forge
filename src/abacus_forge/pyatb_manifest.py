@@ -22,7 +22,7 @@ _KINDS = frozenset({
     "structure", "matrix_hr", "matrix_sr", "matrix_rr", "pyatb_input",
     "kpoint_path", "band_info", "band_data", "band_plot", "run_input", "other",
 })
-_SPINS = frozenset({"shared", "up", "down", "unknown"})
+_SPINS = frozenset({"shared", "up", "down", "total", "unknown"})
 _REASONS = frozenset({"missing", "escaped", "unavailable"})
 _HASH = re.compile(r"^[0-9a-f]{64}$")
 
@@ -69,7 +69,7 @@ class PyatbManifestEntry:
         if self.kind not in _KINDS:
             raise ValueError(f"kind must be one of: {', '.join(sorted(_KINDS))}")
         if self.spin not in _SPINS:
-            raise ValueError("spin must be one of: down, shared, unknown, up")
+            raise ValueError("spin must be one of: down, shared, total, unknown, up")
         if self.artifact_id is not None:
             _require_nonempty_string(self.artifact_id, "artifact_id")
         object.__setattr__(self, "sha256", _optional_hash(self.sha256, "sha256"))
@@ -111,11 +111,19 @@ class PyatbManifest:
 
     def __post_init__(self) -> None:
         for name in ("inputs", "outputs", "missing"):
-            entries = tuple(getattr(self, name))
+            raw_entries = getattr(self, name)
+            if isinstance(raw_entries, (str, bytes)):
+                raise ValueError(f"{name} must be an array of entries")
+            try:
+                entries = tuple(raw_entries)
+            except TypeError as error:
+                raise ValueError(f"{name} must be an array of entries") from error
             if not all(isinstance(entry, PyatbManifestEntry) for entry in entries):
                 raise ValueError(f"{name} must contain PyatbManifestEntry values")
             if name == "missing" and any(entry.reason is None for entry in entries):
                 raise ValueError("missing entries require a reason")
+            if name != "missing" and any(entry.reason is not None for entry in entries):
+                raise ValueError(f"{name} entries cannot contain a missing reason")
             object.__setattr__(self, name, entries)
 
     def to_dict(self) -> dict[str, JSONValue]:
@@ -135,6 +143,8 @@ class PyatbManifest:
             unknown = sorted(set(values) - {"inputs", "outputs", "missing"})
             raise ValueError(f"PyATB manifest contains unknown fields: {', '.join(unknown)}")
         try:
+            if any(not isinstance(values.get(name, ()), list) for name in ("inputs", "outputs", "missing")):
+                raise ValueError("manifest entry arrays must be JSON arrays")
             return cls(
                 inputs=tuple(PyatbManifestEntry.from_dict(item) for item in values.get("inputs", ())),
                 outputs=tuple(PyatbManifestEntry.from_dict(item) for item in values.get("outputs", ())),

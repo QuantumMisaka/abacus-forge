@@ -67,6 +67,13 @@ def test_manifest_entry_rejects_invalid_kind_spin_and_hash() -> None:
         PyatbManifestEntry(path_rel="outputs/x", kind="other", spin="unknown", sha256="bad")
 
 
+def test_manifest_accepts_total_spin_and_round_trips_it() -> None:
+    entry = PyatbManifestEntry(path_rel="outputs/band.dat", kind="band_data", spin="total")
+    manifest = PyatbManifest(inputs=(), outputs=(entry,), missing=())
+    restored = PyatbManifest.from_dict(manifest.to_dict())
+    assert restored.outputs[0].spin == "total"
+
+
 def test_manifest_from_dict_rejects_unknown_fields() -> None:
     payload = PyatbManifest(
         inputs=(), outputs=(), missing=()
@@ -74,4 +81,3 @@ def test_manifest_from_dict_rejects_unknown_fields() -> None:
     payload["extra"] = True
     with pytest.raises(ValueError, match="unknown fields"):
         PyatbManifest.from_dict(payload)
-
