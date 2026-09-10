@@ -37,6 +37,11 @@ def test_validate_analysis_is_canonical():
         validate_analysis(["msd"])
 
 
+def test_analyze_trajectory_rejects_empty_frame_sequences():
+    with pytest.raises(ValueError, match="at least one frame"):
+        analyze_trajectory([], ["msd_diffusion"], timestep=1.0)
+
+
 def test_geometry_msd_and_vacf_are_finite(tmp_path):
     frames = load_frames(_xyz(tmp_path / "traj.xyz"))
     result = analyze_trajectory(frames, ["msd_diffusion", "vacf_vdos"], timestep=1.0)

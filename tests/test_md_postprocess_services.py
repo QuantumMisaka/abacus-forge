@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 
 from abacus_forge import ForgeErrorEnvelope, MdPostprocessRequest, MdPostprocessServiceSet, OperationOutcome
@@ -22,6 +23,19 @@ def test_md_service_persists_facts_artifacts_and_one_event(tmp_path: Path):
     assert (root / "outputs/md-postprocess/trajectory_source.json").is_file()
     assert len(list((root / "reports/events").glob("*.json"))) == 1
     assert str(tmp_path) not in json.dumps(result.to_dict())
+    for artifact in result.envelope.artifacts:
+        path = root / artifact.path_rel
+        assert artifact.sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert artifact.size_bytes == path.stat().st_size
+    payload = result.to_dict()
+    assert {ref["artifact_id"] for ref in payload["envelope"]["diagnostics"]["artifact_refs"]} == {
+        artifact.id for artifact in result.envelope.artifacts
+    }
+    assert any(observation["name"] == "sampled_frames" for observation in payload["observations"])
+    report = root / "reports/postprocess" / f"{_request().operation_id}.json"
+    report_payload = json.loads(report.read_text(encoding="utf-8"))
+    assert report_payload["schema_version"] == "forge.md-postprocess-report/v1"
+    assert "report_path_rel" not in report_payload["diagnostics"]
 
 
 def test_missing_trajectory_is_admitted_and_returns_precondition(tmp_path: Path):

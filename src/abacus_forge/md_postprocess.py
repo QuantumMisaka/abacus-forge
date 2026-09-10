@@ -298,6 +298,8 @@ def _rdf(frames: Sequence[Frame], elements: Sequence[str] | None, rmax: float, n
 
 
 def analyze_trajectory(frames: Sequence[Frame], modes: Sequence[str], *, timestep: float | None = None, selection: Any = None, elements: Sequence[str] | None = None, rmax: float = 6.0, nbins: int = 100) -> dict[str, Any]:
+    if not frames:
+        raise ValueError("trajectory must contain at least one frame")
     modes = validate_analysis(modes); results={}
     if not isinstance(nbins, int) or isinstance(nbins, bool) or nbins < 1: raise ValueError("nbins must be positive")
     if not isinstance(rmax, (int, float)) or isinstance(rmax, bool) or not math.isfinite(float(rmax)) or rmax <= 0: raise ValueError("rmax must be finite and positive")
