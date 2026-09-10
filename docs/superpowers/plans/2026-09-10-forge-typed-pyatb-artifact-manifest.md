@@ -6,6 +6,9 @@
 
 **Spec:** docs/superpowers/specs/2026-09-10-forge-typed-pyatb-artifact-manifest-design.html (Approved), under the approved 2026-09-01 and 2026-09-02 Forge SPECs.
 
+**Status:** Implemented and reviewed. Tasks 1–4 below are complete; the historical
+RED/GREEN instructions are retained as execution evidence, not as outstanding work.
+
 **Architecture:** A small src/abacus_forge/pyatb_manifest.py module owns immutable manifest value objects, enum validation and deterministic path/kind mapping. Existing typed PyATB services build the manifest only after their real ArtifactRecord list exists, so every present entry points to an artifact in the same envelope. The machine CLI remains a decoder/router/renderer and legacy helpers are untouched.
 
 **Tech Stack:** Existing frozen dataclasses, typing.Literal, pathlib, explicit MIME constants, current ArtifactRecord/ForgeResultEnvelope/ServiceContext, and pytest with the fixed Paimon interpreter.
@@ -42,7 +45,7 @@
 - Produce classify_pyatb_output(path_rel) -> tuple[str, str, str] returning kind, spin and deterministic media_type.
 - The value object accepts a sparse entry shape for missing records, but prepare/collect builders must require artifact_id/sha256/size_bytes on present entries and forbid those fields on missing entries. Classification is basename-only and deterministic; directory names add no inferred semantics.
 
-- [ ] Step 1: Write the failing pure-contract tests. Cover every approved kind (structure, matrix_hr, matrix_sr, matrix_rr, pyatb_input, kpoint_path, band_info, band_data, band_plot, run_input, other), every spin value including total, invalid canonical paths, unknown fields, missing root arrays, round-trip and known output names. Test that reason is reserved for missing-array entries and that present entries require complete artifact facts in the builders.
+- [x] Step 1: Write the failing pure-contract tests. Cover every approved kind (structure, matrix_hr, matrix_sr, matrix_rr, pyatb_input, kpoint_path, band_info, band_data, band_plot, run_input, other), every spin value including total, invalid canonical paths, unknown fields, missing root arrays, round-trip and known output names. Test that reason is reserved for missing-array entries and that present entries require complete artifact facts in the builders.
 
 ~~~python
 def test_manifest_round_trip_and_known_output_mapping() -> None:
@@ -64,7 +67,7 @@ def test_manifest_round_trip_and_known_output_mapping() -> None:
     assert PyatbManifest.from_dict(manifest.to_dict()) == manifest
 ~~~
 
-- [ ] Step 2: Run the pure tests to verify RED.
+- [x] Step 2: Run the pure tests to verify RED.
 
 Run:
 
@@ -74,7 +77,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: failure because pyatb_manifest and its value objects/classifier do not yet exist.
 
-- [ ] Step 3: Implement the minimal manifest module. Reuse canonical_relative_path and JSON helpers from contracts; validate literals, hashes and sizes in __post_init__; make from_dict strict about unknown keys and require all three root arrays on the wire. Keep the value object permissive enough for a sparse missing record, while builders later enforce that present entries carry artifact_id/sha256/size_bytes, missing entries carry reason without fabricated artifact fields, and reason appears only in the missing array. Classification is basename-only; directory names do not add inferred semantics. Use explicit media mapping before fallback:
+- [x] Step 3: Implement the minimal manifest module. Reuse canonical_relative_path and JSON helpers from contracts; validate literals, hashes and sizes in __post_init__; make from_dict strict about unknown keys and require all three root arrays on the wire. Keep the value object permissive enough for a sparse missing record, while builders later enforce that present entries carry artifact_id/sha256/size_bytes, missing entries carry reason without fabricated artifact fields, and reason appears only in the missing array. Classification is basename-only; directory names do not add inferred semantics. Use explicit media mapping before fallback:
 
 ~~~python
 if name == "band_info.dat": return "band_info", "unknown", "text/plain"
@@ -87,7 +90,7 @@ if name == "input.json": return "run_input", "unknown", "application/json"
 return "other", "unknown", "application/octet-stream"
 ~~~
 
-- [ ] Step 4: Run the pure tests to verify GREEN.
+- [x] Step 4: Run the pure tests to verify GREEN.
 
 Run:
 
@@ -97,9 +100,9 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: all tests in the new file pass with exit code 0; manifest root contains only schema_version, inputs, outputs and missing.
 
-- [ ] Step 5: Refactor only duplicate validation in the new module, run git diff --check, and inspect that no generic contract changed.
+- [x] Step 5: Refactor only duplicate validation in the new module, run git diff --check, and inspect that no generic contract changed.
 
-- [ ] Step 6: Commit Task 1.
+- [x] Step 6: Commit Task 1.
 
 ~~~bash
 git add src/abacus_forge/pyatb_manifest.py src/abacus_forge/__init__.py tests/test_pyatb_manifest.py
@@ -125,7 +128,7 @@ git commit -m "feat: add typed PyATB manifest contract"
 - Produce build_prepare_pyatb_manifest(request, handoff, artifacts) -> PyatbManifest.
 - The service adds manifest.to_dict() under diagnostics["pyatb_manifest"] before existing ServiceContext.persist; persist remains the only artifact-ref injection point.
 
-- [ ] Step 1: Write RED prepare integration tests. Assert manifest version, entries for inputs/STRU, all matrix destinations, inputs/Input and inputs/KPT_band; every present entry id is in the envelope artifact ids; source/destination hashes match pyatb_handoff; nspin 2 maps HR by request order to up/down and SR/rR to shared.
+- [x] Step 1: Write RED prepare integration tests. Assert manifest version, entries for inputs/STRU, all matrix destinations, inputs/Input and inputs/KPT_band; every present entry id is in the envelope artifact ids; source/destination hashes match pyatb_handoff; nspin 2 maps HR by request order to up/down and SR/rR to shared.
 
 ~~~python
 def test_typed_prepare_manifest_aligns_with_same_envelope_artifacts(tmp_path: Path) -> None:
@@ -141,7 +144,7 @@ def test_typed_prepare_manifest_aligns_with_same_envelope_artifacts(tmp_path: Pa
     assert all(entry["artifact_id"] in artifact_ids for entry in by_path.values())
 ~~~
 
-- [ ] Step 2: Run the focused tests to verify RED.
+- [x] Step 2: Run the focused tests to verify RED.
 
 ~~~bash
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py -k prepare_manifest
@@ -149,7 +152,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: failure because typed prepare currently contains pyatb_handoff but no pyatb_manifest.
 
-- [ ] Step 3: Implement the prepare projection. Build a path-to-artifact index, map handoff roles structure→structure, hr→matrix_hr, sr→matrix_sr and rR→matrix_rr, derive HR spin as shared for nspin 1 and up/down for nspin 2, and add generated Input/KPT entries. Raise ForgeInternalError if a present path is absent from the same artifact tuple; never scan other files or alter persisted handoff metadata.
+- [x] Step 3: Implement the prepare projection. Build a path-to-artifact index, map handoff roles structure→structure, hr→matrix_hr, sr→matrix_sr and rR→matrix_rr, derive HR spin as shared for nspin 1 and up/down for nspin 2, and add generated Input/KPT entries. Raise ForgeInternalError if a present path is absent from the same artifact tuple; never scan other files or alter persisted handoff metadata.
 
 ~~~python
 def build_prepare_pyatb_manifest(request, handoff, artifacts) -> PyatbManifest:
@@ -162,7 +165,7 @@ def build_prepare_pyatb_manifest(request, handoff, artifacts) -> PyatbManifest:
     return PyatbManifest(inputs=entries, outputs=(), missing=())
 ~~~
 
-- [ ] Step 4: Run typed prepare, service and legacy tests to verify GREEN.
+- [x] Step 4: Run typed prepare, service and legacy tests to verify GREEN.
 
 ~~~bash
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py tests/test_service_status.py -k 'pyatb or typed'
@@ -170,9 +173,9 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: all selected tests pass with exit code 0; no legacy PyATB assertion changes are required.
 
-- [ ] Step 5: Refactor only prepare manifest assembly, run git diff --check, and verify forge-unit.json metadata.pyatb_handoff is unchanged for the same fixture.
+- [x] Step 5: Refactor only prepare manifest assembly, run git diff --check, and verify forge-unit.json metadata.pyatb_handoff is unchanged for the same fixture.
 
-- [ ] Step 6: Commit Task 2.
+- [x] Step 6: Commit Task 2.
 
 ~~~bash
 git add src/abacus_forge/pyatb_manifest.py src/abacus_forge/pyatb_services.py tests/test_pyatb_typed.py
@@ -198,7 +201,7 @@ git commit -m "feat: project typed PyATB prepare manifest"
 - Produce build_collect_pyatb_manifest(request, envelope) -> PyatbManifest.
 - Keep existing status, metrics, artifacts and diagnostics keys, adding only pyatb_manifest before ServiceContext.persist.
 
-- [ ] Step 1: Write RED collect/parity tests. Cover band_info.dat, band.dat, band_up.dat, band_dn.dat, PNG, PDF, Out/input.json, unknown explicit files, missing output, escaped symlink, hash/read-unavailable output and malformed band info. Assert fixed media types, proven spin mapping, unknown fallback, no fabricated artifact id in missing, unavailable reason mapping and equal API/CLI manifest JSON.
+- [x] Step 1: Write RED collect/parity tests. Cover band_info.dat, band.dat, band_up.dat, band_dn.dat, PNG, PDF, Out/input.json, unknown explicit files, missing output, escaped symlink, hash/read-unavailable output and malformed band info. Assert fixed media types, proven spin mapping, unknown fallback, no fabricated artifact id in missing, unavailable reason mapping and equal API/CLI manifest JSON.
 
 ~~~python
 def test_typed_collect_manifest_keeps_malformed_real_artifact(tmp_path: Path) -> None:
@@ -218,7 +221,7 @@ def test_typed_collect_service_persists_manifest_diagnostics(tmp_path: Path) -> 
         "forge.pyatb-manifest/v1"
 ~~~
 
-- [ ] Step 2: Run the focused tests to verify RED.
+- [x] Step 2: Run the focused tests to verify RED.
 
 ~~~bash
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_machine_cli.py tests/test_cli_process.py -k 'manifest or pyatb_band'
@@ -226,7 +229,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: new manifest assertions fail while existing typed collect/API/CLI tests continue to pass.
 
-- [ ] Step 3: Implement the collect projection. First update collect_typed_pyatb_band to preserve hash/read failures in unavailable_output_paths_rel (without changing parser-malformed behavior). Then index existing ArtifactRecords by canonical path; classify only requested paths; build missing from missing_output_paths_rel, escaped_output_paths_rel and unavailable_output_paths_rel with reasons missing, escaped or unavailable. Do not move parser-malformed existing files out of outputs and do not infer total from band.dat, pictures or band_info.dat.
+- [x] Step 3: Implement the collect projection. First update collect_typed_pyatb_band to preserve hash/read failures in unavailable_output_paths_rel (without changing parser-malformed behavior). Then index existing ArtifactRecords by canonical path; classify only requested paths; build missing from missing_output_paths_rel, escaped_output_paths_rel and unavailable_output_paths_rel with reasons missing, escaped or unavailable. Do not move parser-malformed existing files out of outputs and do not infer total from band.dat, pictures or band_info.dat.
 
 ~~~python
 def build_collect_pyatb_manifest(request, envelope) -> PyatbManifest:
@@ -247,7 +250,7 @@ def build_collect_pyatb_manifest(request, envelope) -> PyatbManifest:
 # _missing_entry(path_rel, reason) -> PyatbManifestEntry
 ~~~
 
-- [ ] Step 4: Run typed, CLI and legacy suites to verify GREEN.
+- [x] Step 4: Run typed, CLI and legacy suites to verify GREEN.
 
 ~~~bash
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py tests/test_machine_cli.py tests/test_cli_process.py
@@ -255,9 +258,9 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: all selected tests pass with exit code 0; isolated equivalent API/CLI fixtures have byte-equivalent pyatb_manifest diagnostics, including unavailable output reasons.
 
-- [ ] Step 5: Refactor only duplicate path/classification code, run git diff --check, and confirm no ArtifactRef or previous-operation lookup was added.
+- [x] Step 5: Refactor only duplicate path/classification code, run git diff --check, and confirm no ArtifactRef or previous-operation lookup was added.
 
-- [ ] Step 6: Commit Task 3.
+- [x] Step 6: Commit Task 3.
 
 ~~~bash
 git add src/abacus_forge/pyatb_manifest.py src/abacus_forge/pyatb_services.py tests/test_pyatb_typed.py tests/test_machine_cli.py tests/test_cli_process.py
