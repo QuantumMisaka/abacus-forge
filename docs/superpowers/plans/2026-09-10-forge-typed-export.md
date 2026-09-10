@@ -272,3 +272,12 @@ git commit -m "docs: close typed export slice"
 - All behavior changes are isolated behind a new typed capability. Existing
   capability-less machine `export` invalid behavior and legacy export paths are
   explicit regression gates.
+
+## Implementation record (2026-09-10)
+
+Tasks 1–3 are implemented and independently reviewed. The typed export slice
+is represented by commits `8e2591b`, `dc6032f`, `52a16d8`, `bda4597`,
+`3f1f7d4`, `370a102`, `015c3b7`, `d16c3ac` and `ac74d55`; the last commit
+closes the marker and architecture-gate hygiene findings from the Task 3
+review. Task 4 documents the shipped experimental capability and records the
+final offline verification. No merge or push is part of this plan.

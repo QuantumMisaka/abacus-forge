@@ -127,9 +127,9 @@ Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
 
-没有 capability 的 `postprocess` 以及 `export` 仍返回 `request.invalid`；typed
-band/DOS 请求必须分别声明 `capability="band"`/`"dos"`。legacy CLI 的默认输出和入口
-保持不变。
+没有 capability 的 `postprocess` 以及 machine `export` 仍返回 `request.invalid`；typed
+band/DOS 请求必须分别声明 `capability="band"`/`"dos"`，typed export 必须显式声明
+`capability="export"`。legacy CLI 的默认输出和入口保持不变。
 
 请求可以来自文件：
 
@@ -489,6 +489,101 @@ workspace-relative output artifact，source 是 input artifact。结果不泄露
 band gap、acceptance 或其它科学判断；缺失 source、路径碰撞和审计保留路径会按既有
 request/precondition/error 语义返回。
 
+## Typed export（experimental）
+
+typed `export` 将一个调用方明确引用的、同一 workspace 内既有 operation outcome
+序列化为一个新的 `forge.export/v1` JSON 文档。它不是“寻找最近结果”的快捷方式：
+`source_artifact_refs` 必须非空，且所有 ref 必须属于同一个已记录的 source operation。
+Forge 只读取该 operation 的 immutable event，保留 source outcome 的原始 facts，并在
+当前 workspace 写出一个新的 output artifact；`execution=completed`、
+`collection=complete`，`scientific=unassessed`。
+
+完整的 typed request 示例：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "export",
+  "operation": "export",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174130",
+  "workspace_rel": ".",
+  "source_artifact_refs": [
+    {"operation_id": "123e4567-e89b-42d3-a456-426614174131", "artifact_id": "energy"}
+  ],
+  "destination_path_rel": "exports/scf-result.json",
+  "format": "json",
+  "pretty": true,
+  "overwrite_policy": "fail"
+}
+```
+
+将请求保存为 `export-request.json` 后，机器路径可以从文件或 stdin 调用：
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation export --request export-request.json
+cat export-request.json | PYTHONPATH=src python -m abacus_forge.cli operation export --stdin
+```
+
+Python API 与 machine CLI 使用同一个 typed service：
+
+```python
+from abacus_forge import ExportRequest, ExportServiceSet
+
+request = ExportRequest.from_dict(payload)
+result = ExportServiceSet.default(workspace_root=".").export.export(request)
+```
+
+输出文档的 wire shape 固定如下；`source_outcome` 是未改变的
+`forge.operation-outcome/v1` payload（其内部 envelope 仍为 `forge.result/v1`）：
+
+```json
+{
+  "schema_version": "forge.export/v1",
+  "source_operation_id": "123e4567-e89b-42d3-a456-426614174131",
+  "source_artifact_refs": [
+    {"operation_id": "123e4567-e89b-42d3-a456-426614174131", "artifact_id": "energy"}
+  ],
+  "source_outcome": {
+    "schema_version": "forge.operation-outcome/v1",
+    "operation_id": "123e4567-e89b-42d3-a456-426614174131",
+    "envelope": {
+      "schema_version": "forge.result/v1",
+      "operation": "collect",
+      "workspace_rel": ".",
+      "status": {
+        "execution": "completed",
+        "scientific": "unassessed",
+        "collection": "complete"
+      },
+      "artifacts": [
+        {
+          "id": "energy",
+          "path_rel": "outputs/energy.dat",
+          "role": "output",
+          "stage": "collect",
+          "availability": "available",
+          "media_type": "text/plain",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "size_bytes": 4
+        }
+      ],
+      "metrics": [],
+      "checks": [],
+      "warnings": [],
+      "diagnostics": {}
+    },
+    "observations": []
+  }
+}
+```
+
+typed export 只序列化显式引用的历史 outcome JSON：不复制二进制 artifact，不扫描或
+选择 latest，不隐式执行 `collect`/`postprocess`，不发布报告，不做科学验证，也不负责
+任务编排、重试、恢复或平台调度。首版仅支持 `format="json"` 与
+`overwrite_policy="fail"`；replace/merge、binary/archive 和多 operation 聚合需要另立
+设计。旧的 `api.export()` 与顶层 `abacus-forge export` 仍保持原有兼容行为，和该 typed
+capability 分开使用。
+
 ## Typed PyATB band handoff（experimental）
 
 typed `pyatb-band` 请求使用与其他 machine operation 相同的
@@ -634,10 +729,10 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 不完整只反映 collection 状态。
 
 typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
-和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立
-`postprocess`/`export`。上文的 typed band/DOS postprocess 和 typed `pyatb-band` handoff
-都是独立的实验性能力，不扩展为 MD 或其它 task 的隐式后处理；typed `export`、PyATB
-properties 和更多真实 property-pack smoke 仍待后续交付。监控、workflow 编排、
+和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立的
+MD `postprocess`/`export`。上文的 typed band/DOS postprocess、typed `pyatb-band` handoff
+和通用 typed `export` 都是彼此独立的实验性能力，不扩展为 MD 或其它 task 的隐式后处理；
+PyATB properties 和更多真实 property-pack smoke 仍待后续交付。监控、workflow 编排、
 恢复/重试、调度和科学判断由 Forge 外部的人类或 Agent 负责；Stage 5 的 legacy 依赖
 解除与稳定发布门禁也尚未完成。
 
@@ -668,8 +763,8 @@ request = MdPrepareRequest(
 
 默认 profile 使用 PBE 与 NVE；调用方或 Agent 负责选择和覆盖物理参数。`collect` 只在
 可用时返回 `MD_dump` 与日志中的解析事实、指标和 artifact 引用，不判断轨迹或物理结果
-是否可接受。本批次不包含 MD 专用 trajectory 转换或独立 `postprocess`/`export`；后者
-仍可在后续 Forge operation 批次交付。monitor、workflow 编排、restart/resume、调度以及
+是否可接受。本 capability 不包含 MD 专用 trajectory 转换或独立的 MD
+`postprocess`/`export`；通用 typed export 不会隐式读取或改写 MD 产物。monitor、workflow 编排、restart/resume、调度以及
 科学判断由 Forge 外部的人类或 Agent 负责。
 
 ## 作为 Python 库使用
@@ -755,16 +850,16 @@ runs/<run_id>/
       <operation-id>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess 与 typed `pyatb-band` handoff 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；typed `export`、PyATB properties、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍不属于本批次。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess、typed `pyatb-band` handoff 与 typed export 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；binary/archive、replace/merge、多 operation 聚合、PyATB properties、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍需独立设计或验证。
 
-事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
+事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。typed export 只读取这些历史 event，不改变 source event。
 
 ## 非目标
 
 - 不内置云平台提交、追踪、下载能力
 - 不引入 AiiDA 语义或工作流编排语义到 Forge 核心
 - 对于 phonon / elastic 等厚工作流，其实现必须基于解耦的单元模块，且其输入/计算/输出必须可解耦
-- typed `export`、PyATB properties、nspin 4、property/composite 聚合不在本批次
+- binary/archive 或 replace/merge 形式的 export、多 operation 聚合、PyATB properties、nspin 4、property/composite 聚合不在本批次
 - 调度、workflow/orchestration、重试/恢复和科学判断由 Forge 外部的调用方负责
 
 ## 贡献
