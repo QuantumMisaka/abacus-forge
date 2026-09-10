@@ -347,7 +347,7 @@ Expected: pytest exits 0, the only skipped tests are the pre-existing opt-in rea
 
 - [x] **Step 6: Request an independent task-scoped review and whole-branch review.** Bind any finding to the Draft SPEC and exact diff, fix Critical/Important findings, record justified Minor deferrals in this plan, and rerun the complete gate after each fix wave. No cross-model review or real-smoke claim is required unless separately requested or supplied.
 
-- [ ] **Step 7: Commit documentation and verification evidence.**
+- [x] **Step 7: Commit documentation and verification evidence.**
 
 ```bash
 git add README.md ROADMAP.md tests/test_architecture.py docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html docs/superpowers/plans/2026-09-10-forge-property-manifest.md
@@ -390,7 +390,9 @@ The companion SPEC is intentionally still `Draft for review`; no execution
 record here substitutes for its explicit human approval. The independent
 review first found the planned cross-array duplicate-path gap and two smaller
 parity/provenance test gaps; all were fixed in `8fe2478`, and its final
-follow-up reported no Critical, Important, or new Minor findings. The only
-remaining plan item is the final documentation commit. Real ABACUS execution,
-scientific validation, workflow orchestration, retry/resume, and
-scheduler/platform behavior remain outside this slice.
+follow-up reported no Critical, Important, or new Minor findings. The final
+documentation and verification commit is `7e0c113`. All planned implementation,
+review, and documentation items are now complete; explicit human approval is
+still required before treating the Draft SPEC as a normative/stable Forge
+surface. Real ABACUS execution, scientific validation, workflow orchestration,
+retry/resume, and scheduler/platform behavior remain outside this slice.
