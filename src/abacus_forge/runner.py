@@ -46,20 +46,11 @@ class LocalRunner:
             "timeout_seconds": self.timeout_seconds,
         }
 
-    def _resolve_executable(self, workspace: Workspace) -> str:
-        return self._resolve_program(
-            self.executable,
-            role="engine",
-            cwd=workspace.inputs_dir,
-            env={**os.environ, **self._run_environment()},
-        )
-
     @staticmethod
     def _resolve_program(
         program: str,
         *,
         role: str,
-        cwd: Path | None = None,
         env: dict[str, str] | None = None,
     ) -> str:
         candidate = Path(program)
@@ -80,6 +71,7 @@ class LocalRunner:
             resolved = shutil.which(program, path=search_path)
             if resolved is not None:
                 return resolved
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         for entry in search_path.split(os.pathsep):
             directory = Path(entry) if entry else Path(".")
             if not directory.is_absolute():
@@ -98,18 +90,13 @@ class LocalRunner:
         command = self.build_command(workspace)
         env = {**os.environ, **self._run_environment()}
         if self.launcher:
-            command[0] = self._resolve_program(
-                str(command[0]), role="launcher", cwd=workspace.inputs_dir, env=env
-            )
+            command[0] = self._resolve_program(str(command[0]), role="launcher", env=env)
         elif self.mpi_ranks > 1:
-            command[0] = self._resolve_program(
-                "mpirun", role="launcher", cwd=workspace.inputs_dir, env=env
-            )
+            command[0] = self._resolve_program("mpirun", role="launcher", env=env)
         executable_index = len(self.launcher) if self.launcher else (3 if self.mpi_ranks > 1 else 0)
         command[executable_index] = self._resolve_program(
             str(command[executable_index]),
             role="engine",
-            cwd=workspace.inputs_dir,
             env=env,
         )
         return command
