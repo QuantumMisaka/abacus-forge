@@ -159,6 +159,53 @@ def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_
     }]
 
 
+def test_typed_execute_runs_relative_path_executable_resolved_from_process_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A directory-qualified relative executable uses the caller's cwd at run time."""
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "bin").mkdir()
+    write_fake_abacus(tmp_path / "bin" / "fake-abacus", stdout_lines=["NORMAL END"])
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174119",
+        workspace_rel="workspace",
+        executable="bin/fake-abacus",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert result.envelope.diagnostics["failure_class"] == "none"
+    assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+
+
+def test_local_runner_runs_relative_path_launcher_and_executable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "bin").mkdir()
+    write_fake_abacus(tmp_path / "bin" / "fake-abacus", stdout_lines=["NORMAL END"])
+    launcher = tmp_path / "bin" / "launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os\nimport sys\nos.execv(sys.argv[1], sys.argv[1:])\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+
+    result = LocalRunner(executable="bin/fake-abacus", launcher=("bin/launcher",)).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+
+
 def test_relax_service_set_exposes_typed_operations(tmp_path: Path) -> None:
     service_set_type = getattr(abacus_forge, "RelaxServiceSet", None)
     assert service_set_type is not None
