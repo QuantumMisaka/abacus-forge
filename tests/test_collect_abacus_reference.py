@@ -73,6 +73,20 @@ def test_collect_parses_native_md_rows_and_keeps_energy_families_separate(tmp_pa
     assert result.diagnostics["native_md_block_complete"] is True
 
 
+def test_collect_accepts_native_md_header_without_units(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "native-md-no-units").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_md.log",
+        "Energy              Potential           Kinetic             Temperature         Pressure (KBAR)\n"
+        "-1.0                -1.2                0.2                 300                 4.0\n",
+    )
+    result = collect(workspace)
+    assert result.metrics["md_last_total_energy"] == pytest.approx(-13.605698)
+    assert result.metrics["md_last_pressure"] == pytest.approx(4.0)
+    assert result.diagnostics["native_md_block_complete"] is True
+
+
 def test_collect_extracts_native_abacus_and_md_metrics(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "native-metrics").ensure_layout()
     workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")

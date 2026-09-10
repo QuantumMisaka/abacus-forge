@@ -18,11 +18,11 @@ _NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 _NATIVE_FINAL_ETOT = re.compile(rf"!FINAL_ETOT_IS\s*[=:]*\s*({_NUMBER})\s*eV", re.IGNORECASE)
 _MD_THERMO_HEADER = re.compile(
     r"Energy(?:\s*\(Ry\))?\s+Potential(?:\s*\(Ry\))?\s+Kinetic(?:\s*\(Ry\))?\s+"
-    r"Temperature\s*\(K\)(?:\s+Pressure\s*\(kbar\))?",
+    r"Temperature(?:\s*\(K\))?(?:\s+Pressure(?:\s*\(kbar\))?)?",
     re.IGNORECASE,
 )
 _MD_ENERGY_HEADER = re.compile(r"Energy(?:\s*\(Ry\))?\s+Potential(?:\s*\(Ry\))?\s+Kinetic(?:\s*\(Ry\))?", re.IGNORECASE)
-_MD_TEMPERATURE_HEADER = re.compile(r"Temperature\s*\(K\)(?:\s+Pressure\s*\(kbar\))?", re.IGNORECASE)
+_MD_TEMPERATURE_HEADER = re.compile(r"Temperature(?:\s*\(K\))?(?:\s+Pressure(?:\s*\(kbar\))?)?", re.IGNORECASE)
 _RY_TO_EV = 13.605698
 
 _METRIC_PATTERNS = {
