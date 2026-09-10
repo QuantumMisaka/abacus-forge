@@ -127,6 +127,11 @@ skipped`. `git diff --check` passed. The review findings are therefore closed
 for this test/documentation package, while the absence of a supplied ABACUS
 workspace and executable still prevents a real execution claim.
 
+Scoped re-review of repair commit `87934ec` found no remaining
+Critical/Important/Minor findings. The typed SCF gate now has a bounded engine
+and wrapper timeout, complete status-axis assertions, and an exact manifest
+event-path assertion; the ordinary helper default remains unchanged.
+
 **Ruling:** This plan closes a release-evidence harness gap only. It does not
 promote SCF maturity, add typed MD/PyATB/NEB real smoke, or alter the approved
 Forge responsibility boundary; those remain separate evidence batches.
