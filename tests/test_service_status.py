@@ -291,6 +291,54 @@ def test_local_runner_preserves_relative_symlink_argv_zero(
     assert result.command == ["bin/link-abacus"]
 
 
+def test_local_runner_treats_dot_slash_engine_as_explicit_path_with_absolute_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["DOT ENGINE"])
+
+    result = LocalRunner(
+        executable="./fake-abacus",
+        env_overrides={"PATH": str(Path(sys.executable).parent)},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "DOT ENGINE"
+    assert result.command == ["./fake-abacus"]
+    assert executable.exists()
+
+
+def test_local_runner_treats_dot_slash_launcher_as_explicit_path_with_mixed_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["DOT LAUNCHER"])
+    launcher = tmp_path / "launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os\nimport sys\nos.execv(sys.argv[1], sys.argv[1:])\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+
+    result = LocalRunner(
+        executable="./fake-abacus",
+        launcher=("./launcher",),
+        env_overrides={"PATH": os.pathsep.join((str(Path(sys.executable).parent), "relative-bin"))},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "DOT LAUNCHER"
+    assert result.command == ["./launcher", "./fake-abacus"]
+
+
 def test_relax_service_set_exposes_typed_operations(tmp_path: Path) -> None:
     service_set_type = getattr(abacus_forge, "RelaxServiceSet", None)
     assert service_set_type is not None

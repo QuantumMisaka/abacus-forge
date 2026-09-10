@@ -54,7 +54,10 @@ class LocalRunner:
         env: dict[str, str] | None = None,
     ) -> str:
         candidate = Path(program)
-        if candidate.parent != Path():
+        # Path("./name").parent is `.`; inspect the original spelling so an
+        # explicit directory component never falls through to PATH lookup.
+        has_directory = os.sep in program or (os.altsep is not None and os.altsep in program)
+        if has_directory:
             # Directory-qualified paths are relative to the caller's cwd.  Use
             # lexical anchoring so a symlink remains visible as argv[0].
             resolved = candidate if candidate.is_absolute() else Path.cwd() / candidate
