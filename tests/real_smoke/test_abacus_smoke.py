@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from abacus_forge.api import UnitSpec, collect_unit, execute_unit
+from abacus_forge.input_io import read_input
 from tests.support.process import run_cli
 
 
@@ -85,6 +86,16 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
 
     workspace = tmp_path / "typed-scf-smoke"
     shutil.copytree(source, workspace, symlinks=False)
+    input_path = workspace / "inputs" / "INPUT"
+    try:
+        calculation = read_input(input_path).get("calculation", "").strip().lower()
+    except (OSError, UnicodeError) as exc:
+        pytest.fail(f"typed SCF smoke workspace has unreadable INPUT: {input_path}: {exc}")
+    if calculation != "scf":
+        pytest.fail(
+            "typed SCF smoke workspace must declare calculation=scf in "
+            f"{input_path}; got {calculation or '<missing>'!r}"
+        )
     workspace_root = workspace.resolve()
     workspace_rel = workspace.name
     execute_id = str(uuid.uuid4())
@@ -290,6 +301,7 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
         "--stdin",
         cwd=tmp_path,
         input_text=json.dumps(execute_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
     )
     assert executed.returncode == 0, executed.stdout + executed.stderr
     assert executed.stderr == ""
@@ -318,6 +330,7 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
         "--stdin",
         cwd=tmp_path,
         input_text=json.dumps(collect_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
     )
     assert collected.returncode == 0, collected.stdout + collected.stderr
     assert collected.stderr == ""
