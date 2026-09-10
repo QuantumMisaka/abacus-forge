@@ -22,7 +22,7 @@
 <body>
   <header>
     <h1>ABACUS-Forge typed PyATB artifact manifest</h1>
-    <p><strong>状态：</strong>Draft for review</p>
+    <p><strong>状态：</strong>Approved</p>
     <p><strong>负责人：</strong>QuantumMisaka / Codex</p>
     <p><strong>更新：</strong>2026-09-10</p>
     <p><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
@@ -160,12 +160,12 @@
       <h2>风险与开放项</h2>
       <div class="decision open">
         <p><strong>已知风险：</strong>不同 PyATB 版本可能使用额外文件名或输出布局；本设计通过显式路径和 <code>other/unknown</code> 保留事实，不宣称未知文件的领域语义。未来扩展映射必须带独立证据和版本化变更。</p>
-        <p><strong>需要审阅的唯一决策：</strong>是否接受“capability 专属 diagnostics manifest、通用 ArtifactRecord 不变、未知文件不猜测”的公共边界。批准后再写实现 PLAN；若不批准，应在实现前明确替代的 schema 归属和兼容窗口。</p>
+        <p><strong>决策已收敛：</strong>接受“capability 专属 diagnostics manifest、通用 ArtifactRecord 不变、未知文件不猜测”的公共边界。批准来源为本线程已确认沿既定方向推进的执行授权；实现已按本 SPEC 与 PLAN 完成。</p>
       </div>
       <p><strong>依据：</strong>当前 typed PyATB plan、Forge 两份批准 SPEC、现有 <code>ArtifactRecord</code>/<code>ServiceContext.persist</code> 实现，以及 abacus-agent-tools、abacuslab 和本地 PyATB 的输入/输出审计。</p>
     </section>
   </main>
 
-  <footer>本文件是审阅草案，不改变当前 Forge 代码或已批准 SPEC；批准后才进入 writing-plans 和实现。</footer>
+  <footer>本文件是已批准 SPEC；实现与验证按关联 PLAN 执行。本切片不改变通用 result、ArtifactRecord 或 legacy helper。</footer>
 </body>
 </html>

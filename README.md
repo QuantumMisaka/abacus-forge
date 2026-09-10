@@ -566,6 +566,16 @@ result = services.prepare.prepare(PyatbBandPrepareRequest.from_dict(prepare_payl
 该 capability 仅在离线 fixture/mock 与 API/CLI parity 范围内保持
 `experimental`；本仓库不以此文档声称真实 PyATB/ABACUS smoke、科学验证或稳定晋级。
 
+成功的 typed `prepare` 与 `collect` 结果会在同一 `forge.result/v1` envelope 的
+`diagnostics.pyatb_manifest` 中提供稳定文件语义。每个 present entry 的 `artifact_id`
+都指向同一 envelope 的 artifact；`kind`/`spin` 使用有限枚举。malformed 但真实可读的
+文件仍是 output artifact，不可访问、越界或缺失的文件进入 `missing` 并带原因。manifest
+不自动扫描目录、不提供 export，也不做科学验证；任务编排、平台调度和科学结论由调用方负责。
+
+```json
+{"schema_version":"forge.pyatb-manifest/v1","inputs":[],"outputs":[],"missing":[]}
+```
+
 ## Typed Relax operations
 
 `RelaxPrepareRequest`、`RelaxModifyRequest`、`RelaxExecuteRequest` 和

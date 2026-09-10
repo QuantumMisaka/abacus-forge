@@ -23,7 +23,7 @@
 
 ---
 
-### Task 1: Define typed manifest value objects and mapping vocabulary
+### Task 1: Define typed manifest value objects and mapping vocabulary ✅
 
 **Files:**
 - Create: src/abacus_forge/pyatb_manifest.py
@@ -108,7 +108,7 @@ git commit -m "feat: add typed PyATB manifest contract"
 
 ---
 
-### Task 2: Project explicit prepare handoff and generated inputs
+### Task 2: Project explicit prepare handoff and generated inputs ✅
 
 **Files:**
 - Modify: src/abacus_forge/pyatb_manifest.py with build_prepare_pyatb_manifest(...).
@@ -181,7 +181,7 @@ git commit -m "feat: project typed PyATB prepare manifest"
 
 ---
 
-### Task 3: Project explicit collect artifacts and facts
+### Task 3: Project explicit collect artifacts and facts ✅
 
 **Files:**
 - Modify: src/abacus_forge/pyatb_manifest.py with build_collect_pyatb_manifest(...).
@@ -268,6 +268,12 @@ git commit -m "feat: project typed PyATB collect manifest"
 
 ### Task 4: Documentation, architecture checks and final branch verification
 
+Progress ledger: Task 1 completed by `7628a76`, `4533462`, `9e1340c` and verified by
+the pure manifest suite (20 tests). Task 2 completed by `e281a84` and `4fde284`,
+covering prepare provenance and deterministic MIME (23 focused tests passed). Task 3
+completed by `f4e0d5c` and `3afc132`, covering collect availability semantics and
+subprocess API/CLI parity (31 focused tests and 1 process parity test passed).
+
 **Files:**
 - Modify: README.md with manifest shape and one API/CLI example, keeping typed PyATB scope/facts-only language concise.
 - Modify: ROADMAP.md to mark manifest closure experimental and keep properties, nspin 4, export and real-smoke deferred.
@@ -284,9 +290,9 @@ git commit -m "feat: project typed PyATB collect manifest"
 - Consume completed manifest value objects and typed service output from Tasks 1–3.
 - Produce an approved SPEC/PLAN record, current-state documentation and exact offline evidence; no production interface beyond diagnostics["pyatb_manifest"].
 
-- [ ] Step 1: Update README/ROADMAP after behavior is green. Document successful typed prepare/collect manifest, finite kinds/spins, same-envelope artifact ids, malformed versus unavailable-file fact behavior and the external scientific boundary. Do not document automatic discovery or export.
+- [x] Step 1: Update README/ROADMAP after behavior is green. Document successful typed prepare/collect manifest, finite kinds/spins, same-envelope artifact ids, malformed versus unavailable-file fact behavior and the external scientific boundary. Do not document automatic discovery or export.
 
-- [ ] Step 2: Run documentation, architecture and discovery checks.
+- [x] Step 2: Run documentation, architecture and discovery checks.
 
 The discovery request schema and capability descriptor do not change: this slice
 adds response diagnostics only, so no discovery.py edit is expected unless an
@@ -298,7 +304,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: selected gates pass with exit code 0 and no forbidden imports.
 
-- [ ] Step 3: Run the complete deterministic gate and retain raw output.
+- [x] Step 3: Run the complete deterministic gate and retain raw output.
 
 ~~~bash
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider
@@ -307,11 +313,11 @@ git diff --check
 
 Expected: pytest exits 0 with all existing/new tests passing; diff-check produces no output. Record exact HEAD, output and intentional real-smoke skips.
 
-- [ ] Step 4: Perform plan/spec self-review before final review. Scan for placeholder text, verify every M1–M7 requirement maps to tests/implementation, confirm no legacy helper changes and confirm the manifest root is the only new wire object. After human approves SPEC/PLAN, change SPEC status to Approved and record approval source.
+- [x] Step 4: Perform plan/spec self-review before final review. Scan for placeholder text, verify every M1–M7 requirement maps to tests/implementation, confirm no legacy helper changes and confirm the manifest root is the only new wire object. After human approves SPEC/PLAN, change SPEC status to Approved and record approval source.
 
-- [ ] Step 5: Request independent task reviews and one whole-branch review. Bind findings to the implementation diff and approved SPEC; resolve Critical/Important findings, record verified Minor deferrals and rerun the complete gate after each fix wave. Real smoke remains unavailable evidence unless separately supplied.
+- [x] Step 5: Request independent task reviews and one whole-branch review. Bind findings to the implementation diff and approved SPEC; resolve Critical/Important findings, record verified Minor deferrals and rerun the complete gate after each fix wave. Real smoke remains unavailable evidence unless separately supplied.
 
-- [ ] Step 6: Commit docs and verification record.
+- [x] Step 6: Commit docs and verification record.
 
 ~~~bash
 git add README.md ROADMAP.md tests/test_architecture.py docs/superpowers/specs/2026-09-10-forge-typed-pyatb-artifact-manifest-design.html docs/superpowers/plans/2026-09-10-forge-typed-pyatb-artifact-manifest.md
