@@ -360,27 +360,28 @@ def _closest_lattice_offset(rhs: np.ndarray, r: np.ndarray) -> np.ndarray:
     """
 
     dimension = len(rhs)
-    candidate = np.zeros(dimension, dtype=np.int64)
+    base = np.zeros(dimension, dtype=np.int64)
     for index in range(dimension - 1, -1, -1):
-        center = (rhs[index] - np.dot(r[index, index + 1 :], candidate[index + 1 :])) / r[index, index]
-        candidate[index] = int(np.rint(center))
-    residual = rhs - r @ candidate
+        center = (rhs[index] - np.dot(r[index, index + 1 :], base[index + 1 :])) / r[index, index]
+        base[index] = int(np.rint(center))
+    # Integer coordinates can be very large for a trajectory that contains a
+    # large absolute translation. Shift by the Babai point before doing any
+    # sphere arithmetic so the search target and its tolerance stay local.
+    local_rhs = rhs - r @ base
+    candidate = np.zeros(dimension, dtype=np.int64)
+    residual = local_rhs.copy()
     best_squared = float(np.dot(residual, residual))
     best = candidate.copy()
-    tolerance = 1e-12 * max(1.0, float(np.dot(rhs, rhs)), float(np.linalg.norm(r)) ** 2)
+    tolerance = np.finfo(float).eps * max(1.0, float(np.dot(local_rhs, local_rhs)), float(np.linalg.norm(r)) ** 2) * 10.0
 
     def visit(index: int, partial_squared: float) -> None:
         nonlocal best_squared, best
         if index < 0:
-            candidate_key = tuple(int(value) for value in candidate)
-            best_key = tuple(int(value) for value in best)
-            if partial_squared < best_squared - tolerance or (
-                abs(partial_squared - best_squared) <= tolerance and candidate_key < best_key
-            ):
+            if partial_squared < best_squared:
                 best_squared = partial_squared
                 best = candidate.copy()
             return
-        tail = rhs[index] - np.dot(r[index, index + 1 :], candidate[index + 1 :])
+        tail = local_rhs[index] - np.dot(r[index, index + 1 :], candidate[index + 1 :])
         diagonal = float(r[index, index])
         remaining = max(0.0, best_squared + tolerance - partial_squared)
         radius = math.sqrt(remaining) / abs(diagonal)
@@ -396,7 +397,7 @@ def _closest_lattice_offset(rhs: np.ndarray, r: np.ndarray) -> np.ndarray:
                 visit(index - 1, new_partial)
 
     visit(dimension - 1, 0.0)
-    return best
+    return base + best
 
 
 def _minimum_image(delta: np.ndarray, frame: Frame) -> np.ndarray:

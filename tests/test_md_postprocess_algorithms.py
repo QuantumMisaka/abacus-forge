@@ -336,6 +336,36 @@ def test_partial_pbc_minimum_image_works_with_zero_nonperiodic_cell_vector():
     assert minimum == pytest.approx(np.array([0.49, 0.49, 1.0]) @ cell - cell[0] + np.array([0.0, 0.0, 2.0]))
 
 
+def test_full_pbc_minimum_image_is_invariant_under_large_lattice_translation():
+    cell = np.eye(3)
+    frame = Frame(
+        np.array([[0.0, 0.0, 0.0], [0.1, 0.2, 0.3]]),
+        ("H", "O"),
+        cell,
+        np.ones(3, bool),
+        np.ones(2),
+    )
+    displacement = np.array([0.1, 0.2, 0.3])
+    translated = displacement + np.array([1_000_000, 0, 0]) @ cell
+
+    assert md._mi(translated, frame) == pytest.approx(displacement)
+
+
+def test_partial_pbc_minimum_image_is_invariant_under_large_active_translation():
+    cell = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 2.0]])
+    frame = Frame(
+        np.array([[0.0, 0.0, 0.0], [0.1, 3.25, 0.2]]),
+        ("H", "O"),
+        cell,
+        np.array([True, False, True]),
+        np.ones(2),
+    )
+    displacement = np.array([0.1, 3.25, 0.2])
+    translated = displacement + np.array([1_000_000, 0, 500_000]) @ cell
+
+    assert md._mi(translated, frame) == pytest.approx(displacement)
+
+
 def test_rdf_cutoff_and_pair_plots_are_bounded(tmp_path):
     frame = Frame(np.array([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]), ("H", "O", "C"), np.diag([4., 4., 4.]), np.ones(3, bool), np.ones(3))
     with pytest.raises(ValueError):
