@@ -141,3 +141,8 @@ CLI, or scientific boundary.  Regression coverage lives in
 `tests/test_md_postprocess_algorithms.py`; focused MD/CLI/service tests pass on
 the `forge-core-fidelity` branch.  This is an internal correctness hardening,
 not a new capability or promotion claim.
+
+The pure writer also preflights its deterministic output names and rejects a
+symlinked output directory or output file before writing any analysis file.
+This mirrors the service containment guarantee for direct algorithm callers;
+it does not introduce a new path field or alter the typed service contract.

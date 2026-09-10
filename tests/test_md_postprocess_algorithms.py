@@ -79,6 +79,42 @@ def test_run_writes_deterministic_analysis_and_controls(tmp_path):
     json.loads((output / "analysis.json").read_text(encoding="utf-8"))
 
 
+def test_run_rejects_output_symlink_before_writing_any_analysis_file(tmp_path):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    output = tmp_path / "out"
+    output.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("keep", encoding="utf-8")
+    (output / "msd.txt").symlink_to(outside)
+    with pytest.raises(ValueError, match="symlink"):
+        run_md_postprocess(
+            trajectory,
+            ["msd_diffusion"],
+            output_dir=output,
+            parameters={"timestep": 1.0, "save_data": True, "save_plot": False},
+        )
+    assert outside.read_text(encoding="utf-8") == "keep"
+    assert not (output / "analysis.json").exists()
+
+
+def test_run_rejects_symlink_output_directory(tmp_path):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    target = tmp_path / "real-out"
+    target.mkdir()
+    alias = tmp_path / "alias-out"
+    try:
+        alias.symlink_to(target, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+    with pytest.raises(ValueError, match="output_dir must not be a symlink"):
+        run_md_postprocess(
+            trajectory,
+            ["msd_diffusion"],
+            output_dir=alias,
+            parameters={"timestep": 1.0, "save_data": False, "save_plot": False},
+        )
+
+
 def test_periodic_geometry_and_one_based_selection():
     frame = Frame(
         np.array([[1.0, 0, 0], [0.0, 0, 0], [0.0, 1.0, 0]]),

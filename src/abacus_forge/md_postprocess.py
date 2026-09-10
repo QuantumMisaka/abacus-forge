@@ -327,8 +327,29 @@ class MdPostprocessResult:
     summary: Mapping[str, Any]; diagnostics: Mapping[str, Any]; results: Mapping[str, Any]; sampling: Mapping[str, Any]; generated_files: tuple[str, ...]
 
 
+def _prepare_output_dir(output_dir: str | Path) -> Path:
+    out = Path(output_dir)
+    if out.is_symlink():
+        raise ValueError("output_dir must not be a symlink")
+    out.mkdir(parents=True, exist_ok=True)
+    if not out.is_dir():
+        raise ValueError("output_dir must be a directory")
+    return out
+
+
+def _safe_output_path(output_dir: Path, name: str) -> Path:
+    path = output_dir / name
+    if path.is_symlink():
+        raise ValueError(f"output path is a symlink: {name}")
+    try:
+        path.resolve(strict=False).relative_to(output_dir.resolve())
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"generated output escapes output_dir: {name}") from exc
+    return path
+
+
 def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_dir: str | Path, start: int = 0, end: int | None = None, stride: int = 1, parameters: Mapping[str, Any] | None = None) -> MdPostprocessResult:
-    modes=validate_analysis(modes); params=canonical_parameter_values(parameters or {}, modes); frames=load_frames(trajectory,start=start,end=end,stride=stride); out=Path(output_dir); out.mkdir(parents=True,exist_ok=True)
+    modes=validate_analysis(modes); params=canonical_parameter_values(parameters or {}, modes); frames=load_frames(trajectory,start=start,end=end,stride=stride); out=_prepare_output_dir(output_dir)
     results=analyze_trajectory(frames,modes,timestep=params.get("timestep"),selection=params.get("selection"),elements=params.get("elements"),rmax=float(params.get("rmax",6.0)),nbins=int(params.get("nbins",100)))
     generated=[]; save_data=params.get("save_data",True); save_plot=params.get("save_plot",True)
     def write_data(path: Path, mode: str, value: Mapping[str, Any]) -> None:
@@ -344,6 +365,21 @@ def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_d
             rows = ((pair, r, g) for pair, item in value.items() for r, g in zip(item["r_angstrom"], item["g_r"])); text = "pair r_angstrom g_r\n" + "\n".join(f"{pair} {float(r):.17g} {float(g):.17g}" for pair, r, g in rows)
         path.write_text(text + "\n", encoding="utf-8")
     if not isinstance(save_data, bool) or not isinstance(save_plot, bool): raise ValueError("save_data and save_plot must be booleans")
+    output_names = {"analysis.json"}
+    if save_data:
+        for mode in modes:
+            if mode == "rdf":
+                output_names.update(f"rdf_{pair.replace('-', '_')}.txt" for pair in results[mode])
+            else:
+                output_names.add({"msd_diffusion":"msd.txt", "vacf_vdos":"vacf_vdos.txt", "bond_length":"bond_lengths.txt", "bond_angle":"bond_angles.txt"}[mode])
+    if save_plot:
+        for mode in modes:
+            if mode == "rdf":
+                output_names.update(f"rdf_{pair.replace('-', '_')}.png" for pair in results[mode])
+            else:
+                output_names.add({"msd_diffusion":"msd.png", "vacf_vdos":"vacf_vdos.png", "bond_length":"bond_lengths.png", "bond_angle":"bond_angles.png"}[mode])
+    for name in output_names:
+        _safe_output_path(out, name)
     if save_data:
         for mode in modes:
             if mode == "rdf":
