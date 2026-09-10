@@ -51,6 +51,10 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
         "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",
     ),
+    "test_typed_scf_machine_execute_and_collect": (
+        "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
     "test_typed_relax_machine_execute_and_collect": (
         "ABACUS_FORGE_RELAX_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",

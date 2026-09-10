@@ -10,6 +10,28 @@ export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
 conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 ```
 
+The legacy SCF smoke above is intentionally a separate compatibility evidence
+surface: it calls the legacy Python `execute_unit`/`collect_unit` API and only
+checks the legacy result objects. The typed SCF smoke uses the machine CLI
+(`operation execute --stdin` followed by `operation collect --stdin`) with
+distinct UUIDv4 operation IDs, and checks the serialized operation envelope,
+facts, audit events, manifest references, and contained artifact paths. Only
+the typed test proves the typed machine path; neither test makes a scientific
+acceptance decision.
+
+To select only the typed SCF machine smoke:
+
+```bash
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_scf
+```
+
+On a checkout without the two external environment values, the focused local
+selection is skipped (`1 skipped, 2 deselected` without `--run-real-smoke`),
+and no real execution evidence is claimed. Supplying an invalid workspace or
+executable fails the test rather than turning the missing input into a pass.
+
 The typed Relax path is a separate, experimental machine-CLI smoke. It copies
 the prepared source into a temporary workspace, runs one `execute` request and
 one `collect` request with distinct operation IDs, and checks serialized
@@ -32,5 +54,8 @@ environment values skip with a precise reason. An invalid supplied workspace,
 capability, or executable fails the test. No real Relax workspace is bundled
 with Forge, so this test remains unproven until those values are supplied.
 
-This gate proves Forge execution and collection integration only. It does not
-replace convergence studies, platform validation, or the Paimon v1.2 benchmark.
+All three smoke tests are evidence gates, not scientific validation. They prove
+only the selected Forge execution/collection integration and do not replace
+convergence studies, platform validation, workflow/scheduler checks, or the
+Paimon v1.2 benchmark. All capabilities remain experimental until their own
+real gates and the other Stage 4 release conditions are satisfied.
