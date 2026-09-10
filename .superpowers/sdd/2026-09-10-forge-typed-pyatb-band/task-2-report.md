@@ -104,3 +104,54 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
   remain factual parser absence.
 
 Fix-round implementation commit: `ec97e35` (`fix: tighten typed PyATB handoff boundaries`).
+
+## Fix round R2
+
+This terminal-review fix round started from `a487557` and remained within the
+Task 2 typed handoff/collection boundary.
+
+### RED
+
+The directory-alias and band-gap parser regressions were run before their
+implementation changes.
+
+Command:
+
+```text
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py -k "directory_alias or band_gap or spin_gap or incomplete"
+```
+
+Raw result:
+
+```text
+FF..FFFFFF                                                               [100%]
+8 failed, 2 passed, 33 deselected in 0.72s
+```
+
+The expected failures covered both handoff modes for a directory symlink,
+leading-zero-free decimal parsing, cross-line/non-finite/empty values, and
+incomplete numeric values.
+
+### GREEN and acceptance
+
+After the fixes, the owning typed suite and unchanged legacy suite pass at the
+implementation revision:
+
+```text
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py
+..................................................                       [100%]
+50 passed in 2.04s
+```
+
+`git diff --check HEAD^ HEAD` passed with no output (exit 0).
+
+### R2 implementation
+
+- Typed destination preflight rejects directory symlink ancestors, including
+  the `inputs/pyatb_sources` staging parent, for both link and copy modes
+  before any staging or generated-file write.
+- Band-gap matching is line-local and requires a complete finite numeric
+  token; `.25` remains valid while NaN/Inf, empty, cross-line, and incomplete
+  values are reported as malformed without a metric.
+
+Implementation commit: `b044156` (`fix: reject typed PyATB directory aliases`).
