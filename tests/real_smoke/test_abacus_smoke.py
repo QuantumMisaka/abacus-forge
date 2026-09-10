@@ -278,9 +278,10 @@ def test_typed_md_machine_execute_and_collect(tmp_path: Path) -> None:
     # write through a preserved output symlink into the caller's workspace.
     shutil.copytree(source, workspace, symlinks=False)
     preexisting_md_outputs = []
-    root_log = workspace / "running_md.log"
-    if root_log.is_file():
-        preexisting_md_outputs.append(root_log.relative_to(workspace).as_posix())
+    for root_name in ("running_md.log", "MD_dump"):
+        root_output = workspace / root_name
+        if root_output.is_file():
+            preexisting_md_outputs.append(root_output.relative_to(workspace).as_posix())
     outputs_dir = workspace / "outputs"
     if outputs_dir.is_dir():
         preexisting_md_outputs.extend(
