@@ -10,6 +10,7 @@
 - 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
+- 2026-09-10 已补齐原生 ABACUS collection fidelity：SCF 识别 `!FINAL_ETOT_IS`（eV）；typed MD 从唯一 contained `running_md.log` 收集原生热力学事实（Ry→eV、K、可选 kbar），`MD_dump` 仅作为帧/步数与工件事实；legacy synthetic dump 兼容路径保持不变。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
 - 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位与资源/质量保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
@@ -36,7 +37,7 @@
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
 - 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
-- typed MD 当前交付单工作目录的准备、修改、一次本地执行、事实收集以及独立 `postprocess`；`MD_dump`/日志只作为可用事实返回。MD 后处理仍不负责 trajectory conversion、PDB/TUI、monitor、restart/resume、workflow 编排、调度、导出或科学判断；这些边界保持在 Forge 外。后续批次仍包括 PyATB properties、nspin 4 和更多 property-pack 的真实 smoke。
+- typed MD 当前交付单工作目录的准备、修改、一次本地执行、原生日志/`MD_dump` 事实收集以及独立 `postprocess`；`running_md.log` 的热力学事实与 `MD_dump` 的帧/步数事实分开投影，legacy synthetic dump 解析保持兼容。MD 后处理仍不负责 trajectory conversion、PDB/TUI、monitor、restart/resume、workflow 编排、调度、导出或科学判断；这些边界保持在 Forge 外。后续批次仍包括 PyATB properties、nspin 4 和更多 property-pack 的真实 smoke。
 - 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；PyATB properties、nspin 4 和 real-smoke 继续 deferred。
 - 继续固化 SCF->NSCF artifact handoff 规则，扩展到其他 property family 时仍需独立设计和验证。
 - 当前 manifest 已覆盖 nspin=1/2 的 HR（shared 或 up/down）以及 shared SR/rR；后续若扩展到 PyATB properties、nspin 4、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些语义。

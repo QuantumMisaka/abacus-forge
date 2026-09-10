@@ -53,6 +53,7 @@ Forge 的 Angstrom 单位扩展仍可读取。支持 `Direct`、`Cartesian`、
 - `collect(...)` / `abacus-forge collect`
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
+- 原生 ABACUS SCF 的 `!FINAL_ETOT_IS ... eV` 会作为 `total_energy` 事实收集；typed MD 从 contained `running_md.log` 收集原生 Energy/Potential/Kinetic（Ry 转 eV）、Temperature（K）及可用 Pressure（kbar），`MD_dump` 只提供轨迹帧/步数与工件事实
 - `LocalRunner` 的 `executable`/`launcher` 带目录相对路径，以及 `PATH` 中的相对或空分量，均按调用进程的 cwd 解析；实际进程仍以 workspace 的 `inputs/` 为 cwd 启动，但使用同一解析结果。公开的 `command` 字段（包括 typed `forge-result`）保留调用方传入的原始请求字符串。
 
 ### Typed operation service boundary
@@ -69,6 +70,11 @@ SCF/Relax collection 将已解析的数组指标和有效结构快照作为事�
 SCF 收集完整性由非空输出日志、有限总能量和解析情况决定，Relax 还要求有效的
 最终结构；收敛标志独立返回。typed collect 只读取 workspace 内的领域文件，
 审计事件、claims、锁和 workspace manifest 不进入计算产物列表。
+typed MD 的 `collection=complete` 只表示存在唯一、contained 且可读的
+`outputs/**/running_md.log`，其中至少有一个完整原生热力学 block；缺失或歧义日志、
+不完整 block 和仅有 `stdout`/`MD_dump` 的输入会保持 `partial` 或 `missing_output`。
+legacy `collect()` 继续读取历史 synthetic `MD_dump` 的兼容指标，但 typed MD 的
+`md_last_*` 热力学字段只来自原生 `running_md.log`。
 
 `BandPostprocessRequest` 与 `DosPostprocessRequest` 提供独立的 typed band/DOS
 `postprocess` service。它们的成熟度为 `experimental`，要求调用方显式声明一个非空的
@@ -789,8 +795,10 @@ request = MdPrepareRequest(
 ```
 
 默认 profile 使用 PBE 与 NVE；调用方或 Agent 负责选择和覆盖物理参数。`collect` 只在
-可用时返回 `MD_dump` 与日志中的解析事实、指标和 artifact 引用，不判断轨迹或物理结果
-是否可接受。通用 typed export 不会隐式读取或改写 MD 产物。monitor、workflow 编排、
+可用时返回 `MD_dump` 与 `running_md.log` 中的解析事实、指标和 artifact 引用，不判断
+轨迹或物理结果是否可接受。`running_md.log` 的 Energy/Potential/Kinetic 按 ABACUS
+原生 Ry 单位转换为 eV；没有 Pressure 列是合法的可选事实。通用 typed export 不会隐式
+读取或改写 MD 产物。monitor、workflow 编排、
 restart/resume、调度以及科学判断由 Forge 外部的人类或 Agent 负责。
 
 ## Typed MD postprocess（experimental）

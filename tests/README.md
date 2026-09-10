@@ -96,6 +96,12 @@ transport changes. `tests/test_architecture.py` owns the AST-only production
 import boundary and the current machine-surface documentation contracts; it
 is registered as `core`.
 
+`tests/fixtures/abacus-native-md` is a compact format fixture, not a science
+case. It covers the repository-local ABACUSTest `!FINAL_ETOT_IS` marker and
+the native ABACUS MD `running_md.log`/`MD_dump` shapes, including Ry-to-eV
+projection and workspace-relative typed artifact facts. The fixture does not
+provide real execution evidence or a physical acceptance judgment.
+
 The typed SCF and Relax service tests additionally own the migration boundary:
 `ForgeServices`/`RelaxServiceSet` return execution/collection facts and
 observations, and any legacy `scientific` projection remains `unassessed`.
