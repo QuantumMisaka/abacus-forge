@@ -131,3 +131,13 @@
 - `parameters` remains open for future analysis controls, but recognized keys are validated and unknown keys are surfaced as ignored facts; silently changing behavior is not allowed.
 - Ruling: implement all five canonical analyses in one shared reader rather than five tools because the Paimon v1.2 contract already uses one multi-mode entry and shared sampling. Wrong-scope cost is isolated to one experimental module and can be reverted without touching legacy MD.
 - Ruling: keep `MdPostprocessServiceSet` separate from the existing band/DOS set because the MD request and output semantics include trajectory sampling/provenance; forcing a broad generic refactor would enlarge the compatibility surface without user value.
+
+## Follow-up hardening record (2026-09-10)
+
+The pure `Frame` value object now normalizes `symbols` to an owned tuple and
+rejects empty or non-string symbol sequences.  This closes a local mutability
+gap in the frozen algorithm input without changing the typed request, result,
+CLI, or scientific boundary.  Regression coverage lives in
+`tests/test_md_postprocess_algorithms.py`; focused MD/CLI/service tests pass on
+the `forge-core-fidelity` branch.  This is an internal correctness hardening,
+not a new capability or promotion claim.

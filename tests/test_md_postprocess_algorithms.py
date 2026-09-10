@@ -42,6 +42,21 @@ def test_analyze_trajectory_rejects_empty_frame_sequences():
         analyze_trajectory([], ["msd_diffusion"], timestep=1.0)
 
 
+def test_frame_normalizes_symbols_and_rejects_empty_or_non_string_symbols():
+    symbols = ["H", "O"]
+    frame = Frame(
+        np.zeros((2, 3)), symbols, np.zeros((3, 3)), np.zeros(3, bool), np.ones(2)
+    )
+    symbols.append("C")
+    assert frame.symbols == ("H", "O")
+    with pytest.raises(ValueError, match="non-empty sequence of strings"):
+        Frame(np.zeros((0, 3)), (), np.zeros((3, 3)), np.zeros(3, bool), np.ones(0))
+    with pytest.raises(ValueError, match="non-empty sequence of strings"):
+        Frame(np.zeros((1, 3)), (1,), np.zeros((3, 3)), np.zeros(3, bool), np.ones(1))
+    with pytest.raises(ValueError, match="non-empty sequence of strings"):
+        Frame(np.zeros((2, 3)), "HO", np.zeros((3, 3)), np.zeros(3, bool), np.ones(2))
+
+
 def test_geometry_msd_and_vacf_are_finite(tmp_path):
     frames = load_frames(_xyz(tmp_path / "traj.xyz"))
     result = analyze_trajectory(frames, ["msd_diffusion", "vacf_vdos"], timestep=1.0)

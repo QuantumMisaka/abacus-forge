@@ -59,17 +59,26 @@ class Frame:
     velocities: np.ndarray | None = None
 
     def __post_init__(self) -> None:
+        if isinstance(self.symbols, (str, bytes)):
+            raise ValueError("frame symbols must be a non-empty sequence of strings")
+        try:
+            symbols = tuple(self.symbols)
+        except TypeError as exc:
+            raise ValueError("frame symbols must be a non-empty sequence of strings") from exc
         p = np.asarray(self.positions, dtype=float)
         c = np.asarray(self.cell, dtype=float).reshape(3, 3)
         b = np.asarray(self.pbc, dtype=bool).reshape(3)
         m = np.asarray(self.masses, dtype=float).reshape(-1)
         v = None if self.velocities is None else np.asarray(self.velocities, dtype=float)
-        if p.ndim != 2 or p.shape[1] != 3 or len(self.symbols) != len(p) or m.shape != (len(p),):
+        if not symbols or any(not isinstance(symbol, str) or not symbol for symbol in symbols):
+            raise ValueError("frame symbols must be a non-empty sequence of strings")
+        if p.ndim != 2 or p.shape[1] != 3 or len(symbols) != len(p) or m.shape != (len(p),):
             raise ValueError("frame arrays have inconsistent shapes")
         if not np.isfinite(p).all() or not np.isfinite(c).all() or not np.isfinite(m).all() or np.any(m <= 0):
             raise ValueError("frame values must be finite and masses positive")
         if v is not None and (v.shape != p.shape or not np.isfinite(v).all()):
             raise ValueError("frame velocities must match positions and be finite")
+        object.__setattr__(self, "symbols", symbols)
         object.__setattr__(self, "positions", p.copy()); object.__setattr__(self, "cell", c.copy())
         object.__setattr__(self, "pbc", b.copy()); object.__setattr__(self, "masses", m.copy())
         if v is not None: object.__setattr__(self, "velocities", v.copy())
