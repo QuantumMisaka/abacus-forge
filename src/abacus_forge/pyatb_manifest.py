@@ -264,4 +264,45 @@ def build_prepare_pyatb_manifest(
     return PyatbManifest(inputs=tuple(entries), outputs=(), missing=())
 
 
+def _requested_collect_paths(request: Any) -> tuple[str, ...]:
+    paths = (
+        request.band_info_path_rel,
+        *request.band_data_paths_rel,
+        *request.band_picture_paths_rel,
+    )
+    return tuple(dict.fromkeys(_path(path) for path in paths))
+
+
+def build_collect_pyatb_manifest(request: Any, envelope: Any) -> PyatbManifest:
+    """Project only requested collection paths and their factual availability."""
+    present = {artifact.path_rel: artifact for artifact in envelope.artifacts}
+    diagnostics = envelope.to_dict()["diagnostics"]
+    requested = _requested_collect_paths(request)
+    requested_set = set(requested)
+    outputs = tuple(
+        _entry_from_artifact(present[path])
+        for path in _requested_collect_paths(request)
+        if path in present
+    )
+    missing: list[PyatbManifestEntry] = []
+    seen_missing: set[str] = set()
+    reason_paths = (
+        ("missing", diagnostics.get("missing_output_paths_rel", ())),
+        ("escaped", diagnostics.get("escaped_output_paths_rel", ())),
+        ("unavailable", diagnostics.get("unavailable_output_paths_rel", ())),
+    )
+    for reason, raw_paths in reason_paths:
+        if not isinstance(raw_paths, (list, tuple)):
+            continue
+        for path in raw_paths:
+            if isinstance(path, str) and path in requested_set and path not in present and path not in seen_missing:
+                kind, spin, media_type = classify_pyatb_output(path)
+                missing.append(PyatbManifestEntry(
+                    path_rel=path, kind=kind, spin=spin,
+                    media_type=media_type, reason=reason,
+                ))
+                seen_missing.add(path)
+    return PyatbManifest(inputs=(), outputs=outputs, missing=tuple(missing))
+
+
 __all__ = ["PYATB_MANIFEST_SCHEMA_VERSION", "PyatbManifest", "PyatbManifestEntry", "classify_pyatb_output"]

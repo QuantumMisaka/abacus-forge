@@ -26,7 +26,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
 )
-from abacus_forge.pyatb_manifest import build_prepare_pyatb_manifest
+from abacus_forge.pyatb_manifest import build_collect_pyatb_manifest, build_prepare_pyatb_manifest
 from abacus_forge.runner import LocalRunner
 from abacus_forge.service_support import (
     ServiceContext,
@@ -243,6 +243,7 @@ class PyatbBandCollectService:
                         "task": "band",
                         "unit": "pyatb",
                         "engine": "pyatb",
+                        "pyatb_manifest": build_collect_pyatb_manifest(request, raw_envelope).to_dict(),
                     }
                 )
                 envelope = ForgeResultEnvelope(

@@ -451,6 +451,7 @@ def collect_typed_pyatb_band(
     missing_paths: list[str] = []
     malformed_paths: list[str] = []
     escaped_paths: list[str] = []
+    unavailable_paths: list[str] = []
     resolved_files: dict[str, Path] = {}
 
     for path_rel in requested_paths:
@@ -465,14 +466,14 @@ def collect_typed_pyatb_band(
             missing_paths.append(path_rel)
             continue
         if not resolved.is_file():
-            malformed_paths.append(path_rel)
+            unavailable_paths.append(path_rel)
             continue
         try:
             # Reading now ensures a disappearing/unreadable file is not
             # advertised as an artifact with an unverifiable digest.
             _sha256_file(resolved)
         except OSError:
-            malformed_paths.append(path_rel)
+            unavailable_paths.append(path_rel)
             continue
         present_paths.append(path_rel)
         resolved_files[path_rel] = resolved
@@ -498,11 +499,24 @@ def collect_typed_pyatb_band(
     band_info_rel = str(getattr(request, "band_info_path_rel"))
     band_info = resolved_files.get(band_info_rel)
     if band_info is not None:
+        unavailable_band_info = False
         try:
             band_gap = _typed_parse_band_gap(band_info)
-        except (OSError, UnicodeError):
+        except OSError:
+            unavailable_paths.append(band_info_rel)
+            unavailable_band_info = True
+            artifact_by_path.pop(band_info_rel, None)
+            artifacts = [artifact for artifact in artifacts if artifact.path_rel != band_info_rel]
             band_gap = None
-        if band_gap is None:
+        except UnicodeError:
+            unavailable_paths.append(band_info_rel)
+            unavailable_band_info = True
+            artifact_by_path.pop(band_info_rel, None)
+            artifacts = [artifact for artifact in artifacts if artifact.path_rel != band_info_rel]
+            band_gap = None
+        if unavailable_band_info:
+            pass
+        elif band_gap is None:
             malformed_paths.append(band_info_rel)
         else:
             metrics.append(
@@ -518,12 +532,12 @@ def collect_typed_pyatb_band(
     # Keep diagnostics as a compact, path-relative fact set.  A required band
     # info file is the minimum usable collection; optional data/pictures are
     # still part of completeness when explicitly requested.
-    if present_paths and not missing_paths and not malformed_paths and not escaped_paths:
+    if present_paths and not missing_paths and not malformed_paths and not escaped_paths and not unavailable_paths:
         collection = "complete"
         reason = "all_requested_outputs_present"
-    elif present_paths or malformed_paths or escaped_paths:
+    elif present_paths or malformed_paths or escaped_paths or unavailable_paths:
         collection = "partial"
-        reason = "requested_outputs_missing_or_malformed"
+        reason = "requested_outputs_missing_or_unavailable_or_malformed"
     else:
         collection = "missing_output"
         reason = "no_requested_outputs_present"
@@ -534,6 +548,7 @@ def collect_typed_pyatb_band(
         "missing_output_paths_rel": list(dict.fromkeys(missing_paths)),
         "malformed_output_paths_rel": list(dict.fromkeys(malformed_paths)),
         "escaped_output_paths_rel": list(dict.fromkeys(escaped_paths)),
+        "unavailable_output_paths_rel": list(dict.fromkeys(unavailable_paths)),
         "collection_reason": reason,
     }
     return ForgeResultEnvelope(

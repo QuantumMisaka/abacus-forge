@@ -531,6 +531,100 @@ def test_typed_collect_omits_escaped_symlink_outputs(tmp_path: Path) -> None:
     )
 
 
+def test_typed_collect_separates_unavailable_output_from_malformed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_band_outputs(tmp_path)
+    import abacus_forge.pyatb as pyatb_module
+
+    target = (tmp_path / "inputs/Out/Band_Structure/band_info.dat").resolve()
+    original = pyatb_module._sha256_file
+
+    def unavailable(path: Path) -> str:
+        if path.resolve() == target:
+            raise OSError("temporarily unreadable")
+        return original(path)
+
+    monkeypatch.setattr(pyatb_module, "_sha256_file", unavailable)
+    result = collect_typed_pyatb_band(
+        tmp_path, PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")
+    )
+
+    assert result.diagnostics["unavailable_output_paths_rel"] == (
+        "inputs/Out/Band_Structure/band_info.dat",
+    )
+    assert result.diagnostics["malformed_output_paths_rel"] == ()
+    assert not result.artifacts
+
+
+def test_typed_collect_service_persists_manifest_projection(tmp_path: Path) -> None:
+    _write_band_outputs(tmp_path)
+    request = PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+    assert isinstance(result, OperationOutcome)
+    manifest = result.envelope.diagnostics["pyatb_manifest"]
+    assert manifest["schema_version"] == "forge.pyatb-manifest/v1"
+    assert {entry["kind"] for entry in manifest["outputs"]} == {"band_info"}
+    assert manifest["outputs"][0]["media_type"] == "text/plain"
+    assert manifest["missing"] == ()
+
+
+def test_typed_collect_manifest_maps_all_explicit_output_families(tmp_path: Path) -> None:
+    output = tmp_path / "inputs/Out/Band_Structure"
+    output.mkdir(parents=True)
+    (output / "band_info.dat").write_text("Band gap is 1.0 eV\n", encoding="utf-8")
+    for name in ("band.dat", "band_up.dat", "band_dn.dat", "band.png", "band.pdf", "input.json", "mystery.out"):
+        (output / name).write_bytes(b"fact")
+    request = PyatbBandCollectRequest(
+        operation_id=_id(), workspace_rel=".",
+        band_data_paths_rel=(
+            "inputs/Out/Band_Structure/band.dat",
+            "inputs/Out/Band_Structure/band_up.dat",
+            "inputs/Out/Band_Structure/band_dn.dat",
+            "inputs/Out/Band_Structure/input.json",
+            "inputs/Out/Band_Structure/mystery.out",
+        ),
+        band_picture_paths_rel=(
+            "inputs/Out/Band_Structure/band.png",
+            "inputs/Out/Band_Structure/band.pdf",
+        ),
+    )
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+    assert isinstance(result, OperationOutcome)
+    by_path = {entry["path_rel"]: entry for entry in result.envelope.diagnostics["pyatb_manifest"]["outputs"]}
+    assert by_path["inputs/Out/Band_Structure/band_up.dat"]["spin"] == "up"
+    assert by_path["inputs/Out/Band_Structure/band_dn.dat"]["spin"] == "down"
+    assert by_path["inputs/Out/Band_Structure/band.png"]["media_type"] == "image/png"
+    assert by_path["inputs/Out/Band_Structure/band.pdf"]["media_type"] == "application/pdf"
+    assert by_path["inputs/Out/Band_Structure/input.json"]["media_type"] == "application/json"
+    assert by_path["inputs/Out/Band_Structure/mystery.out"]["kind"] == "other"
+
+
+@pytest.mark.parametrize("case", ("missing", "escaped", "unavailable", "malformed"))
+def test_typed_collect_manifest_classifies_missing_output_facts(tmp_path: Path, case: str) -> None:
+    target = tmp_path / "inputs/Out/Band_Structure/band_info.dat"
+    target.parent.mkdir(parents=True)
+    if case == "escaped":
+        external = tmp_path.parent / f"external-{_id()}.dat"
+        external.write_text("Band gap is 1.0 eV\n", encoding="utf-8")
+        target.symlink_to(external)
+    elif case == "unavailable":
+        target.mkdir()
+    elif case == "malformed":
+        target.write_text("not parseable\n", encoding="utf-8")
+    request = PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+    assert isinstance(result, OperationOutcome)
+    manifest = result.envelope.diagnostics["pyatb_manifest"]
+    if case == "malformed":
+        assert manifest["outputs"][0]["path_rel"] == "inputs/Out/Band_Structure/band_info.dat"
+        assert manifest["missing"] == ()
+    else:
+        assert not manifest["outputs"]
+        assert manifest["missing"][0]["reason"] == case
+        assert "artifact_id" not in manifest["missing"][0]
+
+
 def _write_executable(path: Path, body: str) -> Path:
     path.write_text("#!/usr/bin/env python3\n" + body + "\n", encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
