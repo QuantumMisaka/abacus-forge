@@ -38,19 +38,27 @@ misleading unless fixed first.
 - Parse native MD thermodynamic rows from the unique, contained
   `running_md.log`, converting the three Ry energy columns with ABACUS's
   `Ry_to_eV = 13.605698`; keep temperature in K and pressure in kbar.
-  `MD_dump` contributes frame/step and artifact facts only. Its old synthetic
-  `STEP ... TEMP ... ETOT ...` fallback remains readable for compatibility but
-  is not treated as native MD output.
+  `MD_dump` contributes native frame/step and artifact facts only on the typed
+  MD projection. Its old synthetic `STEP ... TEMP ... ETOT ...` fallback
+  remains readable on the legacy `collect()` path for compatibility; it does
+  not populate typed MD thermodynamic fields when a typed request is served.
+  If both native log and synthetic dump facts exist, native log values win and
+  dump values never overwrite them. A dump-only typed collection may expose
+  explicitly sourced compatibility observations, but remains `partial`.
 - Keep the generic `total_energy` name for the electronic `!FINAL_ETOT_IS`
   value. MD's total/potential/kinetic values use capability-specific
   `md_last_*` fields (and any series/diagnostic fields) so ionic kinetic energy
   can never overwrite the electronic total.
 - Route `MdCollectRequest` through a narrow `md_results.py` projection. A
-  complete MD collection requires one readable, contained `running_md.log`
-  with at least one complete native thermodynamic block; a missing log with
-  facts in `stdout.log` or `MD_dump`, or a readable log/dump with missing or
-  malformed native facts, is `partial`; no readable domain log or dump is
-  `missing_output`. `MD_dump` is optional for Forge's minimum fact set (the
+  complete MD collection requires exactly one readable, contained
+  `running_md.log` with at least one complete native thermodynamic block; a
+  missing log with facts in `stdout.log` or `MD_dump`, or a readable log/dump
+  with missing or malformed native facts, is `partial`; no readable domain log
+  or dump is `missing_output`. Multiple/ambiguous `running_md.log` candidates
+  are always `partial`, even if one candidate parses. A native block without a
+  `Pressure (kbar)` column is complete (pressure is optional); a declared
+  pressure column with a missing or non-numeric pressure row makes that block
+  malformed. `MD_dump` is optional for Forge's minimum fact set (the
   trajectory is an extra artifact), not an assertion about ABACUS's
   `md_dumpfreq` output behavior. Normal-end and convergence remain
   observations/checks.
@@ -84,8 +92,11 @@ experimental.
    log must contain both a `!FINAL_ETOT_IS` marker and MD thermodynamic rows so
    tests prove the two energy families do not overwrite one another.
 2. Add parser tests for multiple MD steps, Ry-to-eV conversion, optional
-   pressure, native frame counting, and malformed/missing native rows. Retain
-   a regression proving the historical synthetic dump syntax remains readable.
+   pressure (absent pressure column is valid, declared-but-invalid pressure is
+   malformed), native frame counting, malformed/missing native rows, and
+   multiple running-log ambiguity. Retain a regression proving the historical
+   synthetic dump syntax remains readable through legacy `collect()` while
+   typed MD fields remain native-log-only.
 3. Implement the parser facts and a narrow `md_results.py` status projection;
    do not reuse SCF's unconditional `total_energy` completeness rule for MD.
    Freeze this status matrix:
@@ -95,6 +106,7 @@ experimental.
    | missing | — | missing | `missing_output` |
    | missing | stdout only | present or missing | `partial` |
    | present | missing/malformed | any | `partial` |
+   | multiple/ambiguous | any | any | `partial` |
    | present and unique | complete | missing | `complete` |
    | present and unique | complete | present | `complete` |
 4. Route only `MdCollectRequest` to that projection. Preserve all other
