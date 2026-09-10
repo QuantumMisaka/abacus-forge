@@ -47,7 +47,7 @@
   <main>
     <section id="summary">
       <h2>摘要</h2>
-      <p>typed <code>pyatb-band</code> 已经能接收显式的 ABACUS STRU、HR、SR、rR 文件并生成 PyATB 输入。当前请求契约把 HR 文件数直接限制为 <code>nspin</code>，因此尚未支持 PyATB 已有的非共线 <code>nspin=4</code>；发现文档也如实公布了当前实现的 <code>1|2</code> 范围。</p>
+      <p>typed <code>pyatb-band</code> 已经能接收显式的 ABACUS STRU、HR、SR、rR 文件并生成 PyATB 输入。在本切片形成时，请求契约把 HR 文件数直接限制为 <code>nspin</code>，因此无法表达 PyATB 已有的非共线 <code>nspin=4</code>；发现文档当时也如实公布了实现的 <code>1|2</code> 范围。</p>
       <p>本切片把 <code>nspin=4</code> 作为一个最小的 typed handoff 扩展：请求允许 <code>1|2|4</code>；HR 路由数按 PyATB 的实际规则映射为 <code>1|2|1</code>；单个 nspin=4 复数 HR 在 manifest 中使用已有的 <code>spin="shared"</code>。Forge 只交接文件、写入输入并记录事实，不读取矩阵内容、不执行属性计算、不解释自旋纹理。</p>
       <div class="decision"><p><strong>核心结论：</strong>这是一项 capability 内的输入契约修正，不是新的 PyATB property capability；保持 <code>forge.pyatb-manifest/v1</code>、通用 result、事件和 legacy helper 不变。</p></div>
     </section>

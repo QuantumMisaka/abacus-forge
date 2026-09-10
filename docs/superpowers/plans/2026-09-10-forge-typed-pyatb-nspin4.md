@@ -42,9 +42,9 @@
 
 **RED verification:** 先在当前 baseline（nspin=4 尚未实现）运行新增 focused tests；预期仅因现有 `nspin must be 1 or 2` 或 cardinality/schema 不符而失败，不接受 setup/import failure 作为 RED。
 
-- [ ] Add the smallest contract, discovery and typed integration tests.
-- [ ] Run the focused tests and retain the exact RED output in the SDD ledger.
-- [ ] Commit the test-only package so the implementation package can consume a stable failing snapshot.
+- [x] Add the smallest contract, discovery and typed integration tests.
+- [x] Run the focused tests and retain the exact RED output in the SDD ledger.
+- [x] Commit the test-only package so the implementation package can consume a stable failing snapshot.
 
 ## Task 2: Implement the minimal contract/discovery change
 
@@ -62,9 +62,9 @@
 
 **Verification:** focused `tests/test_contracts.py tests/test_machine_cli.py tests/test_pyatb_typed.py tests/test_cli_process.py`; the Task 1 RED tests must turn GREEN, and all pre-existing assertions remain green.
 
-- [ ] Implement the smallest production change.
-- [ ] Run the focused suites and inspect the exact diff for no unrelated API changes.
-- [ ] Commit the implementation package.
+- [x] Implement the smallest production change.
+- [x] Run the focused suites and inspect the exact diff for no unrelated API changes.
+- [x] Commit the implementation package.
 
 ## Task 3: Documentation and approved-SPEC alignment
 
@@ -79,9 +79,9 @@
 
 **Verification:** HTML parse/placeholder scan, `rg` contradiction scan, `git diff --check`; documentation changes do not require synthetic RED/GREEN.
 
-- [ ] Update the smallest set of current-status paragraphs.
-- [ ] Re-read all changed passages against the new SPEC and ROADMAP boundaries.
-- [ ] Commit docs separately from behavior code.
+- [x] Update the smallest set of current-status paragraphs.
+- [x] Re-read all changed passages against the new SPEC and ROADMAP boundaries.
+- [x] Commit docs separately from behavior code.
 
 ## Task 4: Final gates and independent review
 
@@ -115,3 +115,10 @@ Also run the repository’s architecture/forbidden-import, discovery, clean arch
 - `Ruling: use an internal `(nspin, expected_hr_count)` mapping, derive discovery's enum from it, and express its two cardinality branches with JSON Schema if/then/else — runtime and machine-readable validation then reject the same malformed request without adding wire fields.`
 - `Ruling: keep nspin=4 HR as manifest `shared` — the manifest describes the one explicit route, not a complete spinor physics taxonomy; adding a new enum would expand v1 without a consumer need.`
 - `Ruling: do not add a real-smoke gate to this implementation plan — real process validation is a later release gate, while this batch proves only typed handoff and facts.`
+
+## Execution evidence (2026-09-11)
+
+- Test-only RED commits: `23d9951`, `743d211`; the expected baseline failures are recorded in the SDD ledger. Production contract/discovery commit: `b51728c`; docs alignment commits: `836e293`, `e588cd6`, `e184769`; complete process/API parity strengthening: `1af88c2`.
+- Focused nspin4 boundary after implementation: `8 passed, 457 deselected`; owning contract/CLI/PyATB/workspace suites: `506 passed`; full offline suite: `1218 passed, 5 skipped`.
+- Architecture/forbidden-import gate: `8 passed`; discovery process gate exposes `pyatb-band` as `experimental`, operations `prepare|execute|collect`, nspin enum `[1, 2, 4]`, and conditional HR cardinality `2→2`, `1/4/default→1`; `operation --help` exposes both `--request` and `--stdin`.
+- Clean archive and wheel/import gates are required to be rerun against the final closeout revision below. No real PyATB/ABACUS process or scientific validation is claimed by this plan.
