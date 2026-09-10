@@ -136,12 +136,24 @@ experimental.
 
 ## Acceptance record
 
-- [ ] Native SCF final-energy fixture and parser regression pass.
-- [ ] Native MD log/dump facts, units and MD-specific completeness pass with
+- [x] Native SCF final-energy fixture and parser regression pass, including
+      the repository-local `abacus-test` marker and typed observations.
+- [x] Native MD log/dump facts, units and MD-specific completeness pass with
       legacy synthetic fallback preserved.
-- [ ] API/machine parity, architecture boundary and compatibility suites pass.
-- [ ] Full offline gate and diff check pass; no real ABACUS or scientific claim
+- [x] API/machine parity, architecture boundary and compatibility suites pass.
+- [x] Full offline gate and diff check pass; no real ABACUS or scientific claim
       is made without an external execution environment.
+
+### Implementation evidence (2026-09-10)
+
+- Implementation commits: `9f68d86`, `03b2543`, `c03a690`, `7bc6e9d`,
+  `0f099fb`, `31c64f9`, and `8dae0f0`.
+- Focused collector/MD/service/machine/architecture suite: **43 passed**.
+- Full deterministic offline suite: **1194 passed, 5 skipped**.
+- A clean `git archive HEAD` focused checkout also passed the native collection
+  suite; the ignored `running_md.log` fixture is explicitly tracked.
+- The host has no supplied ABACUS executable/workspace, so no real execution,
+  physical acceptance, or maturity promotion is claimed.
 
 **Ruling:** This plan repairs a concrete Forge operation/collector fidelity
 gap. It does not broaden the approved Forge boundary or replace human/Agent
