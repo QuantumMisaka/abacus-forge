@@ -265,4 +265,9 @@ def test_native_md_machine_cli_preserves_native_energy_facts(tmp_path: Path) -> 
     assert {artifact.path_rel for artifact in cli_result.envelope.artifacts} == {
         artifact.path_rel for artifact in api_result.envelope.artifacts
     }
+    event_path = cli_root / "job" / "reports" / "events" / (
+        "123e4567-e89b-42d3-a456-426614174031-collect.json"
+    )
+    event = json.loads(event_path.read_text(encoding="utf-8"))
+    assert event["payload"] == cli_result.to_dict()
     assert cli_result.envelope.status.collection == "complete"

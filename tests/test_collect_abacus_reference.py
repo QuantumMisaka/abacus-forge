@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from abacus_forge import collect
+from abacus_forge import OperationOutcome, ScfCollectRequest, ScfServiceSet, collect
 from abacus_forge.workspace import Workspace
 from tests.support.reference_workspaces import FIXTURE_ROOT, copy_abacustest_scf_workspace, copy_native_md_workspace
 
@@ -44,6 +44,35 @@ def test_collect_matches_abacustest_reference_for_force_stress_and_pressure(tmp_
     assert len(result.metrics["virials"]) == 1
     assert result.metrics["virials"][0] == pytest.approx(expected_virial)
     assert result.metrics["total_time"] == pytest.approx(932.927)
+
+
+def test_collect_reads_repository_native_final_energy_marker(tmp_path: Path) -> None:
+    workspace = copy_abacustest_scf_workspace(tmp_path / "native-final-energy")
+
+    result = collect(workspace)
+
+    assert result.metrics["total_energy"] == pytest.approx(-28364.4012275304485229)
+
+
+def test_typed_scf_projection_reports_repository_native_final_energy(tmp_path: Path) -> None:
+    workspace = copy_abacustest_scf_workspace(tmp_path / "typed-native-final-energy")
+    request = ScfCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174118",
+        workspace_rel="typed-native-final-energy",
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert any(
+        metric.name == "total_energy" and metric.value == pytest.approx(-28364.4012275304485229)
+        for metric in result.envelope.metrics
+    )
+    assert any(
+        observation.name == "total_energy"
+        and observation.value == pytest.approx(-28364.4012275304485229)
+        for observation in result.observations
+    )
 
 
 def test_collect_prefers_last_native_final_energy_marker(tmp_path: Path) -> None:
