@@ -309,7 +309,10 @@ class Workspace:
         reports_fd: int | None = None
         events_fd: int | None = None
         try:
-            root_fd = os.open(self.root, flags)
+            # A Workspace may be reached through a symlink alias.  Resolve
+            # that declared root once, then keep every descendant lookup
+            # descriptor-anchored and no-follow.
+            root_fd = os.open(self.root.resolve(), flags)
             reports_fd = os.open("reports", flags, dir_fd=root_fd)
             events_fd = os.open("events", flags, dir_fd=reports_fd)
             result = events_fd

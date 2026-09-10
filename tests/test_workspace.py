@@ -78,6 +78,29 @@ def test_workspace_reconciles_event_left_by_manifest_failure(tmp_path: Path, mon
     assert manifest["events"][0]["path_rel"] == events[0].relative_to(workspace.root).as_posix()
 
 
+def test_workspace_reconciles_events_through_a_symlink_root(tmp_path: Path) -> None:
+    real_root = tmp_path / "workspace"
+    real_workspace = Workspace(real_root)
+    event_path = real_workspace.append_operation_event("prepare", {"status": "prepared"})
+    manifest_path = real_workspace.ensure_manifest()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["events"] = []
+    real_workspace.write_json("reports/forge-workspace.json", manifest)
+
+    alias_root = tmp_path / "workspace-alias"
+    alias_root.symlink_to(real_root, target_is_directory=True)
+    Workspace(alias_root).ensure_manifest()
+
+    reconciled = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert reconciled["events"] == [
+        {
+            "id": json.loads(event_path.read_text(encoding="utf-8"))["id"],
+            "operation": "prepare",
+            "path_rel": "reports/events/" + event_path.name,
+        }
+    ]
+
+
 def test_workspace_events_are_append_only(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "events")
     first = workspace.append_operation_event("prepare", {"status": "prepared"})

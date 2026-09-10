@@ -219,7 +219,7 @@ def test_export_service_source_descendant_or_ancestor_is_invalid_after_admission
 def test_export_service_reconciliation_skips_unrelated_external_event_symlink(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    workspace = Workspace(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
     _write_source(workspace)
     external_id = "123e4567-e89b-42d3-a456-426614174199"
     external = tmp_path / "external-event.json"
@@ -246,7 +246,7 @@ def test_export_service_reconciliation_skips_unrelated_external_event_symlink(
         return original_read_text(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", guarded_read_text)
-    result = ExportServiceSet.default(workspace_root=tmp_path).export.export(_request())
+    result = ExportServiceSet.default(workspace_root=workspace.root).export.export(_request())
 
     assert isinstance(result, OperationOutcome)
     assert external_reads == 0
