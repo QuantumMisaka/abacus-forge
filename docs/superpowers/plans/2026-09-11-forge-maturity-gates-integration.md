@@ -45,7 +45,22 @@ fail-closed、真实绘图产物状态和 reported metric；freshness 只在
 
 ## Acceptance
 
-- [ ] Independent whole-branch review approves the exact candidate diff.
-- [ ] All listed gates and boundary scans pass; skips are classified as real-smoke rather
+- [x] Independent whole-branch review approves the exact candidate diff.
+- [x] All listed gates and boundary scans pass; skips are classified as real-smoke rather
   than silently treated as success.
-- [ ] Candidate remains isolated and is handed off for an explicit integration decision.
+- [x] Candidate remains isolated and is handed off for an explicit integration decision.
+
+## Review result
+
+The independent whole-branch review of `da1d4df..1686eeb` found no Critical,
+Important, or substantive Minor issue. It confirmed that the MD production
+changes and approved MD SPEC are unchanged by the freshness commits, and that
+the freshness helper remains confined to test evidence: its generated-file
+scan follows collector-visible paths and Relax final-structure suffix rules,
+without adding runtime constraints to `execute` or `collect`. The four
+real-smoke skips are expected because no external workspace or executable is
+provided; they are not maturity evidence.
+
+The candidate is therefore ready for a separate, explicit integration
+decision. `forge-mainline-integration` remains at `da1d4df`, `main` and the
+remote remain untouched.
