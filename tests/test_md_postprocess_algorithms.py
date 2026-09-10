@@ -1,3 +1,4 @@
+import builtins
 import json
 from pathlib import Path
 
@@ -41,6 +42,26 @@ def test_xyz_reader_uses_v12_common_element_masses(tmp_path):
     frame = md._read_xyz(trajectory)[0]
 
     assert frame.masses == pytest.approx([35.45, 22.990, 65.38])
+
+
+def test_load_frames_uses_xyz_fallback_when_ase_is_unavailable(tmp_path, monkeypatch):
+    trajectory = tmp_path / "fallback-masses.xyz"
+    trajectory.write_text(
+        "4\nframe\nCl 0 0 0\nNa 1 0 0\nZn 2 0 0\nXx 3 0 0\n",
+        encoding="utf-8",
+    )
+    real_import = builtins.__import__
+
+    def without_ase(name, *args, **kwargs):
+        if name == "ase.io":
+            raise ImportError("ASE unavailable for fallback test")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", without_ase)
+
+    frames = load_frames(trajectory)
+
+    assert frames[0].masses == pytest.approx([35.45, 22.990, 65.38, 1.0])
 
 
 def test_validate_analysis_is_canonical():

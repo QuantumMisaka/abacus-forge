@@ -152,3 +152,9 @@ mass table used by the Paimon v1.2 MD kernel (with the existing `1.0` fallback
 for symbols outside that table).  This is an internal numerical-fidelity
 alignment only; ASE-provided masses remain authoritative and no new species or
 scientific validation contract is introduced.
+
+Verification at `84962ee`: the focused MD/legacy compatibility gate passed
+`68 passed`; the stable deterministic gate passed `1138 passed, 42 deselected`,
+the experimental gate passed `39 passed, 1141 deselected`, and the full offline
+gate passed `1177 passed, 3 skipped`.  The skips remain opt-in real-smoke or
+benchmark evidence and are not scientific validation.
