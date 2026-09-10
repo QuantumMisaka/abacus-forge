@@ -74,6 +74,15 @@ def _write_source(workspace: Workspace, *, outcome: OperationOutcome | None = No
     )
 
 
+def _write_source_without_layout(workspace: Workspace, *, outcome: OperationOutcome | None = None) -> Path:
+    outcome = outcome or _source_outcome()
+    return workspace.append_v1_operation_event(
+        outcome.operation_id,
+        outcome.envelope.operation,
+        outcome.to_dict(),
+    )
+
+
 def _export_events(workspace: Workspace) -> list[dict[str, object]]:
     manifest = json.loads((workspace.root / "reports/forge-workspace.json").read_text(encoding="utf-8"))
     return [event for event in manifest["events"] if event["operation"] == "export"]
@@ -135,6 +144,10 @@ def test_export_service_rejects_wrong_type_without_admission(tmp_path: Path) -> 
     [
         ("reports/events/new.json", "request.path"),
         ("reports/claims/new.json", "request.path"),
+        ("reports/forge-workspace.json/child.json", "request.path"),
+        ("reports", "request.path"),
+        ("forge-unit.json/export.json", "request.path"),
+        ("forge-result.json/export.json", "request.path"),
         ("../outside.json", "request.schema"),
     ],
 )
@@ -181,6 +194,64 @@ def test_export_service_source_overlap_is_request_invalid_after_admission(tmp_pa
     assert result.error_class == "request.invalid"
     claim = tmp_path / "reports/claims" / f"{EXPORT_ID}.json"
     assert claim.is_file()
+
+
+@pytest.mark.parametrize("destination", ["outputs/energy.dat/export.json", "outputs"])
+def test_export_service_source_descendant_or_ancestor_is_invalid_after_admission(
+    tmp_path: Path, destination: str
+) -> None:
+    workspace = Workspace(tmp_path)
+    # Do not create outputs: the ancestor case must reach source-overlap
+    # admission rather than being mistaken for an already-existing target.
+    _write_source_without_layout(workspace)
+
+    result = ExportServiceSet.default(workspace_root=tmp_path).export.export(
+        _request(destination_path_rel=destination)
+    )
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+    assert (tmp_path / "reports/claims" / f"{EXPORT_ID}.json").is_file()
+    assert not (tmp_path / "outputs" / "energy.dat").is_dir()
+    assert not (tmp_path / destination).exists()
+
+
+def test_export_service_reconciliation_skips_unrelated_external_event_symlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = Workspace(tmp_path)
+    _write_source(workspace)
+    external_id = "123e4567-e89b-42d3-a456-426614174199"
+    external = tmp_path / "external-event.json"
+    external.write_text(
+        json.dumps(
+            {
+                "id": external_id,
+                "operation": "collect",
+                "payload": _source_outcome(operation_id=external_id).to_dict(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    unrelated = workspace.root / "reports" / "events" / "unrelated.json"
+    unrelated.symlink_to(external)
+
+    original_read_text = Path.read_text
+    external_reads = 0
+
+    def guarded_read_text(path: Path, *args: object, **kwargs: object) -> str:
+        nonlocal external_reads
+        if path.resolve() == external.resolve():
+            external_reads += 1
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", guarded_read_text)
+    result = ExportServiceSet.default(workspace_root=tmp_path).export.export(_request())
+
+    assert isinstance(result, OperationOutcome)
+    assert external_reads == 0
+    manifest = json.loads((workspace.root / "reports/forge-workspace.json").read_text(encoding="utf-8"))
+    assert external_id not in {event["id"] for event in manifest["events"]}
 
 
 def test_export_service_missing_source_is_precondition_after_admission(tmp_path: Path) -> None:

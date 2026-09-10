@@ -191,6 +191,19 @@ _RESERVED_FILES = frozenset(
 _RESERVED_DIRECTORIES = ("reports/events", "reports/claims")
 
 
+def _paths_overlap(left: str, right: str) -> bool:
+    """Return whether two canonical POSIX paths share a path component."""
+
+    left_parts = PurePosixPath(left).parts
+    right_parts = PurePosixPath(right).parts
+    shorter, longer = (
+        (left_parts, right_parts)
+        if len(left_parts) <= len(right_parts)
+        else (right_parts, left_parts)
+    )
+    return longer[: len(shorter)] == shorter
+
+
 def _destination(workspace: Workspace, destination_path_rel: object) -> tuple[str, Path]:
     if not isinstance(destination_path_rel, str):
         raise ForgePathError("destination path must be canonical")
@@ -200,10 +213,8 @@ def _destination(workspace: Workspace, destination_path_rel: object) -> tuple[st
         raise ForgePathError("destination path must be canonical") from error
     if canonical == ".":
         raise ForgePathError("destination path must name a file")
-    if canonical in _RESERVED_FILES or any(
-        canonical == directory or canonical.startswith(directory + "/")
-        for directory in _RESERVED_DIRECTORIES
-    ):
+    protected_paths = (*_RESERVED_FILES, *_RESERVED_DIRECTORIES)
+    if any(_paths_overlap(canonical, protected) for protected in protected_paths):
         raise ForgePathError("destination path is reserved for Forge audit")
     try:
         path = workspace.resolve_relative(canonical)
@@ -223,7 +234,7 @@ def _overlaps_source_artifact(document: ExportDocument, destination_path_rel: st
         # the writer defensive if a future implementation changes that type.
         raise ForgeRequestError("export document has an invalid source outcome") from error
     return any(
-        artifact.path_rel == destination_path_rel
+        _paths_overlap(artifact.path_rel, destination_path_rel)
         for artifact in outcome.envelope.artifacts
     )
 

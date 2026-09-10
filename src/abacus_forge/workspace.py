@@ -7,6 +7,7 @@ import math
 import os
 import re
 import secrets
+import stat
 import tempfile
 import threading
 import uuid
@@ -287,6 +288,63 @@ class Workspace:
         self._reconcile_events_unlocked(path)
         return path
 
+    @staticmethod
+    def _reconciliation_directory_flags() -> int:
+        flags = os.O_RDONLY
+        flags |= getattr(os, "O_DIRECTORY", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        return flags
+
+    def _open_events_directory_unlocked(self) -> int | None:
+        """Open reports/events as a no-follow directory relative to root.
+
+        The returned descriptor anchors all later event enumeration and file
+        reads.  If the directory is absent or unsafe, reconciliation simply
+        has no event files to index, matching the best-effort nature of the
+        historical glob-based reconciliation.
+        """
+
+        flags = self._reconciliation_directory_flags()
+        root_fd: int | None = None
+        reports_fd: int | None = None
+        events_fd: int | None = None
+        try:
+            root_fd = os.open(self.root, flags)
+            reports_fd = os.open("reports", flags, dir_fd=root_fd)
+            events_fd = os.open("events", flags, dir_fd=reports_fd)
+            result = events_fd
+            events_fd = None
+            return result
+        except OSError:
+            return None
+        finally:
+            for descriptor in (events_fd, reports_fd, root_fd):
+                if descriptor is not None:
+                    try:
+                        os.close(descriptor)
+                    except OSError:
+                        pass
+
+    @staticmethod
+    def _read_reconciliation_event(events_fd: int, name: str) -> object:
+        """Read one regular event file without following its leaf symlink."""
+
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor: int | None = None
+        try:
+            descriptor = os.open(name, flags, dir_fd=events_fd)
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                return None
+            with os.fdopen(descriptor, "r", encoding="utf-8") as event_file:
+                descriptor = None
+                return json.load(event_file)
+        finally:
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+
     def _reconcile_events_unlocked(self, manifest_path: Path) -> None:
         """Index valid immutable event files that are not yet discoverable."""
         try:
@@ -297,22 +355,42 @@ class Workspace:
             raise ForgePersistenceError("workspace manifest has invalid events")
         indexed = {item.get("id") for item in manifest["events"] if isinstance(item, dict)}
         additions = []
-        events_dir = self.resolve_relative(Path("reports") / "events")
-        if events_dir.exists():
-            for event_path in sorted(events_dir.glob("*.json"), key=lambda item: item.name):
+        events_fd = self._open_events_directory_unlocked()
+        if events_fd is not None:
+            try:
                 try:
-                    event = json.loads(event_path.read_text(encoding="utf-8"))
-                    event_id = event["id"]
-                    operation = event["operation"]
-                    if not isinstance(event, dict) or not isinstance(event_id, str) or not isinstance(operation, str) or not operation or not isinstance(event.get("payload"), dict):
+                    with os.scandir(events_fd) as entries:
+                        names = sorted(
+                            entry.name for entry in entries if entry.name.endswith(".json")
+                        )
+                except OSError:
+                    names = []
+                for name in names:
+                    try:
+                        event = self._read_reconciliation_event(events_fd, name)
+                        if not isinstance(event, dict):
+                            continue
+                        event_id = event.get("id")
+                        operation = event.get("operation")
+                        if (
+                            not isinstance(event_id, str)
+                            or not isinstance(operation, str)
+                            or not operation
+                            or not isinstance(event.get("payload"), dict)
+                        ):
+                            continue
+                        if event_id in indexed:
+                            continue
+                        rel = canonical_relative_path(f"reports/events/{name}")
+                        additions.append({"id": event_id, "operation": operation, "path_rel": rel})
+                        indexed.add(event_id)
+                    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
                         continue
-                    if event_id in indexed:
-                        continue
-                    rel = canonical_relative_path(event_path.relative_to(self.root.resolve()).as_posix())
-                    additions.append({"id": event_id, "operation": operation, "path_rel": rel})
-                    indexed.add(event_id)
-                except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
-                    continue
+            finally:
+                try:
+                    os.close(events_fd)
+                except OSError:
+                    pass
         if additions:
             manifest["events"].extend(additions)
             try:

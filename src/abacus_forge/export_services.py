@@ -20,7 +20,12 @@ from abacus_forge.errors import (
     OperationConflictError,
 )
 from abacus_forge.export_contracts import ExportDocument, ExportRequest
-from abacus_forge.export_io import _destination, resolve_export_source, write_export_document
+from abacus_forge.export_io import (
+    _destination,
+    _paths_overlap,
+    resolve_export_source,
+    write_export_document,
+)
 from abacus_forge.service_support import ServiceContext
 from abacus_forge.workspace import Workspace
 
@@ -73,7 +78,7 @@ class ExportService:
                 # is a request conflict, not a path/schema error.  The claim
                 # remains as an admission tombstone under existing rules.
                 if any(
-                    artifact.path_rel == request.destination_path_rel
+                    _paths_overlap(artifact.path_rel, request.destination_path_rel)
                     for artifact in resolved.outcome.envelope.artifacts
                 ):
                     raise ForgeRequestError("destination overlaps a source artifact")

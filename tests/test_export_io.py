@@ -368,13 +368,19 @@ def test_write_export_document_rejects_noncanonical_destination(tmp_path: Path, 
     "destination",
     [
         "reports/forge-workspace.json",
+        "reports/forge-workspace.json/child.json",
+        "reports",
         "reports/.forge-workspace.lock",
         "reports/.forge-operation.lock",
         "reports/events/source.json",
         "reports/claims/source.json",
         "forge-unit.json",
+        "forge-unit.json/export.json",
         "forge-result.json",
+        "forge-result.json/export.json",
         "outputs/energy.dat",
+        "outputs/energy.dat/export.json",
+        "outputs",
     ],
 )
 def test_write_export_document_rejects_reserved_audit_paths(tmp_path: Path, destination: str) -> None:
@@ -382,6 +388,31 @@ def test_write_export_document_rejects_reserved_audit_paths(tmp_path: Path, dest
 
     with pytest.raises(ForgePathError):
         write_export_document(workspace, destination, _document(), pretty=False)
+    assert not (workspace.root / destination).exists()
+
+
+@pytest.mark.parametrize("destination", ["reports/events-archive/result.json", "outputs/energy.dat.bak/result.json"])
+def test_write_export_document_allows_non_overlapping_component_prefix(
+    tmp_path: Path, destination: str
+) -> None:
+    workspace = Workspace(tmp_path / "component-prefix")
+
+    written = write_export_document(workspace, destination, _document(), pretty=False)
+
+    assert written.path.is_file()
+
+
+@pytest.mark.parametrize("destination", ["outputs/energy.dat/export.json", "outputs"])
+def test_write_export_document_rejects_source_descendant_or_ancestor_without_creating_path(
+    tmp_path: Path, destination: str
+) -> None:
+    workspace = Workspace(tmp_path / "source-overlap")
+
+    with pytest.raises(ForgePathError):
+        write_export_document(workspace, destination, _document(), pretty=False)
+
+    assert not (workspace.root / destination).exists()
+    assert not (workspace.root / "outputs" / "energy.dat").is_dir()
 
 
 def test_write_export_document_rejects_symlink_escape_without_creating_outside_file(tmp_path: Path) -> None:
