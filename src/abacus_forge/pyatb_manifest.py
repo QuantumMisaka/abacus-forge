@@ -213,7 +213,9 @@ def _entry_from_artifact(
         artifact_id=artifact.id,
         sha256=artifact.sha256,
         size_bytes=artifact.size_bytes,
-        media_type=artifact.media_type or media_type,
+        # The manifest vocabulary owns deterministic MIME classification;
+        # ArtifactRecord's generic fallback must not obscure known outputs.
+        media_type=media_type,
         source_path_rel=source_path_rel,
         handoff_mode=handoff_mode,
         source_sha256=source_sha256,

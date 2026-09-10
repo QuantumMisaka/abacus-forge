@@ -580,6 +580,9 @@ def test_typed_prepare_service_persists_manifest_facts_and_refs_once(tmp_path: P
     assert all(entry["artifact_id"] in artifact_ids for entry in by_path.values())
     assert by_path["inputs/STRU"]["source_path_rel"] == "source/STRU"
     assert by_path["inputs/STRU"]["source_sha256"] == by_path["inputs/STRU"]["sha256"]
+    assert by_path["inputs/STRU"]["media_type"] == "text/plain"
+    assert by_path["inputs/Input"]["media_type"] == "text/plain"
+    assert by_path["inputs/KPT_band"]["media_type"] == "text/plain"
     events = sorted((tmp_path / "reports/events").glob("*.json"))
     assert len(events) == 1
     assert json.loads(events[0].read_text(encoding="utf-8"))["id"] == request.operation_id
@@ -607,6 +610,8 @@ def test_typed_prepare_manifest_records_matrix_provenance_and_spin(
         assert entry["artifact_id"]
         assert entry["sha256"]
         assert entry["size_bytes"] >= 0
+        if entry.get("source_path_rel"):
+            assert entry["source_sha256"]
 
 
 def test_typed_execute_service_uses_only_request_runner_fields_and_records_runtime_facts(
