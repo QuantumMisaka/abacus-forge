@@ -14,11 +14,11 @@
 
 ## Global Constraints
 
-- Implement only `forge.property-manifest/v1` diagnostics for the three approved legacy post packs; keep all other property packs experimental and untouched.
-- Do not modify `forge.result/v1`, `ArtifactRecord`, `TaskResult` field names, operation events, admission, legacy `prepare|run|post` syntax, or machine discovery descriptors.
-- Present entries use only `cube|report|text|other`, `input|output`, `source|derived`, and `shared|up|down|unknown`; derived data cubes require same-result source artifact IDs, while fact reports may omit them.
-- Canonical missing paths are the exact table in SPEC §architecture: ABACUS output is under each subtask's `inputs/OUT.<suffix>/`; missing or empty suffix expands to `ABACUS`; an unsafe suffix never becomes an escaped manifest path.
-- Manifest paths are workspace-relative and contained. A missing path has only `path_rel`, semantic fields, and `reason=missing|escaped|unavailable`; it never has artifact identity, hash, or size.
+- Implement only `forge.property-manifest/v1` diagnostics for the three approved legacy post packs (SPEC R1); keep all other property packs experimental and untouched.
+- Do not modify `forge.result/v1`, `ArtifactRecord`, `TaskResult` field names, operation events, admission, legacy `prepare|run|post` syntax, or machine discovery descriptors (SPEC R1/R7).
+- Present entries use only `cube|report|text|other`, `input|output`, `source|derived`, and `shared|up|down|unknown` (SPEC R2/R3); derived data cubes require same-result source artifact IDs, while fact reports may omit them (SPEC R5).
+- Canonical missing paths are the exact table in SPEC §architecture (R6): ABACUS output is under each subtask's `inputs/OUT.<suffix>/`; missing or empty suffix expands to `ABACUS`; an unsafe suffix never becomes an escaped manifest path.
+- Manifest paths are workspace-relative and contained (SPEC R7). A missing path has only `path_rel`, semantic fields, and `reason=missing|escaped|unavailable` (SPEC R4); it never has artifact identity, hash, or size.
 - Legacy parser exceptions remain legacy exceptions. This slice does not introduce a malformed-file downgrade; `parse_status="malformed"` is accepted only as a value vocabulary for a separately designed future path.
 - Manifest projection failure is best-effort: preserve the original `TaskResult`, status, summary, artifacts, and CLI exit, and append a JSON-safe warning instead of retrying or fabricating a manifest.
 - Scientific validation, acceptance, orchestration, retry/resume, scheduler/platform selection, and real ABACUS evidence remain caller-owned; default verification is offline.
@@ -44,7 +44,7 @@
 - Produce frozen `PropertyManifest(task, inputs=(), outputs=(), missing=())` with strict `to_dict()`/`from_dict()` using root keys `schema_version`, `task`, `inputs`, `outputs`, and `missing`.
 - Produce implementation-facing frozen `PropertyArtifactSpec(path, kind, role, origin, spin="unknown", parse_status=None, source_paths=())`; its `path` may be an absolute `Path` selected by legacy post or a canonical workspace-relative string. It is not re-exported as a stable top-level API.
 
-- [ ] **Step 1: Write the failing pure-contract tests.** Cover every allowed kind, role, origin, and spin; lowercase SHA-256 and non-negative size; canonical path rejection; strict unknown/root-field rejection; present/missing mutual exclusion; parse-status literals; derived-cube non-empty source-ref rule; report-derived entries without refs; and round-trip JSON.
+- [ ] **Step 1: Write the failing pure-contract tests.** Cover every allowed kind, role, origin, and spin (SPEC R2/R3); lowercase SHA-256 and non-negative size; canonical path rejection; strict unknown/root-field rejection; present/missing mutual exclusion; parse-status literals; derived-cube non-empty source-ref rule (SPEC R5); report-derived entries without refs; and round-trip JSON (SPEC R1/R4).
 
 ```python
 def test_property_manifest_round_trip_and_derived_cube_refs() -> None:
@@ -149,7 +149,7 @@ git commit -m "feat: add legacy property manifest contract"
 - Produce `build_property_manifest(workspace: Path, *, task: str, inputs: Sequence[PropertyArtifactSpec], outputs: Sequence[PropertyArtifactSpec], artifacts: Sequence[ArtifactRecord]) -> PropertyManifest`.
 - Produce `_attach_property_manifest(result: TaskResult, *, inputs: Sequence[PropertyArtifactSpec], outputs: Sequence[PropertyArtifactSpec]) -> TaskResult`, which catches projection exceptions and appends a string warning without changing the legacy result.
 
-- [ ] **Step 1: Write RED builder tests.** Use one contained present file and an `ArtifactRecord` with the expected ID/hash/size; assert present entries copy those facts verbatim. Use a non-existent canonical path for `missing`, an external resolved symlink for `escaped`, a directory or artifact-less path for `unavailable`, and a derived cube with two `source_paths` to assert same-result source IDs. Assert a report with `origin="derived"` does not require refs.
+- [ ] **Step 1: Write RED builder tests.** Use one contained present file and an `ArtifactRecord` with the expected ID/hash/size; assert present entries copy those facts verbatim (SPEC R2). Use a non-existent canonical path for `missing`, an external resolved symlink for `escaped`, a directory or artifact-less path for `unavailable` (SPEC R4/R7), and a derived cube with two `source_paths` to assert same-result source IDs (SPEC R5). Assert a report with `origin="derived"` does not require refs.
 
 ```python
 def test_build_property_manifest_classifies_explicit_paths_and_missing(tmp_path: Path) -> None:
@@ -185,7 +185,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 
 Expected: failures because the builder and `PropertyArtifactSpec` are not implemented.
 
-- [ ] **Step 3: Implement explicit builder resolution.** Canonicalize each spec path against the workspace root; resolve strict symlinks; classify failures as `missing`, `escaped`, or `unavailable`; never walk a directory or glob. For a present path, look up the already-projected `ArtifactRecord` by canonical `path_rel` and copy its ID/hash/size. Map MIME from the explicit kind (`cube`/`other` → `application/octet-stream`, `report` → `application/json`, `text` → `text/plain`). For a present derived cube, canonicalize every `source_paths` item and require all source IDs in the same `artifacts` tuple; raise `ForgeInternalError` if that invariant is impossible. Deduplicate repeated declarations in declaration order and reject a path appearing in both present arrays.
+- [ ] **Step 3: Implement explicit builder resolution.** Canonicalize each spec path against the workspace root; resolve strict symlinks; classify failures as `missing`, `escaped`, or `unavailable` (SPEC R4/R6/R7); never walk a directory or glob. For a present path, look up the already-projected `ArtifactRecord` by canonical `path_rel` and copy its ID/hash/size (SPEC R2). Map MIME from the explicit kind (`cube`/`other` → `application/octet-stream`, `report` → `application/json`, `text` → `text/plain`). For a present derived cube, canonicalize every `source_paths` item and require all source IDs in the same `artifacts` tuple (SPEC R5); raise `ForgeInternalError` if that invariant is impossible. Deduplicate repeated declarations in declaration order and reject a path appearing in both present arrays.
 
 ```python
 def build_property_manifest(
@@ -207,7 +207,7 @@ def build_property_manifest(
     )
 ```
 
-- [ ] **Step 4: Add legacy post projection without changing selection/arithmetic.** In `properties.py`, derive the safe suffix from each prepared subtask `inputs/INPUT` (`ABACUS` when missing/empty); construct only the canonical paths listed in SPEC. Pass the actual path returned by existing `_find_first` when it exists, otherwise pass its canonical path. Attach the metrics report for every call. For spin and charge-diff always declare the derived report/cube expected paths; a missing derived cube becomes a missing manifest fact, while a present derived cube references only the source cubes that were present in the same result. Keep the existing summary, status, artifacts, diagnostics keys, and exceptions unchanged apart from the additive manifest/warning.
+- [ ] **Step 4: Add legacy post projection without changing selection/arithmetic.** In `properties.py`, derive the safe suffix from each prepared subtask `inputs/INPUT` (`ABACUS` when missing/empty); construct only the canonical paths listed in SPEC R6. Pass the actual path returned by existing `_find_first` when it exists, otherwise pass its canonical path. Attach the metrics report for every call. For spin and charge-diff always declare the derived report/cube expected paths; a missing derived cube becomes a missing manifest fact, while a present derived cube references only the source cubes that were present in the same result (SPEC R5). Keep the existing summary, status, artifacts, diagnostics keys, and exceptions unchanged apart from the additive manifest/warning (SPEC R1/R7).
 
 ```python
 def _attach_property_manifest(result: TaskResult, *, inputs, outputs) -> TaskResult:
@@ -259,7 +259,7 @@ git commit -m "feat: project legacy property artifact facts"
 - Consume the three post functions and the additive `diagnostics.property_manifest` object from Task 2.
 - Produce regression evidence that `TaskResult.to_dict()` still has exactly `task`, `workspace`, `status`, `subtasks`, `summary`, `artifacts`, and `diagnostics`; only the diagnostics value is additive for the three post operations.
 
-- [ ] **Step 1: Add parity and isolation tests.** Prepare isolated workspaces with the existing cube fixture under `outputs/` and compare the direct result's manifest to the JSON captured from `main(["spin-density", "post", ..., "--json"])`. Repeat for charge-density and charge-diff. Monkeypatch `build_property_manifest` to raise `RuntimeError` and assert the post result keeps its baseline status/summary/artifacts and contains a JSON-safe warning.
+- [ ] **Step 1: Add parity and isolation tests.** Prepare isolated workspaces with the existing cube fixture under `outputs/` and compare the direct result's manifest to the JSON captured from `main(["spin-density", "post", ..., "--json"])` (SPEC R1/R6). Repeat for charge-density and charge-diff. Monkeypatch `build_property_manifest` to raise `RuntimeError` and assert the post result keeps its baseline status/summary/artifacts and contains a JSON-safe warning (SPEC R7).
 
 ```python
 def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
