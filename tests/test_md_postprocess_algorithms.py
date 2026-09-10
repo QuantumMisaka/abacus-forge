@@ -31,6 +31,18 @@ def test_xyz_reader_sampling(tmp_path):
     assert frames[0].symbols == ("H", "O")
 
 
+def test_xyz_reader_uses_v12_common_element_masses(tmp_path):
+    trajectory = tmp_path / "masses.xyz"
+    trajectory.write_text(
+        "3\nframe\nCl 0 0 0\nNa 1 0 0\nZn 2 0 0\n",
+        encoding="utf-8",
+    )
+
+    frame = md._read_xyz(trajectory)[0]
+
+    assert frame.masses == pytest.approx([35.45, 22.990, 65.38])
+
+
 def test_validate_analysis_is_canonical():
     assert validate_analysis(["rdf", "bond_angle"]) == ("rdf", "bond_angle")
     with pytest.raises(ValueError):

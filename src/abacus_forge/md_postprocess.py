@@ -18,7 +18,30 @@ import numpy as np
 
 from .md_postprocess_contracts import MD_ANALYSIS_MODES
 
-_MASS = {"H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Si": 28.085, "Fe": 55.845}
+# Keep the dependency-free XYZ path numerically aligned with the Paimon v1.2
+# kernel.  ASE remains authoritative when it can provide masses; this table is
+# only the deterministic fallback for formats without mass metadata.
+_MASS = {
+    "H": 1.008,
+    "He": 4.003,
+    "C": 12.011,
+    "N": 14.007,
+    "O": 15.999,
+    "F": 18.998,
+    "Ne": 20.180,
+    "Na": 22.990,
+    "Mg": 24.305,
+    "Al": 26.982,
+    "Si": 28.085,
+    "P": 30.974,
+    "S": 32.06,
+    "Cl": 35.45,
+    "K": 39.098,
+    "Ca": 40.078,
+    "Fe": 55.845,
+    "Cu": 63.546,
+    "Zn": 65.38,
+}
 _ELEMENT = re.compile(r"^[A-Z][a-z]?$")
 _FALLBACK_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
 

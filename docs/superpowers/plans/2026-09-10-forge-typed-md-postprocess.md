@@ -146,3 +146,9 @@ The pure writer also preflights its deterministic output names and rejects a
 symlinked output directory or output file before writing any analysis file.
 This mirrors the service containment guarantee for direct algorithm callers;
 it does not introduce a new path field or alter the typed service contract.
+
+The dependency-free XYZ fallback now carries the same finite common-element
+mass table used by the Paimon v1.2 MD kernel (with the existing `1.0` fallback
+for symbols outside that table).  This is an internal numerical-fidelity
+alignment only; ASE-provided masses remain authoritative and no new species or
+scientific validation contract is introduced.
