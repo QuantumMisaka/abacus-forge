@@ -118,6 +118,7 @@ def test_cube_subtraction_and_spin_density_postprocess(tmp_path: Path) -> None:
     derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
     assert derived["path_rel"] == "reports/spin_density.cube"
     assert len(derived["source_artifact_ids"]) == 2
+    assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
 
 
 def test_charge_density_manifest_records_canonical_missing_source(tmp_path: Path) -> None:
@@ -193,6 +194,10 @@ def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path,
     cli = json.loads(capsys.readouterr().out)
 
     assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
     assert set(direct.to_dict()) == {"task", "workspace", "status", "subtasks", "summary", "artifacts", "diagnostics"}
 
 
@@ -206,6 +211,10 @@ def test_charge_density_api_and_legacy_cli_share_property_manifest(tmp_path: Pat
     cli = json.loads(capsys.readouterr().out)
 
     assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
 
 
 def test_charge_diff_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
@@ -219,6 +228,10 @@ def test_charge_diff_api_and_legacy_cli_share_property_manifest(tmp_path: Path, 
     cli = json.loads(capsys.readouterr().out)
 
     assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+    assert cli["status"] == direct.status
+    assert cli["summary"] == direct.summary
+    assert cli["artifacts"] == direct.artifacts
+    assert cli["diagnostics"] == direct.diagnostics
 
 
 def test_property_manifest_projection_failure_preserves_legacy_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

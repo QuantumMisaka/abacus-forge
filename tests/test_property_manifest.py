@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from abacus_forge.contracts import ArtifactRecord
+from abacus_forge.errors import ForgeInternalError
 from abacus_forge.property_manifest import (
     PROPERTY_MANIFEST_SCHEMA_VERSION,
     PropertyArtifactSpec,
@@ -277,3 +278,72 @@ def test_build_property_manifest_links_present_derived_cube_to_same_result_sourc
     )
 
     assert manifest.outputs[0].source_artifact_ids == ("artifact-0", "artifact-1")
+
+
+def test_build_property_manifest_rejects_input_output_path_overlap(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path).ensure_layout()
+    path = workspace.root / "outputs" / "shared.cube"
+    path.write_text("cube", encoding="utf-8")
+    artifact = ArtifactRecord(
+        id="artifact-shared",
+        path_rel="outputs/shared.cube",
+        role="output",
+        stage="collect",
+        sha256="a" * 64,
+        size_bytes=4,
+    )
+
+    with pytest.raises(ForgeInternalError, match="inputs and outputs"):
+        build_property_manifest(
+            workspace.root,
+            task="charge-density",
+            inputs=(PropertyArtifactSpec(path, "cube", "input", "source"),),
+            outputs=(PropertyArtifactSpec(path, "cube", "output", "derived", source_paths=(path,)),),
+            artifacts=(artifact,),
+        )
+
+
+def test_build_property_manifest_does_not_reference_incomplete_source_artifact(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path).ensure_layout()
+    source = workspace.root / "inputs" / "source.cube"
+    derived = workspace.root / "reports" / "derived.cube"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("source", encoding="utf-8")
+    derived.write_text("derived", encoding="utf-8")
+    artifacts = (
+        ArtifactRecord(
+            id="artifact-source",
+            path_rel="inputs/source.cube",
+            role="output",
+            stage="collect",
+            sha256=None,
+            size_bytes=6,
+        ),
+        ArtifactRecord(
+            id="artifact-derived",
+            path_rel="reports/derived.cube",
+            role="output",
+            stage="collect",
+            sha256="b" * 64,
+            size_bytes=7,
+        ),
+    )
+
+    manifest = build_property_manifest(
+        workspace.root,
+        task="spin-density",
+        inputs=(PropertyArtifactSpec(source, "cube", "input", "source"),),
+        outputs=(PropertyArtifactSpec(
+            derived,
+            "cube",
+            "output",
+            "derived",
+            source_paths=(source,),
+        ),),
+        artifacts=artifacts,
+    )
+
+    assert manifest.outputs == ()
+    assert {entry.path_rel for entry in manifest.missing} == {"inputs/source.cube", "reports/derived.cube"}

@@ -334,8 +334,14 @@ def _present_entry(
             if source_reason is not None or source_rel is None:
                 raise ForgeInternalError(f"derived property source is unavailable: {source_path}")
             source_artifact = artifacts.get(source_rel)
-            if source_artifact is None:
-                raise ForgeInternalError(f"derived property source artifact is absent: {source_rel}")
+            if (
+                source_artifact is None
+                or source_artifact.sha256 is None
+                or source_artifact.size_bytes is None
+            ):
+                raise ForgeInternalError(
+                    f"derived property source artifact is absent or incomplete: {source_rel}"
+                )
             resolved_ids.append(source_artifact.id)
         source_ids = tuple(dict.fromkeys(resolved_ids))
         if not source_ids:
@@ -382,6 +388,14 @@ def _resolve_specs(
     return present, missing
 
 
+def _declaration_keys(workspace: Path, specs: Sequence[PropertyArtifactSpec]) -> set[str]:
+    keys: set[str] = set()
+    for spec in specs:
+        path_rel, reason = _resolve_path(workspace, spec.path)
+        keys.add(path_rel or f"{reason}:{fspath(spec.path)}")
+    return keys
+
+
 def build_property_manifest(
     workspace: Path,
     *,
@@ -402,6 +416,10 @@ def build_property_manifest(
         if artifact.path_rel in by_path:
             raise ForgeInternalError(f"duplicate property artifact path: {artifact.path_rel}")
         by_path[artifact.path_rel] = artifact
+    overlap = _declaration_keys(workspace, inputs) & _declaration_keys(workspace, outputs)
+    if overlap:
+        duplicate = sorted(overlap)[0]
+        raise ForgeInternalError(f"property path declared in both inputs and outputs: {duplicate}")
     seen: set[str] = set()
     present_inputs, missing_inputs = _resolve_specs(workspace, inputs, by_path, seen)
     present_outputs, missing_outputs = _resolve_specs(workspace, outputs, by_path, seen)
