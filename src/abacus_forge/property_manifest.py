@@ -252,7 +252,13 @@ class PropertyArtifactSpec:
             raise ValueError("spin must be one of: down, shared, unknown, up")
         if self.parse_status is not None and self.parse_status not in _PARSE_STATUSES:
             raise ValueError("parse_status must be one of: malformed, ok")
-        source_paths = tuple(_path_value(item, "source_paths") for item in self.source_paths)
+        if isinstance(self.source_paths, (str, bytes)):
+            raise ValueError("source_paths must be an array of paths")
+        try:
+            source_values = tuple(self.source_paths)
+        except TypeError as error:
+            raise ValueError("source_paths must be an array of paths") from error
+        source_paths = tuple(_path_value(item, "source_paths") for item in source_values)
         object.__setattr__(self, "source_paths", source_paths)
         if source_paths and not (self.kind == "cube" and self.origin == "derived"):
             raise ValueError("source_paths are only valid for derived cube specs")
@@ -265,18 +271,26 @@ def _resolve_path(workspace: Path, value: str | Path) -> tuple[str | None, str |
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = root / candidate
+    lexical_rel: str | None = None
+    try:
+        lexical_rel = _path(candidate.relative_to(root).as_posix())
+    except (ValueError, TypeError):
+        # Absolute paths outside the workspace have no safe lexical path to
+        # expose.  A path declared inside the workspace remains useful even
+        # when its resolved symlink target escapes.
+        lexical_rel = None
     try:
         resolved = candidate.resolve(strict=False)
     except (OSError, RuntimeError):
-        return None, "unavailable"
+        return lexical_rel, "unavailable"
     try:
         relative = resolved.relative_to(root).as_posix()
     except ValueError:
-        return None, "escaped"
+        return lexical_rel, "escaped"
     try:
         relative = _path(relative)
     except ValueError:
-        return None, "unavailable"
+        return lexical_rel, "unavailable"
     if not resolved.exists():
         return relative, "missing"
     if not resolved.is_file():

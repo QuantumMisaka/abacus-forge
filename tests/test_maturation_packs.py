@@ -28,7 +28,7 @@ from abacus_forge.composite import (
     prepare_workfunc,
 )
 from abacus_forge.cube import CubeData, subtract_cubes
-from abacus_forge.input_io import read_input
+from abacus_forge.input_io import read_input, write_input
 from abacus_forge.modify import modify_stru
 from abacus_forge.structure import AbacusStructure
 
@@ -142,6 +142,26 @@ def test_charge_density_manifest_records_canonical_missing_source(tmp_path: Path
     assert any(entry["path_rel"] == "reports/metrics_charge_density.json" for entry in manifest["outputs"])
 
 
+@pytest.mark.parametrize(
+    ("suffix", "expected_suffix"),
+    (("CUSTOM", "CUSTOM"), ("../escape", "ABACUS"), ("", "ABACUS")),
+)
+def test_property_manifest_canonical_suffix_is_safe_and_deterministic(
+    tmp_path: Path, suffix: str, expected_suffix: str
+) -> None:
+    workspace = _prepared_workspace(tmp_path / "suffix-root")
+    parameters = read_input(workspace.root / "inputs" / "INPUT")
+    parameters["suffix"] = suffix
+    write_input(workspace.root / "inputs" / "INPUT", parameters)
+    prepare_charge_density(workspace.root)
+
+    posted = post_charge_density(workspace.root)
+
+    assert posted.diagnostics["property_manifest"]["missing"][0]["path_rel"] == (
+        f"charge-density/scf/inputs/OUT.{expected_suffix}/SPIN1_CHG.cube"
+    )
+
+
 def test_charge_diff_manifest_links_three_sources_to_derived_cube(tmp_path: Path) -> None:
     workspace = _prepared_workspace(tmp_path / "diff-root")
     prepare_charge_diff(workspace.root)
@@ -174,6 +194,31 @@ def test_spin_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path,
 
     assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
     assert set(direct.to_dict()) == {"task", "workspace", "status", "subtasks", "summary", "artifacts", "diagnostics"}
+
+
+def test_charge_density_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-parity")
+    prepare_charge_density(workspace.root)
+    _write_cube(workspace.root / "charge-density" / "scf" / "outputs" / "SPIN1_CHG.cube", [3.0, 4.0])
+    direct = post_charge_density(workspace.root)
+
+    assert main(["charge-density", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
+
+
+def test_charge_diff_api_and_legacy_cli_share_property_manifest(tmp_path: Path, capsys) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-diff-parity")
+    prepare_charge_diff(workspace.root)
+    for name, values in (("full", [4.0, 5.0]), ("subsystem1", [1.0, 1.5]), ("subsystem2", [2.0, 2.5])):
+        _write_cube(workspace.root / "charge-diff" / name / "outputs" / "SPIN1_CHG.cube", values)
+    direct = post_charge_diff(workspace.root)
+
+    assert main(["charge-diff", "post", str(workspace.root), "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+
+    assert cli["diagnostics"]["property_manifest"] == direct.diagnostics["property_manifest"]
 
 
 def test_property_manifest_projection_failure_preserves_legacy_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

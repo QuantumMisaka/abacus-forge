@@ -165,3 +165,115 @@ def test_build_property_manifest_classifies_explicit_paths_and_missing(tmp_path:
     assert manifest.inputs[0].artifact_id == artifact.id
     assert manifest.missing[0].reason == "missing"
     assert "artifact_id" not in manifest.missing[0].to_dict()
+
+
+def test_property_artifact_spec_rejects_string_source_paths() -> None:
+    with pytest.raises(ValueError, match="source_paths"):
+        PropertyArtifactSpec(
+            path="reports/derived.cube",
+            kind="cube",
+            role="output",
+            origin="derived",
+            source_paths="inputs/source.cube",
+        )
+
+
+def test_build_property_manifest_preserves_lexical_path_for_escaped_symlink(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace").ensure_layout()
+    outside = tmp_path / "outside.cube"
+    outside.write_text("outside", encoding="utf-8")
+    link = workspace.root / "outputs" / "escaped.cube"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+
+    manifest = build_property_manifest(
+        workspace.root,
+        task="charge-density",
+        inputs=(PropertyArtifactSpec(link, "cube", "input", "source"),),
+        outputs=(),
+        artifacts=(),
+    )
+
+    assert manifest.missing[0].path_rel == "outputs/escaped.cube"
+    assert manifest.missing[0].reason == "escaped"
+
+
+def test_build_property_manifest_classifies_directory_as_unavailable(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path).ensure_layout()
+    directory = workspace.root / "outputs" / "not-a-file"
+    directory.mkdir(parents=True)
+
+    manifest = build_property_manifest(
+        workspace.root,
+        task="charge-density",
+        inputs=(PropertyArtifactSpec(directory, "cube", "input", "source"),),
+        outputs=(),
+        artifacts=(),
+    )
+
+    assert manifest.missing[0].path_rel == "outputs/not-a-file"
+    assert manifest.missing[0].reason == "unavailable"
+
+
+def test_build_property_manifest_classifies_incomplete_artifact_projection_as_unavailable(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path).ensure_layout()
+    cube = workspace.root / "outputs" / "unhashed.cube"
+    cube.write_text("cube", encoding="utf-8")
+    artifact = ArtifactRecord(
+        id="artifact-unhashed",
+        path_rel="outputs/unhashed.cube",
+        role="output",
+        stage="collect",
+        sha256=None,
+        size_bytes=cube.stat().st_size,
+    )
+
+    manifest = build_property_manifest(
+        workspace.root,
+        task="charge-density",
+        inputs=(PropertyArtifactSpec(cube, "cube", "input", "source"),),
+        outputs=(),
+        artifacts=(artifact,),
+    )
+
+    assert manifest.missing[0].path_rel == "outputs/unhashed.cube"
+    assert manifest.missing[0].reason == "unavailable"
+
+
+def test_build_property_manifest_links_present_derived_cube_to_same_result_sources(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path).ensure_layout()
+    source_paths = (workspace.root / "inputs" / "up.cube", workspace.root / "inputs" / "down.cube")
+    derived_path = workspace.root / "reports" / "spin_density.cube"
+    for path, content in ((source_paths[0], "up"), (source_paths[1], "down"), (derived_path, "diff")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    artifacts = tuple(
+        ArtifactRecord(
+            id=f"artifact-{index}",
+            path_rel=path.relative_to(workspace.root).as_posix(),
+            role="output",
+            stage="collect",
+            sha256=f"{index + 1:x}" * 64,
+            size_bytes=path.stat().st_size,
+        )
+        for index, path in enumerate((*source_paths, derived_path))
+    )
+
+    manifest = build_property_manifest(
+        workspace.root,
+        task="spin-density",
+        inputs=tuple(PropertyArtifactSpec(path, "cube", "input", "source") for path in source_paths),
+        outputs=(PropertyArtifactSpec(
+            derived_path,
+            "cube",
+            "output",
+            "derived",
+            spin="shared",
+            source_paths=source_paths,
+        ),),
+        artifacts=artifacts,
+    )
+
+    assert manifest.outputs[0].source_artifact_ids == ("artifact-0", "artifact-1")
