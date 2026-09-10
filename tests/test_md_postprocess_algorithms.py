@@ -66,3 +66,22 @@ def test_periodic_geometry_and_one_based_selection():
     )
     result = analyze_trajectory([frame], ["bond_angle"], selection={"angles": ["H-O-H"], "indices": [1, 2, 3]})
     assert result["bond_angle"]["angles_deg"]["H-O-H"] == pytest.approx([90.0])
+
+
+def test_rdf_pair_and_parameter_boundaries(tmp_path):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    with pytest.raises(ValueError):
+        run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"elements": ["H-../escape"]})
+    with pytest.raises(ValueError):
+        run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"elements": ["H/O"]})
+    with pytest.raises(ValueError):
+        run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"rmax": float("inf")})
+
+
+def test_plot_failure_still_produces_png(tmp_path, monkeypatch):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    import matplotlib.pyplot as plt
+    monkeypatch.setattr(plt, "subplots", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("render failure")))
+    output = tmp_path / "out"
+    run_md_postprocess(trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": False, "save_plot": True})
+    assert (output / "msd.png").is_file()

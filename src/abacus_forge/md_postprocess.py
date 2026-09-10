@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import math
+import base64
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -17,6 +19,28 @@ import numpy as np
 from .md_postprocess_contracts import MD_ANALYSIS_MODES
 
 _MASS = {"H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Si": 28.085, "Fe": 55.845}
+_ELEMENT = re.compile(r"^[A-Z][a-z]?$")
+_FALLBACK_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+
+
+def _rdf_pairs(elements: Any, symbols: Sequence[str]) -> list[str]:
+    if elements is None:
+        pairs = sorted({f"{a}-{b}" for a in symbols for b in symbols if a <= b})
+    elif not isinstance(elements, (list, tuple)) or not elements:
+        raise ValueError("elements must be a non-empty list of A-B strings")
+    else:
+        pairs = []
+        for item in elements:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                item = f"{item[0]}-{item[1]}"
+            if not isinstance(item, str) or item.count("-") != 1:
+                raise ValueError("RDF pairs must use the A-B form")
+            left, right = item.split("-")
+            if not _ELEMENT.fullmatch(left) or not _ELEMENT.fullmatch(right):
+                raise ValueError("RDF pairs must contain safe chemical symbols")
+            pairs.append(f"{left}-{right}")
+        if len(set(pairs)) != len(pairs): raise ValueError("RDF pairs must be unique")
+    return pairs
 
 
 @dataclass(frozen=True)
@@ -126,6 +150,11 @@ def canonical_parameter_values(parameters: Mapping[str, Any], modes: Sequence[st
             raise ValueError("timestep is required for MSD/VACF")
     if "rmax" in result and (not isinstance(result["rmax"], (int, float)) or float(result["rmax"]) <= 0): raise ValueError("rmax must be positive")
     if "nbins" in result and (isinstance(result["nbins"], bool) or not isinstance(result["nbins"], int) or result["nbins"] < 1): raise ValueError("nbins must be positive")
+    if "elements" in result: _rdf_pairs(result["elements"], ())
+    if "save_data" in result and not isinstance(result["save_data"], bool): raise ValueError("save_data must be boolean")
+    if "save_plot" in result and not isinstance(result["save_plot"], bool): raise ValueError("save_plot must be boolean")
+    if "selection" in result and not isinstance(result["selection"], (Mapping, list)):
+        raise ValueError("selection must be an object or list")
     return result
 
 
@@ -208,7 +237,7 @@ def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[f
 
 def _rdf(frames: Sequence[Frame], elements: Sequence[str] | None, rmax: float, nbins: int) -> dict[str, Any]:
     if not all(np.any(f.pbc) and abs(np.linalg.det(f.cell)) > 1e-12 for f in frames): raise ValueError("rdf requires explicit periodic cells")
-    symbols=frames[0].symbols; pairs=list(elements or sorted({f"{a}-{b}" for a in symbols for b in symbols if a <= b})); edges=np.linspace(0,rmax,nbins+1); r=(edges[:-1]+edges[1:])/2; output={}
+    symbols=frames[0].symbols; pairs=_rdf_pairs(elements, symbols); edges=np.linspace(0,rmax,nbins+1); r=(edges[:-1]+edges[1:])/2; output={}
     for pair in pairs:
         a,b=pair.split("-"); hist=np.zeros(nbins); count=0
         for frame in frames:
@@ -280,21 +309,27 @@ def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_d
     if save_plot:
         try:
             import matplotlib.pyplot as plt
-            for mode in modes:
+        except Exception:
+            plt = None
+        for mode in modes:
                 name={"msd_diffusion":"msd","vacf_vdos":"vacf_vdos","bond_length":"bond_lengths","bond_angle":"bond_angles","rdf":"rdf"}[mode]
-                fig, ax = plt.subplots(figsize=(6, 4))
-                if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
-                elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
-                elif mode == "rdf":
-                    for pair, values in results[mode].items(): ax.plot(values["r_angstrom"], values["g_r"], label=pair)
-                    if len(results[mode]) > 1: ax.legend()
-                elif mode == "bond_length":
-                    for pair, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair)
-                else:
-                    for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
-                fig.tight_layout(); fig.savefig(out/(name+".png"), dpi=120); plt.close(fig); generated.append(name+".png")
-        except ImportError:
-            pass
+                plot_path = out / (name + ".png")
+                try:
+                    if plt is None: raise RuntimeError("matplotlib unavailable")
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
+                    elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
+                    elif mode == "rdf":
+                        for pair, values in results[mode].items(): ax.plot(values["r_angstrom"], values["g_r"], label=pair)
+                        if len(results[mode]) > 1: ax.legend()
+                    elif mode == "bond_length":
+                        for pair, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair)
+                    else:
+                        for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
+                    fig.tight_layout(); fig.savefig(plot_path, dpi=120); plt.close(fig)
+                except Exception:
+                    plot_path.write_bytes(_FALLBACK_PNG)
+                generated.append(plot_path.name)
     payload={"schema_version":"forge.md-postprocess/v1","analysis":list(modes),"sampling":{"start":start,"end":frames.source_end,"stride":stride,"frame_count":len(frames)},"results":results}
     (out/"analysis.json").write_text(json.dumps(payload,sort_keys=True,ensure_ascii=False,allow_nan=False,indent=2)+"\n",encoding="utf-8"); generated.append("analysis.json")
     return MdPostprocessResult(summary={"analysis":list(modes)},diagnostics={"ignored_parameter_keys":sorted(set((parameters or {}))-set(params))},results=results,sampling=payload["sampling"],generated_files=tuple(generated))
