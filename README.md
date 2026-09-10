@@ -749,9 +749,10 @@ PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.js
 
 Relax discovery 和 schema 当前保持 `experimental`；只有 mock/fixture 与离线
 machine/API parity 已验证。可选的 `real_smoke` 会在复制的用户准备 workspace 上验证
-execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；没有真实证据
-时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析
-不完整只反映 collection 状态。
+execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；其中 typed SCF
+machine-path smoke 与 typed Relax smoke 都通过 machine CLI，legacy SCF API smoke 不能替代
+前者。没有真实证据时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，
+缺少输出或解析不完整只反映 collection 状态。
 
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
 `postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact

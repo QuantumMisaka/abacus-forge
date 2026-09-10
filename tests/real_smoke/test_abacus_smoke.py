@@ -4,8 +4,8 @@ import json
 import math
 import os
 import shutil
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import pytest
 
