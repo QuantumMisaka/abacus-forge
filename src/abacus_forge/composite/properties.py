@@ -12,6 +12,7 @@ import numpy as np
 
 from abacus_forge.api import collect
 from abacus_forge.composite.common import artifacts_under, ensure_root, require_prepared_inputs, run_subtasks, write_subtask, write_task_result
+from abacus_forge.collection_results import contained_source
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.input_io import read_input
 from abacus_forge.modify import modify_stru
@@ -84,10 +85,10 @@ def run_charge_diff(workspace: str | Path, **kwargs: Any) -> TaskResult:
 
 def post_charge_density(workspace: str | Path) -> TaskResult:
     root = ensure_root(workspace)
-    cube = _find_first(root.root / "charge-density", ["*CHG*.cube", "*.cube"])
+    cube, escaped = _find_first(root.root / "charge-density", ["*CHG*.cube", "*.cube"], workspace_root=root.root)
     summary = {"charge_density_file": str(cube) if cube else None}
     path = write_task_result(root, "reports/metrics_charge_density.json", summary)
-    source = cube or _canonical_cube_path(root.root / "charge-density" / "scf", "SPIN1_CHG.cube")
+    source = cube or escaped or _canonical_cube_path(root.root / "charge-density" / "scf", "SPIN1_CHG.cube")
     result = TaskResult(
         "charge-density",
         root.root,
@@ -105,10 +106,10 @@ def post_charge_density(workspace: str | Path) -> TaskResult:
 def post_spin_density(workspace: str | Path) -> TaskResult:
     root = ensure_root(workspace)
     base = root.root / "spin-density"
-    up = _find_first(base, ["SPIN1_CHG.cube", "*SPIN1*.cube", "*UP*.cube"])
-    down = _find_first(base, ["SPIN2_CHG.cube", "*SPIN2*.cube", "*DOWN*.cube"])
-    up_source = up or _canonical_cube_path(base / "scf", "SPIN1_CHG.cube")
-    down_source = down or _canonical_cube_path(base / "scf", "SPIN2_CHG.cube")
+    up, up_escaped = _find_first(base, ["SPIN1_CHG.cube", "*SPIN1*.cube", "*UP*.cube"], workspace_root=root.root)
+    down, down_escaped = _find_first(base, ["SPIN2_CHG.cube", "*SPIN2*.cube", "*DOWN*.cube"], workspace_root=root.root)
+    up_source = up or up_escaped or _canonical_cube_path(base / "scf", "SPIN1_CHG.cube")
+    down_source = down or down_escaped or _canonical_cube_path(base / "scf", "SPIN2_CHG.cube")
     diagnostics = {"spin_up": str(up) if up else None, "spin_down": str(down) if down else None}
     if up is None or down is None:
         summary = {"spin_density_file": None}
@@ -150,12 +151,12 @@ def post_spin_density(workspace: str | Path) -> TaskResult:
 def post_charge_diff(workspace: str | Path) -> TaskResult:
     root = ensure_root(workspace)
     base = root.root / "charge-diff"
-    full = _find_first(base / "full", ["*CHG*.cube", "*.cube"])
-    sub1 = _find_first(base / "subsystem1", ["*CHG*.cube", "*.cube"])
-    sub2 = _find_first(base / "subsystem2", ["*CHG*.cube", "*.cube"])
-    full_source = full or _canonical_cube_path(base / "full", "SPIN1_CHG.cube")
-    sub1_source = sub1 or _canonical_cube_path(base / "subsystem1", "SPIN1_CHG.cube")
-    sub2_source = sub2 or _canonical_cube_path(base / "subsystem2", "SPIN1_CHG.cube")
+    full, full_escaped = _find_first(base / "full", ["*CHG*.cube", "*.cube"], workspace_root=root.root)
+    sub1, sub1_escaped = _find_first(base / "subsystem1", ["*CHG*.cube", "*.cube"], workspace_root=root.root)
+    sub2, sub2_escaped = _find_first(base / "subsystem2", ["*CHG*.cube", "*.cube"], workspace_root=root.root)
+    full_source = full or full_escaped or _canonical_cube_path(base / "full", "SPIN1_CHG.cube")
+    sub1_source = sub1 or sub1_escaped or _canonical_cube_path(base / "subsystem1", "SPIN1_CHG.cube")
+    sub2_source = sub2 or sub2_escaped or _canonical_cube_path(base / "subsystem2", "SPIN1_CHG.cube")
     diagnostics = {"full": str(full) if full else None, "subsystem1": str(sub1) if sub1 else None, "subsystem2": str(sub2) if sub2 else None}
     if full is None or sub1 is None or sub2 is None:
         summary = {"charge_density_difference_file": None}
@@ -195,7 +196,7 @@ def post_charge_diff(workspace: str | Path) -> TaskResult:
 
 def post_elf(workspace: str | Path) -> TaskResult:
     root = ensure_root(workspace)
-    cube = _find_first(root.root / "elf", ["*ELF*.cube", "*.cube"])
+    cube, _ = _find_first(root.root / "elf", ["*ELF*.cube", "*.cube"], workspace_root=root.root)
     summary = {"elf_file": str(cube) if cube else None}
     path = write_task_result(root, "reports/metrics_elf.json", summary)
     return TaskResult("elf", root.root, "completed" if cube else "degraded", summary=summary, artifacts={**artifacts_under(root, "elf"), str(path.relative_to(root.root)): str(path)})
@@ -203,7 +204,7 @@ def post_elf(workspace: str | Path) -> TaskResult:
 
 def post_bader(workspace: str | Path, *, executable: str = "bader") -> TaskResult:
     root = ensure_root(workspace)
-    cube = _find_first(root.root / "bader", ["*CHG*.cube", "*.cube"])
+    cube, _ = _find_first(root.root / "bader", ["*CHG*.cube", "*.cube"], workspace_root=root.root)
     diagnostics = {"charge_cube": str(cube) if cube else None, "executable": executable}
     if cube is None:
         summary = {"bader_output": None}
@@ -240,7 +241,7 @@ def run_workfunc(workspace: str | Path, **kwargs: Any) -> TaskResult:
 def post_workfunc(workspace: str | Path, *, vacuum_axis: str = "auto") -> TaskResult:
     root = ensure_root(workspace)
     sub = Workspace(root.root / "workfunc" / "scf")
-    potential = _find_first(sub.root, ["ElecStaticPot.cube", "*Pot*.cube", "*.cube"])
+    potential, _ = _find_first(sub.root, ["ElecStaticPot.cube", "*Pot*.cube", "*.cube"], workspace_root=root.root)
     diagnostics = {"potential_cube": str(potential) if potential else None}
     if potential is None:
         summary = {"work_function_ev": None}
@@ -399,12 +400,31 @@ def _run_pack(workspace: str | Path, task: str, directory: str, **kwargs: Any) -
     return run_subtasks(task, root, subtasks, **kwargs)
 
 
-def _find_first(base: Path, patterns: Sequence[str]) -> Path | None:
+def _find_first(
+    base: Path,
+    patterns: Sequence[str],
+    *,
+    workspace_root: Path,
+) -> tuple[Path | None, Path | None]:
+    """Select a safe match and retain the first rejected external candidate.
+
+    Property postprocessing may read the selected path (cube arithmetic,
+    planar averaging or an external helper).  Resolve and contain-check it
+    before returning so a workspace-local symlink cannot redirect that read
+    outside the caller-owned workspace.  Returning the resolved safe path also
+    avoids a time-of-check/time-of-use symlink swap at the consumer boundary.
+    The second return value is only a fact for manifest projection; callers
+    must never pass it to a parser, arithmetic kernel or external process.
+    """
+    escaped: Path | None = None
     for pattern in patterns:
         for path in sorted(base.rglob(pattern)):
-            if path.is_file():
-                return path
-    return None
+            contained = contained_source(workspace_root, path)
+            if contained is not None:
+                return contained, None
+            if escaped is None and path.is_file():
+                escaped = path
+    return None, escaped
 
 
 def _property_spec(

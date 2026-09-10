@@ -378,6 +378,11 @@ the executed slice and its regression coverage:
 - `4cfdc9b` — neutral-core architecture import boundary;
 - `44612e9` — containment-path fidelity, source-path input hardening, complete
   parity coverage, safe suffix coverage, and unavailable-artifact coverage.
+- Follow-up containment hardening keeps legacy property selection
+  workspace-contained: `_find_first` returns a resolved safe match and retains
+  a rejected external symlink only for `reason="escaped"` manifest facts; it
+  is never passed to cube arithmetic, planar averaging, or an external Bader
+  process. Regression coverage is in `tests/test_maturation_packs.py`.
 
 The latest gates are recorded in
 `.superpowers/sdd/2026-09-10-forge-property-manifest/task-4-report.md`:

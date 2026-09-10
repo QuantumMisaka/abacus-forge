@@ -121,6 +121,31 @@ def test_cube_subtraction_and_spin_density_postprocess(tmp_path: Path) -> None:
     assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
 
 
+def test_property_post_does_not_read_escaped_cube_symlinks(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "escaped-spin-root")
+    prepare_spin_density(workspace.root)
+    outside_up = tmp_path / "outside-up.cube"
+    outside_down = tmp_path / "outside-down.cube"
+    _write_cube(outside_up, [3.0, 4.0])
+    _write_cube(outside_down, [1.0, 1.5])
+    output_dir = workspace.root / "spin-density" / "scf" / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        (output_dir / "SPIN1_CHG.cube").symlink_to(outside_up)
+        (output_dir / "SPIN2_CHG.cube").symlink_to(outside_down)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+
+    posted = post_spin_density(workspace.root)
+
+    assert posted.status == "degraded"
+    assert posted.summary["spin_density_file"] is None
+    assert not (workspace.root / "reports" / "spin_density.cube").exists()
+    manifest = posted.diagnostics["property_manifest"]
+    cube_reasons = {entry["reason"] for entry in manifest["missing"] if entry["kind"] == "cube"}
+    assert "escaped" in cube_reasons
+
+
 def test_charge_density_manifest_records_canonical_missing_source(tmp_path: Path) -> None:
     workspace = _prepared_workspace(tmp_path / "charge-root")
     prepare_charge_density(workspace.root)
