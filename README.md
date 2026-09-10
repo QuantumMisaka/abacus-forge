@@ -166,7 +166,7 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 ```
 
 `capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前发现的
-capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`pyatb-band`、`band`、`dos`、`export`；`md` 支持
+capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`pyatb-band`、`export`；`md` 支持
 `prepare`、`modify`、`execute`、`collect`、`postprocess`，且 maturity 为 `experimental`；其他 capability
 按各自 descriptor 暴露 operation，`band`/`dos` 仅暴露 `postprocess` 且 maturity 为
 `experimental`，`pyatb-band` 仅暴露 `prepare`、`execute`、`collect` 且 maturity 为
