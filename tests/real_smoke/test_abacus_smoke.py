@@ -40,6 +40,15 @@ def _load_one_json_document(text: str) -> dict[str, object]:
     return value
 
 
+def _assert_json_safe_finite(value: object) -> None:
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        pytest.fail(f"returned fact is not finite JSON: {exc}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        assert math.isfinite(float(value))
+
+
 @pytest.mark.real_smoke
 def test_real_abacus_scf_execute_and_collect(tmp_path: Path) -> None:
     source_value = os.environ.get("ABACUS_FORGE_REAL_SMOKE_WORKSPACE")
@@ -226,6 +235,197 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
     assert collect_id in manifest_events
     for operation_id, operation in ((execute_id, "execute"), (collect_id, "collect")):
         event = manifest_events[operation_id]
+        assert event["operation"] == operation
+        path_rel = event["path_rel"]
+        assert isinstance(path_rel, str)
+        assert path_rel == f"reports/events/{operation_id}-{operation}.json"
+        _assert_contained_file(workspace_root, path_rel)
+
+
+@pytest.mark.real_smoke
+def test_typed_md_machine_execute_and_collect(tmp_path: Path) -> None:
+    source_value = os.environ.get("ABACUS_FORGE_MD_SMOKE_WORKSPACE")
+    executable = os.environ.get("ABACUS_FORGE_ABACUS_EXECUTABLE")
+    missing = [
+        name
+        for name, value in (
+            ("ABACUS_FORGE_MD_SMOKE_WORKSPACE", source_value),
+            ("ABACUS_FORGE_ABACUS_EXECUTABLE", executable),
+        )
+        if not value
+    ]
+    if missing:
+        pytest.skip("typed MD smoke skipped: set " + " and ".join(missing))
+
+    assert source_value is not None
+    assert executable is not None
+    source = Path(source_value)
+    if not source.is_dir():
+        pytest.fail(
+            "ABACUS_FORGE_MD_SMOKE_WORKSPACE is not a directory: "
+            f"{source}"
+        )
+    executable_path = Path(executable)
+    if executable_path.parent != Path():
+        executable_ok = executable_path.is_file() and os.access(executable_path, os.X_OK)
+    else:
+        executable_ok = shutil.which(executable) is not None
+    if not executable_ok:
+        pytest.fail(f"ABACUS_FORGE_ABACUS_EXECUTABLE is not executable: {executable}")
+
+    workspace = tmp_path / "typed-md-smoke"
+    # Materialize links while copying the prepared source so execution cannot
+    # write through a preserved output symlink into the caller's workspace.
+    shutil.copytree(source, workspace, symlinks=False)
+    input_path = workspace / "inputs" / "INPUT"
+    try:
+        calculation = read_input(input_path).get("calculation", "").strip().lower()
+    except (OSError, UnicodeError) as exc:
+        pytest.fail(f"typed MD smoke workspace has unreadable INPUT: {input_path}: {exc}")
+    if calculation != "md":
+        pytest.fail(
+            "typed MD smoke workspace must declare calculation=md in "
+            f"{input_path}; got {calculation or '<missing>'!r}"
+        )
+
+    workspace_root = workspace.resolve()
+    workspace_rel = workspace.name
+    execute_id = str(uuid.uuid4())
+    collect_id = str(uuid.uuid4())
+    assert execute_id != collect_id
+    assert uuid.UUID(execute_id).version == 4
+    assert uuid.UUID(collect_id).version == 4
+
+    execute_request = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": execute_id,
+        "workspace_rel": workspace_rel,
+        "capability": "md",
+        "executable": executable,
+        "mpi_ranks": 1,
+        "omp_threads": 1,
+        "timeout_seconds": _REAL_SMOKE_ENGINE_TIMEOUT_SECONDS,
+        "dry_run": False,
+    }
+    executed = run_cli(
+        "operation",
+        "execute",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(execute_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
+    )
+    assert executed.returncode == 0, executed.stdout + executed.stderr
+    assert executed.stderr == ""
+    execute_payload = _load_one_json_document(executed.stdout)
+    _assert_json_safe_finite(execute_payload)
+    assert execute_payload["operation_id"] == execute_id
+    execute_envelope = execute_payload["envelope"]
+    assert isinstance(execute_envelope, dict)
+    assert execute_envelope["operation"] == "execute"
+    assert execute_envelope["workspace_rel"] == workspace_rel
+    execute_status = execute_envelope["status"]
+    assert isinstance(execute_status, dict)
+    assert execute_status["execution"] == "completed"
+    assert execute_status["collection"] == "not_collected"
+    assert execute_status["scientific"] == "unassessed"
+
+    collect_request = {
+        "schema_version": "forge.request/v1",
+        "operation": "collect",
+        "operation_id": collect_id,
+        "workspace_rel": workspace_rel,
+        "capability": "md",
+    }
+    collected = run_cli(
+        "operation",
+        "collect",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(collect_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    assert collected.stderr == ""
+    collect_payload = _load_one_json_document(collected.stdout)
+    _assert_json_safe_finite(collect_payload)
+    assert collect_payload["operation_id"] == collect_id
+    collect_envelope = collect_payload["envelope"]
+    assert isinstance(collect_envelope, dict)
+    assert collect_envelope["operation"] == "collect"
+    assert collect_envelope["workspace_rel"] == workspace_rel
+    collect_status = collect_envelope["status"]
+    assert isinstance(collect_status, dict)
+    assert collect_status["collection"] == "complete"
+    assert collect_status["execution"] == "not_run"
+    assert collect_status["scientific"] == "unassessed"
+
+    metrics = collect_envelope["metrics"]
+    assert isinstance(metrics, list)
+    for metric in metrics:
+        assert isinstance(metric, dict)
+        assert isinstance(metric.get("name"), str)
+        _assert_json_safe_finite(metric.get("value"))
+    diagnostics = collect_envelope["diagnostics"]
+    assert isinstance(diagnostics, dict)
+    legacy_metrics = diagnostics.get("legacy_metrics")
+    if legacy_metrics is not None:
+        _assert_json_safe_finite(legacy_metrics)
+
+    for operation_id, operation, payload in (
+        (execute_id, "execute", execute_payload),
+        (collect_id, "collect", collect_payload),
+    ):
+        event_path_rel = f"reports/events/{operation_id}-{operation}.json"
+        _assert_contained_file(workspace_root, event_path_rel)
+        event = json.loads((workspace / event_path_rel).read_text(encoding="utf-8"))
+        assert event["id"] == operation_id
+        assert event["operation"] == operation
+        assert event["payload"] == payload
+
+        envelope = payload["envelope"]
+        assert isinstance(envelope, dict)
+        artifacts = envelope["artifacts"]
+        assert isinstance(artifacts, list)
+        artifact_ids: set[str] = set()
+        for artifact in artifacts:
+            assert isinstance(artifact, dict)
+            artifact_id = artifact["id"]
+            path_rel = artifact["path_rel"]
+            assert isinstance(artifact_id, str)
+            assert isinstance(path_rel, str)
+            artifact_ids.add(artifact_id)
+            _assert_contained_file(workspace_root, path_rel)
+        envelope_diagnostics = envelope["diagnostics"]
+        assert isinstance(envelope_diagnostics, dict)
+        artifact_refs = envelope_diagnostics["artifact_refs"]
+        assert isinstance(artifact_refs, list)
+        assert all(isinstance(reference, dict) for reference in artifact_refs)
+        assert {
+            reference["artifact_id"]
+            for reference in artifact_refs
+        } == artifact_ids
+        assert all(
+            isinstance(reference["artifact_id"], str)
+            and reference["operation_id"] == operation_id
+            for reference in artifact_refs
+        )
+
+    manifest = json.loads(
+        (workspace / "reports" / "forge-workspace.json").read_text(encoding="utf-8")
+    )
+    manifest_events = manifest["events"]
+    assert isinstance(manifest_events, list)
+    manifest_by_id = {
+        event["id"]: event
+        for event in manifest_events
+        if isinstance(event, dict) and isinstance(event.get("id"), str)
+    }
+    assert execute_id in manifest_by_id
+    assert collect_id in manifest_by_id
+    for operation_id, operation in ((execute_id, "execute"), (collect_id, "collect")):
+        event = manifest_by_id[operation_id]
         assert event["operation"] == operation
         path_rel = event["path_rel"]
         assert isinstance(path_rel, str)
