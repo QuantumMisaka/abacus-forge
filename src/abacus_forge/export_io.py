@@ -12,9 +12,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import tempfile
+import uuid
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Mapping
 
 from abacus_forge.contracts import (
@@ -228,20 +228,77 @@ def _overlaps_source_artifact(document: ExportDocument, destination_path_rel: st
     )
 
 
-def _fsync_directory(directory: Path) -> None:
+def _directory_flags() -> int:
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    return flags
+
+
+def _open_destination_directory(workspace: Workspace, path_rel: str) -> int:
+    """Open the destination parent as a no-follow directory FD.
+
+    Walking each component relative to the previously opened directory keeps
+    the later temporary-file creation and hard-link publication anchored to
+    the workspace even if a pathname is swapped concurrently.
+    """
+
     try:
-        fd = os.open(directory, os.O_RDONLY)
-    except OSError:
+        workspace.root.mkdir(parents=True, exist_ok=True)
+        current_fd = os.open(workspace.root, _directory_flags())
+    except OSError as error:
+        raise ForgePersistenceError("unable to open export workspace directory") from error
+
+    parent = PurePosixPath(path_rel).parent
+    components = () if str(parent) == "." else parent.parts
+    try:
+        for component in components:
+            try:
+                os.mkdir(component, dir_fd=current_fd)
+            except FileExistsError:
+                pass
+            try:
+                next_fd = os.open(component, _directory_flags(), dir_fd=current_fd)
+            except OSError as error:
+                raise ForgePathError("export destination parent is not a contained directory") from error
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except Exception:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise
+
+
+def _new_temporary_file(directory_fd: int, target_name: str) -> tuple[str, int]:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    for _ in range(100):
+        name = f".{target_name}.{uuid.uuid4().hex}.tmp"
+        try:
+            fd = os.open(name, flags, 0o600, dir_fd=directory_fd)
+            return name, fd
+        except FileExistsError:
+            continue
+        except OSError as error:
+            raise ForgePersistenceError("unable to create export temporary file") from error
+    raise ForgePersistenceError("unable to allocate export temporary file")
+
+
+def _unlink_if_owned(directory_fd: int, name: str, published_stat: os.stat_result | None) -> None:
+    """Best-effort rollback which never intentionally removes a raced inode."""
+
+    if published_stat is None:
         return
     try:
-        try:
-            os.fsync(fd)
-        except OSError:
-            # Directory fsync is an optional durability enhancement; the
-            # file fsync and atomic link are still the publication boundary.
-            pass
-    finally:
-        os.close(fd)
+        current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if (current.st_dev, current.st_ino) != (published_stat.st_dev, published_stat.st_ino):
+            return
+        os.unlink(name, dir_fd=directory_fd)
+    except (FileNotFoundError, OSError):
+        return
 
 
 def write_export_document(
@@ -268,17 +325,6 @@ def write_export_document(
         raise ForgePersistenceError("unable to inspect export destination") from error
 
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        raise ForgePersistenceError("unable to create export destination directory") from error
-    # A parent can be replaced by a symlink between the initial containment
-    # check and directory creation.  Re-resolve immediately before creating a
-    # temporary file so a race cannot redirect the write outside the workspace.
-    _, checked_target = _destination(workspace, path_rel)
-    if checked_target != target:
-        raise ForgePathError("export destination changed during preparation")
-
-    try:
         payload = json.dumps(
             document.to_dict(),
             sort_keys=True,
@@ -290,70 +336,89 @@ def write_export_document(
     except (TypeError, ValueError) as error:
         raise ForgeRequestError("export document is not JSON serializable") from error
 
-    temporary_path: Path | None = None
+    directory_fd: int | None = None
+    temporary_name: str | None = None
+    temporary_fd: int | None = None
     published = False
+    published_stat: os.stat_result | None = None
+    target_name = PurePosixPath(path_rel).name
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=target.parent,
-            prefix=f".{target.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary_path = Path(temporary.name)
+        directory_fd = _open_destination_directory(workspace, path_rel)
+        # A no-follow directory walk above is the final containment check.  A
+        # concurrent pathname replacement cannot redirect the FD-relative
+        # operations below.
+        temporary_name, temporary_fd = _new_temporary_file(directory_fd, target_name)
+        with os.fdopen(temporary_fd, "wb") as temporary:
+            temporary_fd = None
             temporary.write(payload)
             temporary.flush()
             os.fsync(temporary.fileno())
+            temporary_stat = os.fstat(temporary.fileno())
+        if temporary_stat.st_size != len(payload):
+            raise ForgePersistenceError("export temporary file size changed during write")
         try:
-            os.link(temporary_path, target)
+            os.link(
+                temporary_name,
+                target_name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
         except FileExistsError as error:
             raise ForgeRequestError("destination already exists") from error
         except OSError as error:
             raise ForgePersistenceError("unable to publish export document") from error
         published = True
-        _fsync_directory(target.parent)
+        # A hard link shares the temporary inode.  Keep that identity for
+        # rollback, so an intervening unlink/recreate by another process is
+        # never mistaken for our output.
+        published_stat = temporary_stat
         try:
-            temporary_path.unlink()
-        except OSError as error:
-            raise ForgePersistenceError("unable to finalize export temporary file") from error
-        temporary_path = None
-        try:
-            contents = target.read_bytes()
-            size_bytes = target.stat().st_size
+            linked_stat = os.stat(target_name, dir_fd=directory_fd, follow_symlinks=False)
         except OSError as error:
             raise ForgePersistenceError("unable to inspect published export document") from error
+        if (linked_stat.st_dev, linked_stat.st_ino) != (temporary_stat.st_dev, temporary_stat.st_ino):
+            raise ForgePersistenceError("published export document changed during publication")
+        try:
+            os.fsync(directory_fd)
+        except OSError as error:
+            raise ForgePersistenceError("unable to persist export directory entry") from error
+        try:
+            os.unlink(temporary_name, dir_fd=directory_fd)
+        except OSError as error:
+            raise ForgePersistenceError("unable to finalize export temporary file") from error
         return WrittenExportDocument(
             path=target,
             path_rel=path_rel,
-            sha256=hashlib.sha256(contents).hexdigest(),
-            size_bytes=size_bytes,
+            sha256=hashlib.sha256(payload).hexdigest(),
+            size_bytes=temporary_stat.st_size,
         )
     except ForgeRequestError:
         raise
     except ForgePersistenceError:
         if published:
-            try:
-                target.unlink()
-            except FileNotFoundError:
-                pass
-            except OSError:
-                pass
+            _unlink_if_owned(directory_fd, target_name, published_stat)  # type: ignore[arg-type]
         raise
     except OSError as error:
         if published:
-            try:
-                target.unlink()
-            except FileNotFoundError:
-                pass
-            except OSError:
-                pass
+            _unlink_if_owned(directory_fd, target_name, published_stat)  # type: ignore[arg-type]
         raise ForgePersistenceError("unable to write export document") from error
     finally:
-        if temporary_path is not None:
+        if temporary_fd is not None:
             try:
-                temporary_path.unlink()
-            except FileNotFoundError:
+                os.close(temporary_fd)
+            except OSError:
                 pass
+        if directory_fd is not None:
+            if temporary_name is not None:
+                try:
+                    os.unlink(temporary_name, dir_fd=directory_fd)
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    pass
+            try:
+                os.close(directory_fd)
             except OSError:
                 pass
 

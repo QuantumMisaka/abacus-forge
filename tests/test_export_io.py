@@ -132,6 +132,47 @@ def test_resolve_export_source_uses_exact_manifest_event_and_validates_refs(tmp_
     assert resolved.event_path_rel == event_path.relative_to(workspace.root.resolve()).as_posix()
 
 
+def test_resolve_export_source_does_not_fall_back_to_latest_event_and_preserves_source_bytes(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path / "multiple-events")
+    source_event = _source_event(workspace, outcome=_outcome(operation_id=SOURCE_ID))
+    source_bytes = source_event.read_bytes()
+    _source_event(workspace, outcome=_outcome(operation_id=OTHER_SOURCE_ID))
+
+    resolved = resolve_export_source(workspace, _refs("energy", operation_id=SOURCE_ID))
+
+    assert resolved.operation_id == SOURCE_ID
+    assert resolved.outcome.operation_id == SOURCE_ID
+    assert source_event.read_bytes() == source_bytes
+
+
+def test_resolve_export_source_never_stats_or_resolves_current_source_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = Workspace(tmp_path / "historical-no-stat")
+    source = workspace.root / "outputs" / "energy.dat"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"historical")
+    _source_event(workspace)
+    original_stat = Path.stat
+    original_resolve = Path.resolve
+
+    def fail_source_stat(path: Path, *args: object, **kwargs: object):
+        if path == source:
+            raise AssertionError("source artifact must not be stat'ed")
+        return original_stat(path, *args, **kwargs)
+
+    def fail_source_resolve(path: Path, *args: object, **kwargs: object):
+        if path == source:
+            raise AssertionError("source artifact must not be resolved")
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", fail_source_stat)
+    monkeypatch.setattr(Path, "resolve", fail_source_resolve)
+    resolve_export_source(workspace, _refs("energy"))
+
+
 @pytest.mark.parametrize(
     "setup",
     [
@@ -233,6 +274,28 @@ def test_resolve_export_source_rejects_malformed_manifest(tmp_path: Path) -> Non
     (workspace.reports_dir / "forge-workspace.json").write_text("{", encoding="utf-8")
 
     with pytest.raises(ForgePreconditionError):
+        resolve_export_source(workspace, _refs("energy"))
+
+
+def test_resolve_export_source_rejects_event_symlink_escape(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "event-symlink")
+    outside = tmp_path / "outside-event.json"
+    outside.write_text(
+        json.dumps(
+            {
+                "id": SOURCE_ID,
+                "operation": "collect",
+                "payload": _outcome().to_dict(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    event_link = workspace.root / "reports" / "events" / "source.json"
+    event_link.parent.mkdir(parents=True, exist_ok=True)
+    event_link.symlink_to(outside)
+    _manifest_with_event(workspace, source_id=SOURCE_ID, path_rel="reports/events/source.json")
+
+    with pytest.raises(ForgePathError):
         resolve_export_source(workspace, _refs("energy"))
 
 
@@ -352,9 +415,14 @@ def test_write_export_document_race_target_created_after_check_fails_without_rep
     original_link = os.link
 
     def create_target_then_link(source: str | os.PathLike[str], destination: str | os.PathLike[str], **kwargs: object) -> None:
-        del kwargs
-        Path(destination).write_bytes(b"raced")
-        original_link(source, destination)
+        destination_fd = kwargs.get("dst_dir_fd")
+        assert isinstance(destination_fd, int)
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=destination_fd)
+        try:
+            os.write(fd, b"raced")
+        finally:
+            os.close(fd)
+        original_link(source, destination, **kwargs)
 
     monkeypatch.setattr("abacus_forge.export_io.os.link", create_target_then_link)
     with pytest.raises(ForgeRequestError):
@@ -412,18 +480,18 @@ def test_write_export_document_maps_stat_failure_to_persistence_and_does_not_ret
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workspace = Workspace(tmp_path / "stat-failure")
-    original_stat = Path.stat
     target = workspace.root / "result.json"
 
-    def fail_target_stat(path: Path, *args: object, **kwargs: object):
-        if path == target:
-            raise OSError("simulated stat failure")
-        return original_stat(path, *args, **kwargs)
+    original_fstat = os.fstat
 
-    monkeypatch.setattr(Path, "stat", fail_target_stat)
+    def fail_temporary_fstat(fd: int):
+        del fd
+        raise OSError("simulated stat failure")
+
+    monkeypatch.setattr("abacus_forge.export_io.os.fstat", fail_temporary_fstat)
     with pytest.raises(ForgePersistenceError):
         write_export_document(workspace, "result.json", _document(), pretty=False)
-    monkeypatch.setattr(Path, "stat", original_stat)
+    monkeypatch.setattr("abacus_forge.export_io.os.fstat", original_fstat)
     assert not target.exists()
 
 
