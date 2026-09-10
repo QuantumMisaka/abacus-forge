@@ -92,3 +92,9 @@ def test_cube_value_rejects_unsupported_orbital_datasets():
 def test_cube_reader_rejects_malformed_atom_records(tmp_path: Path, atom_line: str):
     with pytest.raises(ValueError, match="atom"):
         CubeData.from_file(_cube(tmp_path / "malformed.cube", atom_line=atom_line))
+
+
+def test_cube_reader_preserves_extra_atom_fields(tmp_path: Path):
+    atom_line = "1 0.0 0.0 0.0 0.0 42"
+    cube = CubeData.from_file(_cube(tmp_path / "extended.cube", atom_line=atom_line))
+    assert cube.atom_lines == [atom_line]
