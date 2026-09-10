@@ -71,7 +71,7 @@
 - Algorithms must implement the Paimon v1.2 facts: periodic unwrap and mass-weighted Kabsch drift removal for MSD; velocity-preferred or finite-difference VACF plus FFT frequencies; element-pair RDF over explicit periodic cells; minimum-image bond lengths/angles with 1-based selection. RDF must avoid importing Paimon/toolbox modules and use only Forge dependencies.
 - The writer always produces `analysis.json` with `schema_version="forge.md-postprocess/v1"`, canonical modes, sampling and finite JSON-safe results; `save_data`/`save_plot` control mode data/PNG files. It never writes outside the supplied output directory and never emits a science policy.
 
-**Test strategy:** Use hand-authored XYZ and ASE fixtures. Assert numerical invariants (rigid drift removal, known right angle, VACF normalization/peak, RDF finite bins), Paimon mode names, sampling semantics, output filenames, JSON round-trip and no imports from `abacus-agent-tools`, `abacustest`, `paimon`, ATP/MCP or schedulers. Keep plots dependency-light and deterministic; a fallback PNG is acceptable when Matplotlib cannot render.
+**Test strategy:** Use hand-authored XYZ and ASE fixtures. Assert numerical invariants (rigid drift removal, known right angle, VACF normalization/peak, RDF finite bins), Paimon mode names, sampling semantics, output filenames, JSON round-trip and no imports from `abacus-agent-tools`, `abacustest`, `paimon`, ATP/MCP or schedulers. Keep plots dependency-light and deterministic; when Matplotlib cannot import or render, omit the failed PNG and report the diagnostic so service collection reflects the missing output.
 
 - [x] **Step 1: Write failing tests** for reader/sampling, all five analyses, invalid requirements, finite JSON, output controls and path-safe generated names.
 - [x] **Step 2: Run RED:** `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_md_postprocess_algorithms.py`; expected missing-module failures.
@@ -148,10 +148,10 @@ This mirrors the service containment guarantee for direct algorithm callers;
 it does not introduce a new path field or alter the typed service contract.
 
 The dependency-free XYZ fallback now carries the same finite common-element
-mass table used by the Paimon v1.2 MD kernel (with the existing `1.0` fallback
-for symbols outside that table).  This is an internal numerical-fidelity
-alignment only; ASE-provided masses remain authoritative and no new species or
-scientific validation contract is introduced.
+mass table used by the Paimon v1.2 MD kernel and rejects symbols outside that
+table.  This is an internal numerical-fidelity alignment only; ASE-provided
+masses remain authoritative and no new species or scientific validation
+contract is introduced.
 
 Verification at `84962ee`: the focused MD/legacy compatibility gate passed
 `68 passed`; the stable deterministic gate passed `1138 passed, 42 deselected`,

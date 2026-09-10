@@ -811,7 +811,8 @@ restart/resume、调度以及科学判断由 Forge 外部的人类或 Agent 负�
 分析名称：`rdf`、`msd_diffusion`、`vacf_vdos`、`bond_length`、`bond_angle`。请求还可用
 `start`/`end`/`stride` 选择帧，以及在 JSON-safe `parameters` 中提供
 `timestep`、`selection`、`elements`、`rmax`、`nbins`、`save_data`、`save_plot`。
-`msd_diffusion` 和 `vacf_vdos` 要求正的 `timestep`；RDF 需要轨迹帧提供显式周期 cell。
+`msd_diffusion` 和 `vacf_vdos` 要求正的 `timestep`，其含义是采样帧视图中相邻帧的时间间隔；
+Forge 不会把 `stride` 静默乘入该值。RDF 需要轨迹帧提供显式周期 cell。
 `msd`、`vacf`、`bond` 等兼容别名只由上层 Paimon adapter 映射，不进入 Forge request。
 
 例如，下面的请求只分析调用方已经放在 `runs/Si_md/outputs/md.traj` 的轨迹：
@@ -846,7 +847,10 @@ result = MdPostprocessServiceSet.default(workspace_root=".").postprocess.postpro
 ```
 
 服务始终生成 `trajectory_source.json` 和 `analysis.json`，并按 canonical mode 生成确定性
-数据文件及可选 PNG；所有 artifact 都是 workspace-relative 并带 SHA-256/size。返回的
+数据文件及可选 PNG；所有 artifact 都是 workspace-relative 并带 SHA-256/size。绘图导入或
+渲染失败时不伪造占位 PNG，只在 diagnostics 记录失败并让 collection 反映缺失产物；未知
+XYZ 元素也会 fail-closed，不使用合成质量。MSD 可用时返回 `diffusion_coefficient` reported
+metric，source 指向本次生成的 `analysis.json`。返回的
 `execution` 固定为 `not_run`、`scientific` 固定为 `unassessed`，`collection` 只描述
 `complete`、`partial` 或 `missing_output` 的产物事实。科学验证、轨迹转换/PDB、TUI、
 任务编排、监控、调度、重试/恢复和导出均不在此 operation 内。
