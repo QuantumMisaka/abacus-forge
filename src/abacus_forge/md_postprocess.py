@@ -25,6 +25,8 @@ _FALLBACK_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA
 
 def _rdf_pairs(elements: Any, symbols: Sequence[str]) -> list[str]:
     if elements is None:
+        if any(not _ELEMENT.fullmatch(symbol) for symbol in symbols):
+            raise ValueError("trajectory contains invalid chemical symbols")
         pairs = sorted({f"{a}-{b}" for a in symbols for b in symbols if a <= b})
     elif not isinstance(elements, (list, tuple)) or not elements:
         raise ValueError("elements must be a non-empty list of A-B strings")
@@ -42,6 +44,8 @@ def _rdf_pairs(elements: Any, symbols: Sequence[str]) -> list[str]:
                 raise ValueError(f"trajectory contains no atoms for RDF pair {item}")
             pairs.append(f"{left}-{right}")
         if len(set(pairs)) != len(pairs): raise ValueError("RDF pairs must be unique")
+        if len({pair.replace("-", "_") for pair in pairs}) != len(pairs):
+            raise ValueError("RDF pairs must not collide in output filenames")
     return pairs
 
 
@@ -123,6 +127,8 @@ def load_frames(path: str | Path, *, start: int = 0, end: int | None = None, str
     selected = frames[start:stop:stride]
     if not selected: raise ValueError("selected frame range is empty")
     if any(f.symbols != selected[0].symbols for f in selected): raise ValueError("frames must preserve atom ordering and species")
+    if any(not _ELEMENT.fullmatch(symbol) for symbol in selected[0].symbols):
+        raise ValueError("trajectory contains invalid chemical symbols")
     return FrameSelection(selected, source_end=stop)
 
 
@@ -208,6 +214,8 @@ def _mi(delta: np.ndarray, frame: Frame) -> np.ndarray:
 
 def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
     symbols = frames[0].symbols; pairs = []; angles = []
+    if any(not _ELEMENT.fullmatch(symbol) for symbol in symbols):
+        raise ValueError("trajectory contains invalid chemical symbols")
     selected_indices = None
     if isinstance(selection, Mapping):
         pairs = selection.get("pairs", []) or []; angles = selection.get("angles", []) or []

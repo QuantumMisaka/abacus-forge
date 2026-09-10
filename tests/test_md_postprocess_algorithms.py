@@ -79,6 +79,13 @@ def test_rdf_pair_and_parameter_boundaries(tmp_path):
         run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"rmax": float("inf")})
 
 
+def test_trajectory_symbols_cannot_escape_rdf_output_directory(tmp_path):
+    trajectory = tmp_path / "unsafe.xyz"
+    trajectory.write_text("2\nframe\n../ 0 0 0\nO 1 0 0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="chemical symbols"):
+        run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"elements": None})
+
+
 def test_plot_failure_still_produces_png(tmp_path, monkeypatch):
     trajectory = _xyz(tmp_path / "traj.xyz")
     import matplotlib.pyplot as plt
