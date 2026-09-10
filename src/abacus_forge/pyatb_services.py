@@ -20,7 +20,7 @@ from abacus_forge.contracts import (
     OperationStatus,
 )
 from abacus_forge.errors import ForgePreconditionError
-from abacus_forge.pyatb import collect_typed_pyatb_band, prepare_typed_pyatb_band
+from abacus_forge.pyatb_typed import collect_typed_pyatb_band, prepare_typed_pyatb_band
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
     PyatbBandExecuteRequest,

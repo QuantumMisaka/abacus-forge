@@ -137,6 +137,7 @@ def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
             "md_postprocess", "md_postprocess_services",
             "export_contracts", "export_io", "export_services",
             "property_manifest",
+            "pyatb_services", "pyatb_typed",
         )
     }
     assert roots <= graph.keys()
