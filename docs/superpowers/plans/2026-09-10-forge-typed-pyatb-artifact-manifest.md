@@ -4,7 +4,7 @@
 
 **Goal:** Add a capability-specific, facts-only forge.pyatb-manifest/v1 projection to typed pyatb-band prepare/collect results without changing the generic result contract or legacy PyATB helpers.
 
-**Spec:** docs/superpowers/specs/2026-09-10-forge-typed-pyatb-artifact-manifest-design.html (draft for review; implementation starts only after design approval), under the approved 2026-09-01 and 2026-09-02 Forge SPECs.
+**Spec:** docs/superpowers/specs/2026-09-10-forge-typed-pyatb-artifact-manifest-design.html (Approved), under the approved 2026-09-01 and 2026-09-02 Forge SPECs.
 
 **Architecture:** A small src/abacus_forge/pyatb_manifest.py module owns immutable manifest value objects, enum validation and deterministic path/kind mapping. Existing typed PyATB services build the manifest only after their real ArtifactRecord list exists, so every present entry points to an artifact in the same envelope. The machine CLI remains a decoder/router/renderer and legacy helpers are untouched.
 
@@ -266,13 +266,19 @@ git commit -m "feat: project typed PyATB collect manifest"
 
 ---
 
-### Task 4: Documentation, architecture checks and final branch verification
+### Task 4: Documentation, architecture checks and final branch verification ✅
 
 Progress ledger: Task 1 completed by `7628a76`, `4533462`, `9e1340c` and verified by
-the pure manifest suite (20 tests). Task 2 completed by `e281a84` and `4fde284`,
-covering prepare provenance and deterministic MIME (23 focused tests passed). Task 3
-completed by `f4e0d5c` and `3afc132`, covering collect availability semantics and
-subprocess API/CLI parity (31 focused tests and 1 process parity test passed).
+the pure manifest suite. Task 2 completed by `e281a84` and `4fde284`, covering
+prepare provenance and deterministic MIME. Task 3 completed by `f4e0d5c` and
+`3afc132`, with reviewer fixes in `d79bdf1` and legacy-path hygiene in `d7b90fc`;
+these close collect availability semantics, malformed-file handling, matrix
+classification and subprocess API/CLI parity. Final verification on `d7b90fc`:
+focused typed/legacy/machine suites `194 passed in 41.16s`; architecture/discovery
+gate `19 passed, 64 deselected in 5.68s`; full offline gate `934 passed, 3 skipped
+in 74.31s`; `git diff --check` clean. Whole-branch scoped review of
+`10e14e9..d7b90fc` is APPROVED; the three Important findings from the first review
+were fixed and rechecked.
 
 **Files:**
 - Modify: README.md with manifest shape and one API/CLI example, keeping typed PyATB scope/facts-only language concise.
@@ -333,4 +339,7 @@ git commit -m "docs: close typed PyATB artifact manifest"
 - Type consistency: Task 1 defines PyatbManifest, PyatbManifestEntry and classify_pyatb_output; Tasks 2–3 consume those exact names and Task 4 documents the diagnostics shape.
 - Verification boundary: all default commands are offline; no command treats a fake process as scientific or stable-release evidence.
 
-No implementation starts until the companion SPEC is approved. After approval, execute this plan with superpowers:subagent-driven-development, using one implementer and one independent reviewer per task, followed by a whole-branch review.
+Implementation was executed after the companion SPEC approval with
+superpowers:subagent-driven-development, using task-scoped implementer/reviewer
+passes followed by a whole-branch review. Future extensions must use a new
+approved SPEC/PLAN when they change the manifest vocabulary or capability scope.
