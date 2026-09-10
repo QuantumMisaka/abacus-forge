@@ -37,6 +37,7 @@ from abacus_forge.errors import (
 from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
+from abacus_forge.md_postprocess_services import MdPostprocessServiceSet
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
@@ -482,6 +483,8 @@ def run_machine_cli(
             service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, (BandPostprocessRequest, DosPostprocessRequest)):
             service_set = PostprocessServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, MdPostprocessRequest):
+            service_set = MdPostprocessServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, (PyatbBandPrepareRequest, PyatbBandExecuteRequest, PyatbBandCollectRequest)):
             service_set = pyatb_services if pyatb_services is not None else PyatbBandServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, ExportRequest):
