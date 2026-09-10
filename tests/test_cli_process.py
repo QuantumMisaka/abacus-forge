@@ -525,8 +525,19 @@ def test_typed_pyatb_nspin4_prepare_machine_api_parity_without_execution(tmp_pat
 
     assert process.returncode == 0
     assert process.stderr == ""
-    process_envelope = json.loads(process.stdout)["envelope"]
-    direct_envelope = direct.to_dict()["envelope"]
+    process_outcome = json.loads(process.stdout)
+    direct_outcome = direct.to_dict()
+    assert _normalize_operation_identity(
+        process_outcome,
+        operation_id=request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_outcome,
+        operation_id=request.operation_id,
+        workspace_root=api_root,
+    )
+    process_envelope = process_outcome["envelope"]
+    direct_envelope = direct_outcome["envelope"]
     process_diagnostics = process_envelope["diagnostics"]
     direct_diagnostics = direct_envelope["diagnostics"]
     process_facts = {
