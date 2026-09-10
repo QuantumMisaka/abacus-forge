@@ -30,6 +30,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
 )
+from abacus_forge.export_contracts import ExportRequest
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -75,6 +76,7 @@ PYATB_BAND_REQUEST_TYPES = {
     "execute": PyatbBandExecuteRequest,
     "collect": PyatbBandCollectRequest,
 }
+EXPORT_REQUEST_TYPES = {"export": ExportRequest}
 
 REQUEST_TYPES_BY_CAPABILITY = {
     "scf": SCF_REQUEST_TYPES,
@@ -83,6 +85,7 @@ REQUEST_TYPES_BY_CAPABILITY = {
     "md": MD_REQUEST_TYPES,
     **POSTPROCESS_REQUEST_TYPES,
     "pyatb-band": PYATB_BAND_REQUEST_TYPES,
+    "export": EXPORT_REQUEST_TYPES,
 }
 
 REQUIRED_WIRE_FIELDS = {
@@ -91,6 +94,7 @@ REQUIRED_WIRE_FIELDS = {
     "execute": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
     "collect": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
     "postprocess": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
+    "export": frozenset({"schema_version", "operation", "operation_id", "workspace_rel"}),
 }
 
 _SCF_DESCRIPTOR = CapabilityDescriptor(
@@ -164,6 +168,15 @@ _PYATB_BAND_DESCRIPTOR = CapabilityDescriptor(
     },
     artifact_roles=("input", "provenance_manifest", "output"),
     optional_dependencies=("pyatb",),
+)
+_EXPORT_DESCRIPTOR = CapabilityDescriptor(
+    name="export",
+    maturity="experimental",
+    engine="forge",
+    operations=("export",),
+    inputs={"export": ("source_artifact_refs",)},
+    artifact_roles=("output",),
+    optional_dependencies=(),
 )
 
 
@@ -245,6 +258,29 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "line_segments": {"type": "integer", "minimum": 1, "default": 20},
                 "max_kpoint_num": {"type": "integer", "minimum": 1, "default": 4000},
                 "handoff_mode": {"type": "string", "enum": ["link", "copy"], "default": "link"},
+            }
+        )
+    elif capability == "export" and operation == "export":
+        properties.update(
+            {
+                "capability": {"type": "string", "const": "export"},
+                "source_artifact_refs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "operation_id": dict(_OPERATION_IDS),
+                            "artifact_id": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["operation_id", "artifact_id"],
+                    },
+                },
+                "destination_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                "format": {"type": "string", "const": "json", "default": "json"},
+                "pretty": {"type": "boolean", "default": False},
+                "overwrite_policy": {"type": "string", "const": "fail", "default": "fail"},
             }
         )
     elif capability == "pyatb-band" and operation == "execute":
@@ -450,6 +486,15 @@ def _representative_request(capability: str, operation: str) -> Any:
         kwargs["source_paths_rel"] = ("BANDS_1.dat",)
     elif capability == "dos" and operation == "postprocess":
         kwargs["dos_paths_rel"] = ("DOS1_smearing.dat",)
+    elif capability == "export" and operation == "export":
+        from abacus_forge.contracts import ArtifactRef
+
+        kwargs.update(
+            {
+                "source_artifact_refs": (ArtifactRef("123e4567-e89b-42d3-a456-426614174001", "artifact"),),
+                "destination_path_rel": "exports/result.json",
+            }
+        )
     if capability not in {"scf", "band", "dos", "pyatb-band"}:
         kwargs["capability"] = capability
     return request_type(**kwargs)
@@ -506,6 +551,8 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         required.append("source_paths_rel")
     elif capability == "dos" and operation == "postprocess":
         required.append("dos_paths_rel")
+    elif capability == "export" and operation == "export":
+        required.extend(["source_artifact_refs", "destination_path_rel"])
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": request_type.__name__,
@@ -559,6 +606,7 @@ def capabilities_document() -> dict[str, JSONValue]:
                     _BAND_DESCRIPTOR,
                     _DOS_DESCRIPTOR,
                     _PYATB_BAND_DESCRIPTOR,
+                    _EXPORT_DESCRIPTOR,
                 )
             ],
         }
