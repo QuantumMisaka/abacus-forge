@@ -12,25 +12,10 @@ from abacus_forge.result import CollectionResult
 
 def _md_collection_status(result: CollectionResult) -> str:
     diagnostics = result.diagnostics
-    running = diagnostics.get("selected_log_path")
-    running_name = Path(running).name if isinstance(running, str) else ""
     native_complete = diagnostics.get("native_md_block_complete") is True
-    if running_name == "running_md.log" and native_complete and not diagnostics.get("log_selection_ambiguous"):
+    if _canonical_native_log(result) is not None and native_complete and not diagnostics.get("log_selection_ambiguous"):
         return "complete"
-    root = Path(result.workspace).resolve()
-    has_domain_output = False
-    for raw_path in result.artifacts.values():
-        if not isinstance(raw_path, str):
-            continue
-        try:
-            relative = Path(raw_path).resolve().relative_to(root).as_posix()
-        except (OSError, RuntimeError, ValueError):
-            continue
-        if relative.startswith(("inputs/", "reports/")):
-            continue
-        if Path(raw_path).is_file() and Path(raw_path).read_text(encoding="utf-8", errors="ignore").strip():
-            has_domain_output = True
-            break
+    has_domain_output = any(_is_domain_source(result, path) for path in _candidate_sources(result))
     return "partial" if has_domain_output else "missing_output"
 
 
@@ -52,10 +37,7 @@ def _projection_result(result: CollectionResult) -> CollectionResult:
     """Expose MD thermodynamics only when sourced from native running_md.log."""
     projected = common.projection_result(result)
     selected = result.diagnostics.get("selected_log_path")
-    native = (
-        isinstance(selected, str) and Path(selected).name == "running_md.log"
-        and result.diagnostics.get("native_md_block_complete") is True
-    )
+    native = _canonical_native_log(result) is not None and result.diagnostics.get("native_md_block_complete") is True
     if native:
         return projected
     metrics = dict(projected.metrics)
@@ -63,6 +45,49 @@ def _projection_result(result: CollectionResult) -> CollectionResult:
         if name.startswith("md_last_") or (name.startswith("md_") and name.endswith("_series")):
             metrics.pop(name, None)
     return replace(projected, metrics=metrics)
+
+
+def _contained_relative(result: CollectionResult, raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    root = Path(result.workspace).resolve()
+    try:
+        path = Path(raw).resolve()
+        relative = path.relative_to(root).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if not path.is_file() or relative.startswith(("inputs/", "reports/")):
+        return None
+    return relative
+
+
+def _canonical_native_log(result: CollectionResult) -> Path | None:
+    selected = result.diagnostics.get("selected_log_path")
+    relative = _contained_relative(result, selected)
+    if relative is None or Path(relative).name != "running_md.log":
+        return None
+    if relative != "running_md.log" and not relative.startswith("outputs/"):
+        return None
+    return Path(result.workspace).resolve() / relative
+
+
+def _candidate_sources(result: CollectionResult) -> tuple[object, ...]:
+    diagnostics = result.diagnostics
+    candidates: list[object] = [diagnostics.get("selected_log_path"), diagnostics.get("output_log_path")]
+    for relative, raw_path in result.artifacts.items():
+        if isinstance(relative, str) and (Path(relative).name == "MD_dump" or Path(relative).name.startswith("running_")):
+            candidates.append(raw_path)
+    return tuple(candidates)
+
+
+def _is_domain_source(result: CollectionResult, raw: object) -> bool:
+    relative = _contained_relative(result, raw)
+    if relative is None:
+        return False
+    name = Path(relative).name
+    if name == "MD_dump" or name.startswith("running_"):
+        return bool(Path(raw).read_text(encoding="utf-8", errors="ignore").strip())  # type: ignore[arg-type]
+    return raw == result.diagnostics.get("output_log_path") and bool(Path(raw).read_text(encoding="utf-8", errors="ignore").strip())  # type: ignore[arg-type]
 
 
 __all__ = ["collection_envelope", "collection_observations"]

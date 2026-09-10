@@ -185,6 +185,43 @@ def test_md_collect_multiple_running_logs_is_partial(tmp_path: Path) -> None:
     assert result.envelope.status.collection == "partial"
 
 
+@pytest.mark.parametrize("relative", ["inputs/running_md.log", "reports/running_md.log"])
+def test_md_collect_rejects_non_domain_running_md_alias(tmp_path: Path, relative: str) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    workspace.write_text(relative, "Energy Potential Kinetic Temperature\n-1 -1 0 300\n")
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(_request(MdCollectRequest, "113"))
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "missing_output"
+
+
+def test_md_collect_ignores_unrelated_output_artifacts(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    workspace.write_text("outputs/unrelated.dat", "not a domain log\n")
+    workspace.write_text("outputs/stderr.log", "\n")
+    workspace.write_json("outputs/time.json", {"total": 1})
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(_request(MdCollectRequest, "114"))
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "missing_output"
+
+
+def test_md_collect_rejects_escaped_running_md_alias(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    outside = tmp_path / "outside-running-md.log"
+    outside.write_text(
+        "Energy Potential Kinetic Temperature\n-1 -1 0 300\n", encoding="utf-8"
+    )
+    (workspace.outputs_dir / "running_md.log").symlink_to(outside)
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(_request(MdCollectRequest, "115"))
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "missing_output"
+
+
 def test_md_execute_runs_local_runner_and_reports_process_facts(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "md")
     workspace.ensure_layout()
