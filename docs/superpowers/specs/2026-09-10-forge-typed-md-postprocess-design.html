@@ -127,6 +127,7 @@
   └─ ServiceContext.persist → artifact_refs + one postprocess event</pre>
     <ul>
       <li>service 以一个窄的 <code>MdPostprocessService.postprocess(request)</code> 暴露能力；machine CLI 只做 decode、route、render，不复制算法。</li>
+      <li>所有输出必须在同一 workspace root；trajectory 是 <code>input</code>，source manifest 是 <code>provenance_manifest</code>，analysis/data/image/report 是 <code>output</code>。通用 <code>ArtifactRecord</code> 与 artifact-ref 单点注入保持不变。</li>
       <li>postprocess 事件的 operation 是 <code>postprocess</code>，不覆盖或修改上游 execute/collect event；本操作的 <code>execution=not_run</code>、<code>scientific=unassessed</code>，collection 按产物完整性为 complete/partial/missing_output。</li>
       <li>输出文件名由 canonical modes 和固定 basename 生成，不接受用户拼接任意 output name；parameters 中未来新增模式必须先扩展算法/输出映射和测试。</li>
     </ul>

@@ -57,4 +57,3 @@
 - `Ruling: treat all four Important findings as in-scope correctness fixes — each contradicts an explicit approved MD postprocess contract or produces a misleading fact; the cost of a wrong fix is confined to one experimental capability branch.`
 - `Ruling: clarify, rather than silently reinterpret, timestep/stride — the operation already accepts both values and the current algorithm uses the supplied timestep as the sampled-frame interval; changing it to implicit multiplication would alter caller-visible numbers without a migration decision.`
 - `Ruling: prefer fail-closed unknown symbols over retaining the old `1.0` sentinel — synthetic mass is not a factual observation and a false number is worse than an actionable precondition error.`
-
