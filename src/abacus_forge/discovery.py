@@ -27,6 +27,7 @@ from abacus_forge.md_contracts import (
 from abacus_forge.md_postprocess_contracts import MD_ANALYSIS_MODES, MdPostprocessRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import (
+    _PYATB_NSPIN_HR_CARDINALITY,
     PyatbBandCollectRequest,
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
@@ -257,7 +258,7 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                         "required": ["coords"],
                     },
                 },
-                "nspin": {"type": "integer", "enum": [1, 2], "default": 1},
+                "nspin": {"type": "integer", "enum": list(_PYATB_NSPIN_HR_CARDINALITY), "default": 1},
                 "line_segments": {"type": "integer", "minimum": 1, "default": 20},
                 "max_kpoint_num": {"type": "integer", "minimum": 1, "default": 4000},
                 "handoff_mode": {"type": "string", "enum": ["link", "copy"], "default": "link"},
@@ -584,7 +585,7 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         required.extend(["trajectory_path_rel", "analysis"])
     elif capability == "export" and operation == "export":
         required.extend(["source_artifact_refs", "destination_path_rel"])
-    return {
+    schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": request_type.__name__,
         "type": "object",
@@ -592,6 +593,34 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         "properties": properties,
         "required": required,
     }
+    if capability == "pyatb-band" and operation == "prepare":
+        spin_two_hr_count = _PYATB_NSPIN_HR_CARDINALITY[2]
+        default_hr_count = _PYATB_NSPIN_HR_CARDINALITY[1]
+        schema["allOf"] = [
+            {
+                "if": {
+                    "required": ["nspin"],
+                    "properties": {"nspin": {"const": 2}},
+                },
+                "then": {
+                    "properties": {
+                        "hr_paths_rel": {
+                            "minItems": spin_two_hr_count,
+                            "maxItems": spin_two_hr_count,
+                        }
+                    }
+                },
+                "else": {
+                    "properties": {
+                        "hr_paths_rel": {
+                            "minItems": default_hr_count,
+                            "maxItems": default_hr_count,
+                        }
+                    }
+                },
+            }
+        ]
+    return schema
 
 
 def _atst_schema_for(operation: str) -> dict[str, JSONValue]:

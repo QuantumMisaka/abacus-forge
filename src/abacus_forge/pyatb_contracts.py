@@ -22,7 +22,21 @@ from abacus_forge.contracts import (
 
 
 _PYATB_CAPABILITY = "pyatb-band"
+# PyATB uses one HR route for collinear nspin=1 and non-collinear nspin=4,
+# while collinear nspin=2 uses separate up/down routes.  Keep this rule in
+# the request contract so callers and discovery cannot silently diverge.
+_PYATB_NSPIN_HR_CARDINALITY = {1: 1, 2: 2, 4: 1}
 _MISSING = object()
+
+
+def _expected_hr_count(nspin: object) -> int:
+    if (
+        isinstance(nspin, bool)
+        or not isinstance(nspin, int)
+        or nspin not in _PYATB_NSPIN_HR_CARDINALITY
+    ):
+        raise ValueError("nspin must be one of: 1, 2, 4")
+    return _PYATB_NSPIN_HR_CARDINALITY[nspin]
 
 
 def _file_path(value: object, field_name: str) -> str:
@@ -149,10 +163,11 @@ class PyatbBandPrepareRequest(_PyatbBandRequest):
         if self.hr_paths_rel is _MISSING:
             raise ValueError("hr_paths_rel is required")
         hr_paths = _file_paths(self.hr_paths_rel, "hr_paths_rel")
-        if self.nspin not in (1, 2) or isinstance(self.nspin, bool):
-            raise ValueError("nspin must be 1 or 2")
-        if len(hr_paths) != self.nspin:
-            raise ValueError("hr_paths_rel length must equal nspin")
+        expected_hr_count = _expected_hr_count(self.nspin)
+        if len(hr_paths) != expected_hr_count:
+            raise ValueError(
+                f"hr_paths_rel must contain exactly {expected_hr_count} path(s) for nspin={self.nspin}"
+            )
         object.__setattr__(self, "hr_paths_rel", hr_paths)
         object.__setattr__(self, "sr_path_rel", _file_path(self.sr_path_rel, "sr_path_rel"))
         object.__setattr__(self, "rr_path_rel", _file_path(self.rr_path_rel, "rr_path_rel"))
