@@ -832,6 +832,16 @@ def test_decode_operation_request_routes_typed_pyatb_band_requests(
     assert request.to_dict()["capability"] == "pyatb-band"  # type: ignore[union-attr]
 
 
+def test_decode_operation_request_accepts_pyatb_band_nspin4_without_defaulting_to_one() -> None:
+    payload = {**_pyatb_prepare_payload(), "nspin": 4}
+
+    request = _decode_operation_request("prepare", payload)
+
+    assert isinstance(request, PyatbBandPrepareRequest)
+    assert request.nspin == 4
+    assert request.hr_paths_rel == ("inputs/HR.dat",)
+
+
 def test_machine_pyatb_band_unknown_selectors_are_invalid_without_service() -> None:
     payload = _pyatb_prepare_payload()
     with pytest.raises(ForgeRequestError):
@@ -862,6 +872,12 @@ def test_pyatb_band_discovery_descriptor_and_schemas_match_wire_fields() -> None
             | ({"structure_path_rel", "hr_paths_rel", "sr_path_rel", "rr_path_rel", "fermi_energy", "line_kpoints"} if operation == "prepare" else set())
         )
         assert schema["properties"]["schema_version"]["const"] == "forge.request/v1"
+
+
+def test_pyatb_band_prepare_schema_advertises_spinor_nspin4_mode() -> None:
+    schema = request_schema_document("pyatb-band", "prepare")["request_schema"]
+
+    assert schema["properties"]["nspin"]["enum"] == [1, 2, 4]
 
 
 def test_machine_process_pyatb_schema_and_capability_discovery_are_single_documents() -> None:

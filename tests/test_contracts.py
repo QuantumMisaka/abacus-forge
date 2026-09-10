@@ -1183,6 +1183,22 @@ def test_pyatb_band_prepare_accepts_spin_two_only_with_two_hr_paths() -> None:
         _pyatb_prepare_request(nspin=2)
 
 
+def test_pyatb_band_prepare_nspin4_accepts_one_hr_path_and_round_trips() -> None:
+    request = _pyatb_prepare_request(nspin=4)
+
+    assert request.nspin == 4
+    assert request.hr_paths_rel == ("inputs/HR.dat",)
+    assert PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(request.to_dict()))) == request
+
+
+@pytest.mark.parametrize("hr_paths_rel", [[], ["inputs/HR1.dat", "inputs/HR2.dat"]])
+def test_pyatb_band_prepare_nspin4_rejects_non_single_hr_cardinality(
+    hr_paths_rel: list[str],
+) -> None:
+    with pytest.raises(ValueError):
+        _pyatb_prepare_request(nspin=4, hr_paths_rel=hr_paths_rel)
+
+
 def test_pyatb_band_collect_rejects_invalid_output_path_lists() -> None:
     with pytest.raises(ValueError, match="band_data_paths_rel"):
         PyatbBandCollectRequest(operation_id=OPERATION_ID, workspace_rel="job", band_data_paths_rel=["../band.dat"])

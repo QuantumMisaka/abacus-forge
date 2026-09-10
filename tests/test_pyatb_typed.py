@@ -158,6 +158,22 @@ def test_typed_prepare_spin_two_has_two_hr_routes_and_shared_sr(tmp_path: Path) 
     assert input_text.count("SR_route") == 1
 
 
+def test_typed_prepare_spin_four_has_one_shared_hr_route(tmp_path: Path) -> None:
+    _sources(tmp_path)
+    request = _prepare_request(nspin=4)
+
+    prepare_typed_pyatb_band(tmp_path, request)
+
+    input_text = (tmp_path / "inputs/Input").read_text(encoding="utf-8")
+    assert "nspin  4" in input_text
+    assert "HR_route  pyatb_sources/hr.csr" in input_text
+    assert input_text.count("HR_route") == 1
+    assert "SR_route  pyatb_sources/sr.csr" in input_text
+    assert "rR_route  pyatb_sources/rr.csr" in input_text
+    assert input_text.count("SR_route") == 1
+    assert input_text.count("rR_route") == 1
+
+
 def test_typed_prepare_rejects_external_source_before_any_staging(tmp_path: Path) -> None:
     _sources(tmp_path)
     external = tmp_path.parent / "external-hr.csr"
@@ -748,6 +764,35 @@ def test_typed_prepare_manifest_records_matrix_provenance_and_spin(
         assert entry["size_bytes"] >= 0
         if entry.get("source_path_rel"):
             assert entry["source_sha256"]
+
+
+def test_typed_prepare_spin_four_manifest_records_shared_routes_and_provenance(
+    tmp_path: Path,
+) -> None:
+    _sources(tmp_path)
+    request = _prepare_request(nspin=4)
+
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    entries = {
+        entry["path_rel"]: entry
+        for entry in result.envelope.diagnostics["pyatb_manifest"]["inputs"]
+    }
+    assert entries["inputs/pyatb_sources/hr.csr"]["kind"] == "matrix_hr"
+    assert entries["inputs/pyatb_sources/hr.csr"]["spin"] == "shared"
+    assert entries["inputs/pyatb_sources/sr.csr"]["spin"] == "shared"
+    assert entries["inputs/pyatb_sources/rr.csr"]["spin"] == "shared"
+    artifact_ids = {artifact.id for artifact in result.envelope.artifacts}
+    for path_rel in (
+        "inputs/pyatb_sources/hr.csr",
+        "inputs/pyatb_sources/sr.csr",
+        "inputs/pyatb_sources/rr.csr",
+    ):
+        entry = entries[path_rel]
+        assert entry["artifact_id"] in artifact_ids
+        assert entry["source_path_rel"]
+        assert entry["source_sha256"] == entry["sha256"]
 
 
 def test_typed_execute_service_uses_only_request_runner_fields_and_records_runtime_facts(
