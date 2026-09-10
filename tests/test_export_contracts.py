@@ -5,6 +5,7 @@ import pytest
 from abacus_forge.export_contracts import ExportDocument, ExportRequest
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_operation_request
+from abacus_forge.contracts import OperationOutcome
 
 
 OP = "123e4567-e89b-42d3-a456-426614174000"
@@ -20,7 +21,12 @@ def outcome_payload():
             "operation": "collect",
             "workspace_rel": ".",
             "status": {"execution": "completed", "scientific": "unassessed", "collection": "complete"},
-            "artifacts": [],
+            "artifacts": [{
+                "id": "energy",
+                "path_rel": "outputs/energy.dat",
+                "role": "output",
+                "stage": "collect",
+            }],
             "metrics": [],
             "checks": [],
             "warnings": [],
@@ -96,7 +102,8 @@ def test_export_document_round_trip_is_json_safe_and_strict():
         },
     }
     document = ExportDocument.from_dict(payload)
-    assert document.to_dict() == payload
+    expected = {**payload, "source_outcome": OperationOutcome.from_dict(outcome_payload()).to_dict()}
+    assert document.to_dict() == expected
     assert json.dumps(document.to_dict(), allow_nan=False)
     with pytest.raises(ValueError):
         ExportDocument.from_dict({**payload, "extra": True})
@@ -115,6 +122,17 @@ def test_export_document_requires_source_identity_consistency():
         ExportDocument.from_dict({**payload, "source_outcome": {"schema_version": "forge.result/v1", "operation_id": SRC}})
     with pytest.raises(ValueError):
         ExportDocument.from_dict({**payload, "source_outcome": {**outcome_payload(), "envelope": None}})
+
+
+def test_export_document_rejects_artifact_ref_missing_from_source_outcome():
+    payload = {
+        "schema_version": "forge.export/v1",
+        "source_operation_id": SRC,
+        "source_artifact_refs": [{"operation_id": SRC, "artifact_id": "missing"}],
+        "source_outcome": outcome_payload(),
+    }
+    with pytest.raises(ValueError, match="artifact"):
+        ExportDocument.from_dict(payload)
 
 
 def test_export_is_explicitly_discoverable_and_decodable():

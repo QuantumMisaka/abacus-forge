@@ -137,6 +137,9 @@ class ExportDocument:
             raise ValueError("source_outcome must be a valid forge.operation-outcome/v1 payload") from error
         if parsed_outcome.operation_id != self.source_operation_id:
             raise ValueError("source_outcome operation_id must match source_operation_id")
+        artifact_ids = {artifact.id for artifact in parsed_outcome.envelope.artifacts}
+        if any(ref.artifact_id not in artifact_ids for ref in refs):
+            raise ValueError("source_artifact_refs must identify artifacts in source_outcome")
         outcome = _freeze_json(parsed_outcome.to_dict())
         object.__setattr__(self, "source_artifact_refs", refs)
         object.__setattr__(self, "source_outcome", outcome)
