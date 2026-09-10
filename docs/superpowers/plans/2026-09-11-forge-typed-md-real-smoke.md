@@ -19,6 +19,7 @@
 - 使用已存在的 `forge.request/v1` 字段和 `capability="md"`；不得添加 scheduler、job ID、retry/resume、monitor、trajectory conversion 或科学阈值字段。
 - 执行只调用一个已配置的本地 ABACUS executable；不引入 Slurm、Bohrium、DPDispatcher、AiiDA、`abacus-agent-tools`、`abacustest` 或 `atst-tools` 运行时依赖。
 - source workspace 只能复制到 `tmp_path` 后执行，不能修改调用方目录；返回的 artifact/event path 必须是 workspace-relative 且 contained。
+- 为避免旧结果冒充本次执行证据，复制源的根目录或 `outputs/` 下不得已有生成的 `running_md.log` 或 `MD_dump`；测试发现时直接失败。
 - 断言只覆盖 operation status、parser facts 是否存在、artifact/audit 事实和 `scientific="unassessed"`；不检查收敛阈值、温度是否物理正确或轨迹是否科学可接受。
 - 缺少环境变量时 skip；已提供但不是目录/可执行文件时 fail，不能把坏输入转换为 pass。
 
@@ -29,7 +30,7 @@
 **Behavior:** copy a supplied prepared MD workspace, run typed `execute` and `collect` through the subprocess CLI, and assert factual/audit invariants.
 
 - [x] 先写 focused test：环境缺失时 skip；workspace/executable 无效时 fail；输入 `calculation=md` 缺失或不匹配时 fail。
-- [x] 使用 `ABACUS_FORGE_MD_SMOKE_WORKSPACE`、`ABACUS_FORGE_ABACUS_EXECUTABLE`，复制 workspace 时 `symlinks=False`；使用两个不同 UUIDv4 IDs。
+- [x] 使用 `ABACUS_FORGE_MD_SMOKE_WORKSPACE`、`ABACUS_FORGE_ABACUS_EXECUTABLE`，复制 workspace 时 `symlinks=False`；拒绝复制源已有的根目录/`outputs/` MD 生成物；使用两个不同 UUIDv4 IDs。
 - [x] execute 请求使用 `capability=md`、`dry_run=false` 和显式 bounded timeout；断言一个 JSON stdout、空 stderr、`execution=completed`、`scientific=unassessed`。
 - [x] collect 请求使用同一 workspace 和另一个 ID；断言 `collection=complete`、`execution=not_run`、`scientific=unassessed`，并要求四个原生 MD parser facts（总能、势能、动能、温度）为有限 scalar，不做科学判断。
 - [x] 核对每个 event payload 等于 CLI envelope，manifest 记录两个 event，artifact/event path 相对且 contained；在 `_REAL_SMOKE_ENV_BY_TEST` 注册精确环境变量。

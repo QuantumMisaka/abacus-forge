@@ -72,6 +72,9 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 The typed MD gate has its own workspace variable and does not require the SCF
 or Relax workspace variables. Missing MD-specific values skip with a precise
 reason; an invalid supplied workspace, executable, or non-MD `INPUT` fails.
+The supplied source must not already contain generated `running_md.log` or
+`MD_dump` files at the workspace root or under `outputs/`; this prevents an
+old run from being mistaken for evidence from the new execute call.
 The gate checks parser facts only. It does not judge trajectory quality,
 physical temperature/energy correctness, convergence, scheduling, or workflow
 orchestration.

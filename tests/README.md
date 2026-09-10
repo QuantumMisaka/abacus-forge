@@ -85,7 +85,9 @@ contained artifacts; it does not evaluate trajectory quality or any scientific
 threshold. `MD_dump` facts are collected as a separate factual projection.
 Missing MD-specific inputs skip, while supplied invalid paths or a non-MD
 workspace fail. The typed MD gate does not change legacy SCF/Relax smoke
-behavior.
+behavior. The supplied source must not already contain generated
+`running_md.log` or `MD_dump` files at the workspace root or under `outputs/`,
+so a no-op executable cannot pass by reusing an old MD result.
 
 On this local checkout, where no external real workspace or executable is
 supplied, each focused typed selection skips and no real execution evidence is

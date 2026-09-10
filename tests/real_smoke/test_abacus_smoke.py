@@ -277,6 +277,22 @@ def test_typed_md_machine_execute_and_collect(tmp_path: Path) -> None:
     # Materialize links while copying the prepared source so execution cannot
     # write through a preserved output symlink into the caller's workspace.
     shutil.copytree(source, workspace, symlinks=False)
+    preexisting_md_outputs = []
+    root_log = workspace / "running_md.log"
+    if root_log.is_file():
+        preexisting_md_outputs.append(root_log.relative_to(workspace).as_posix())
+    outputs_dir = workspace / "outputs"
+    if outputs_dir.is_dir():
+        preexisting_md_outputs.extend(
+            path.relative_to(workspace).as_posix()
+            for path in outputs_dir.rglob("*")
+            if path.is_file() and path.name in {"running_md.log", "MD_dump"}
+        )
+    if preexisting_md_outputs:
+        pytest.fail(
+            "typed MD smoke workspace must not contain pre-existing generated "
+            "MD outputs: " + ", ".join(sorted(preexisting_md_outputs))
+        )
     input_path = workspace / "inputs" / "INPUT"
     try:
         calculation = read_input(input_path).get("calculation", "").strip().lower()

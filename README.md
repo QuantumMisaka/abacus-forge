@@ -769,7 +769,9 @@ collection 状态。
 `running_md.log` 的原生热力学 parser facts、状态、事件、manifest 和 contained artifact；
 `MD_dump` 事实作为独立投影保留。该门禁不判断轨迹质量、温度/能量物理正确性、收敛或任务
 编排；缺少 `ABACUS_FORGE_MD_SMOKE_WORKSPACE` 或共享 executable 时只 skip，错误输入则
-fail。MD smoke 仍是 experimental 证据，不改变生产 service 或稳定能力面。
+fail。用于 smoke 的源 workspace 还必须没有根目录或 `outputs/` 下既有的
+`running_md.log`/`MD_dump`，避免无操作 executable 复用旧结果；MD smoke 仍是
+experimental 证据，不改变生产 service 或稳定能力面。
 
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
 `postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact
