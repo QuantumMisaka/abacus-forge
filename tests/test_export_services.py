@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -246,10 +247,31 @@ def test_export_service_reconciliation_skips_unrelated_external_event_symlink(
         return original_read_text(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", guarded_read_text)
+
+    original_os_open = os.open
+    external_stat = external.stat()
+    external_fd_opens = 0
+
+    def guarded_os_open(path: object, flags: int, *args: object, **kwargs: object) -> int:
+        nonlocal external_fd_opens
+        fd = original_os_open(path, flags, *args, **kwargs)
+        try:
+            opened_stat = os.fstat(fd)
+            if (opened_stat.st_dev, opened_stat.st_ino) == (
+                external_stat.st_dev,
+                external_stat.st_ino,
+            ):
+                external_fd_opens += 1
+        except OSError:
+            pass
+        return fd
+
+    monkeypatch.setattr(os, "open", guarded_os_open)
     result = ExportServiceSet.default(workspace_root=workspace.root).export.export(_request())
 
     assert isinstance(result, OperationOutcome)
     assert external_reads == 0
+    assert external_fd_opens == 0
     manifest = json.loads((workspace.root / "reports/forge-workspace.json").read_text(encoding="utf-8"))
     assert external_id not in {event["id"] for event in manifest["events"]}
 
