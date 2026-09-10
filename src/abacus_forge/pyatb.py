@@ -5,22 +5,10 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import hashlib
-import math
-import mimetypes
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from abacus_forge.api import collect
-from abacus_forge.contracts import (
-    ArtifactRecord,
-    ForgeResultEnvelope,
-    JSONValue,
-    MetricRecord,
-    OperationStatus,
-    canonical_relative_path,
-)
-from abacus_forge.errors import ForgePathError, ForgePreconditionError, ForgeRequestError
 from abacus_forge.input_io import read_input, read_kpt, write_kpt_line_mode
 from abacus_forge.result import CollectionResult, RunResult
 from abacus_forge.runner import LocalRunner
@@ -333,6 +321,3 @@ def _int_value(value: Any, *, default: int) -> int:
         return int(str(value).strip())
     except Exception:
         return default
-
-
-    return value if math.isfinite(value) else None
