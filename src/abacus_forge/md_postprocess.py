@@ -38,6 +38,8 @@ def _rdf_pairs(elements: Any, symbols: Sequence[str]) -> list[str]:
             left, right = item.split("-")
             if not _ELEMENT.fullmatch(left) or not _ELEMENT.fullmatch(right):
                 raise ValueError("RDF pairs must contain safe chemical symbols")
+            if symbols and (left not in symbols or right not in symbols):
+                raise ValueError(f"trajectory contains no atoms for RDF pair {item}")
             pairs.append(f"{left}-{right}")
         if len(set(pairs)) != len(pairs): raise ValueError("RDF pairs must be unique")
     return pairs
@@ -148,7 +150,7 @@ def canonical_parameter_values(parameters: Mapping[str, Any], modes: Sequence[st
     if any(m in modes for m in ("msd_diffusion", "vacf_vdos")):
         if "timestep" not in result or not isinstance(result["timestep"], (int, float)) or isinstance(result["timestep"], bool) or not math.isfinite(float(result["timestep"])) or result["timestep"] <= 0:
             raise ValueError("timestep is required for MSD/VACF")
-    if "rmax" in result and (not isinstance(result["rmax"], (int, float)) or float(result["rmax"]) <= 0): raise ValueError("rmax must be positive")
+    if "rmax" in result and (isinstance(result["rmax"], bool) or not isinstance(result["rmax"], (int, float)) or not math.isfinite(float(result["rmax"])) or float(result["rmax"]) <= 0): raise ValueError("rmax must be finite and positive")
     if "nbins" in result and (isinstance(result["nbins"], bool) or not isinstance(result["nbins"], int) or result["nbins"] < 1): raise ValueError("nbins must be positive")
     if "elements" in result: _rdf_pairs(result["elements"], ())
     if "save_data" in result and not isinstance(result["save_data"], bool): raise ValueError("save_data must be boolean")
@@ -161,7 +163,7 @@ def canonical_parameter_values(parameters: Mapping[str, Any], modes: Sequence[st
 def _unwrap(frames: Sequence[Frame]) -> np.ndarray:
     out = np.asarray([f.positions for f in frames], float).copy()
     for i in range(1, len(frames)):
-        delta = out[i] - out[i - 1]
+        delta = frames[i].positions - frames[i - 1].positions
         f = frames[i]
         if np.any(f.pbc) and abs(np.linalg.det(f.cell)) > 1e-12:
             frac = np.linalg.solve(f.cell.T, delta.T).T; frac[:, f.pbc] -= np.rint(frac[:, f.pbc]); delta = frac @ f.cell
@@ -217,6 +219,18 @@ def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[f
     pairs = [pairs] if isinstance(pairs, str) else list(pairs); angles = [angles] if isinstance(angles, str) else list(angles)
     if not pairs: pairs = sorted({f"{a}-{b}" for a in symbols for b in symbols if a <= b})
     if not angles: angles = sorted({f"{a}-{b}-{c}" for a in symbols for b in symbols for c in symbols})
+    for pair in pairs:
+        if not isinstance(pair, str) or pair.count("-") != 1:
+            raise ValueError("bond pairs must use the A-B form")
+        a, b = pair.split("-")
+        if not _ELEMENT.fullmatch(a) or not _ELEMENT.fullmatch(b) or a not in symbols or b not in symbols:
+            raise ValueError(f"trajectory contains no atoms for bond pair {pair}")
+    for trip in angles:
+        if not isinstance(trip, str) or trip.count("-") != 2:
+            raise ValueError("bond angles must use the A-B-C form")
+        a, b, c = trip.split("-")
+        if any(not _ELEMENT.fullmatch(x) or x not in symbols for x in (a, b, c)):
+            raise ValueError(f"trajectory contains no atoms for bond angle {trip}")
     lengths = {str(p): [] for p in pairs}; angle_values = {str(a): [] for a in angles}
     for frame in frames:
         for pair in lengths:
@@ -238,6 +252,15 @@ def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[f
 def _rdf(frames: Sequence[Frame], elements: Sequence[str] | None, rmax: float, nbins: int) -> dict[str, Any]:
     if not all(np.any(f.pbc) and abs(np.linalg.det(f.cell)) > 1e-12 for f in frames): raise ValueError("rdf requires explicit periodic cells")
     symbols=frames[0].symbols; pairs=_rdf_pairs(elements, symbols); edges=np.linspace(0,rmax,nbins+1); r=(edges[:-1]+edges[1:])/2; output={}
+    for frame in frames:
+        volume = abs(float(np.linalg.det(frame.cell)))
+        if volume <= 1e-12: raise ValueError("rdf requires non-zero cell volume")
+        heights = []
+        for axis in range(3):
+            other = [frame.cell[j] for j in range(3) if j != axis]
+            heights.append(volume / np.linalg.norm(np.cross(other[0], other[1])))
+        cutoff = min(heights[i] / 2 for i in range(3) if frame.pbc[i])
+        if rmax > cutoff + 1e-12: raise ValueError("rdf rmax exceeds the minimum-image cutoff")
     for pair in pairs:
         a,b=pair.split("-"); hist=np.zeros(nbins); count=0
         for frame in frames:
@@ -248,7 +271,7 @@ def _rdf(frames: Sequence[Frame], elements: Sequence[str] | None, rmax: float, n
         # each explicit cell.  This keeps ``g_r`` a dimensionless factual
         # radial distribution rather than exposing an unscaled count.
         expected = np.zeros(nbins, dtype=float)
-        shell = 4.0 * math.pi * r * r * (edges[1] - edges[0])
+        shell = (4.0 * math.pi / 3.0) * (edges[1:] ** 3 - edges[:-1] ** 3)
         for frame in frames:
             volume = abs(float(np.linalg.det(frame.cell)))
             na, nb = len(ia), len(ib)
@@ -313,23 +336,25 @@ def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_d
             plt = None
         for mode in modes:
                 name={"msd_diffusion":"msd","vacf_vdos":"vacf_vdos","bond_length":"bond_lengths","bond_angle":"bond_angles","rdf":"rdf"}[mode]
-                plot_path = out / (name + ".png")
-                try:
-                    if plt is None: raise RuntimeError("matplotlib unavailable")
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
-                    elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
-                    elif mode == "rdf":
-                        for pair, values in results[mode].items(): ax.plot(values["r_angstrom"], values["g_r"], label=pair)
-                        if len(results[mode]) > 1: ax.legend()
-                    elif mode == "bond_length":
-                        for pair, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair)
-                    else:
-                        for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
-                    fig.tight_layout(); fig.savefig(plot_path, dpi=120); plt.close(fig)
-                except Exception:
-                    plot_path.write_bytes(_FALLBACK_PNG)
-                generated.append(plot_path.name)
+                plot_pairs = list(results[mode]) if mode == "rdf" else [None]
+                for pair in plot_pairs:
+                    plot_name = f"rdf_{pair.replace('-', '_')}" if pair is not None else name
+                    plot_path = out / (plot_name + ".png")
+                    try:
+                        if plt is None: raise RuntimeError("matplotlib unavailable")
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
+                        elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
+                        elif mode == "rdf":
+                            values = results[mode][pair]; ax.plot(values["r_angstrom"], values["g_r"], label=pair)
+                        elif mode == "bond_length":
+                            for pair_name, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair_name)
+                        else:
+                            for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
+                        fig.tight_layout(); fig.savefig(plot_path, dpi=120); plt.close(fig)
+                    except Exception:
+                        plot_path.write_bytes(_FALLBACK_PNG)
+                    generated.append(plot_path.name)
     payload={"schema_version":"forge.md-postprocess/v1","analysis":list(modes),"sampling":{"start":start,"end":frames.source_end,"stride":stride,"frame_count":len(frames)},"results":results}
     (out/"analysis.json").write_text(json.dumps(payload,sort_keys=True,ensure_ascii=False,allow_nan=False,indent=2)+"\n",encoding="utf-8"); generated.append("analysis.json")
     return MdPostprocessResult(summary={"analysis":list(modes)},diagnostics={"ignored_parameter_keys":sorted(set((parameters or {}))-set(params))},results=results,sampling=payload["sampling"],generated_files=tuple(generated))

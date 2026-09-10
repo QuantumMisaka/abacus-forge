@@ -11,6 +11,7 @@ from abacus_forge.md_postprocess import (
     run_md_postprocess,
     validate_analysis,
 )
+import abacus_forge.md_postprocess as md
 
 
 def _xyz(path: Path) -> Path:
@@ -85,3 +86,19 @@ def test_plot_failure_still_produces_png(tmp_path, monkeypatch):
     output = tmp_path / "out"
     run_md_postprocess(trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": False, "save_plot": True})
     assert (output / "msd.png").is_file()
+
+
+def test_variable_cell_unwrap_uses_raw_wrapped_delta():
+    frames = [Frame(np.array([[9.0, 0, 0]]), ("H",), np.diag([10., 10., 10.]), np.ones(3, bool), np.array([1.])), Frame(np.array([[1.0, 0, 0]]), ("H",), np.diag([11., 11., 11.]), np.ones(3, bool), np.array([1.])), Frame(np.array([[3.0, 0, 0]]), ("H",), np.diag([12., 12., 12.]), np.ones(3, bool), np.array([1.]))]
+    assert md._unwrap(frames)[:, 0, 0].tolist() == pytest.approx([9.0, 12.0, 14.0])
+
+
+def test_rdf_cutoff_and_pair_plots_are_bounded(tmp_path):
+    frame = Frame(np.array([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]]), ("H", "O", "C"), np.diag([4., 4., 4.]), np.ones(3, bool), np.ones(3))
+    with pytest.raises(ValueError):
+        analyze_trajectory([frame], ["rdf"], elements=["H-C"], rmax=3.0)
+    path = tmp_path / "traj.xyz"
+    _xyz(path)
+    # Non-periodic XYZ cannot run RDF, so assert pair-name validation here.
+    with pytest.raises(ValueError):
+        run_md_postprocess(path, ["rdf"], output_dir=tmp_path / "out", parameters={"elements": ["H-C", "H/O"]})
