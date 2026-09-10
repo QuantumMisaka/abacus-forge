@@ -64,6 +64,37 @@ def test_load_frames_uses_xyz_fallback_when_ase_is_unavailable(tmp_path, monkeyp
     assert frames[0].masses == pytest.approx([35.45, 22.990, 65.38, 1.0])
 
 
+def test_load_frames_falls_back_when_ase_masses_are_invalid(tmp_path, monkeypatch):
+    class InvalidMassAtoms:
+        def get_chemical_symbols(self):
+            return ["Cl", "Na"]
+
+        def get_positions(self):
+            return np.zeros((2, 3))
+
+        def get_cell(self):
+            return np.zeros((3, 3))
+
+        def get_pbc(self):
+            return np.zeros(3, dtype=bool)
+
+        def get_masses(self):
+            return np.array([float("nan"), 0.0])
+
+        def get_velocities(self):
+            return None
+
+    from ase import io as ase_io
+
+    trajectory = tmp_path / "invalid-masses.traj"
+    trajectory.touch()
+    monkeypatch.setattr(ase_io, "read", lambda *args, **kwargs: [InvalidMassAtoms()])
+
+    frames = load_frames(trajectory)
+
+    assert frames[0].masses == pytest.approx([35.45, 22.990])
+
+
 def test_validate_analysis_is_canonical():
     assert validate_analysis(["rdf", "bond_angle"]) == ("rdf", "bond_angle")
     with pytest.raises(ValueError):

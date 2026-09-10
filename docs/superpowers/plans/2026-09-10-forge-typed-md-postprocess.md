@@ -163,3 +163,9 @@ After the public-loader fallback review, `58e54eb` adds the `load_frames()`
 regression and the latest verification passes `69` focused tests, `1139 passed,
 42 deselected` in the stable gate, `39 passed, 1142 deselected` in the
 experimental gate, and `1178 passed, 3 skipped` in the full offline gate.
+
+The ASE frame adapter now validates the returned mass array and falls back to
+the same finite common-element table when ASE supplies an invalid shape, NaN,
+or non-positive mass.  A public `load_frames()` regression covers this path;
+it aligns the reader with the Paimon v1.2 fallback without weakening the
+finite-positive `Frame` invariant or introducing a new scientific policy.

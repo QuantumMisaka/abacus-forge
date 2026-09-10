@@ -114,8 +114,13 @@ class FrameSelection(list[Frame]):
 
 def _frame_ase(atoms: Any) -> Frame:
     symbols = tuple(atoms.get_chemical_symbols())
-    try: masses = np.asarray(atoms.get_masses(), dtype=float)
-    except Exception: masses = np.asarray([_MASS.get(s, 1.0) for s in symbols])
+    fallback_masses = np.asarray([_MASS.get(s, 1.0) for s in symbols], dtype=float)
+    try:
+        masses = np.asarray(atoms.get_masses(), dtype=float).reshape(-1)
+    except Exception:
+        masses = fallback_masses
+    if masses.shape != (len(symbols),) or not np.isfinite(masses).all() or np.any(masses <= 0):
+        masses = fallback_masses
     velocities = None
     try: velocities = atoms.get_velocities()
     except Exception: pass
