@@ -16,6 +16,7 @@
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
 - 2026-09-10 已落地独立的 typed `band.postprocess` / `dos.postprocess` service 与 Agent-first machine routing：两者均为 `experimental`，要求显式非空 source path，返回 facts-only 的 `execution=not_run` envelope、workspace-relative input/output artifacts（sha256/size）并追加一个 operation event；API 与 CLI 在隔离 workspace 中保持事实 parity。
 - typed `band`/`dos` postprocess 不等同于既有 `run_band`、`run_dos`、sequence helper 或 `abacus-forge band|dos` task；后者继续保持 legacy task/sequence 语义，不被隐式改写。
+- 2026-09-10 已落地独立的实验性 typed `md.postprocess`：只接受调用方明确交接的 exact trajectory，支持 RDF、漂移校正 MSD/扩散、VACF/VDOS、键长和键角五个 canonical mode；返回 trajectory provenance、analysis/data/plot facts、artifact hash/size 和单个 operation event。它不扫描 latest、不转换 `MD_dump`、不隐式执行 MD、collect 或 workflow，也不做科学验收。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
 - 2026-09-10 已落地独立的 typed `pyatb-band` handoff capability：仅提供 `prepare`、`execute`、`collect`，成熟度为 `experimental`。prepare 接收显式 workspace-relative STRU、HR、SR、rR、Fermi 能量和 line-mode K 点，默认创建相对链接（可显式选择 copy），生成 `inputs/Input` 与 `inputs/KPT_band`；execute 只启动一个本地 PyATB 进程；collect 只返回声明输出的 artifact、运行时和 parser facts，`band_gap` 仅为 reported metric，scientific 保持 `unassessed`。
 - typed `pyatb-band` 与 legacy `prepare_pyatb_band` / `run_pyatb` / `collect_pyatb` / `run_band_sequence(..., backend="pyatb")` 分开；legacy helper 的 SCF 自动发现和原有兼容行为保持不变。
@@ -35,7 +36,7 @@
 - 在不越过边界的前提下，为更上层 workflow 提供更稳定的输入与 collect 基元。
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
 - 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
-- typed MD 当前只交付单工作目录的准备、修改、一次本地执行和事实收集；`MD_dump`/日志只作为可用事实返回。本批次尚未交付 MD 专用 trajectory conversion 或独立的 MD `postprocess`/`export`；已交付的 typed band/DOS postprocess、typed `pyatb-band` handoff 与通用 typed `export` 是彼此独立的实验性 capability 边界。monitor、workflow 编排、restart/resume、调度与科学判断保持在 Forge 外。后续批次仍包括 PyATB properties、nspin 4 和更多 property-pack 的真实 smoke。
+- typed MD 当前交付单工作目录的准备、修改、一次本地执行、事实收集以及独立 `postprocess`；`MD_dump`/日志只作为可用事实返回。MD 后处理仍不负责 trajectory conversion、PDB/TUI、monitor、restart/resume、workflow 编排、调度、导出或科学判断；这些边界保持在 Forge 外。后续批次仍包括 PyATB properties、nspin 4 和更多 property-pack 的真实 smoke。
 - 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；PyATB properties、nspin 4 和 real-smoke 继续 deferred。
 - 继续固化 SCF->NSCF artifact handoff 规则，扩展到其他 property family 时仍需独立设计和验证。
 - 当前 manifest 已覆盖 nspin=1/2 的 HR（shared 或 up/down）以及 shared SR/rR；后续若扩展到 PyATB properties、nspin 4、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些语义。

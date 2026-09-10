@@ -124,7 +124,7 @@ Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、
 成熟度为 `experimental` 的 `md`、`atst-neb`、`pyatb-band`；typed `band`/`dos` 另提供仅用于
 `postprocess` 的实验性 capability，typed `export` 提供实验性的 `export` capability 和
 `export` operation。它固定暴露三个顶层命令：`operation`
-（`scf`、`relax`、`cell-relax`、`md` 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
+（`scf`、`relax`、`cell-relax` 执行 `prepare`、`modify`、`execute`、`collect`；`md` 还提供独立的 `postprocess`；`atst-neb` 执行 `prepare`、
 `execute`、`postprocess`；`pyatb-band` 执行 `prepare`、`execute`、`collect`；`band`、`dos` 执行 `postprocess`；`export` 执行 `export`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
@@ -732,9 +732,10 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析
 不完整只反映 collection 状态。
 
-typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
-和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立的
-MD `postprocess`/`export`。上文的 typed band/DOS postprocess、typed `pyatb-band` handoff
+typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
+`postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact
+trajectory，不扫描目录、不查找 latest、不自动转换 `MD_dump`，也不隐式启动 ABACUS 或
+串联 `execute`/`collect`。上文的 typed band/DOS postprocess、typed `pyatb-band` handoff
 和通用 typed `export` 都是彼此独立的实验性能力，不扩展为 MD 或其它 task 的隐式后处理；
 PyATB properties 和更多真实 property-pack smoke 仍待后续交付。监控、workflow 编排、
 恢复/重试、调度和科学判断由 Forge 外部的人类或 Agent 负责；Stage 5 的 legacy 依赖
@@ -767,9 +768,54 @@ request = MdPrepareRequest(
 
 默认 profile 使用 PBE 与 NVE；调用方或 Agent 负责选择和覆盖物理参数。`collect` 只在
 可用时返回 `MD_dump` 与日志中的解析事实、指标和 artifact 引用，不判断轨迹或物理结果
-是否可接受。本 capability 不包含 MD 专用 trajectory 转换或独立的 MD
-`postprocess`/`export`；通用 typed export 不会隐式读取或改写 MD 产物。monitor、workflow 编排、restart/resume、调度以及
-科学判断由 Forge 外部的人类或 Agent 负责。
+是否可接受。通用 typed export 不会隐式读取或改写 MD 产物。monitor、workflow 编排、
+restart/resume、调度以及科学判断由 Forge 外部的人类或 Agent 负责。
+
+## Typed MD postprocess（experimental）
+
+`MdPostprocessRequest` 要求一个显式的 `trajectory_path_rel`，并支持五个 canonical
+分析名称：`rdf`、`msd_diffusion`、`vacf_vdos`、`bond_length`、`bond_angle`。请求还可用
+`start`/`end`/`stride` 选择帧，以及在 JSON-safe `parameters` 中提供
+`timestep`、`selection`、`elements`、`rmax`、`nbins`、`save_data`、`save_plot`。
+`msd_diffusion` 和 `vacf_vdos` 要求正的 `timestep`；RDF 需要轨迹帧提供显式周期 cell。
+`msd`、`vacf`、`bond` 等兼容别名只由上层 Paimon adapter 映射，不进入 Forge request。
+
+例如，下面的请求只分析调用方已经放在 `runs/Si_md/outputs/md.traj` 的轨迹：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "md",
+  "operation": "postprocess",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174150",
+  "workspace_rel": "runs/Si_md",
+  "trajectory_path_rel": "outputs/md.traj",
+  "analysis": ["msd_diffusion", "vacf_vdos"],
+  "output_dir_rel": "outputs/md-postprocess",
+  "parameters": {"timestep": 1.0, "save_data": true, "save_plot": true}
+}
+```
+
+将其保存为 `md-postprocess-request.json` 后执行：
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation postprocess --request md-postprocess-request.json
+```
+
+Python API 使用同一 service：
+
+```python
+from abacus_forge import MdPostprocessRequest, MdPostprocessServiceSet
+
+request = MdPostprocessRequest.from_dict(payload)
+result = MdPostprocessServiceSet.default(workspace_root=".").postprocess.postprocess(request)
+```
+
+服务始终生成 `trajectory_source.json` 和 `analysis.json`，并按 canonical mode 生成确定性
+数据文件及可选 PNG；所有 artifact 都是 workspace-relative 并带 SHA-256/size。返回的
+`execution` 固定为 `not_run`、`scientific` 固定为 `unassessed`，`collection` 只描述
+`complete`、`partial` 或 `missing_output` 的产物事实。科学验证、轨迹转换/PDB、TUI、
+任务编排、监控、调度、重试/恢复和导出均不在此 operation 内。
 
 ## 作为 Python 库使用
 
