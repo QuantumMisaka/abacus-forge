@@ -148,10 +148,15 @@ This mirrors the service containment guarantee for direct algorithm callers;
 it does not introduce a new path field or alter the typed service contract.
 
 The dependency-free XYZ fallback now carries the same finite common-element
-mass table used by the Paimon v1.2 MD kernel and rejects symbols outside that
-table.  This is an internal numerical-fidelity alignment only; ASE-provided
-masses remain authoritative and no new species or scientific validation
-contract is introduced.
+mass table used by the Paimon v1.2 MD kernel (with the existing `1.0` fallback
+for symbols outside that table).  This is an internal numerical-fidelity
+alignment only; ASE-provided masses remain authoritative and no new species or
+scientific validation contract is introduced.
+
+The 2026-09-11 review-fixes slice supersedes that fallback behavior: it keeps
+the complete finite table and rejects unknown symbols instead of assigning a
+synthetic mass.  The earlier `84962ee` verification remains historical
+evidence for the behavior that existed at that revision.
 
 Verification at `84962ee`: the focused MD/legacy compatibility gate passed
 `68 passed`; the stable deterministic gate passed `1138 passed, 42 deselected`,
