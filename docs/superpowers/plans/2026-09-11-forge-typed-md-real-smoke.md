@@ -55,16 +55,18 @@
 
 ## Completion evidence
 
-- Implementation commits: `0d24b53` (typed MD smoke) and `965e874` (require native parser facts).
-- Task-scoped review of `0d24b53..965e874`: **Ready**, no Critical/Important/Minor findings. The reviewer confirmed the four required names match the native parser and that no scientific thresholds were introduced.
-- Default real-smoke selection with `--run-real-smoke`: `4 skipped in 0.55s`; no real MD workspace or ABACUS executable is available locally, so no real execution evidence is claimed.
+- Implementation commits: `0d24b53` (typed MD smoke), `965e874` (require native parser facts), `d962169` (reject stale output trees), and `1783ac7` (reject stale root `MD_dump`).
+- Task-scoped review of `0d24b53..965e874`: **Ready** after closing the missing-native-facts Important. The reviewer confirmed the four required names match the native parser and that no scientific thresholds were introduced.
+- Whole-branch review of `da1d4df..1783ac7`: **Ready**, with no remaining Critical/Important/Minor findings. The review specifically confirmed that old `running_md.log`/`MD_dump` cannot be reused from the copied root or `outputs/` tree.
+- Default real-smoke selection with `--run-real-smoke`: `4 skipped in 0.62s`; no real MD workspace or ABACUS executable is available locally, so no real execution evidence is claimed.
 - Supplied invalid workspace: `1 failed, 3 deselected in 0.66s`, with a direct invalid-workspace diagnostic.
-- MD/CLI owning suite: `160 passed in 61.20s`.
+- Supplied source containing stale `outputs/OUT.ABACUS/running_md.log` with `/bin/true`: `1 failed, 3 deselected in 0.58s`, with the expected stale-output diagnostic.
+- MD/CLI owning suite: `160 passed in 54.58s`.
 - Architecture gate: `8 passed in 5.51s`.
 - Full offline gate (`not real_smoke and not benchmark`): `1218 passed, 6 deselected in 105.99s`.
 - Benchmark opt-in gate: `2 passed, 1222 deselected in 1.25s`.
 - `git diff --check`: passed.
-- The branch remains isolated at the final implementation/documentation state; `main` and the remote were not modified.
+- The branch remains isolated at final HEAD `1783ac7`; `main` and the remote were not modified.
 
 ## Rulings
 
