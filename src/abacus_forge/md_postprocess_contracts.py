@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal
@@ -28,6 +29,11 @@ MD_ANALYSIS_MODES = (
     "bond_length",
     "bond_angle",
 )
+
+_RECOGNIZED_PARAMETERS = frozenset(
+    {"timestep", "selection", "elements", "rmax", "nbins", "save_data", "save_plot"}
+)
+_CHEMICAL_SYMBOL = re.compile(r"^[A-Z][a-z]?$")
 
 
 def _canonical_file_path(value: object, field_name: str) -> str:
@@ -127,6 +133,106 @@ def _parameters(value: object) -> Mapping[str, JSONValue]:
     return _freeze_json(normalized)  # type: ignore[return-value]
 
 
+def _positive_number(value: object, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be finite and positive")
+    try:
+        valid = math.isfinite(value) and value > 0
+    except (OverflowError, TypeError, ValueError):
+        valid = False
+    if not valid:
+        raise ValueError(f"{field_name} must be finite and positive")
+
+
+def _rdf_parameter_pairs(value: object) -> None:
+    """Validate RDF element-pair syntax without importing the algorithm layer."""
+    if value is None:
+        return
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence) or not value:
+        raise ValueError("elements must be a non-empty list of A-B strings")
+    pairs: list[str] = []
+    for item in value:
+        if isinstance(item, Sequence) and not isinstance(item, (str, bytes)):
+            item = tuple(item)
+            if len(item) != 2:
+                raise ValueError("elements RDF pairs must contain two symbols")
+            item = f"{item[0]}-{item[1]}"
+        if not isinstance(item, str) or item.count("-") != 1:
+            raise ValueError("elements RDF pairs must use the A-B form")
+        left, right = item.split("-")
+        if not _CHEMICAL_SYMBOL.fullmatch(left) or not _CHEMICAL_SYMBOL.fullmatch(right):
+            raise ValueError("elements RDF pairs must contain safe chemical symbols")
+        pairs.append(f"{left}-{right}")
+    if len(set(pairs)) != len(pairs):
+        raise ValueError("elements RDF pairs must be unique")
+
+
+def _selection_entries(value: object, field_name: str, hyphens: int) -> None:
+    if value is None:
+        return
+    if isinstance(value, str):
+        values = (value,)
+    elif isinstance(value, (bytes,)) or not isinstance(value, Sequence):
+        raise ValueError(f"selection.{field_name} must contain strings")
+    else:
+        values = tuple(value)
+    for item in values:
+        if not isinstance(item, str) or item.count("-") != hyphens:
+            raise ValueError(f"selection.{field_name} entries have invalid syntax")
+        if any(not _CHEMICAL_SYMBOL.fullmatch(symbol) for symbol in item.split("-")):
+            raise ValueError(f"selection.{field_name} entries must contain safe chemical symbols")
+
+
+def _validate_selection(value: object) -> None:
+    if isinstance(value, Mapping):
+        _selection_entries(value.get("pairs"), "pairs", 1)
+        _selection_entries(value.get("angles"), "angles", 2)
+        if "indices" in value:
+            indices = value["indices"]
+            if isinstance(indices, (str, bytes)) or not isinstance(indices, Sequence) or not indices:
+                raise ValueError("selection.indices must be a non-empty sequence of atom indices")
+            if any(isinstance(item, bool) or not isinstance(item, int) or item < 1 for item in indices):
+                raise ValueError("selection.indices must contain positive integers")
+        return
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise ValueError("selection must be an object or list")
+    for item in value:
+        if not isinstance(item, str) or item.count("-") not in (1, 2):
+            raise ValueError("selection entries must use A-B or A-B-C strings")
+        if any(not _CHEMICAL_SYMBOL.fullmatch(symbol) for symbol in item.split("-")):
+            raise ValueError("selection entries must contain safe chemical symbols")
+
+
+def _validate_parameters(parameters: Mapping[str, JSONValue], analysis: Sequence[str]) -> None:
+    """Validate all recognized MD parameter shapes before workspace admission.
+
+    ``parameters`` is already frozen by :func:`_parameters`, so list-valued
+    fields are tuples and nested objects are mapping proxies.  This validator
+    intentionally depends only on the standard library and validates the
+    request-independent portion of the parameter contract.  Trajectory facts
+    such as atom-index upper bounds remain algorithm preconditions.
+    """
+    recognized = {key: parameters[key] for key in parameters if key in _RECOGNIZED_PARAMETERS}
+    if any(mode in analysis for mode in ("msd_diffusion", "vacf_vdos")):
+        if "timestep" not in recognized:
+            raise ValueError("timestep is required for MSD/VACF")
+    if "timestep" in recognized:
+        _positive_number(recognized["timestep"], "timestep")
+    if "rmax" in recognized:
+        _positive_number(recognized["rmax"], "rmax")
+    if "nbins" in recognized:
+        value = recognized["nbins"]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError("nbins must be positive")
+    if "elements" in recognized:
+        _rdf_parameter_pairs(recognized["elements"])
+    for field_name in ("save_data", "save_plot"):
+        if field_name in recognized and not isinstance(recognized[field_name], bool):
+            raise ValueError(f"{field_name} must be boolean")
+    if "selection" in recognized:
+        _validate_selection(recognized["selection"])
+
+
 @dataclass(frozen=True, slots=True)
 class MdPostprocessRequest(OperationRef):
     """Request to analyze an explicitly selected MD trajectory."""
@@ -158,7 +264,9 @@ class MdPostprocessRequest(OperationRef):
         object.__setattr__(self, "start", _sampling_integer(self.start, "start", minimum=0))
         object.__setattr__(self, "end", _optional_positive_integer(self.end, "end"))
         object.__setattr__(self, "stride", _sampling_integer(self.stride, "stride", minimum=1))
-        object.__setattr__(self, "parameters", _parameters(self.parameters))
+        normalized_parameters = _parameters(self.parameters)
+        _validate_parameters(normalized_parameters, self.analysis)
+        object.__setattr__(self, "parameters", normalized_parameters)
 
     @property
     def operation(self) -> Literal["postprocess"]:

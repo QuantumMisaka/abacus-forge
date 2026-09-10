@@ -108,6 +108,38 @@ def test_machine_invalid_mode_is_exit_two_without_domain_files(tmp_path: Path):
     assert not (tmp_path / "job").exists()
 
 
+def test_machine_invalid_md_parameters_are_schema_errors_before_admission(tmp_path: Path):
+    payload = _parity_payload("123e4567-e89b-42d3-a456-426614174805")
+    payload["parameters"] = {"save_plot": "false"}
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    code = run_machine_cli(
+        ["operation", "postprocess", "--stdin"],
+        stdin=io.StringIO(json.dumps(payload)), stdout=stdout, stderr=stderr, cwd=tmp_path,
+    )
+
+    assert code == 2
+    assert json.loads(stdout.getvalue())["error"]["class"] == "request.schema"
+    assert stderr.getvalue() == ""
+    assert not (tmp_path / "job").exists()
+
+
+def test_machine_missing_md_timestep_is_schema_error_before_admission(tmp_path: Path):
+    payload = _parity_payload("123e4567-e89b-42d3-a456-426614174806")
+    payload["parameters"] = {"save_plot": False}
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    code = run_machine_cli(
+        ["operation", "postprocess", "--stdin"],
+        stdin=io.StringIO(json.dumps(payload)), stdout=stdout, stderr=stderr, cwd=tmp_path,
+    )
+
+    assert code == 2
+    assert json.loads(stdout.getvalue())["error"]["class"] == "request.schema"
+    assert stderr.getvalue() == ""
+    assert not (tmp_path / "job").exists()
+
+
 def test_machine_output_directory_file_is_exit_five(tmp_path: Path):
     _write_parity_workspace(tmp_path)
     output = tmp_path / "job/outputs/md-postprocess"

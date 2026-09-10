@@ -64,7 +64,7 @@ def test_md_postprocess_round_trips_defaults_and_detaches_serialized_values() ->
 def test_md_postprocess_is_frozen_and_deeply_immutable() -> None:
     parameters = {"nested": {"values": [1]}}
     analysis = ["rdf", "msd_diffusion"]
-    request = _request(analysis=analysis, parameters=parameters)
+    request = _request(analysis=analysis, parameters={"timestep": 1.0, **parameters})
     analysis.append("temperature")
     parameters["nested"]["values"].append(2)  # type: ignore[index]
 
@@ -158,6 +158,62 @@ def test_md_postprocess_rejects_invalid_analysis_and_sampling(field: str, value:
     payload = _request().to_dict()
     payload[field] = value  # type: ignore[assignment]
     with pytest.raises(ValueError, match=field):
+        MdPostprocessRequest.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        {"timestep": "1.0"},
+        {"timestep": 0},
+        {"timestep": True},
+        {"rmax": "6.0"},
+        {"rmax": 0},
+        {"rmax": True},
+        {"nbins": 0},
+        {"nbins": 1.5},
+        {"nbins": True},
+        {"elements": []},
+        {"elements": ["H"]},
+        {"elements": ["H-?"]},
+        {"elements": [["H", "O", "C"]]},
+        {"save_data": 1},
+        {"save_plot": None},
+        {"selection": "pairs"},
+        {"selection": 1},
+        {"selection": [1]},
+        {"selection": {"pairs": [1]}},
+        {"selection": {"angles": ["H-O"]}},
+        {"selection": {"indices": []}},
+        {"selection": {"indices": [True]}},
+    ],
+)
+def test_md_postprocess_rejects_invalid_recognized_parameters_at_construction(
+    parameters: dict[str, object],
+) -> None:
+    payload = _request().to_dict()
+    payload["parameters"] = parameters
+
+    with pytest.raises(ValueError, match="timestep|rmax|nbins|elements|save_data|save_plot|selection|RDF"):
+        MdPostprocessRequest.from_dict(payload)
+
+
+def test_md_postprocess_accepts_frozen_sequence_parameters() -> None:
+    request = _request(
+        analysis=("bond_length",),
+        parameters={"selection": ["H-O"], "elements": [["H", "O"]]},
+    )
+
+    assert request.parameters["selection"] == ("H-O",)  # type: ignore[index]
+    assert request.parameters["elements"] == (("H", "O"),)  # type: ignore[index]
+
+
+def test_md_postprocess_requires_timestep_for_msd_or_vacf_at_construction() -> None:
+    payload = _request().to_dict()
+    payload["analysis"] = ["msd_diffusion"]
+    payload["parameters"] = {"save_plot": False}
+
+    with pytest.raises(ValueError, match="timestep"):
         MdPostprocessRequest.from_dict(payload)
 
 

@@ -129,8 +129,24 @@ class MdPostprocessService:
                 missing_modes = [mode for mode, expected in expected_by_mode.items() if mode not in safe_results or any(name not in fresh_names for name in expected)]
                 collection = "missing_output" if len(missing_modes) == len(request.analysis) else ("partial" if missing_modes or missing_generated else "complete")
                 checks = tuple(CheckRecord(name=f"analysis.{mode}", status="warning" if mode in missing_modes or missing_generated else "passed", message="analysis output incomplete" if mode in missing_modes or missing_generated else None) for mode in request.analysis)
-                metrics = (MetricRecord(name="sampled_frames", value=frame_count, unit="frames", kind="runtime"),)
                 artifacts = self._artifacts(workspace, trajectory, request.trajectory_path_rel, present_generated, report, report_rel)
+                metrics = [MetricRecord(name="sampled_frames", value=frame_count, unit="frames", kind="runtime")]
+                analysis_artifact = next(
+                    (
+                        artifact
+                        for artifact in artifacts
+                        if artifact.path_rel
+                        == f"{request.output_dir_rel}/analysis.json"
+                    ),
+                    None,
+                )
+                diffusion = _reported_diffusion_metric(
+                    request,
+                    safe_results,
+                    analysis_artifact,
+                )
+                if diffusion is not None:
+                    metrics.append(diffusion)
                 try:
                     report.parent.mkdir(parents=True, exist_ok=True)
                     report_diagnostics = dict(diagnostics)
@@ -143,7 +159,7 @@ class MdPostprocessService:
                 except OSError as error:
                     raise ForgePersistenceError("unable to persist MD postprocess report") from error
                 artifacts = artifacts + (self._artifact(workspace, report, report_rel, "output", "postprocess-report"),)
-                envelope = ForgeResultEnvelope(operation=request.operation, workspace_rel=request.workspace_rel, status=OperationStatus(execution="not_run", scientific="unassessed", collection=collection), artifacts=artifacts, metrics=metrics, checks=checks, diagnostics=diagnostics)
+                envelope = ForgeResultEnvelope(operation=request.operation, workspace_rel=request.workspace_rel, status=OperationStatus(execution="not_run", scientific="unassessed", collection=collection), artifacts=artifacts, metrics=tuple(metrics), checks=checks, diagnostics=diagnostics)
                 return self._context.persist(workspace, request, envelope, owner_token=owner_token)
         except Exception as error:
             return self._context.error_from_exception(error, request)
@@ -294,6 +310,37 @@ def _rdf_result_pairs(value: object) -> tuple[str, ...]:
 
 def _rdf_output_name(pair: str, *, suffix: str) -> str:
     return f"rdf_{pair.replace('-', '_')}.{suffix}"
+
+
+def _reported_diffusion_metric(
+    request: MdPostprocessRequest,
+    results: Mapping[str, Any],
+    analysis_artifact: ArtifactRecord | None,
+) -> MetricRecord | None:
+    """Project only a finite, freshly contained MSD result as a metric."""
+    if "msd_diffusion" not in request.analysis or analysis_artifact is None:
+        return None
+    value = results.get("msd_diffusion")
+    if not isinstance(value, Mapping):
+        return None
+    diffusion = value.get("diffusion_angstrom2_per_fs")
+    if (
+        isinstance(diffusion, bool)
+        or not isinstance(diffusion, (int, float))
+    ):
+        return None
+    try:
+        if not math.isfinite(diffusion):
+            return None
+    except (OverflowError, TypeError, ValueError):
+        return None
+    return MetricRecord(
+        name="diffusion_coefficient",
+        value=diffusion,
+        unit="Angstrom^2/fs",
+        kind="reported",
+        source_artifact_id=analysis_artifact.id,
+    )
 
 
 def _output_snapshot(output_dir: Path) -> dict[Path, tuple[int, int, int]]:

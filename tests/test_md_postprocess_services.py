@@ -32,6 +32,15 @@ def test_md_service_persists_facts_artifacts_and_one_event(tmp_path: Path):
         artifact.id for artifact in result.envelope.artifacts
     }
     assert any(observation["name"] == "sampled_frames" for observation in payload["observations"])
+    diffusion = next(metric for metric in result.envelope.metrics if metric.name == "diffusion_coefficient")
+    assert diffusion.unit == "Angstrom^2/fs"
+    assert diffusion.kind == "reported"
+    assert diffusion.value == 0.0
+    assert diffusion.source_artifact_id == next(
+        artifact.id
+        for artifact in result.envelope.artifacts
+        if artifact.path_rel == "outputs/md-postprocess/analysis.json"
+    )
     report = root / "reports/postprocess" / f"{_request().operation_id}.json"
     report_payload = json.loads(report.read_text(encoding="utf-8"))
     assert report_payload["schema_version"] == "forge.md-postprocess-report/v1"
@@ -54,6 +63,25 @@ def test_fake_incomplete_result_is_partial_and_missing_manifest_is_repaired(tmp_
     assert result.envelope.status.collection == "missing_output"
     assert any(check.status == "warning" for check in result.envelope.checks)
     assert not (root / "outputs/md-postprocess/analysis.json").is_file()
+    assert all(metric.name != "diffusion_coefficient" for metric in result.envelope.metrics)
+
+
+def test_unknown_md_parameters_remain_ignored_without_changing_analysis(tmp_path: Path):
+    root = tmp_path / "job"
+    (root / "inputs").mkdir(parents=True)
+    (root / "inputs/traj.xyz").write_text(
+        "1\nframe 0\nH 0 0 0\n1\nframe 1\nH .1 0 0\n",
+        encoding="utf-8",
+    )
+    request = _request(
+        713,
+        parameters={"timestep": 1.0, "save_plot": False, "future_option": {"enabled": True}},
+    )
+
+    result = MdPostprocessServiceSet.default(workspace_root=tmp_path).postprocess.postprocess(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["ignored_parameter_keys"] == ("future_option",)
 
 
 def test_fake_duplicate_or_reserved_outputs_are_rejected(tmp_path: Path):
