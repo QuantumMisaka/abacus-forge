@@ -36,11 +36,18 @@ def collection_observations(result: CollectionResult) -> tuple[Observation, ...]
 def _projection_result(result: CollectionResult) -> CollectionResult:
     """Expose MD thermodynamics only when sourced from native running_md.log."""
     projected = common.projection_result(result)
+    metrics = dict(projected.metrics)
+    summary = metrics.get("md_dump_summary")
+    if isinstance(summary, dict):
+        summary = dict(summary)
+        raw_path = summary.get("path")
+        relative = _contained_relative(result, raw_path)
+        summary["path"] = relative if relative is not None and Path(relative).name == "MD_dump" else None
+        metrics["md_dump_summary"] = summary
     selected = result.diagnostics.get("selected_log_path")
     native = _canonical_native_log(result) is not None and result.diagnostics.get("native_md_block_complete") is True
     if native:
-        return projected
-    metrics = dict(projected.metrics)
+        return replace(projected, metrics=metrics)
     for name in tuple(metrics):
         if name.startswith("md_last_") or (name.startswith("md_") and name.endswith("_series")):
             metrics.pop(name, None)

@@ -258,4 +258,11 @@ def test_native_md_machine_cli_preserves_native_energy_facts(tmp_path: Path) -> 
     api_facts = {item.name: item.value for item in api_result.observations}
     for name in ("total_energy", "md_last_total_energy", "md_last_potential_energy", "md_last_kinetic_energy", "md_last_temperature", "md_last_pressure"):
         assert cli_facts[name] == api_facts[name]
+    for facts in (cli_facts, api_facts):
+        dump_path = facts["md_dump_summary"]["path"]
+        assert dump_path == "outputs/OUT.ABACUS/MD_dump"
+        assert not Path(dump_path).is_absolute()
+    assert {artifact.path_rel for artifact in cli_result.envelope.artifacts} == {
+        artifact.path_rel for artifact in api_result.envelope.artifacts
+    }
     assert cli_result.envelope.status.collection == "complete"
