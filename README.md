@@ -80,6 +80,26 @@ postprocess 与下文已有的 `run_band`、`run_dos`、`run_band_sequence`、
 `run_dos_sequence` 以及 `abacus-forge band|dos` legacy task/sequence API 是不同边界；
 后者继续保持原有 task/sequence 语义，不被隐式改写为 typed service。
 
+`PyatbBandPrepareRequest`、`PyatbBandExecuteRequest` 与
+`PyatbBandCollectRequest` 提供独立的实验性 `pyatb-band` capability。它只暴露
+`prepare`、`execute`、`collect` 三个 operation：prepare 接收调用方已经放入同一
+workspace 的显式 `STRU`、HR、SR、rR 文件、Fermi 能量和 line-mode K 点；默认以
+workspace 内的相对链接完成 handoff，`handoff_mode="copy"` 可改为独立复制。绝对路径、
+跨 workspace 来源、隐式 SCF 目录扫描和从日志推导 Fermi 能量均不属于 typed 面。
+
+准备会生成 `inputs/STRU`、`inputs/pyatb_sources/<basename>`、`inputs/Input` 和
+`inputs/KPT_band`，并在结果 diagnostics/manifest 中记录角色、来源与目标相对路径及
+SHA-256。`nspin` 当前只支持 1 或 2；spin-2 需要两个 HR 文件，共用一个 SR 文件，
+并且其他 PyATB property 与 nspin 4 尚未进入此 capability。执行只通过本地 runner
+启动一个 PyATB 进程；收集读取默认的
+`inputs/Out/Band_Structure/band_info.dat`，也可显式列出 band data/picture 路径，返回
+artifact、运行时和 parser facts。可解析的 `band_gap` 只是 `reported` metric，
+`scientific` 永远为 `unassessed`，不表示科学接受结论。
+
+该 typed 面与下文保留的 `prepare_pyatb_band(...)`、`run_pyatb(...)`、
+`collect_pyatb(...)` 及 `run_band_sequence(..., backend="pyatb")` legacy helper
+分开；后者继续保留自动 SCF discovery 和原有兼容行为。
+
 该阶段的 typed service 已通过下方 Agent-first CLI 的 machine surface 暴露；当前
 `app-tools` 中的 Paimon v1.2 仍是既有发布面，不在 Forge 中复制。
 typed service 与旧 API 共用 `preparation.py`、`collection.py` 和 INPUT 编辑基元；
@@ -100,10 +120,10 @@ legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推�
 ## Agent-first CLI
 
 Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax` 和
-成熟度为 `experimental` 的 `md`、`atst-neb`；typed `band`/`dos` 另提供仅用于
+成熟度为 `experimental` 的 `md`、`atst-neb`、`pyatb-band`；typed `band`/`dos` 另提供仅用于
 `postprocess` 的实验性 capability。它固定暴露三个顶层命令：`operation`
 （`scf`、`relax`、`cell-relax`、`md` 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
-`execute`、`postprocess`；`band`、`dos` 执行 `postprocess`）、`schema`（读取请求 schema）和
+`execute`、`postprocess`；`pyatb-band` 执行 `prepare`、`execute`、`collect`；`band`、`dos` 执行 `postprocess`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
 
@@ -144,9 +164,10 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 ```
 
 `capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前发现的
-capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`；`md` 仅支持
+capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`pyatb-band`、`band`、`dos`；`md` 仅支持
 `prepare`、`modify`、`execute`、`collect`，且 maturity 为 `experimental`；其他 capability
 按各自 descriptor 暴露 operation，`band`/`dos` 仅暴露 `postprocess` 且 maturity 为
+`experimental`，`pyatb-band` 仅暴露 `prepare`、`execute`、`collect` 且 maturity 为
 `experimental`。默认格式下，
 `operation` 在 stdout 输出恰好一个完整的 JSON outcome/error envelope，其中包含错误消息与
 结果 diagnostics；stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
@@ -468,6 +489,83 @@ workspace-relative output artifact，source 是 input artifact。结果不泄露
 band gap、acceptance 或其它科学判断；缺失 source、路径碰撞和审计保留路径会按既有
 request/precondition/error 语义返回。
 
+## Typed PyATB band handoff（experimental）
+
+typed `pyatb-band` 请求使用与其他 machine operation 相同的
+`forge.request/v1` envelope。所有 `*_path_rel` 都相对于请求的目标 workspace；调用方应先
+把上游产物 materialize 到该 workspace，再调用 Forge。下面的 prepare 请求只声明一个
+最小的 spin-1 handoff：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-band",
+  "operation": "prepare",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174120",
+  "workspace_rel": "runs/Si_pyatb_band",
+  "structure_path_rel": "source/STRU",
+  "hr_paths_rel": ["source/data-HR-sparse_SPIN0.csr"],
+  "sr_path_rel": "source/data-SR-sparse_SPIN0.csr",
+  "rr_path_rel": "source/data-rR-sparse.csr",
+  "fermi_energy": 4.25,
+  "line_kpoints": [
+    {"coords": [0.0, 0.0, 0.0], "label": "G"},
+    {"coords": [0.5, 0.0, 0.0], "label": "X"}
+  ],
+  "nspin": 1,
+  "line_segments": 20,
+  "max_kpoint_num": 4000,
+  "handoff_mode": "link"
+}
+```
+
+执行和收集仍是两个独立 operation，不依赖数字 Task-ID，也不隐式执行 prepare 或
+上游 SCF：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-band",
+  "operation": "execute",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174121",
+  "workspace_rel": "runs/Si_pyatb_band",
+  "executable": "pyatb",
+  "mpi_ranks": 1,
+  "omp_threads": 1,
+  "timeout_seconds": null,
+  "dry_run": false
+}
+```
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-band",
+  "operation": "collect",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174122",
+  "workspace_rel": "runs/Si_pyatb_band",
+  "band_info_path_rel": "inputs/Out/Band_Structure/band_info.dat",
+  "band_data_paths_rel": ["inputs/Out/Band_Structure/band.dat"],
+  "band_picture_paths_rel": ["inputs/Out/Band_Structure/band.png"]
+}
+```
+
+保存后可分别通过 `operation prepare|execute|collect --request FILE`（或 `--stdin`）
+调用；Python API 使用同一 service：
+
+```python
+from abacus_forge import (
+    PyatbBandPrepareRequest,
+    PyatbBandServiceSet,
+)
+
+services = PyatbBandServiceSet.default(workspace_root=".")
+result = services.prepare.prepare(PyatbBandPrepareRequest.from_dict(prepare_payload))
+```
+
+该 capability 仅在离线 fixture/mock 与 API/CLI parity 范围内保持
+`experimental`；本仓库不以此文档声称真实 PyATB/ABACUS smoke、科学验证或稳定晋级。
+
 ## Typed Relax operations
 
 `RelaxPrepareRequest`、`RelaxModifyRequest`、`RelaxExecuteRequest` 和
@@ -527,9 +625,9 @@ execute/collect 的序列化 outcome、事件和 artifact，但不作物理收�
 
 typed MD 首批已提供实验性的四个 typed operation，但只覆盖输入准备、修改、一次本地执行
 和事实收集；本批次不提供 MD 专用 trajectory 转换、monitor、restart/resume 或独立
-`postprocess`/`export`。上文的 typed band/DOS postprocess 是单独的实验性能力，不扩展为
-MD 或其它 task 的隐式后处理；typed `export`、PyATB engine boundary 和更多真实
-property-pack smoke 仍待后续交付。监控、workflow 编排、
+`postprocess`/`export`。上文的 typed band/DOS postprocess 和 typed `pyatb-band` handoff
+都是独立的实验性能力，不扩展为 MD 或其它 task 的隐式后处理；typed `export`、PyATB
+properties 和更多真实 property-pack smoke 仍待后续交付。监控、workflow 编排、
 恢复/重试、调度和科学判断由 Forge 外部的人类或 Agent 负责；Stage 5 的 legacy 依赖
 解除与稳定发布门禁也尚未完成。
 
@@ -647,7 +745,7 @@ runs/<run_id>/
       <operation-id>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；typed `export`、PyATB typed engine handoff、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍不属于本批次。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess 与 typed `pyatb-band` handoff 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；typed `export`、PyATB properties、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍不属于本批次。
 
 事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。
 
@@ -656,7 +754,7 @@ runs/<run_id>/
 - 不内置云平台提交、追踪、下载能力
 - 不引入 AiiDA 语义或工作流编排语义到 Forge 核心
 - 对于 phonon / elastic 等厚工作流，其实现必须基于解耦的单元模块，且其输入/计算/输出必须可解耦
-- typed `export`、typed PyATB engine handoff、property/composite 聚合不在本批次
+- typed `export`、PyATB properties、nspin 4、property/composite 聚合不在本批次
 - 调度、workflow/orchestration、重试/恢复和科学判断由 Forge 外部的调用方负责
 
 ## 贡献

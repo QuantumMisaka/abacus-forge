@@ -100,16 +100,22 @@
 ## Task 4: Documentation, final verification and branch review
 
 **Files:**
-- Modify: `README.md`, `ROADMAP.md`, this plan and `.superpowers/sdd/2026-09-10-forge-typed-pyatb-band/progress.md`
+- Modify: `README.md`, `ROADMAP.md`, `tests/test_architecture.py`, this plan and `.superpowers/sdd/2026-09-10-forge-typed-pyatb-band/progress.md`
+- Create: `.superpowers/sdd/2026-09-10-forge-typed-pyatb-band/task-4-report.md`
 - No compatibility code changes in this task.
 
 **Behavior:** README documents the typed `pyatb-band` request examples, explicit workspace-local handoff, default relative link/copy option, generated files, execution/collection facts, reported-vs-scientific boundary and legacy helper separation. ROADMAP marks only this experimental band handoff as implemented; PyATB properties, nspin 4, typed export, SCF sequence orchestration, scheduling and stable/real-smoke promotion remain deferred.
 
 **Verification:** Run the full offline gate with the repository's fixed interpreter and flags, `git diff --check`, discovery assertions and forbidden-import scan. Bind every result to the final code revision. Obtain task reviews and one whole-branch review; fix all Critical/Important findings before marking this plan complete. No merge or push is part of this plan.
 
-- [ ] Update docs concisely after code behavior is fixed; do not claim real PyATB evidence.
-- [ ] Run the full offline suite and diff/discovery/import gates; retain raw output in the ledger.
+- [x] Update docs concisely after code behavior is fixed; do not claim real PyATB evidence.
+- [x] Run the full offline suite and diff/discovery/import gates; retain raw output in the ledger.
 - [ ] Obtain final review, close findings, and record exact commits/evidence.
+
+Task-local verification note: the architecture gate's capability-list assertion
+was updated to include the already implemented `pyatb-band` descriptor and its
+exact maturity/engine/operation/artifact-role contract. This is a test-accounting
+fix only; no production behavior or compatibility surface changed.
 
 ## Plan self-review and rulings
 
