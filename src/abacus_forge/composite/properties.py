@@ -15,6 +15,7 @@ from abacus_forge.composite.common import artifacts_under, ensure_root, require_
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.input_io import read_input
 from abacus_forge.modify import modify_stru
+from abacus_forge.property_manifest import PropertyArtifactSpec, build_property_manifest
 from abacus_forge.result import TaskResult
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
@@ -86,7 +87,19 @@ def post_charge_density(workspace: str | Path) -> TaskResult:
     cube = _find_first(root.root / "charge-density", ["*CHG*.cube", "*.cube"])
     summary = {"charge_density_file": str(cube) if cube else None}
     path = write_task_result(root, "reports/metrics_charge_density.json", summary)
-    return TaskResult("charge-density", root.root, "completed" if cube else "degraded", summary=summary, artifacts={**artifacts_under(root, "charge-density"), str(path.relative_to(root.root)): str(path)})
+    source = cube or _canonical_cube_path(root.root / "charge-density" / "scf", "SPIN1_CHG.cube")
+    result = TaskResult(
+        "charge-density",
+        root.root,
+        "completed" if cube else "degraded",
+        summary=summary,
+        artifacts={**artifacts_under(root, "charge-density"), str(path.relative_to(root.root)): str(path)},
+    )
+    return _attach_property_manifest(
+        result,
+        inputs=(_property_spec(source, kind="cube", role="input", origin="source", spin="unknown"),),
+        outputs=(_property_spec(path, kind="report", role="output", origin="derived", spin="unknown"),),
+    )
 
 
 def post_spin_density(workspace: str | Path) -> TaskResult:
@@ -94,16 +107,44 @@ def post_spin_density(workspace: str | Path) -> TaskResult:
     base = root.root / "spin-density"
     up = _find_first(base, ["SPIN1_CHG.cube", "*SPIN1*.cube", "*UP*.cube"])
     down = _find_first(base, ["SPIN2_CHG.cube", "*SPIN2*.cube", "*DOWN*.cube"])
+    up_source = up or _canonical_cube_path(base / "scf", "SPIN1_CHG.cube")
+    down_source = down or _canonical_cube_path(base / "scf", "SPIN2_CHG.cube")
     diagnostics = {"spin_up": str(up) if up else None, "spin_down": str(down) if down else None}
     if up is None or down is None:
         summary = {"spin_density_file": None}
         path = write_task_result(root, "reports/metrics_spin_density.json", summary)
-        return TaskResult("spin-density", root.root, "degraded", summary=summary, artifacts={str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+        result = TaskResult("spin-density", root.root, "degraded", summary=summary, artifacts={str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+        return _attach_property_manifest(
+            result,
+            inputs=(
+                _property_spec(up_source, kind="cube", role="input", origin="source", spin="up"),
+                _property_spec(down_source, kind="cube", role="input", origin="source", spin="down"),
+            ),
+            outputs=(
+                _property_spec(
+                    root.root / "reports" / "spin_density.cube",
+                    kind="cube", role="output", origin="derived", spin="shared",
+                    source_paths=(up_source, down_source),
+                ),
+                _property_spec(path, kind="report", role="output", origin="derived", spin="unknown"),
+            ),
+        )
     output = root.root / "reports" / "spin_density.cube"
     subtract_cubes(up, down).write(output)
     summary = {"spin_density_file": str(output)}
     path = write_task_result(root, "reports/metrics_spin_density.json", summary)
-    return TaskResult("spin-density", root.root, "completed", summary=summary, artifacts={**artifacts_under(root, "spin-density"), str(output.relative_to(root.root)): str(output), str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+    result = TaskResult("spin-density", root.root, "completed", summary=summary, artifacts={**artifacts_under(root, "spin-density"), str(output.relative_to(root.root)): str(output), str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+    return _attach_property_manifest(
+        result,
+        inputs=(
+            _property_spec(up_source, kind="cube", role="input", origin="source", spin="up", parse_status="ok"),
+            _property_spec(down_source, kind="cube", role="input", origin="source", spin="down", parse_status="ok"),
+        ),
+        outputs=(
+            _property_spec(output, kind="cube", role="output", origin="derived", spin="shared", parse_status="ok", source_paths=(up_source, down_source)),
+            _property_spec(path, kind="report", role="output", origin="derived", spin="unknown"),
+        ),
+    )
 
 
 def post_charge_diff(workspace: str | Path) -> TaskResult:
@@ -112,17 +153,44 @@ def post_charge_diff(workspace: str | Path) -> TaskResult:
     full = _find_first(base / "full", ["*CHG*.cube", "*.cube"])
     sub1 = _find_first(base / "subsystem1", ["*CHG*.cube", "*.cube"])
     sub2 = _find_first(base / "subsystem2", ["*CHG*.cube", "*.cube"])
+    full_source = full or _canonical_cube_path(base / "full", "SPIN1_CHG.cube")
+    sub1_source = sub1 or _canonical_cube_path(base / "subsystem1", "SPIN1_CHG.cube")
+    sub2_source = sub2 or _canonical_cube_path(base / "subsystem2", "SPIN1_CHG.cube")
     diagnostics = {"full": str(full) if full else None, "subsystem1": str(sub1) if sub1 else None, "subsystem2": str(sub2) if sub2 else None}
     if full is None or sub1 is None or sub2 is None:
         summary = {"charge_density_difference_file": None}
         path = write_task_result(root, "reports/metrics_charge_diff.json", summary)
-        return TaskResult("charge-diff", root.root, "degraded", summary=summary, artifacts={str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+        result = TaskResult("charge-diff", root.root, "degraded", summary=summary, artifacts={str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+        return _attach_property_manifest(
+            result,
+            inputs=(
+                _property_spec(full_source, kind="cube", role="input", origin="source", spin="unknown"),
+                _property_spec(sub1_source, kind="cube", role="input", origin="source", spin="unknown"),
+                _property_spec(sub2_source, kind="cube", role="input", origin="source", spin="unknown"),
+            ),
+            outputs=(
+                _property_spec(root.root / "reports" / "charge_density_diff.cube", kind="cube", role="output", origin="derived", spin="shared", source_paths=(full_source, sub1_source, sub2_source)),
+                _property_spec(path, kind="report", role="output", origin="derived", spin="unknown"),
+            ),
+        )
     summed = add_cubes([sub1, sub2])
     output = root.root / "reports" / "charge_density_diff.cube"
     subtract_cubes(full, summed).write(output)
     summary = {"charge_density_difference_file": str(output)}
     path = write_task_result(root, "reports/metrics_charge_diff.json", summary)
-    return TaskResult("charge-diff", root.root, "completed", summary=summary, artifacts={**artifacts_under(root, "charge-diff"), str(output.relative_to(root.root)): str(output), str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+    result = TaskResult("charge-diff", root.root, "completed", summary=summary, artifacts={**artifacts_under(root, "charge-diff"), str(output.relative_to(root.root)): str(output), str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
+    return _attach_property_manifest(
+        result,
+        inputs=(
+            _property_spec(full, kind="cube", role="input", origin="source", spin="unknown", parse_status="ok"),
+            _property_spec(sub1, kind="cube", role="input", origin="source", spin="unknown", parse_status="ok"),
+            _property_spec(sub2, kind="cube", role="input", origin="source", spin="unknown", parse_status="ok"),
+        ),
+        outputs=(
+            _property_spec(output, kind="cube", role="output", origin="derived", spin="shared", parse_status="ok", source_paths=(full, sub1, sub2)),
+            _property_spec(path, kind="report", role="output", origin="derived", spin="unknown"),
+        ),
+    )
 
 
 def post_elf(workspace: str | Path) -> TaskResult:
@@ -337,6 +405,64 @@ def _find_first(base: Path, patterns: Sequence[str]) -> Path | None:
             if path.is_file():
                 return path
     return None
+
+
+def _property_spec(
+    path: Path,
+    *,
+    kind: str,
+    role: str,
+    origin: str,
+    spin: str,
+    parse_status: str | None = None,
+    source_paths: Sequence[Path] = (),
+) -> PropertyArtifactSpec:
+    return PropertyArtifactSpec(
+        path=path,
+        kind=kind,
+        role=role,
+        origin=origin,
+        spin=spin,
+        parse_status=parse_status,
+        source_paths=tuple(source_paths),
+    )
+
+
+def _canonical_cube_path(subtask: Path, filename: str) -> Path:
+    """Return the safe ABACUS output location expected for one subtask."""
+    input_path = subtask / "inputs" / "INPUT"
+    suffix = "ABACUS"
+    if input_path.exists():
+        values = read_input(input_path)
+        candidate = str(values.get("suffix", "ABACUS")).strip() or "ABACUS"
+        if "/" not in candidate and "\\" not in candidate and candidate not in {".", ".."}:
+            suffix = candidate
+    return subtask / "inputs" / f"OUT.{suffix}" / filename
+
+
+def _attach_property_manifest(
+    result: TaskResult,
+    *,
+    inputs: Sequence[PropertyArtifactSpec],
+    outputs: Sequence[PropertyArtifactSpec],
+) -> TaskResult:
+    """Best-effort projection that never changes legacy result semantics."""
+    try:
+        artifacts = result.to_envelope().artifacts
+        manifest = build_property_manifest(
+            Path(result.workspace),
+            task=result.task,
+            inputs=tuple(inputs),
+            outputs=tuple(outputs),
+            artifacts=artifacts,
+        )
+    except Exception as error:
+        result.diagnostics.setdefault("warnings", []).append(
+            f"property manifest projection unavailable: {type(error).__name__}: {error}"
+        )
+    else:
+        result.diagnostics["property_manifest"] = manifest.to_dict()
+    return result
 
 
 def _axis_name(value: str) -> str:

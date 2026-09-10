@@ -12,11 +12,15 @@ from abacus_forge.api import prepare
 from abacus_forge.cli import main
 from abacus_forge.composite import (
     post_bec,
+    post_charge_density,
+    post_charge_diff,
     post_convergence,
     post_spin_density,
     post_vacancy,
     post_workfunc,
     prepare_bec,
+    prepare_charge_diff,
+    prepare_charge_density,
     prepare_convergence,
     prepare_spin_density,
     prepare_vacancy,
@@ -107,6 +111,54 @@ def test_cube_subtraction_and_spin_density_postprocess(tmp_path: Path) -> None:
     assert posted.status == "completed"
     assert posted.summary["spin_density_file"].endswith("spin_density.cube")
     assert CubeData.from_file(workspace.root / "reports" / "spin_density.cube").data.reshape(-1).tolist() == [2.0, 2.5]
+    manifest = posted.diagnostics["property_manifest"]
+    assert manifest["schema_version"] == "forge.property-manifest/v1"
+    assert {entry["spin"] for entry in manifest["inputs"]} == {"up", "down"}
+    derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
+    assert derived["path_rel"] == "reports/spin_density.cube"
+    assert len(derived["source_artifact_ids"]) == 2
+
+
+def test_charge_density_manifest_records_canonical_missing_source(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "charge-root")
+    prepare_charge_density(workspace.root)
+
+    posted = post_charge_density(workspace.root)
+
+    assert posted.status == "degraded"
+    manifest = posted.diagnostics["property_manifest"]
+    assert manifest["inputs"] == []
+    assert manifest["missing"] == [
+        {
+            "path_rel": "charge-density/scf/inputs/OUT.ABACUS/SPIN1_CHG.cube",
+            "kind": "cube",
+            "role": "input",
+            "origin": "source",
+            "spin": "unknown",
+            "reason": "missing",
+        }
+    ]
+    assert any(entry["path_rel"] == "reports/metrics_charge_density.json" for entry in manifest["outputs"])
+
+
+def test_charge_diff_manifest_links_three_sources_to_derived_cube(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "diff-root")
+    prepare_charge_diff(workspace.root)
+    for name, values in (("full", [4.0, 5.0]), ("subsystem1", [1.0, 1.5]), ("subsystem2", [2.0, 2.5])):
+        _write_cube(workspace.root / "charge-diff" / name / "outputs" / "SPIN1_CHG.cube", values)
+
+    posted = post_charge_diff(workspace.root)
+
+    assert posted.status == "completed"
+    manifest = posted.diagnostics["property_manifest"]
+    source_paths = {entry["path_rel"] for entry in manifest["inputs"]}
+    assert source_paths == {
+        "charge-diff/full/outputs/SPIN1_CHG.cube",
+        "charge-diff/subsystem1/outputs/SPIN1_CHG.cube",
+        "charge-diff/subsystem2/outputs/SPIN1_CHG.cube",
+    }
+    derived = next(entry for entry in manifest["outputs"] if entry["kind"] == "cube")
+    assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
 
 
 def test_workfunc_prepare_and_postprocess(tmp_path: Path) -> None:
