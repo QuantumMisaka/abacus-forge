@@ -79,7 +79,7 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
   maturity explicit.
 - [x] Run typed real-smoke skip/fail-fast selections, all typed operation/API
   owning suites, architecture, full offline, benchmark opt-in and diff checks.
-- [ ] Obtain an independent task/whole-branch review; fix all Critical and
+- [x] Obtain an independent task/whole-branch review; fix all Critical and
   Important findings and record justified Minor findings.
 
 ## Verification evidence
@@ -87,10 +87,10 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 - `--run-real-smoke -m real_smoke tests/real_smoke/test_abacus_smoke.py` with no
   external variables: `4 skipped`.
 - Guard unit tests plus typed operation/API/architecture owning suites:
-  `660 passed`.
-- Full offline gate (`not real_smoke and not benchmark`): `1222 passed, 6
+  `661 passed`.
+- Full offline gate (`not real_smoke and not benchmark`): `1223 passed, 6
   deselected`.
-- Benchmark opt-in: `2 passed, 1226 deselected`.
+- Benchmark opt-in: `2 passed, 1227 deselected`.
 - `/bin/true` fail-fast probes reject stale `reports/running_scf.log`, stale
   `reports/running_relax.log` plus `outputs/OUT.ABACUS/STRU`, and stale MD
   `outputs/OUT.ABACUS/MD_dump`; the offline guard positive test allows explicit
@@ -98,6 +98,8 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
   `outputs/OUT.ABACUS/final_STRU` probe also fails, proving suffix matching
   follows the collector rather than exact basenames.
 - `git diff --check` passed before commit.
+- Independent review of `3f61505..89c37e2`: Ready; no Critical, Important, or
+  Minor findings.
 
 ## Rulings
 
