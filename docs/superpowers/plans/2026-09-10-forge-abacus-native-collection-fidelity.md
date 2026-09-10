@@ -147,9 +147,10 @@ experimental.
 ### Implementation evidence (2026-09-10)
 
 - Implementation commits: `9f68d86`, `03b2543`, `c03a690`, `7bc6e9d`,
-  `0f099fb`, `31c64f9`, `539290c`, and `8dae0f0`.
+  `0f099fb`, `31c64f9`, `539290c`, and `8dae0f0` (plus this record at
+  `290d048`).
 - Focused collector/MD/service/machine/architecture suite: **45 passed**.
-- Full deterministic offline suite: **1194 passed, 5 skipped**.
+- Full deterministic offline suite: **1196 passed, 5 skipped**.
 - A clean `git archive HEAD` focused checkout also passed the native collection
   suite; the ignored `running_md.log` fixture is explicitly tracked.
 - The host has no supplied ABACUS executable/workspace, so no real execution,
