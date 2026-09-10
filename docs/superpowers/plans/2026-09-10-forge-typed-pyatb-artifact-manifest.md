@@ -17,6 +17,7 @@
 - Manifest paths are canonical workspace-relative paths. artifact_id refers only to an ArtifactRecord.id in the same envelope; no cross-operation ArtifactRef, task ID, workflow edge, scheduler or platform field is allowed.
 - Use only prepare handoff records and collect request paths. Never scan sibling SCF directories, infer Fermi/matrices, or discover undeclared output files.
 - Preserve existing execution, collection, scientific, error-class and exit mappings. Existing malformed files remain real artifacts; missing/escaped/unavailable paths go to missing without fabricated artifacts.
+- Preserve the distinction between parser-malformed files and unreadable files: the typed collector records hash/read failures in unavailable_output_paths_rel, and only that fact maps to manifest missing.reason="unavailable".
 - Keep prepare_pyatb_band, run_pyatb, collect_pyatb, run_band_sequence and all legacy CLI behavior unchanged. Do not add nspin 4, PyATB properties, typed export, real-smoke, retry/resume or scientific acceptance.
 - Default verification is offline and deterministic. Real PyATB/ABACUS execution remains a later independent gate.
 
@@ -39,8 +40,9 @@
 - Produce PyatbManifestEntry with frozen fields path_rel, kind, spin, optional artifact_id, sha256, size_bytes, media_type, source_path_rel, handoff_mode, source_sha256 and reason.
 - Produce PyatbManifest with frozen tuples inputs, outputs and missing, plus to_dict()/from_dict().
 - Produce classify_pyatb_output(path_rel) -> tuple[str, str, str] returning kind, spin and deterministic media_type.
+- The value object accepts a sparse entry shape for missing records, but prepare/collect builders must require artifact_id/sha256/size_bytes on present entries and forbid those fields on missing entries. Classification is basename-only and deterministic; directory names add no inferred semantics.
 
-- [ ] Step 1: Write the failing pure-contract tests. Cover every approved kind (structure, matrix_hr, matrix_sr, matrix_rr, pyatb_input, kpoint_path, band_info, band_data, band_plot, run_input, other), every spin value, invalid canonical paths, unknown fields, round-trip and known output names.
+- [ ] Step 1: Write the failing pure-contract tests. Cover every approved kind (structure, matrix_hr, matrix_sr, matrix_rr, pyatb_input, kpoint_path, band_info, band_data, band_plot, run_input, other), every spin value including total, invalid canonical paths, unknown fields, missing root arrays, round-trip and known output names. Test that reason is reserved for missing-array entries and that present entries require complete artifact facts in the builders.
 
 ~~~python
 def test_manifest_round_trip_and_known_output_mapping() -> None:
@@ -72,7 +74,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: failure because pyatb_manifest and its value objects/classifier do not yet exist.
 
-- [ ] Step 3: Implement the minimal manifest module. Reuse canonical_relative_path and JSON helpers from contracts; validate literals, hashes and sizes in __post_init__; make from_dict strict about unknown keys. Use explicit media mapping before fallback:
+- [ ] Step 3: Implement the minimal manifest module. Reuse canonical_relative_path and JSON helpers from contracts; validate literals, hashes and sizes in __post_init__; make from_dict strict about unknown keys and require all three root arrays on the wire. Keep the value object permissive enough for a sparse missing record, while builders later enforce that present entries carry artifact_id/sha256/size_bytes, missing entries carry reason without fabricated artifact fields, and reason appears only in the missing array. Classification is basename-only; directory names do not add inferred semantics. Use explicit media mapping before fallback:
 
 ~~~python
 if name == "band_info.dat": return "band_info", "unknown", "text/plain"
@@ -187,7 +189,7 @@ git commit -m "feat: project typed PyATB prepare manifest"
 - Modify: tests/test_pyatb_typed.py, tests/test_machine_cli.py and tests/test_cli_process.py for API/CLI parity and mapping.
 
 **Test strategy:**
-- Behavior boundary: only requested/default files become output entries; missing/escaped paths become missing entries with a reason; malformed files that exist remain real artifacts while diagnostics retain parser incompleteness.
+- Behavior boundary: only requested/default files become output entries; missing/escaped/unavailable paths become missing entries with a reason; malformed files that exist remain real artifacts while diagnostics retain parser incompleteness.
 - Existing suite to extend: test_pyatb_typed.py owns direct collection/service behavior; the two CLI files own transport and envelope parity.
 - Temporary probes: none; use _write_band_outputs and existing fake executable fixtures.
 
@@ -196,7 +198,7 @@ git commit -m "feat: project typed PyATB prepare manifest"
 - Produce build_collect_pyatb_manifest(request, envelope) -> PyatbManifest.
 - Keep existing status, metrics, artifacts and diagnostics keys, adding only pyatb_manifest before ServiceContext.persist.
 
-- [ ] Step 1: Write RED collect/parity tests. Cover band_info.dat, band.dat, band_up.dat, band_dn.dat, PNG, PDF, Out/input.json, unknown explicit files, missing output, escaped symlink and malformed band info. Assert fixed media types, proven spin mapping, unknown fallback, no fabricated artifact id in missing and equal API/CLI manifest JSON.
+- [ ] Step 1: Write RED collect/parity tests. Cover band_info.dat, band.dat, band_up.dat, band_dn.dat, PNG, PDF, Out/input.json, unknown explicit files, missing output, escaped symlink, hash/read-unavailable output and malformed band info. Assert fixed media types, proven spin mapping, unknown fallback, no fabricated artifact id in missing, unavailable reason mapping and equal API/CLI manifest JSON.
 
 ~~~python
 def test_typed_collect_manifest_keeps_malformed_real_artifact(tmp_path: Path) -> None:
@@ -224,7 +226,7 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 Expected: new manifest assertions fail while existing typed collect/API/CLI tests continue to pass.
 
-- [ ] Step 3: Implement the collect projection. Index existing ArtifactRecords by canonical path; classify only requested paths; build missing from missing_output_paths_rel, escaped_output_paths_rel and unavailable paths with reasons missing, escaped or unavailable. Do not move parser-malformed existing files out of outputs and do not infer total from band.dat, pictures or band_info.dat.
+- [ ] Step 3: Implement the collect projection. First update collect_typed_pyatb_band to preserve hash/read failures in unavailable_output_paths_rel (without changing parser-malformed behavior). Then index existing ArtifactRecords by canonical path; classify only requested paths; build missing from missing_output_paths_rel, escaped_output_paths_rel and unavailable_output_paths_rel with reasons missing, escaped or unavailable. Do not move parser-malformed existing files out of outputs and do not infer total from band.dat, pictures or band_info.dat.
 
 ~~~python
 def build_collect_pyatb_manifest(request, envelope) -> PyatbManifest:
@@ -251,7 +253,7 @@ def build_collect_pyatb_manifest(request, envelope) -> PyatbManifest:
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_typed.py tests/test_pyatb.py tests/test_machine_cli.py tests/test_cli_process.py
 ~~~
 
-Expected: all selected tests pass with exit code 0; isolated equivalent API/CLI fixtures have byte-equivalent pyatb_manifest diagnostics.
+Expected: all selected tests pass with exit code 0; isolated equivalent API/CLI fixtures have byte-equivalent pyatb_manifest diagnostics, including unavailable output reasons.
 
 - [ ] Step 5: Refactor only duplicate path/classification code, run git diff --check, and confirm no ArtifactRef or previous-operation lookup was added.
 
@@ -282,7 +284,7 @@ git commit -m "feat: project typed PyATB collect manifest"
 - Consume completed manifest value objects and typed service output from Tasks 1–3.
 - Produce an approved SPEC/PLAN record, current-state documentation and exact offline evidence; no production interface beyond diagnostics["pyatb_manifest"].
 
-- [ ] Step 1: Update README/ROADMAP after behavior is green. Document successful typed prepare/collect manifest, finite kinds/spins, same-envelope artifact ids, malformed-file fact behavior and the external scientific boundary. Do not document automatic discovery or export.
+- [ ] Step 1: Update README/ROADMAP after behavior is green. Document successful typed prepare/collect manifest, finite kinds/spins, same-envelope artifact ids, malformed versus unavailable-file fact behavior and the external scientific boundary. Do not document automatic discovery or export.
 
 - [ ] Step 2: Run documentation, architecture and discovery checks.
 

@@ -77,13 +77,14 @@
         <tbody>
           <tr><td>M1</td><td>成功的 typed <code>prepare</code>/<code>collect</code> diagnostics 必须包含 <code>pyatb_manifest</code>；其 <code>schema_version</code> 固定为 <code>forge.pyatb-manifest/v1</code>，并包含 <code>inputs</code>、<code>outputs</code>、<code>missing</code> 三个数组。失败 envelope 不伪造 manifest。</td><td>typed API 与 machine CLI 对同一 fixture 的 manifest 可 JSON round-trip；旧 envelope 字段和 legacy 输出不变。</td></tr>
           <tr><td>M2</td><td>输入 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>artifact_id</code>、<code>sha256</code>（目标文件哈希）；来自显式 handoff 的 entry 还记录 <code>source_path_rel</code>、<code>handoff_mode</code>、<code>source_sha256</code>。</td><td>prepare 的 STRU、HR、SR、rR、Input、KPT_band 均能映射，artifact id 能在同一 envelope 的 artifacts 中找到。</td></tr>
-          <tr><td>M3</td><td>输出 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>media_type</code>、<code>artifact_id</code>、<code>sha256</code> 和 <code>size_bytes</code>。不存在、越界或不可访问的路径进入 <code>missing</code> 并带 reason；存在但 parser malformed 的真实文件仍可作为 output artifact，解析不完整继续由既有 diagnostics 表达，不伪造不存在的 artifact。</td><td>collect 覆盖 band_info、band data、PNG/PDF、<code>Out/input.json</code> 及未知显式路径；partial/missing 状态与现有 diagnostics 保持一致。</td></tr>
+          <tr><td>M3</td><td>输出 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>media_type</code>、<code>artifact_id</code>、<code>sha256</code> 和 <code>size_bytes</code>。不存在、越界或不可访问的路径进入 <code>missing</code> 并带 reason；哈希读取失败属于不可访问，使用既有 collector 新增的 <code>unavailable_output_paths_rel</code> 事实；存在但 parser malformed 的真实文件仍可作为 output artifact，解析不完整继续由既有 diagnostics 表达，不伪造不存在的 artifact。</td><td>collect 覆盖 band_info、band data、PNG/PDF、<code>Out/input.json</code> 及未知显式路径；partial/missing 状态与现有 diagnostics 保持一致，并区分 unavailable 与 parser malformed。</td></tr>
           <tr><td>M4</td><td>kind 只使用有限的 PyATB 语义集合：<code>structure</code>、<code>matrix_hr</code>、<code>matrix_sr</code>、<code>matrix_rr</code>、<code>pyatb_input</code>、<code>kpoint_path</code>、<code>band_info</code>、<code>band_data</code>、<code>band_plot</code>、<code>run_input</code>、<code>other</code>。spin 只可为 <code>up</code>、<code>down</code>、<code>shared</code>、<code>total</code>、<code>unknown</code>。</td><td>映射表和未知/歧义文件测试钉死；不根据文件内容或科学常识猜测 spin。</td></tr>
           <tr><td>M5</td><td>artifact id 是当前 envelope 内的本地 id，不是跨 operation 的 <code>ArtifactRef</code>；manifest 不引入 operation/task/调度关系。</td><td>prepare 与 collect 各自独立产生 manifest；execute 不读取或修改先前 manifest/event，也不把上游结果隐式拼入自身 envelope。</td></tr>
           <tr><td>M6</td><td>所有 manifest 路径遵守现有 workspace-relative containment；manifest 生成失败沿用现有 persistence/internal error 映射。</td><td>路径越界、外部 symlink、文件消失、哈希读取失败和事件持久化失败均有回归，且不改变既有 exit class。</td></tr>
           <tr><td>M7</td><td>manifest 仅在 typed <code>pyatb-band</code> 面出现；legacy helper、旧 <code>forge-unit.json</code> 字段和旧 CLI 默认输出保持兼容。</td><td>legacy PyATB suite 与完整离线 suite 通过，兼容 diff 只包含新增 typed diagnostics/tests/docs。</td></tr>
         </tbody>
       </table></div>
+      <p>entry 的字段约束按数组语义执行：<code>inputs</code>/<code>outputs</code> 中代表已处理文件的 entry 必须带同 envelope 的 <code>artifact_id</code>、<code>sha256</code>、<code>size_bytes</code>；<code>missing</code> entry 必须带 <code>reason</code> 且不得带 artifact id。值对象可以保留稀疏构造能力以表示 missing，但 builder 不得产生违反上述语义的 wire entry；<code>reason</code> 只出现在 <code>missing</code> 数组。</p>
     </section>
 
     <section id="decisions">
@@ -109,7 +110,7 @@
                          existing ServiceContext.persist → event</pre>
       <ul>
         <li><strong>prepare：</strong>从 handoff role 和生成文件路径构造输入 entries；把 source/destination hashes、link/copy provenance 和当前 envelope artifact id 对齐。<code>forge-unit.json.metadata.pyatb_handoff</code> 保持已有字段，manifest 不替换它。</li>
-        <li><strong>collect：</strong>只处理 request 明确的 <code>band_info_path_rel</code>、data/picture paths；现有 artifact records 先生成，再由相同 path 映射得到 manifest entry。已知 <code>.dat</code> band 文件使用 <code>text/plain</code>，PNG/PDF/JSON 使用对应固定 MIME，其他文件使用 <code>application/octet-stream</code>；band gap parser 的结果仍走现有 <code>MetricRecord(kind="reported")</code>。</li>
+        <li><strong>collect：</strong>只处理 request 明确的 <code>band_info_path_rel</code>、data/picture paths；现有 artifact records 先生成，再由相同 path 映射得到 manifest entry。已知 <code>.dat</code> band 文件使用 <code>text/plain</code>，PNG/PDF/JSON 使用对应固定 MIME，其他文件使用 <code>application/octet-stream</code>；哈希读取失败单独记录为 <code>unavailable_output_paths_rel</code>，parser malformed 文件仍保留为真实 output artifact；band gap parser 的结果仍走现有 <code>MetricRecord(kind="reported")</code>。</li>
         <li><strong>服务/API/CLI：</strong>服务层调用同一 helper，machine CLI 只负责解码、路由和渲染；manifest 不改变 admission、event、status 或 artifact-ref 单点持久化。</li>
       </ul>
       <h3>映射表</h3>
@@ -131,7 +132,7 @@
       <h2>错误处理</h2>
       <ul>
         <li>manifest 是对已有结果的投影；路径、请求、文件读取和持久化继续使用现有 <code>request.invalid</code>、<code>request.path</code>、<code>precondition.missing</code>、<code>persistence.failure</code>、<code>internal.failure</code> 映射。</li>
-        <li>缺失、外部 resolved symlink、非普通文件和哈希读取失败不创建伪造 entry，进入 <code>missing</code>；存在但 parser malformed 的文件保留真实 output artifact，并保留现有 collection diagnostics/status。</li>
+        <li>缺失、外部 resolved symlink、非普通文件和哈希读取失败不创建伪造 entry，进入 <code>missing</code>；其中哈希读取失败通过 <code>unavailable_output_paths_rel</code> 映射为 <code>reason="unavailable"</code>。存在但 parser malformed 的文件保留真实 output artifact，并保留现有 collection diagnostics/status。</li>
         <li>manifest 不改变 <code>execution</code>、<code>collection</code>、<code>scientific</code> 或 process exit；尤其不把 band gap、文件齐全或 plot 存在转成接受结论。</li>
         <li>artifact id 不存在、manifest 与 envelope 不一致或 manifest 序列化失败属于内部/持久化问题，由既有 service persistence gate 报告；不自动重试、不回收 admission。</li>
       </ul>
@@ -142,7 +143,7 @@
       <ul>
         <li><strong>契约：</strong>manifest schema/version、kind/spin 枚举、JSON round-trip、unknown-path fallback、artifact id 对齐。</li>
         <li><strong>prepare：</strong>spin-1/2 handoff、link/copy、hash/provenance、generated Input/KPT 和无部分写入。</li>
-        <li><strong>collect：</strong>标准 band_info/data/plot/run-input、up/down basename、unknown 文件、missing/partial/escaped/malformed，及 reported-only band gap。</li>
+        <li><strong>collect：</strong>标准 band_info/data/plot/run-input、up/down basename、unknown 文件、missing/partial/escaped/unavailable/malformed，及 reported-only band gap。</li>
         <li><strong>parity：</strong>同一隔离 fixture 经 Python API 与 machine CLI 产生等价 diagnostics、artifacts、refs、状态和 exit class；CLI stdout 仍为单 JSON envelope。</li>
         <li><strong>兼容/架构：</strong>legacy PyATB tests、完整离线 pytest、architecture/forbidden-import/discovery gates、<code>git diff --check</code>。真实 PyATB/ABACUS smoke 不在本切片声称。</li>
       </ul>
