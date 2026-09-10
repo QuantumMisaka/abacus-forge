@@ -1,0 +1,68 @@
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from abacus_forge.md_postprocess import (
+    Frame,
+    analyze_trajectory,
+    load_frames,
+    run_md_postprocess,
+    validate_analysis,
+)
+
+
+def _xyz(path: Path) -> Path:
+    path.write_text(
+        "2\nframe 0\nH 0 0 0\nO 1 0 0\n"
+        "2\nframe 1\nH 0.1 0 0\nO 1.1 0 0\n"
+        "2\nframe 2\nH 0.2 0 0\nO 1.2 0 0\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_xyz_reader_sampling(tmp_path):
+    frames = load_frames(_xyz(tmp_path / "traj.xyz"), start=1, end=3, stride=2)
+    assert len(frames) == 1
+    assert frames.source_end == 3
+    assert frames[0].symbols == ("H", "O")
+
+
+def test_validate_analysis_is_canonical():
+    assert validate_analysis(["rdf", "bond_angle"]) == ("rdf", "bond_angle")
+    with pytest.raises(ValueError):
+        validate_analysis(["msd"])
+
+
+def test_geometry_msd_and_vacf_are_finite(tmp_path):
+    frames = load_frames(_xyz(tmp_path / "traj.xyz"))
+    result = analyze_trajectory(frames, ["msd_diffusion", "vacf_vdos"], timestep=1.0)
+    assert result["msd_diffusion"]["msd_angstrom2"][0] == pytest.approx(0)
+    assert np.isfinite(result["vacf_vdos"]["vacf"]).all()
+    json.dumps(result, allow_nan=False, default=lambda value: value.tolist())
+
+
+def test_run_writes_deterministic_analysis_and_controls(tmp_path):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    output = tmp_path / "out"
+    result = run_md_postprocess(
+        trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": True, "save_plot": False}
+    )
+    assert result.sampling["frame_count"] == 3
+    assert "analysis.json" in result.generated_files
+    assert (output / "analysis.json").is_file()
+    assert (output / "msd.txt").is_file()
+    assert not (output / "msd.png").exists()
+    json.loads((output / "analysis.json").read_text(encoding="utf-8"))
+
+
+def test_periodic_geometry_and_one_based_selection():
+    frame = Frame(
+        np.array([[1.0, 0, 0], [0.0, 0, 0], [0.0, 1.0, 0]]),
+        ("H", "O", "H"), np.diag([2.0, 2.0, 2.0]), np.array([True, True, True]),
+        np.array([1.0, 16.0, 1.0]),
+    )
+    result = analyze_trajectory([frame], ["bond_angle"], selection={"angles": ["H-O-H"], "indices": [1, 2, 3]})
+    assert result["bond_angle"]["angles_deg"]["H-O-H"] == pytest.approx([90.0])
