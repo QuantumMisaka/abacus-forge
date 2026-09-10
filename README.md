@@ -97,8 +97,9 @@ workspace 内的相对链接完成 handoff，`handoff_mode="copy"` 可改为独�
 
 准备会生成 `inputs/STRU`、`inputs/pyatb_sources/<basename>`、`inputs/Input` 和
 `inputs/KPT_band`，并在结果 diagnostics/manifest 中记录角色、来源与目标相对路径及
-SHA-256。`nspin` 当前只支持 1 或 2；spin-2 需要两个 HR 文件，共用一个 SR 文件，
-并且其他 PyATB property 与 nspin 4 尚未进入此 capability。执行只通过本地 runner
+SHA-256。`nspin` 支持 1、2 和 4：nspin=1/4 各需一个 HR 文件，nspin=2 需要两个 HR 文件，
+三种模式均共用一个 SR 文件；nspin=4 的单个 HR 在 manifest 中记为
+`matrix_hr/shared`。其他 PyATB property 尚未进入此 capability。执行只通过本地 runner
 启动一个 PyATB 进程；收集读取默认的
 `inputs/Out/Band_Structure/band_info.dat`，也可显式列出 band data/picture 路径，返回
 artifact、运行时和 parser facts。可解析的 `band_gap` 只是 `reported` metric，
@@ -266,7 +267,7 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 SHA-256 和大小；ABACUS 默认的 `inputs/OUT.<suffix>/` 只作为没有实际文件时的
 canonical expected path，兼容 glob 找到的变体仍保留实际相对路径。该索引不新增 typed
 property capability，不做科学验收、workflow 编排、重试或调度；其他 property pack、
-nspin 4 和真实 ABACUS smoke 仍保持实验性/独立推进。
+PyATB properties 和真实 ABACUS smoke 仍保持实验性/独立推进。
 
 最小 manifest 形态如下（具体 entry 会带同一结果的 artifact 事实）：
 
@@ -942,7 +943,7 @@ runs/<run_id>/
 - 不内置云平台提交、追踪、下载能力
 - 不引入 AiiDA 语义或工作流编排语义到 Forge 核心
 - 对于 phonon / elastic 等厚工作流，其实现必须基于解耦的单元模块，且其输入/计算/输出必须可解耦
-- binary/archive 或 replace/merge 形式的 export、多 operation 聚合、PyATB properties、nspin 4、property/composite 聚合不在本批次
+- binary/archive 或 replace/merge 形式的 export、多 operation 聚合、PyATB properties、property/composite 聚合不在本批次；nspin=4 handoff 已支持，但其 property 计算与真实运行验证仍需独立推进
 - 调度、workflow/orchestration、重试/恢复和科学判断由 Forge 外部的调用方负责
 
 ## 贡献
