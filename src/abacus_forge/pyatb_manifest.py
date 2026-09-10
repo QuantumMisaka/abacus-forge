@@ -5,16 +5,19 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
 
 from abacus_forge.contracts import (
     JSONValue,
+    ArtifactRecord,
     _construct_strict,
     _freeze_json,
     _mapping_payload,
     _require_nonempty_string,
     canonical_relative_path,
 )
+from abacus_forge.errors import ForgeInternalError
 
 
 PYATB_MANIFEST_SCHEMA_VERSION = "forge.pyatb-manifest/v1"
@@ -62,6 +65,7 @@ class PyatbManifestEntry:
     media_type: str | None = None
     source_path_rel: str | None = None
     handoff_mode: str | None = None
+    source_sha256: str | None = None
     reason: str | None = None
 
     def __post_init__(self) -> None:
@@ -80,6 +84,7 @@ class PyatbManifestEntry:
         if self.media_type is not None:
             _require_nonempty_string(self.media_type, "media_type")
         object.__setattr__(self, "source_path_rel", _optional_path(self.source_path_rel, "source_path_rel"))
+        object.__setattr__(self, "source_sha256", _optional_hash(self.source_sha256, "source_sha256"))
         if self.handoff_mode is not None and self.handoff_mode not in {"link", "copy"}:
             raise ValueError("handoff_mode must be one of: copy, link")
         if self.reason is not None and self.reason not in _REASONS:
@@ -94,6 +99,7 @@ class PyatbManifestEntry:
                 "artifact_id": self.artifact_id, "sha256": self.sha256,
                 "size_bytes": self.size_bytes, "media_type": self.media_type,
                 "source_path_rel": self.source_path_rel, "handoff_mode": self.handoff_mode,
+                "source_sha256": self.source_sha256,
                 "reason": self.reason,
             }.items() if value is not None
         }
@@ -186,6 +192,74 @@ def classify_pyatb_output(path_rel: str) -> tuple[str, str, str]:
     if ("rR" in name or "RR" in name) and name.endswith(".csr"):
         return "matrix_rr", "shared", "application/octet-stream"
     return "other", "unknown", "application/octet-stream"
+
+
+def _entry_from_artifact(
+    artifact: ArtifactRecord,
+    *,
+    source_path_rel: str | None = None,
+    handoff_mode: str | None = None,
+    spin: str | None = None,
+    source_sha256: str | None = None,
+    kind: str | None = None,
+) -> PyatbManifestEntry:
+    if artifact.sha256 is None or artifact.size_bytes is None:
+        raise ForgeInternalError("typed PyATB manifest requires hashed, sized artifacts")
+    classified_kind, classified_spin, media_type = classify_pyatb_output(artifact.path_rel)
+    return PyatbManifestEntry(
+        path_rel=artifact.path_rel,
+        kind=kind or classified_kind,
+        spin=spin or classified_spin,
+        artifact_id=artifact.id,
+        sha256=artifact.sha256,
+        size_bytes=artifact.size_bytes,
+        media_type=artifact.media_type or media_type,
+        source_path_rel=source_path_rel,
+        handoff_mode=handoff_mode,
+        source_sha256=source_sha256,
+    )
+
+
+def build_prepare_pyatb_manifest(
+    request: Any,
+    handoff: Sequence[Mapping[str, object]],
+    artifacts: Sequence[ArtifactRecord],
+) -> PyatbManifest:
+    """Project staged handoff and generated inputs into same-envelope facts."""
+    by_path = {artifact.path_rel: artifact for artifact in artifacts}
+    hr_count = len(request.hr_paths_rel)
+    hr_index = 0
+    entries: list[PyatbManifestEntry] = []
+    for record in handoff:
+        destination = record.get("destination")
+        if not isinstance(destination, str) or destination not in by_path:
+            raise ForgeInternalError("typed PyATB handoff destination is absent from artifact envelope")
+        source = record.get("source")
+        mode = record.get("mode")
+        source_sha256 = record.get("source_sha256")
+        if not isinstance(source_sha256, str):
+            raise ForgeInternalError("typed PyATB handoff is missing source hash provenance")
+        role = record.get("role")
+        kind_by_role = {"structure": "structure", "hr": "matrix_hr", "sr": "matrix_sr", "rR": "matrix_rr"}
+        spin = None
+        if record.get("role") == "hr":
+            spin = ("up", "down")[hr_index] if hr_count == 2 else "shared"
+            hr_index += 1
+        elif record.get("role") in {"structure", "sr", "rR"}:
+            spin = "shared"
+        entries.append(_entry_from_artifact(
+            by_path[destination],
+            source_path_rel=source if isinstance(source, str) else None,
+            handoff_mode=mode if isinstance(mode, str) else None,
+            spin=spin,
+            source_sha256=source_sha256,
+            kind=kind_by_role.get(role) if isinstance(role, str) else None,
+        ))
+    for path_rel in ("inputs/Input", "inputs/KPT_band"):
+        if path_rel not in by_path:
+            raise ForgeInternalError("generated typed PyATB input is absent from artifact envelope")
+        entries.append(_entry_from_artifact(by_path[path_rel]))
+    return PyatbManifest(inputs=tuple(entries), outputs=(), missing=())
 
 
 __all__ = ["PYATB_MANIFEST_SCHEMA_VERSION", "PyatbManifest", "PyatbManifestEntry", "classify_pyatb_output"]

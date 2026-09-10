@@ -572,9 +572,41 @@ def test_typed_prepare_service_persists_manifest_facts_and_refs_once(tmp_path: P
     assert manifest["unit"] == "pyatb"
     assert manifest["engine"] == "pyatb"
     assert manifest["metadata"]["pyatb_handoff"]
+    typed_manifest = result.envelope.diagnostics["pyatb_manifest"]
+    assert typed_manifest["schema_version"] == "forge.pyatb-manifest/v1"
+    by_path = {entry["path_rel"]: entry for entry in typed_manifest["inputs"]}
+    artifact_ids = {artifact.id for artifact in result.envelope.artifacts}
+    assert {"inputs/STRU", "inputs/Input", "inputs/KPT_band"} <= set(by_path)
+    assert all(entry["artifact_id"] in artifact_ids for entry in by_path.values())
+    assert by_path["inputs/STRU"]["source_path_rel"] == "source/STRU"
+    assert by_path["inputs/STRU"]["source_sha256"] == by_path["inputs/STRU"]["sha256"]
     events = sorted((tmp_path / "reports/events").glob("*.json"))
     assert len(events) == 1
     assert json.loads(events[0].read_text(encoding="utf-8"))["id"] == request.operation_id
+
+
+@pytest.mark.parametrize("spin2", (False, True))
+def test_typed_prepare_manifest_records_matrix_provenance_and_spin(
+    tmp_path: Path, spin2: bool
+) -> None:
+    _sources(tmp_path, spin2=spin2)
+    request = _prepare_request(
+        hr_paths_rel=("source/hr.csr", "source/hr-down.csr") if spin2 else ("source/hr.csr",),
+        nspin=2 if spin2 else 1,
+    )
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+    assert isinstance(result, OperationOutcome)
+    entries = {entry["path_rel"]: entry for entry in result.envelope.diagnostics["pyatb_manifest"]["inputs"]}
+    hr_entries = [entry for entry in entries.values() if entry["kind"] == "matrix_hr"]
+    assert [entry["spin"] for entry in hr_entries] == (["up", "down"] if spin2 else ["shared"])
+    assert entries["inputs/pyatb_sources/sr.csr"]["kind"] == "matrix_sr"
+    assert entries["inputs/pyatb_sources/sr.csr"]["spin"] == "shared"
+    assert entries["inputs/pyatb_sources/rr.csr"]["kind"] == "matrix_rr"
+    assert entries["inputs/pyatb_sources/rr.csr"]["spin"] == "shared"
+    for entry in entries.values():
+        assert entry["artifact_id"]
+        assert entry["sha256"]
+        assert entry["size_bytes"] >= 0
 
 
 def test_typed_execute_service_uses_only_request_runner_fields_and_records_runtime_facts(

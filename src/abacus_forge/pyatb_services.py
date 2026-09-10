@@ -26,6 +26,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
 )
+from abacus_forge.pyatb_manifest import build_prepare_pyatb_manifest
 from abacus_forge.runner import LocalRunner
 from abacus_forge.service_support import (
     ServiceContext,
@@ -100,6 +101,7 @@ class PyatbBandPrepareService:
                         metadata={"pyatb_handoff": list(handoff)},
                     ),
                 )
+                artifacts = _prepare_artifacts(workspace)
                 envelope = ForgeResultEnvelope(
                     operation="prepare",
                     workspace_rel=request.workspace_rel,
@@ -108,13 +110,14 @@ class PyatbBandPrepareService:
                         scientific="unassessed",
                         collection="not_collected",
                     ),
-                    artifacts=_prepare_artifacts(workspace),
+                    artifacts=artifacts,
                     diagnostics={
                         "capability": "pyatb-band",
                         "task": "band",
                         "unit": "pyatb",
                         "engine": "pyatb",
                         "pyatb_handoff": list(handoff),
+                        "pyatb_manifest": build_prepare_pyatb_manifest(request, handoff, artifacts).to_dict(),
                     },
                 )
                 return self._context.persist(
