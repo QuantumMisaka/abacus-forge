@@ -489,6 +489,9 @@ def test_typed_pyatb_prepare_execute_collect_machine_parity(tmp_path: Path) -> N
     ) == _normalize_operation_identity(
         direct_collect.to_dict(), operation_id=collect_request.operation_id, workspace_root=api_root
     )
+    process_collect_manifest = json.loads(process_collect.stdout)["envelope"]["diagnostics"]["pyatb_manifest"]
+    direct_collect_manifest = direct_collect.to_dict()["envelope"]["diagnostics"]["pyatb_manifest"]
+    assert process_collect_manifest == direct_collect_manifest
 
 
 def test_operation_parity_normalizer_preserves_non_path_strings(tmp_path: Path) -> None:

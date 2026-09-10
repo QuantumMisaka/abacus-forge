@@ -42,6 +42,7 @@ def test_manifest_round_trip_and_known_output_mapping() -> None:
         ("inputs/Out/Band_Structure/band_info.dat", ("band_info", "unknown", "text/plain")),
         ("inputs/Out/Band_Structure/band.dat", ("band_data", "unknown", "text/plain")),
         ("inputs/Out/Band_Structure/band_dn.dat", ("band_data", "down", "text/plain")),
+        ("inputs/Out/Band_Structure/band_down.dat", ("band_data", "down", "text/plain")),
         ("inputs/Out/Band_Structure/band.png", ("band_plot", "unknown", "image/png")),
         ("inputs/Out/Band_Structure/band.pdf", ("band_plot", "unknown", "application/pdf")),
         ("inputs/Out/Band_Structure/input.json", ("run_input", "unknown", "application/json")),
