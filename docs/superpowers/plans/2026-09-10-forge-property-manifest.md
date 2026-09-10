@@ -391,6 +391,11 @@ The latest gates are recorded in
 - complete deterministic offline gate: `1172 passed, 3 skipped`;
 - `git diff --check`: clean.
 
+The containment follow-up at `7344b60` adds one regression for escaped cube
+symlinks; its focused gate is `50 passed` and the refreshed complete offline
+gate is `1173 passed, 3 skipped`. Raw output is retained in
+`.superpowers/sdd/2026-09-10-forge-property-manifest/followup-containment-report.md`.
+
 The companion SPEC is intentionally still `Draft for review`; no execution
 record here substitutes for its explicit human approval. The independent
 review first found the planned cross-array duplicate-path gap and two smaller
