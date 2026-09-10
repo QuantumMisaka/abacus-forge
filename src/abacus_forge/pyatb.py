@@ -125,7 +125,7 @@ def collect_pyatb(workspace: str | Path | Workspace) -> CollectionResult:
         ws.inputs_dir / "Out" / "Band_Structure" / "band_info.dat",
         ws.outputs_dir / "Out" / "Band_Structure" / "band_info.dat",
     )
-    if band_info is not None:
+    if band_info is not None and band_info_rel in artifact_by_path:
         diagnostics["pyatb_band_info_candidates"].append(str(band_info))
         metrics.update(_parse_band_info(band_info))
 
@@ -482,23 +482,28 @@ def collect_typed_pyatb_band(
     artifact_by_path: dict[str, ArtifactRecord] = {}
     for path_rel in present_paths:
         resolved = resolved_files[path_rel]
-        digest = _sha256_file(resolved)
-        artifact = ArtifactRecord(
-            id=_typed_output_artifact_id(path_rel),
-            path_rel=path_rel,
-            role="output",
-            stage="collect",
-            media_type=mimetypes.guess_type(path_rel)[0] or "application/octet-stream",
-            sha256=digest,
-            size_bytes=resolved.stat().st_size,
-        )
+        try:
+            digest = _sha256_file(resolved)
+            size_bytes = resolved.stat().st_size
+            artifact = ArtifactRecord(
+                id=_typed_output_artifact_id(path_rel),
+                path_rel=path_rel,
+                role="output",
+                stage="collect",
+                media_type=mimetypes.guess_type(path_rel)[0] or "application/octet-stream",
+                sha256=digest,
+                size_bytes=size_bytes,
+            )
+        except OSError:
+            unavailable_paths.append(path_rel)
+            continue
         artifacts.append(artifact)
         artifact_by_path[path_rel] = artifact
 
     metrics: list[MetricRecord] = []
     band_info_rel = str(getattr(request, "band_info_path_rel"))
     band_info = resolved_files.get(band_info_rel)
-    if band_info is not None:
+    if band_info is not None and band_info_rel in artifact_by_path:
         unavailable_band_info = False
         try:
             band_gap = _typed_parse_band_gap(band_info)
@@ -509,10 +514,9 @@ def collect_typed_pyatb_band(
             artifacts = [artifact for artifact in artifacts if artifact.path_rel != band_info_rel]
             band_gap = None
         except UnicodeError:
-            unavailable_paths.append(band_info_rel)
-            unavailable_band_info = True
-            artifact_by_path.pop(band_info_rel, None)
-            artifacts = [artifact for artifact in artifacts if artifact.path_rel != band_info_rel]
+            # The file was read but contains invalid text; retain its real
+            # artifact and report parser malformation, without inventing a
+            # metric or treating it as an unavailable file.
             band_gap = None
         if unavailable_band_info:
             pass

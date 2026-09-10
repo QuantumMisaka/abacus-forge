@@ -34,9 +34,10 @@ def test_manifest_round_trip_and_known_output_mapping() -> None:
     ("path", "expected"),
     [
         ("inputs/STRU", ("structure", "shared", "text/plain")),
-        ("inputs/data-HR-sparse_SPIN0.csr", ("matrix_hr", "shared", "application/octet-stream")),
-        ("inputs/data-SR-sparse_SPIN0.csr", ("matrix_sr", "shared", "application/octet-stream")),
-        ("inputs/data-rR-sparse.csr", ("matrix_rr", "shared", "application/octet-stream")),
+        ("inputs/data-HR-sparse_SPIN0.csr", ("matrix_hr", "unknown", "application/octet-stream")),
+        ("inputs/data-SR-sparse_SPIN0.csr", ("matrix_sr", "unknown", "application/octet-stream")),
+        ("inputs/data-rR-sparse.csr", ("matrix_rr", "unknown", "application/octet-stream")),
+        ("inputs/arbitrary-HR-backup.csr", ("other", "unknown", "application/octet-stream")),
         ("inputs/Input", ("pyatb_input", "shared", "text/plain")),
         ("inputs/KPT_band", ("kpoint_path", "shared", "text/plain")),
         ("inputs/Out/Band_Structure/band_info.dat", ("band_info", "unknown", "text/plain")),

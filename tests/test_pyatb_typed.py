@@ -557,6 +557,48 @@ def test_typed_collect_separates_unavailable_output_from_malformed(
     assert not result.artifacts
 
 
+def test_typed_collect_second_hash_race_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_band_outputs(tmp_path)
+    import abacus_forge.pyatb as pyatb_module
+
+    original = pyatb_module._sha256_file
+    calls = {"count": 0}
+
+    def disappears_on_second_read(path: Path) -> str:
+        calls["count"] += 1
+        if calls["count"] == 2:
+            raise OSError("file disappeared")
+        return original(path)
+
+    monkeypatch.setattr(pyatb_module, "_sha256_file", disappears_on_second_read)
+    result = collect_typed_pyatb_band(
+        tmp_path, PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")
+    )
+    assert result.diagnostics["unavailable_output_paths_rel"] == (
+        "inputs/Out/Band_Structure/band_info.dat",
+    )
+    assert not result.artifacts
+
+
+def test_typed_collect_invalid_utf8_is_malformed_real_artifact(tmp_path: Path) -> None:
+    _write_band_outputs(tmp_path)
+    target = tmp_path / "inputs/Out/Band_Structure/band_info.dat"
+    target.write_bytes(b"Band gap (eV): \xff\n")
+    result = collect_typed_pyatb_band(
+        tmp_path, PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")
+    )
+    assert [artifact.path_rel for artifact in result.artifacts] == [
+        "inputs/Out/Band_Structure/band_info.dat",
+    ]
+    assert result.diagnostics["malformed_output_paths_rel"] == (
+        "inputs/Out/Band_Structure/band_info.dat",
+    )
+    assert result.diagnostics["unavailable_output_paths_rel"] == ()
+    assert result.metrics == ()
+
+
 def test_typed_collect_service_persists_manifest_projection(tmp_path: Path) -> None:
     _write_band_outputs(tmp_path)
     request = PyatbBandCollectRequest(operation_id=_id(), workspace_rel=".")

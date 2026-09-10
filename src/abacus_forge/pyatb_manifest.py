@@ -185,12 +185,12 @@ def classify_pyatb_output(path_rel: str) -> tuple[str, str, str]:
         return "band_plot", "unknown", "application/pdf"
     if name == "input.json":
         return "run_input", "unknown", "application/json"
-    if "HR" in name and name.endswith(".csr"):
-        return "matrix_hr", "shared", "application/octet-stream"
-    if "SR" in name and name.endswith(".csr"):
-        return "matrix_sr", "shared", "application/octet-stream"
-    if ("rR" in name or "RR" in name) and name.endswith(".csr"):
-        return "matrix_rr", "shared", "application/octet-stream"
+    if name in {"data-HR-sparse_SPIN0.csr", "data-HR-sparse_SPIN1.csr"}:
+        return "matrix_hr", "unknown", "application/octet-stream"
+    if name in {"data-SR-sparse_SPIN0.csr", "data-SR-sparse_SPIN1.csr"}:
+        return "matrix_sr", "unknown", "application/octet-stream"
+    if name in {"data-rR-sparse.csr", "data-rR-sparse_SPIN0.csr"}:
+        return "matrix_rr", "unknown", "application/octet-stream"
     return "other", "unknown", "application/octet-stream"
 
 
