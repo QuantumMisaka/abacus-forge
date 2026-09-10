@@ -12,7 +12,7 @@ not implementation ownership:
 | `pyatb` | PyATB mapping and collection | required when PyATB bridge is enabled |
 | `composite` | local composite pack wiring | deterministic regression, not physics proof |
 | `experimental` | mock/fixture-only property packs | non-stable evidence |
-| `real_smoke` | supplied real ABACUS workspace, including legacy SCF, typed SCF machine, and typed Relax execute/collect | opt-in release evidence |
+| `real_smoke` | supplied real ABACUS workspace, including legacy SCF, typed SCF/Relax/MD machine execute/collect | opt-in release evidence |
 | `benchmark` | normalized migration projections | opt-in migration evidence |
 
 Commands:
@@ -66,11 +66,32 @@ supplied invalid paths, capabilities, or executables fail. These tests record
 serialized outcome/event/artifact facts only and do not assess physical
 convergence.
 
+The typed MD test is an independent, experimental machine-CLI gate. It uses
+`ABACUS_FORGE_MD_SMOKE_WORKSPACE` plus the shared
+`ABACUS_FORGE_ABACUS_EXECUTABLE`, copies a prepared workspace whose
+`inputs/INPUT` declares `calculation=md`, and runs one typed `execute` followed
+by one typed `collect`:
+
+```bash
+export ABACUS_FORGE_MD_SMOKE_WORKSPACE=/absolute/path/to/prepared-md-workspace
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_md
+```
+
+It checks native `running_md.log` parser facts, status, events, manifest and
+contained artifacts; it does not evaluate trajectory quality or any scientific
+threshold. `MD_dump` facts are collected as a separate factual projection.
+Missing MD-specific inputs skip, while supplied invalid paths or a non-MD
+workspace fail. The typed MD gate does not change legacy SCF/Relax smoke
+behavior.
+
 On this local checkout, where no external real workspace or executable is
-supplied, the focused typed SCF selection skips (`1 skipped, 2 deselected`
-without `--run-real-smoke`). No smoke result is promoted to stable capability
-evidence; the current capabilities remain experimental until their own real
-gates and the remaining Stage 4 release conditions are complete.
+supplied, each focused typed selection skips and no real execution evidence is
+claimed. No smoke result is promoted to stable capability evidence; the
+current capabilities remain experimental until their own real gates and the
+remaining Stage 4 release conditions are complete.
 
 ## Contract and workspace gate
 

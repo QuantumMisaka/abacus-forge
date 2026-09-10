@@ -54,7 +54,29 @@ environment values skip with a precise reason. An invalid supplied workspace,
 capability, or executable fails the test. No real Relax workspace is bundled
 with Forge, so this test remains unproven until those values are supplied.
 
-All three smoke tests are evidence gates, not scientific validation. They prove
+The typed MD path is a separate, experimental machine-CLI smoke. It copies a
+prepared `calculation=md` workspace, runs one typed `execute` and one typed
+`collect`, and checks the native `running_md.log` parser facts (the final
+thermodynamic scalars), status, audit events, manifest references, and
+contained artifacts. `MD_dump` facts remain a separate parser projection. Set
+the MD-specific workspace together with the shared executable:
+
+```bash
+export ABACUS_FORGE_MD_SMOKE_WORKSPACE=/absolute/path/to/prepared-md-workspace
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_md
+```
+
+The typed MD gate has its own workspace variable and does not require the SCF
+or Relax workspace variables. Missing MD-specific values skip with a precise
+reason; an invalid supplied workspace, executable, or non-MD `INPUT` fails.
+The gate checks parser facts only. It does not judge trajectory quality,
+physical temperature/energy correctness, convergence, scheduling, or workflow
+orchestration.
+
+All four smoke tests are evidence gates, not scientific validation. They prove
 only the selected Forge execution/collection integration and do not replace
 convergence studies, platform validation, workflow/scheduler checks, or the
 Paimon v1.2 benchmark. All capabilities remain experimental until their own

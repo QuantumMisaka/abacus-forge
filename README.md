@@ -764,6 +764,13 @@ machine-path smoke 与 typed Relax smoke 都通过 machine CLI，legacy SCF API 
 超时预算。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析不完整只反映
 collection 状态。
 
+可选的 typed MD real-smoke 也只通过 machine CLI，在复制的用户准备 workspace 上执行一次
+`md` 的 `execute` 与 `collect`。它要求 `inputs/INPUT` 声明 `calculation=md`，并核对
+`running_md.log` 的原生热力学 parser facts、状态、事件、manifest 和 contained artifact；
+`MD_dump` 事实作为独立投影保留。该门禁不判断轨迹质量、温度/能量物理正确性、收敛或任务
+编排；缺少 `ABACUS_FORGE_MD_SMOKE_WORKSPACE` 或共享 executable 时只 skip，错误输入则
+fail。MD smoke 仍是 experimental 证据，不改变生产 service 或稳定能力面。
+
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
 `postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact
 trajectory，不扫描目录、不查找 latest、不自动转换 `MD_dump`，也不隐式启动 ABACUS 或
