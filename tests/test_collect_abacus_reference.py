@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from abacus_forge import OperationOutcome, ScfCollectRequest, ScfServiceSet, collect
+from abacus_forge.collection_results import collection_envelope
+from abacus_forge.result import CollectionResult
 from abacus_forge.workspace import Workspace
 from tests.support.reference_workspaces import FIXTURE_ROOT, copy_abacustest_scf_workspace, copy_native_md_workspace
 
@@ -54,6 +56,67 @@ def test_collect_reads_repository_native_final_energy_marker(tmp_path: Path) -> 
     assert result.metrics["total_energy"] == pytest.approx(-28364.4012275304485229)
 
 
+def test_collect_sidecar_distinguishes_explicit_and_computed_energy_per_atom(tmp_path: Path) -> None:
+    explicit = Workspace(tmp_path / "explicit").ensure_layout()
+    explicit.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    explicit.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "!FINAL_ETOT_IS -10.0 eV\nNATOM = 2\nENERGY PER ATOM = -5.25\n",
+    )
+    explicit_result = collect(explicit)
+    explicit_log = str(explicit.outputs_dir / "OUT.ABACUS" / "running_scf.log")
+
+    assert explicit_result.metric_origins["total_energy"] == explicit_log
+    assert explicit_result.metric_origins["energy_per_atom"] == explicit_log
+    assert "energy_per_atom" not in explicit_result.derived_metrics
+    assert "_metric_origins" not in explicit_result.diagnostics
+    assert "_derived_metrics" not in explicit_result.diagnostics
+
+    computed = Workspace(tmp_path / "computed").ensure_layout()
+    computed.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    computed.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "!FINAL_ETOT_IS -10.0 eV\nNATOM = 2\n",
+    )
+    computed_result = collect(computed)
+    computed_log = str(computed.outputs_dir / "OUT.ABACUS" / "running_scf.log")
+
+    assert computed_result.metrics["energy_per_atom"] == pytest.approx(-5.0)
+    assert computed_result.metric_origins["energy_per_atom"] == computed_log
+    assert "energy_per_atom" in computed_result.derived_metrics
+
+
+def test_collect_sidecar_marks_stress_pressure_as_derived(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "stress").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "TOTAL ENERGY = -4.0\n"
+        "TOTAL-STRESS (KBAR)\n"
+        "1 2 3\n4 5 6\n7 8 9\n",
+    )
+
+    result = collect(workspace)
+
+    log_path = str(workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log")
+    assert result.metric_origins["pressure"] == log_path
+    assert "pressure" in result.derived_metrics
+
+
+def test_collect_sidecar_tracks_output_fallback_and_time_json_override(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "fallback").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/out.log", "total 12.5\n")
+    workspace.write_json("outputs/time.json", {"total": 34.5})
+
+    result = collect(workspace)
+
+    assert result.metrics["total_time"] == pytest.approx(34.5)
+    assert result.metric_origins["total_time"] == str(workspace.outputs_dir / "time.json")
+    assert result.diagnostics["output_log_path"] == str(workspace.outputs_dir / "out.log")
+    assert result.diagnostics["time_json"] == str(workspace.outputs_dir / "time.json")
+
+
 def test_typed_scf_projection_reports_repository_native_final_energy(tmp_path: Path) -> None:
     workspace = copy_abacustest_scf_workspace(tmp_path / "typed-native-final-energy")
     request = ScfCollectRequest(
@@ -73,6 +136,105 @@ def test_typed_scf_projection_reports_repository_native_final_energy(tmp_path: P
         and observation.value == pytest.approx(-28364.4012275304485229)
         for observation in result.observations
     )
+
+
+def test_typed_scf_metrics_carry_units_kinds_and_contained_sources(tmp_path: Path) -> None:
+    workspace = copy_abacustest_scf_workspace(tmp_path / "typed-metadata")
+    running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
+    running_log.write_text(
+        running_log.read_text(encoding="utf-8") + "\nNELEC = 244\nFERMI ENERGY = -1.5\n",
+        encoding="utf-8",
+    )
+    request = ScfCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174121",
+        workspace_rel="typed-metadata",
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    artifact_ids = {artifact.id for artifact in result.envelope.artifacts}
+    assert metrics["total_energy"].unit == "eV"
+    assert metrics["total_energy"].kind == "reported"
+    assert metrics["total_energy"].source_artifact_id in artifact_ids
+    assert metrics["pressure"].unit == "kbar"
+    assert metrics["pressure"].kind == "derived"
+    assert metrics["pressure"].source_artifact_id in artifact_ids
+    assert metrics["total_time"].unit == "s"
+    assert metrics["total_time"].source_artifact_id in artifact_ids
+    assert metrics["natom"].unit == "atoms"
+    assert metrics["nelec"].unit == "electrons"
+    assert metrics["energy_per_atom"].unit == "eV/atom"
+    assert metrics["energy_per_atom"].kind == "derived"
+    assert metrics["energy_per_atom"].source_artifact_id == metrics["total_energy"].source_artifact_id
+    assert metrics["fermi_energy"].unit is None
+    assert metrics["fermi_energy"].kind == "reported"
+    assert metrics["fermi_energy"].source_artifact_id in artifact_ids
+    assert result.envelope.diagnostics["legacy_metrics"]["forces"]
+
+
+def test_typed_scf_explicit_energy_per_atom_stays_reported_and_unitless(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "typed-explicit-energy-per-atom").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "!FINAL_ETOT_IS -10.0 eV\nNATOM = 2\nENERGY PER ATOM = -5.25\n",
+    )
+    request = ScfCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174122",
+        workspace_rel="typed-explicit-energy-per-atom",
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    assert metrics["energy_per_atom"].value == pytest.approx(-5.25)
+    assert metrics["energy_per_atom"].unit is None
+    assert metrics["energy_per_atom"].kind == "reported"
+    assert metrics["energy_per_atom"].source_artifact_id is not None
+
+
+def test_typed_scf_output_fallback_source_keeps_log_timing_unitless(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "typed-output-fallback").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/out.log", "total 12.5\n")
+    request = ScfCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174123",
+        workspace_rel="typed-output-fallback",
+    )
+
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    assert metrics["total_time"].value == pytest.approx(12.5)
+    assert metrics["total_time"].unit is None
+    assert metrics["total_time"].source_artifact_id == next(
+        artifact.id
+        for artifact in result.envelope.artifacts
+        if artifact.path_rel == "outputs/out.log"
+    )
+
+
+def test_typed_collection_omits_source_id_for_external_origin(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "typed-external-origin").ensure_layout()
+    outside = tmp_path / "outside.log"
+    outside.write_text("TOTAL ENERGY = -1.0\n", encoding="utf-8")
+    result = CollectionResult(
+        workspace.root,
+        "completed",
+        metrics={"total_energy": -1.0},
+        artifacts={"outside": str(outside)},
+        metric_origins={"total_energy": str(outside)},
+    )
+
+    envelope = collection_envelope(result, "typed-external-origin")
+
+    metric = next(item for item in envelope.metrics if item.name == "total_energy")
+    assert metric.source_artifact_id is None
+    assert not envelope.artifacts
 
 
 def test_collect_prefers_last_native_final_energy_marker(tmp_path: Path) -> None:

@@ -7,11 +7,29 @@ import math
 from pathlib import Path
 from typing import Any, Mapping
 
-from abacus_forge.contracts import ForgeResultEnvelope, Observation, OperationStatus
+from abacus_forge.contracts import ArtifactRecord, ForgeResultEnvelope, MetricRecord, Observation, OperationStatus
 from abacus_forge.result import CollectionResult
 
 
 _CONVERGENCE_NAMES = frozenset({"converged", "converge"})
+_DERIVED_METRIC_NAMES = frozenset({"energy_per_atom", "pressure"})
+_RUNTIME_METRIC_NAMES = frozenset({"returncode", "omp_threads"})
+_COUNT_UNITS = {
+    "natom": "atoms",
+    "nelec": "electrons",
+    "scf_steps": "steps",
+    "relax_steps": "steps",
+    "md_steps": "steps",
+    "md_dump_steps": "steps",
+    "md_dump_frames": "frames",
+}
+_NATIVE_MD_ENERGY_NAMES = frozenset({
+    "md_last_total_energy",
+    "md_last_potential_energy",
+    "md_last_kinetic_energy",
+})
+_NATIVE_MD_TEMPERATURE_NAMES = frozenset({"md_last_temperature"})
+_NATIVE_MD_PRESSURE_NAMES = frozenset({"md_last_pressure"})
 
 
 def is_internal_artifact(relative: str) -> bool:
@@ -117,12 +135,133 @@ def collection_status(result: CollectionResult) -> str:
 def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeResultEnvelope:
     projected = projection_result(result)
     legacy = projected.to_envelope()
+    typed_metrics = _typed_metric_records(projected, legacy.metrics, legacy.artifacts)
     return replace(
         legacy, workspace_rel=workspace_rel,
         status=OperationStatus(execution="not_run", scientific="unassessed", collection=collection_status(result)),
+        metrics=typed_metrics,
         checks=legacy.checks if electronic_convergence(result) is not None else (),
         diagnostics=legacy.to_dict()["diagnostics"],
     )
+
+
+def _typed_metric_records(
+    result: CollectionResult,
+    legacy_metrics: tuple[MetricRecord, ...] | list[MetricRecord],
+    artifacts: tuple[ArtifactRecord, ...],
+) -> tuple[MetricRecord, ...]:
+    """Attach only grammar-confirmed metadata to the typed projection.
+
+    ``CollectionResult.to_envelope`` remains the legacy compatibility
+    projection.  This helper is deliberately called only by the typed
+    collection boundary and rebuilds records using the existing
+    ``MetricRecord`` fields.
+    """
+    artifact_ids = _artifact_ids_by_contained_path(result, artifacts)
+    native_md = result.diagnostics.get("native_md_block_complete") is True
+    native_final_energy = bool(result.diagnostics.get("native_final_energy_markers"))
+    total_energy_unit = "eV" if native_final_energy else None
+    records: list[MetricRecord] = []
+    for legacy in legacy_metrics:
+        name = legacy.name
+        kind = "runtime" if name in _RUNTIME_METRIC_NAMES else (
+            "derived" if name in _DERIVED_METRIC_NAMES and name in result.derived_metrics else "reported"
+        )
+        unit = _typed_metric_unit(
+            result,
+            name,
+            native_md=native_md,
+            total_energy_unit=total_energy_unit,
+            kind=kind,
+        )
+        source_artifact_id = _source_artifact_id(result, name, artifact_ids)
+        records.append(
+            MetricRecord(
+                name=name,
+                value=legacy.value,
+                unit=unit,
+                kind=kind,
+                source_artifact_id=source_artifact_id,
+            )
+        )
+    return tuple(records)
+
+
+def _typed_metric_unit(
+    result: CollectionResult,
+    name: str,
+    *,
+    native_md: bool,
+    total_energy_unit: str | None,
+    kind: str,
+) -> str | None:
+    if name == "total_energy":
+        return total_energy_unit
+    if name in _NATIVE_MD_ENERGY_NAMES:
+        return "eV" if native_md else None
+    if name in _NATIVE_MD_TEMPERATURE_NAMES:
+        return "K" if native_md else None
+    if name in _NATIVE_MD_PRESSURE_NAMES:
+        return "kbar" if native_md else None
+    if name in _COUNT_UNITS:
+        return _COUNT_UNITS[name]
+    if name == "total_time":
+        origin = result.metric_origins.get(name)
+        time_json = result.diagnostics.get("time_json")
+        if isinstance(origin, str) and isinstance(time_json, str) and _same_contained_path(result.workspace, origin, time_json):
+            return "s"
+        return None
+    if name == "energy_per_atom":
+        return "eV/atom" if kind == "derived" and total_energy_unit == "eV" else None
+    if name == "pressure":
+        return "kbar" if kind == "derived" else None
+    return None
+
+
+def _artifact_ids_by_contained_path(
+    result: CollectionResult,
+    artifacts: tuple[ArtifactRecord, ...],
+) -> dict[str, tuple[str, ...]]:
+    by_path: dict[str, list[str]] = {}
+    root = result.workspace.resolve()
+    for artifact in artifacts:
+        try:
+            relative = Path(artifact.path_rel).as_posix()
+            # ArtifactRecord paths are already relative by contract, but
+            # normalize them through the same root boundary used for source
+            # resolution so an invalid/escaped sidecar cannot gain a ref.
+            resolved = (root / relative).resolve()
+            if resolved.relative_to(root).as_posix() != relative:
+                continue
+        except (OSError, RuntimeError, ValueError):
+            continue
+        by_path.setdefault(relative, []).append(artifact.id)
+    return {path: tuple(ids) for path, ids in by_path.items()}
+
+
+def _source_artifact_id(
+    result: CollectionResult,
+    name: str,
+    artifact_ids: Mapping[str, tuple[str, ...]],
+) -> str | None:
+    raw_origin = result.metric_origins.get(name)
+    if not isinstance(raw_origin, str):
+        return None
+    source = contained_source(result.workspace, raw_origin)
+    if source is None:
+        return None
+    try:
+        relative = source.relative_to(result.workspace.resolve()).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        return None
+    ids = artifact_ids.get(relative, ())
+    return ids[0] if len(ids) == 1 else None
+
+
+def _same_contained_path(root: Path, first: str, second: str) -> bool:
+    first_path = contained_source(root, first)
+    second_path = contained_source(root, second)
+    return first_path is not None and first_path == second_path
 
 
 def collection_observations(result: CollectionResult) -> tuple[Observation, ...]:

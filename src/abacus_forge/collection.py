@@ -70,6 +70,23 @@ def _collect_workspace(
         artifacts=artifacts,
         workspace_root=ws.root,
         structure_volume=_snapshot_volume(final_structure_snapshot) or _snapshot_volume(structure_snapshot),
+        main_log_path=main_log_path,
+        output_log_path=output_log_path,
+    )
+    # The collector uses private diagnostic keys as a narrow hand-off for
+    # parser provenance.  Consume them before returning the legacy result so
+    # neither diagnostics nor wire serialization exposes the sidecar.
+    raw_metric_origins = diagnostics.pop("_metric_origins", {})
+    raw_derived_metrics = diagnostics.pop("_derived_metrics", ())
+    metric_origins = (
+        {str(name): str(path) for name, path in raw_metric_origins.items()}
+        if isinstance(raw_metric_origins, dict)
+        else {}
+    )
+    derived_metrics = (
+        {str(name) for name in raw_derived_metrics}
+        if isinstance(raw_derived_metrics, (list, tuple, set, frozenset))
+        else set()
     )
     diagnostics.update(log_selection["diagnostics"])
     diagnostics.update(final_structure_diagnostics)
@@ -108,6 +125,8 @@ def _collect_workspace(
         inputs_snapshot=inputs_snapshot,
         structure_snapshot=structure_snapshot,
         final_structure_snapshot=final_structure_snapshot,
+        metric_origins=metric_origins,
+        derived_metrics=derived_metrics,
     )
 
 

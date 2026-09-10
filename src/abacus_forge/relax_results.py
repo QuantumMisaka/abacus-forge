@@ -49,6 +49,8 @@ def _projection_result(result: CollectionResult) -> CollectionResult:
         inputs_snapshot=dict(result.inputs_snapshot),
         structure_snapshot=result.structure_snapshot,
         final_structure_snapshot=final_structure_snapshot,
+        metric_origins=dict(result.metric_origins),
+        derived_metrics=set(result.derived_metrics),
     )
 
 

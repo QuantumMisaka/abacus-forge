@@ -131,6 +131,46 @@ def test_md_collect_uses_native_log_and_allows_missing_dump(tmp_path: Path) -> N
     assert result.envelope.status.scientific == "unassessed"
 
 
+def test_md_typed_metrics_carry_native_units_and_source_artifacts(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "typed-md-metadata")
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "118", workspace="typed-md-metadata")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    artifact_ids = {artifact.id for artifact in result.envelope.artifacts}
+    assert metrics["md_last_total_energy"].unit == "eV"
+    assert metrics["md_last_potential_energy"].unit == "eV"
+    assert metrics["md_last_kinetic_energy"].unit == "eV"
+    assert metrics["md_last_temperature"].unit == "K"
+    assert metrics["md_last_pressure"].unit == "kbar"
+    assert all(metrics[name].kind == "reported" for name in (
+        "md_last_total_energy",
+        "md_last_potential_energy",
+        "md_last_kinetic_energy",
+        "md_last_temperature",
+        "md_last_pressure",
+    ))
+    assert all(metrics[name].source_artifact_id in artifact_ids for name in (
+        "md_last_total_energy",
+        "md_last_potential_energy",
+        "md_last_kinetic_energy",
+        "md_last_temperature",
+        "md_last_pressure",
+    ))
+    assert metrics["md_steps"].unit == "steps"
+    assert metrics["md_dump_steps"].unit == "steps"
+    assert metrics["md_dump_frames"].unit == "frames"
+    md_dump_id = next(
+        artifact.id for artifact in result.envelope.artifacts
+        if artifact.path_rel.endswith("/MD_dump")
+    )
+    assert metrics["md_steps"].source_artifact_id == md_dump_id
+    assert metrics["md_dump_steps"].source_artifact_id == md_dump_id
+    assert metrics["md_dump_frames"].source_artifact_id == md_dump_id
+
+
 def test_md_collect_stdout_or_dump_without_native_log_is_partial(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "md")
     workspace.ensure_layout()

@@ -85,6 +85,35 @@ def test_collection_result_projects_a_v1_result_envelope(tmp_path: Path) -> None
     assert any(item["id"] == "stdout_log" and item["path_rel"] == "outputs/stdout.log" for item in payload["artifacts"])
 
 
+def test_collection_result_sidecars_are_internal_and_legacy_metadata_stays_generic(tmp_path: Path) -> None:
+    result = CollectionResult(
+        tmp_path,
+        "completed",
+        metrics={"total_energy": -5.0, "energy_per_atom": -2.5},
+        metric_origins={"total_energy": str(tmp_path / "outputs" / "running_scf.log")},
+        derived_metrics={"energy_per_atom"},
+    )
+
+    payload = result.to_dict()
+    envelope = result.to_envelope()
+
+    assert set(payload) == {
+        "workspace",
+        "status",
+        "metrics",
+        "artifacts",
+        "diagnostics",
+        "inputs_snapshot",
+        "structure_snapshot",
+        "final_structure_snapshot",
+    }
+    assert "metric_origins" not in payload
+    assert "derived_metrics" not in payload
+    assert all(metric.unit is None for metric in envelope.metrics)
+    assert all(metric.kind == "reported" for metric in envelope.metrics)
+    assert all(metric.source_artifact_id is None for metric in envelope.metrics)
+
+
 def test_dry_run_collection_projects_skipped_axes(tmp_path: Path) -> None:
     envelope = CollectionResult(tmp_path, "dry-run", diagnostics={"dry_run": True}).to_envelope()
     assert envelope.status.to_dict() == {"execution": "skipped", "scientific": "unassessed", "collection": "not_collected"}

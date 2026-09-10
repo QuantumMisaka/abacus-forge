@@ -2262,6 +2262,37 @@ def test_relax_collection_preserves_explicit_ionic_convergence_and_nested_facts(
     assert all(not Path(artifact.path_rel).is_absolute() for artifact in result.envelope.artifacts)
 
 
+def test_relax_collection_preserves_scalar_metadata_and_nested_report_shape(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(
+        tmp_path,
+        log_text=(
+            "!FINAL_ETOT_IS -8.0 eV\nNATOM = 2\n"
+            "TOTAL-STRESS (KBAR)\n"
+            "1 2 3\n4 5 6\n7 8 9\n"
+        ),
+        relax_report={"converged": True, "ionic_steps": [1, 2]},
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174142",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    metrics = {metric.name: metric for metric in result.envelope.metrics}
+    assert metrics["total_energy"].unit == "eV"
+    assert metrics["pressure"].unit == "kbar"
+    assert metrics["pressure"].kind == "derived"
+    assert metrics["total_energy"].source_artifact_id is not None
+    assert metrics["pressure"].source_artifact_id == metrics["total_energy"].source_artifact_id
+    nested = result.envelope.to_dict()["diagnostics"]["legacy_metrics"]["relax_metrics"]
+    assert nested == {"converged": True, "ionic_steps": [1, 2]}
+    report_observation = next(item for item in result.observations if item.name == "relax_metrics")
+    assert report_observation.to_dict()["value"] == {"converged": True, "ionic_steps": [1, 2]}
+
+
 def test_relax_collection_external_output_without_forge_manifest_is_supported(tmp_path: Path) -> None:
     workspace = _write_relax_collection_workspace(tmp_path)
     assert not (workspace.root / "forge-unit.json").exists()

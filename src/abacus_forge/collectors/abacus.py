@@ -82,15 +82,37 @@ def collect_abacus_metrics(
     artifacts: dict[str, str],
     workspace_root: Path,
     structure_volume: float | None = None,
+    main_log_path: Path | None = None,
+    output_log_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Collect metrics and diagnostics from logs and artifacts."""
 
     main_content = main_log_text or ""
     output_content = output_log_text or ""
     metrics = _REGISTRY.extract(main_content)
+    metric_origins: dict[str, str] = {}
+    derived_metrics: set[str] = set()
+    main_source = str(main_log_path) if main_log_path is not None else None
+    output_source = str(output_log_path) if output_log_path is not None else None
+
+    def mark_main(names: object) -> None:
+        if main_source is None:
+            return
+        if isinstance(names, dict):
+            names = names.keys()
+        try:
+            for name in names:  # type: ignore[union-attr]
+                if str(name) in metrics:
+                    metric_origins[str(name)] = main_source
+        except TypeError:
+            return
+
+    mark_main(metrics)
     native_final = _NATIVE_FINAL_ETOT.findall(main_content)
     if native_final:
         metrics["total_energy"] = float(native_final[-1])
+        if main_source is not None:
+            metric_origins["total_energy"] = main_source
     positive_matches, negative_matches = _collect_convergence_matches(main_content)
     diagnostics: dict[str, Any] = {
         "log_sources": len([blob for blob in (main_log_text, output_log_text) if blob]),
@@ -103,14 +125,21 @@ def collect_abacus_metrics(
         diagnostics["native_final_energy_markers"] = len(native_final)
     native_md = _native_md_metrics(main_content)
     metrics.update(native_md["metrics"])
+    mark_main(native_md["metrics"])
     diagnostics.update(native_md["diagnostics"])
     force_metrics = _force_metrics(main_content)
     stress_metrics = _stress_metrics(main_content, volume=structure_volume)
     metrics.update(force_metrics)
     metrics.update(stress_metrics)
+    mark_main(force_metrics)
+    mark_main(stress_metrics)
+    if "pressure" in stress_metrics:
+        derived_metrics.add("pressure")
     output_metrics = _output_metrics(output_content)
     for key, value in output_metrics.items():
         metrics.setdefault(key, value)
+        if key not in metric_origins and output_source is not None and key in metrics:
+            metric_origins[key] = output_source
     if structure_volume is not None:
         diagnostics["structure_volume"] = structure_volume
     if not positive_matches:
@@ -122,6 +151,9 @@ def collect_abacus_metrics(
     if "energy_per_atom" not in metrics and metrics.get("total_energy") is not None and metrics.get("natom"):
         try:
             metrics["energy_per_atom"] = float(metrics["total_energy"]) / int(metrics["natom"])
+            if "total_energy" in metric_origins:
+                metric_origins["energy_per_atom"] = metric_origins["total_energy"]
+            derived_metrics.add("energy_per_atom")
         except Exception:
             diagnostics["warnings"].append("Failed to derive energy_per_atom from total_energy/natom.")
 
@@ -131,6 +163,8 @@ def collect_abacus_metrics(
             payload = json.loads(time_path.read_text(encoding="utf-8"))
             metrics["total_time"] = payload.get("total")
             diagnostics["time_json"] = str(time_path)
+            if payload.get("total") is not None:
+                metric_origins["total_time"] = str(time_path)
         except Exception:
             diagnostics["time_json_error"] = str(time_path)
             diagnostics["warnings"].append("Failed to parse time.json.")
@@ -222,6 +256,13 @@ def collect_abacus_metrics(
                 metrics["md_last_temperature"] = metrics["md_dump_summary"]["last_temperature"]
             if not diagnostics.get("native_md_block_complete") and metrics["md_dump_summary"].get("last_total_energy") is not None:
                 metrics["md_last_total_energy"] = metrics["md_dump_summary"]["last_total_energy"]
+            for name in ("md_steps", "md_dump_frames", "md_dump_steps"):
+                if name in metrics:
+                    metric_origins[name] = str(md_dump)
+            if not diagnostics.get("native_md_block_complete"):
+                for name in ("md_last_temperature", "md_last_total_energy"):
+                    if name in metrics:
+                        metric_origins[name] = str(md_dump)
             diagnostics["md_dump"] = str(md_dump)
         except Exception:
             diagnostics["warnings"].append("Failed to parse MD_dump.")
@@ -234,6 +275,11 @@ def collect_abacus_metrics(
     if not diagnostics["report_json_files"] if "report_json_files" in diagnostics else True:
         diagnostics["warnings"].append("No report JSON artifacts found.")
     diagnostics["workspace"] = str(workspace_root)
+    # These keys are consumed by collection.py into non-serialized
+    # CollectionResult sidecars.  Keeping them private here lets the parser
+    # communicate branch provenance without changing the legacy diagnostics.
+    diagnostics["_metric_origins"] = metric_origins
+    diagnostics["_derived_metrics"] = sorted(derived_metrics)
     return metrics, diagnostics
 
 
