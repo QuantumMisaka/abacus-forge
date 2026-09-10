@@ -40,6 +40,8 @@ fail-closed、真实绘图产物状态和 reported metric；freshness 只在
 - Full offline gate: `1257 passed, 6 skipped`.
 - Explicit real-smoke selection without supplied inputs: `4 skipped`.
 - Benchmark opt-in: `2 passed, 1261 deselected`.
+- Source package gate: `abacus_forge-0.1.0-py3-none-any.whl` built with `--no-deps`
+  (SHA-256 `197af0387389c5f4efc6796804e4c8e3f2370bae7aa6fc5b8bfdb9346d7e1805`).
 - `git diff --check` must pass; real execution and scientific acceptance remain unavailable
   unless a caller supplies an external environment.
 
@@ -63,4 +65,5 @@ provided; they are not maturity evidence.
 
 The candidate is therefore ready for a separate, explicit integration
 decision. `forge-mainline-integration` remains at `da1d4df`, `main` and the
-remote remain untouched.
+remote remain untouched. The post-review documentation-only commit `dadad05`
+records the acceptance state; it does not alter runtime behavior.
