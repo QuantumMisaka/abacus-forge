@@ -44,7 +44,7 @@ def test_xyz_reader_uses_v12_common_element_masses(tmp_path):
     assert frame.masses == pytest.approx([35.45, 22.990, 65.38])
 
 
-def test_load_frames_uses_xyz_fallback_when_ase_is_unavailable(tmp_path, monkeypatch):
+def test_load_frames_rejects_unknown_xyz_element_when_ase_is_unavailable(tmp_path, monkeypatch):
     trajectory = tmp_path / "fallback-masses.xyz"
     trajectory.write_text(
         "4\nframe\nCl 0 0 0\nNa 1 0 0\nZn 2 0 0\nXx 3 0 0\n",
@@ -59,9 +59,43 @@ def test_load_frames_uses_xyz_fallback_when_ase_is_unavailable(tmp_path, monkeyp
 
     monkeypatch.setattr(builtins, "__import__", without_ase)
 
-    frames = load_frames(trajectory)
+    with pytest.raises(ValueError, match="unsupported chemical symbol.*Xx"):
+        load_frames(trajectory)
 
-    assert frames[0].masses == pytest.approx([35.45, 22.990, 65.38, 1.0])
+
+def test_xyz_fallback_supports_the_full_periodic_table(tmp_path, monkeypatch):
+    trajectory = tmp_path / "full-periodic-table.xyz"
+    symbols = [
+        "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+        "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca",
+        "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+        "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
+        "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn",
+        "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd",
+        "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb",
+        "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th",
+        "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
+        "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds",
+        "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og",
+    ]
+    rows = [str(len(symbols)), "frame"]
+    rows.extend(f"{symbol} {index} 0 0" for index, symbol in enumerate(symbols))
+    trajectory.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    real_import = builtins.__import__
+
+    def without_ase(name, *args, **kwargs):
+        if name == "ase.io":
+            raise ImportError("ASE unavailable for fallback test")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", without_ase)
+
+    frame = load_frames(trajectory)[0]
+
+    assert len(frame.masses) == len(symbols)
+    assert np.isfinite(frame.masses).all()
+    assert np.all(frame.masses > 0)
 
 
 def test_load_frames_falls_back_when_ase_masses_are_invalid(tmp_path, monkeypatch):
@@ -206,18 +240,100 @@ def test_trajectory_symbols_cannot_escape_rdf_output_directory(tmp_path):
         run_md_postprocess(trajectory, ["rdf"], output_dir=tmp_path / "out", parameters={"elements": None})
 
 
-def test_plot_failure_still_produces_png(tmp_path, monkeypatch):
+def test_plot_failure_does_not_produce_png_and_reports_safe_diagnostic(tmp_path, monkeypatch):
     trajectory = _xyz(tmp_path / "traj.xyz")
     import matplotlib.pyplot as plt
     monkeypatch.setattr(plt, "subplots", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("render failure")))
     output = tmp_path / "out"
-    run_md_postprocess(trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": False, "save_plot": True})
-    assert (output / "msd.png").is_file()
+    result = run_md_postprocess(trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": False, "save_plot": True})
+    assert not (output / "msd.png").exists()
+    assert "msd.png" not in result.generated_files
+    assert result.diagnostics["plot_failures"] == [
+        {"mode": "msd_diffusion", "artifact": "msd.png", "reason": "render_failure"}
+    ]
+    assert all("/" not in str(value) for value in result.diagnostics["plot_failures"][0].values())
+
+
+def test_plot_import_failure_does_not_produce_png_and_reports_safe_diagnostic(tmp_path, monkeypatch):
+    trajectory = _xyz(tmp_path / "traj.xyz")
+    real_import = builtins.__import__
+
+    def without_matplotlib(name, *args, **kwargs):
+        if name == "matplotlib.pyplot":
+            raise ImportError("matplotlib unavailable at /private/secret")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", without_matplotlib)
+    output = tmp_path / "out"
+
+    result = run_md_postprocess(trajectory, ["msd_diffusion"], output_dir=output, parameters={"timestep": 1.0, "save_data": False, "save_plot": True})
+
+    assert not (output / "msd.png").exists()
+    assert "msd.png" not in result.generated_files
+    assert result.diagnostics["plot_failures"] == [
+        {"mode": "msd_diffusion", "artifact": "msd.png", "reason": "matplotlib_unavailable"}
+    ]
 
 
 def test_variable_cell_unwrap_uses_raw_wrapped_delta():
     frames = [Frame(np.array([[9.0, 0, 0]]), ("H",), np.diag([10., 10., 10.]), np.ones(3, bool), np.array([1.])), Frame(np.array([[1.0, 0, 0]]), ("H",), np.diag([11., 11., 11.]), np.ones(3, bool), np.array([1.])), Frame(np.array([[3.0, 0, 0]]), ("H",), np.diag([12., 12., 12.]), np.ones(3, bool), np.array([1.]))]
     assert md._unwrap(frames)[:, 0, 0].tolist() == pytest.approx([9.0, 12.0, 14.0])
+
+
+def test_triclinic_minimum_image_is_not_componentwise_fractional_rounding():
+    cell = np.array([[1.0, 0.0, 0.0], [0.99, 0.1, 0.0], [0.0, 0.0, 10.0]])
+    current = np.array([0.49, 0.49, 0.0]) @ cell
+    frame = Frame(
+        np.array([[0.0, 0.0, 0.0], current]),
+        ("H", "H"),
+        cell,
+        np.ones(3, bool),
+        np.ones(2),
+    )
+
+    minimum = md._mi(current, frame)
+    unwrapped = md._unwrap([
+        Frame(np.zeros((1, 3)), ("H",), cell, np.ones(3, bool), np.ones(1)),
+        Frame(current[None, :], ("H",), cell, np.ones(3, bool), np.ones(1)),
+    ])
+
+    assert np.linalg.norm(minimum) == pytest.approx(np.linalg.norm(current - cell[1]))
+    assert minimum == pytest.approx(current - cell[1])
+    assert unwrapped[1, 0] == pytest.approx(current - cell[1])
+
+
+def test_triclinic_geometry_uses_the_same_minimum_image_kernel():
+    cell = np.array([[1.0, 0.0, 0.0], [0.99, 0.1, 0.0], [0.0, 0.0, 10.0]])
+    current = np.array([0.49, 0.49, 0.0]) @ cell
+    frame = Frame(
+        np.array([[0.0, 0.0, 0.0], current]),
+        ("H", "O"),
+        cell,
+        np.ones(3, bool),
+        np.array([1.0, 16.0]),
+    )
+
+    result = analyze_trajectory([frame], ["bond_length"], selection=["H-O"])
+
+    assert result["bond_length"]["lengths_angstrom"]["H-O"] == pytest.approx([
+        np.linalg.norm(current - cell[1])
+    ])
+
+
+def test_partial_pbc_minimum_image_works_with_zero_nonperiodic_cell_vector():
+    cell = np.array([[1.0, 0.0, 0.0], [0.4, 1.0, 0.0], [0.0, 0.0, 0.0]])
+    delta = np.array([0.49, 0.49, 1.0]) @ cell + np.array([0.0, 0.0, 2.0])
+    frame = Frame(
+        np.array([[0.0, 0.0, 0.0], delta]),
+        ("H", "O"),
+        cell,
+        np.array([True, True, False]),
+        np.array([1.0, 16.0]),
+    )
+
+    minimum = md._mi(delta, frame)
+
+    assert minimum == pytest.approx(np.array([0.49, 0.49, 1.0]) @ cell - cell[0] + np.array([0.0, 0.0, 2.0]))
 
 
 def test_rdf_cutoff_and_pair_plots_are_bounded(tmp_path):

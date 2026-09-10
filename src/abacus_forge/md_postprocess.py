@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import math
-import base64
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,8 +21,15 @@ from .md_postprocess_contracts import MD_ANALYSIS_MODES
 # kernel.  ASE remains authoritative when it can provide masses; this table is
 # only the deterministic fallback for formats without mass metadata.
 _MASS = {
+    # Values follow the atomic-mass table used by the v1.2 abacustest
+    # trajectory tools.  The synthetic values for elements without a stable
+    # isotope are their conventional mass numbers; all are finite and
+    # positive so they remain usable by the facts-only analysis kernels.
     "H": 1.008,
     "He": 4.003,
+    "Li": 6.941,
+    "Be": 9.012,
+    "B": 10.811,
     "C": 12.011,
     "N": 14.007,
     "O": 15.999,
@@ -36,14 +42,123 @@ _MASS = {
     "P": 30.974,
     "S": 32.06,
     "Cl": 35.45,
+    "Ar": 39.948,
     "K": 39.098,
     "Ca": 40.078,
+    "Sc": 44.956,
+    "Ti": 47.867,
+    "V": 50.942,
+    "Cr": 51.996,
+    "Mn": 54.938,
     "Fe": 55.845,
+    "Co": 58.933,
+    "Ni": 58.693,
     "Cu": 63.546,
     "Zn": 65.38,
+    "Ga": 69.723,
+    "Ge": 72.64,
+    "As": 74.922,
+    "Se": 78.96,
+    "Br": 79.904,
+    "Kr": 83.8,
+    "Rb": 85.468,
+    "Sr": 87.62,
+    "Y": 88.906,
+    "Zr": 91.224,
+    "Nb": 92.906,
+    "Mo": 95.94,
+    "Tc": 98.0,
+    "Ru": 101.07,
+    "Rh": 102.906,
+    "Pd": 106.42,
+    "Ag": 107.868,
+    "Cd": 112.411,
+    "In": 114.818,
+    "Sn": 118.71,
+    "Sb": 121.76,
+    "Te": 127.6,
+    "I": 126.904,
+    "Xe": 131.293,
+    "Cs": 132.906,
+    "Ba": 137.327,
+    "La": 138.906,
+    "Ce": 140.116,
+    "Pr": 140.908,
+    "Nd": 144.24,
+    "Pm": 145.0,
+    "Sm": 150.36,
+    "Eu": 151.964,
+    "Gd": 157.25,
+    "Tb": 158.925,
+    "Dy": 162.5,
+    "Ho": 164.93,
+    "Er": 167.259,
+    "Tm": 168.934,
+    "Yb": 173.04,
+    "Lu": 174.967,
+    "Hf": 178.49,
+    "Ta": 180.948,
+    "W": 183.84,
+    "Re": 186.207,
+    "Os": 190.23,
+    "Ir": 192.217,
+    "Pt": 195.078,
+    "Au": 196.967,
+    "Hg": 200.59,
+    "Tl": 204.383,
+    "Pb": 207.2,
+    "Bi": 208.98,
+    "Po": 209.0,
+    "At": 210.0,
+    "Rn": 222.0,
+    "Fr": 223.0,
+    "Ra": 226.0,
+    "Ac": 227.0,
+    "Th": 232.038,
+    "Pa": 231.036,
+    "U": 238.029,
+    "Np": 237.0,
+    "Pu": 244.0,
+    "Am": 243.0,
+    "Cm": 247.0,
+    "Bk": 247.0,
+    "Cf": 251.0,
+    "Es": 252.0,
+    "Fm": 257.0,
+    "Md": 258.0,
+    "No": 259.0,
+    "Lr": 262.0,
+    "Rf": 261.0,
+    "Db": 262.0,
+    "Sg": 266.0,
+    "Bh": 264.0,
+    "Hs": 277.0,
+    "Mt": 278.0,
+    "Ds": 281.0,
+    "Rg": 282.0,
+    "Cn": 285.0,
+    "Nh": 286.0,
+    "Fl": 289.0,
+    "Mc": 290.0,
+    "Lv": 293.0,
+    "Ts": 294.0,
+    "Og": 294.0,
 }
 _ELEMENT = re.compile(r"^[A-Z][a-z]?$")
-_FALLBACK_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+
+
+def _fallback_mass(symbol: str) -> float:
+    """Return a known XYZ mass, rejecting syntactically valid unknowns."""
+
+    if not isinstance(symbol, str) or not _ELEMENT.fullmatch(symbol):
+        raise ValueError("trajectory contains invalid chemical symbols")
+    try:
+        mass = float(_MASS[symbol])
+    except KeyError as exc:
+        raise ValueError(f"unsupported chemical symbol in XYZ fallback: {symbol}") from exc
+    if not math.isfinite(mass) or mass <= 0:
+        raise ValueError(f"invalid mass for chemical symbol: {symbol}")
+    return mass
 
 
 def _rdf_pairs(elements: Any, symbols: Sequence[str]) -> list[str]:
@@ -114,13 +229,12 @@ class FrameSelection(list[Frame]):
 
 def _frame_ase(atoms: Any) -> Frame:
     symbols = tuple(atoms.get_chemical_symbols())
-    fallback_masses = np.asarray([_MASS.get(s, 1.0) for s in symbols], dtype=float)
     try:
         masses = np.asarray(atoms.get_masses(), dtype=float).reshape(-1)
     except Exception:
-        masses = fallback_masses
+        masses = np.asarray([_fallback_mass(s) for s in symbols], dtype=float)
     if masses.shape != (len(symbols),) or not np.isfinite(masses).all() or np.any(masses <= 0):
-        masses = fallback_masses
+        masses = np.asarray([_fallback_mass(s) for s in symbols], dtype=float)
     velocities = None
     try: velocities = atoms.get_velocities()
     except Exception: pass
@@ -139,7 +253,15 @@ def _read_xyz(path: Path) -> list[Frame]:
             fields = row.split()
             if len(fields) < 4: raise ValueError("invalid XYZ atom row")
             symbols.append(fields[0]); coords.append([float(x) for x in fields[1:4]])
-        result.append(Frame(np.asarray(coords), tuple(symbols), np.zeros((3, 3)), np.zeros(3, bool), np.asarray([_MASS.get(s, 1.0) for s in symbols])))
+        result.append(
+            Frame(
+                np.asarray(coords),
+                tuple(symbols),
+                np.zeros((3, 3)),
+                np.zeros(3, bool),
+                np.asarray([_fallback_mass(s) for s in symbols]),
+            )
+        )
         i += n + 2
     if not result: raise ValueError("trajectory contains no frames")
     return result
@@ -158,8 +280,10 @@ def load_frames(path: str | Path, *, start: int = 0, end: int | None = None, str
     except Exception as exc:
         # ASE can reject plain XYZ variants; the dependency-free parser is the
         # intended fallback for those files.
-        try: frames = _read_xyz(Path(path))
-        except Exception: raise ValueError(f"failed to read trajectory: {exc}") from exc
+        try:
+            frames = _read_xyz(Path(path))
+        except Exception as fallback_error:
+            raise fallback_error from exc
     stop = len(frames) if end is None or end < 0 else min(end, len(frames))
     selected = frames[start:stop:stride]
     if not selected: raise ValueError("selected frame range is empty")
@@ -203,14 +327,99 @@ def canonical_parameter_values(parameters: Mapping[str, Any], modes: Sequence[st
     return result
 
 
+def _periodic_qr(frame: Frame) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    """Return active lattice rows and their reduced QR basis.
+
+    Cell vectors are stored as rows.  Restricting the lattice to the axes
+    explicitly marked periodic also makes slab/wire cells with zero vectors
+    in non-periodic directions valid inputs.
+    """
+
+    active = np.flatnonzero(frame.pbc)
+    if not len(active):
+        return None
+    basis = np.asarray(frame.cell[active], dtype=float)
+    scale = max(float(np.linalg.norm(basis, ord=2)), np.finfo(float).tiny)
+    rank_tolerance = np.finfo(float).eps * scale * max(basis.shape) * 10.0
+    if np.linalg.matrix_rank(basis, tol=rank_tolerance) < len(active):
+        raise ValueError("periodic cell vectors must be linearly independent")
+    q, r = np.linalg.qr(basis.T, mode="reduced")
+    if np.any(np.abs(np.diag(r)) <= rank_tolerance):
+        raise ValueError("periodic cell vectors must be linearly independent")
+    return basis, q, r
+
+
+def _closest_lattice_offset(rhs: np.ndarray, r: np.ndarray) -> np.ndarray:
+    """Solve the low-dimensional integer least-squares problem exactly.
+
+    ``rhs`` is the target in the orthonormal QR coordinates of the active
+    lattice and ``r`` is its upper-triangular factor.  A bounded sphere
+    decoder enumerates every integer point inside the current best sphere;
+    unlike component-wise fractional rounding, this remains correct for
+    skew/triclinic cells.
+    """
+
+    dimension = len(rhs)
+    candidate = np.zeros(dimension, dtype=np.int64)
+    for index in range(dimension - 1, -1, -1):
+        center = (rhs[index] - np.dot(r[index, index + 1 :], candidate[index + 1 :])) / r[index, index]
+        candidate[index] = int(np.rint(center))
+    residual = rhs - r @ candidate
+    best_squared = float(np.dot(residual, residual))
+    best = candidate.copy()
+    tolerance = 1e-12 * max(1.0, float(np.dot(rhs, rhs)), float(np.linalg.norm(r)) ** 2)
+
+    def visit(index: int, partial_squared: float) -> None:
+        nonlocal best_squared, best
+        if index < 0:
+            candidate_key = tuple(int(value) for value in candidate)
+            best_key = tuple(int(value) for value in best)
+            if partial_squared < best_squared - tolerance or (
+                abs(partial_squared - best_squared) <= tolerance and candidate_key < best_key
+            ):
+                best_squared = partial_squared
+                best = candidate.copy()
+            return
+        tail = rhs[index] - np.dot(r[index, index + 1 :], candidate[index + 1 :])
+        diagonal = float(r[index, index])
+        remaining = max(0.0, best_squared + tolerance - partial_squared)
+        radius = math.sqrt(remaining) / abs(diagonal)
+        center = tail / diagonal
+        lower = math.ceil(center - radius - 1e-12)
+        upper = math.floor(center + radius + 1e-12)
+        values = range(lower, upper + 1)
+        for value in sorted(values, key=lambda item: (abs(item - center), item)):
+            candidate[index] = value
+            difference = tail - diagonal * value
+            new_partial = partial_squared + difference * difference
+            if new_partial <= best_squared + tolerance:
+                visit(index - 1, new_partial)
+
+    visit(dimension - 1, 0.0)
+    return best
+
+
+def _minimum_image(delta: np.ndarray, frame: Frame) -> np.ndarray:
+    """Apply the exact nearest periodic image to one or many row vectors."""
+
+    values = np.asarray(delta, dtype=float)
+    if values.shape[-1:] != (3,):
+        raise ValueError("displacements must end in a length-three vector")
+    lattice = _periodic_qr(frame)
+    if lattice is None:
+        return values.copy()
+    basis, q, r = lattice
+    flat = values.reshape(-1, 3)
+    projected = flat @ q
+    offsets = np.asarray([_closest_lattice_offset(rhs, r) for rhs in projected], dtype=float)
+    return (flat - offsets @ basis).reshape(values.shape)
+
+
 def _unwrap(frames: Sequence[Frame]) -> np.ndarray:
     out = np.asarray([f.positions for f in frames], float).copy()
     for i in range(1, len(frames)):
         delta = frames[i].positions - frames[i - 1].positions
-        f = frames[i]
-        if np.any(f.pbc) and abs(np.linalg.det(f.cell)) > 1e-12:
-            frac = np.linalg.solve(f.cell.T, delta.T).T; frac[:, f.pbc] -= np.rint(frac[:, f.pbc]); delta = frac @ f.cell
-        out[i] = out[i - 1] + delta
+        out[i] = out[i - 1] + _minimum_image(delta, frames[i])
     return out
 
 
@@ -245,8 +454,7 @@ def _vacf(frames: Sequence[Frame], timestep: float) -> dict[str, Any]:
 
 
 def _mi(delta: np.ndarray, frame: Frame) -> np.ndarray:
-    if not np.any(frame.pbc) or abs(np.linalg.det(frame.cell)) <= 1e-12: return delta
-    frac = np.linalg.solve(frame.cell.T, delta); frac[..., frame.pbc] -= np.rint(frac[..., frame.pbc]); return frac @ frame.cell
+    return _minimum_image(delta, frame)
 
 
 def _geometry(frames: Sequence[Frame], selection: Any) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
@@ -379,7 +587,7 @@ def _safe_output_path(output_dir: Path, name: str) -> Path:
 def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_dir: str | Path, start: int = 0, end: int | None = None, stride: int = 1, parameters: Mapping[str, Any] | None = None) -> MdPostprocessResult:
     modes=validate_analysis(modes); params=canonical_parameter_values(parameters or {}, modes); frames=load_frames(trajectory,start=start,end=end,stride=stride); out=_prepare_output_dir(output_dir)
     results=analyze_trajectory(frames,modes,timestep=params.get("timestep"),selection=params.get("selection"),elements=params.get("elements"),rmax=float(params.get("rmax",6.0)),nbins=int(params.get("nbins",100)))
-    generated=[]; save_data=params.get("save_data",True); save_plot=params.get("save_plot",True)
+    generated=[]; plot_failures=[]; save_data=params.get("save_data",True); save_plot=params.get("save_plot",True)
     def write_data(path: Path, mode: str, value: Mapping[str, Any]) -> None:
         if mode == "msd_diffusion":
             rows = zip(value["time_fs"], value["msd_angstrom2"]); text = "time_fs msd_angstrom2\n" + "\n".join(f"{float(x):.17g} {float(y):.17g}" for x, y in rows)
@@ -425,29 +633,52 @@ def run_md_postprocess(trajectory: str | Path, modes: Sequence[str], *, output_d
         except Exception:
             plt = None
         for mode in modes:
-                name={"msd_diffusion":"msd","vacf_vdos":"vacf_vdos","bond_length":"bond_lengths","bond_angle":"bond_angles","rdf":"rdf"}[mode]
-                plot_pairs = list(results[mode]) if mode == "rdf" else [None]
-                for pair in plot_pairs:
-                    plot_name = f"rdf_{pair.replace('-', '_')}" if pair is not None else name
-                    plot_path = out / (plot_name + ".png")
+            name={"msd_diffusion":"msd","vacf_vdos":"vacf_vdos","bond_length":"bond_lengths","bond_angle":"bond_angles","rdf":"rdf"}[mode]
+            plot_pairs = list(results[mode]) if mode == "rdf" else [None]
+            for pair in plot_pairs:
+                plot_name = f"rdf_{pair.replace('-', '_')}" if pair is not None else name
+                plot_path = out / (plot_name + ".png")
+                if plt is None:
                     try:
-                        if plt is None: raise RuntimeError("matplotlib unavailable")
-                        fig, ax = plt.subplots(figsize=(6, 4))
-                        if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
-                        elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
-                        elif mode == "rdf":
-                            values = results[mode][pair]; ax.plot(values["r_angstrom"], values["g_r"], label=pair)
-                        elif mode == "bond_length":
-                            for pair_name, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair_name)
-                        else:
-                            for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
-                        fig.tight_layout(); fig.savefig(plot_path, dpi=120); plt.close(fig)
-                    except Exception:
-                        plot_path.write_bytes(_FALLBACK_PNG)
+                        if plot_path.is_file() and not plot_path.is_symlink():
+                            plot_path.unlink()
+                    except OSError:
+                        pass
+                    plot_failures.append({"mode": mode, "artifact": plot_path.name, "reason": "matplotlib_unavailable"})
+                    continue
+                fig = None
+                try:
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    if mode == "msd_diffusion": ax.plot(results[mode]["time_fs"], results[mode]["msd_angstrom2"])
+                    elif mode == "vacf_vdos": ax.plot(results[mode]["frequency_THz"], results[mode]["dos"])
+                    elif mode == "rdf":
+                        values = results[mode][pair]; ax.plot(values["r_angstrom"], values["g_r"], label=pair)
+                    elif mode == "bond_length":
+                        for pair_name, values in results[mode]["lengths_angstrom"].items(): ax.plot(values, np.zeros(len(values)), ".", label=pair_name)
+                    else:
+                        for trip, values in results[mode]["angles_deg"].items(): ax.plot(values, np.zeros(len(values)), ".", label=trip)
+                    fig.tight_layout(); fig.savefig(plot_path, dpi=120)
+                except Exception:
+                    # A failed renderer must never masquerade as a valid image.
+                    # Remove a partially written file as well as any stale
+                    # output from an earlier invocation.
+                    try:
+                        if plot_path.is_file() and not plot_path.is_symlink():
+                            plot_path.unlink()
+                    except OSError:
+                        pass
+                    plot_failures.append({"mode": mode, "artifact": plot_path.name, "reason": "render_failure"})
+                else:
                     generated.append(plot_path.name)
+                finally:
+                    if fig is not None:
+                        try:
+                            plt.close(fig)
+                        except Exception:
+                            pass
     payload={"schema_version":"forge.md-postprocess/v1","analysis":list(modes),"sampling":{"start":start,"end":frames.source_end,"stride":stride,"frame_count":len(frames)},"results":results}
     (out/"analysis.json").write_text(json.dumps(payload,sort_keys=True,ensure_ascii=False,allow_nan=False,indent=2)+"\n",encoding="utf-8"); generated.append("analysis.json")
-    return MdPostprocessResult(summary={"analysis":list(modes)},diagnostics={"ignored_parameter_keys":sorted(set((parameters or {}))-set(params))},results=results,sampling=payload["sampling"],generated_files=tuple(generated))
+    return MdPostprocessResult(summary={"analysis":list(modes)},diagnostics={"ignored_parameter_keys":sorted(set((parameters or {}))-set(params)), "plot_failures": plot_failures},results=results,sampling=payload["sampling"],generated_files=tuple(generated))
 
 
 __all__=["Frame","FrameSelection","MdPostprocessResult","load_frames","validate_analysis","canonical_parameter_values","analyze_trajectory","run_md_postprocess"]
