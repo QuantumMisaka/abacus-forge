@@ -30,9 +30,9 @@ from abacus_forge.workspace import Workspace
 # Explicit typed PyATB band handoff
 # ---------------------------------------------------------------------------
 #
-# The helpers below intentionally sit beside, rather than inside, the legacy
-# SCF-discovery helpers above.  Their input is a fully declared typed request;
-# they do not inspect a sibling SCF workspace or infer any value from a log.
+# These helpers form the explicit typed surface.  Their input is a fully
+# declared request; they do not inspect a sibling SCF workspace or infer any
+# value from a log.
 
 
 def prepare_typed_pyatb_band(
@@ -646,4 +646,3 @@ def _typed_parse_band_gap(path: Path) -> float | None:
     except (TypeError, ValueError, OverflowError):
         return None
     return value if math.isfinite(value) else None
-
