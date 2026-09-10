@@ -44,16 +44,46 @@ env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/pa
 
 ### Marker-stratified collection gates
 
-The Task 3 review ran the registered marker subsets:
+The `3 passed`/`13 passed` marker-run counts below are transcribed from the
+Task 3 service review and its scoped re-review for fix commit `ac74d55`; they
+are test-run counts, not collection counts. Task 4 reran the corresponding
+strict marker collection gates in the repository worktree:
 
 ```text
-cli: 3 passed
-integration: 13 passed
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest --strict-markers --collect-only -q -p no:cacheprovider -m cli tests/test_export_services.py tests/test_export_machine_cli.py
+tests/test_export_machine_cli.py::test_machine_cli_routes_explicit_export_to_injected_service
+tests/test_export_machine_cli.py::test_machine_cli_process_stdin_and_request_file_have_same_typed_export_result
+tests/test_export_machine_cli.py::test_capabilityless_machine_export_still_rejects_before_service
+
+3/16 tests collected (13 deselected) in 0.60s
+Exit code: 0
 ```
 
-The same review reported `git diff --check` clean for the marker/architecture
-fix commit `ac74d55`; the final documentation work also passes the command
-below.
+```text
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest --strict-markers --collect-only -q -p no:cacheprovider -m integration tests/test_export_services.py tests/test_export_machine_cli.py
+tests/test_export_services.py::test_export_service_writes_exact_document_and_one_audited_output
+tests/test_export_services.py::test_export_service_rejects_wrong_type_without_admission
+tests/test_export_services.py::test_export_service_rejects_invalid_destination_before_admission[reports/events/new.json-request.path]
+tests/test_export_services.py::test_export_service_rejects_invalid_destination_before_admission[reports/claims/new.json-request.path]
+tests/test_export_services.py::test_export_service_rejects_invalid_destination_before_admission[../outside.json-request.schema]
+tests/test_export_services.py::test_export_service_existing_destination_is_invalid_without_admission
+tests/test_export_services.py::test_export_service_source_overlap_is_request_invalid_after_admission
+tests/test_export_services.py::test_export_service_missing_source_is_precondition_after_admission
+tests/test_export_services.py::test_export_service_duplicate_operation_id_is_conflict
+tests/test_export_services.py::test_export_service_uses_unique_artifact_id_when_source_already_uses_base_id
+tests/test_export_services.py::test_export_service_write_failure_has_no_fabricated_artifact
+tests/test_export_services.py::test_export_service_persist_failure_does_not_return_artifact_or_event
+tests/test_export_services.py::test_export_service_does_not_call_legacy_runtime_operations
+
+13/16 tests collected (3 deselected) in 0.56s
+Exit code: 0
+```
+
+The same Task 3 review reported the marker runs as `cli: 3 passed` and
+`integration: 13 passed`; the Task 3 review also reported `git diff --check`
+clean for `ac74d55`. The collection outputs above only establish discovery
+counts; they do not claim that the collected tests ran in this Task 4 gate.
+The final documentation work also passes `git diff --check` below.
 
 ### Full offline suite
 

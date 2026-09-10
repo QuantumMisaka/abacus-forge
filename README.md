@@ -121,9 +121,10 @@ legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推�
 
 Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax` 和
 成熟度为 `experimental` 的 `md`、`atst-neb`、`pyatb-band`；typed `band`/`dos` 另提供仅用于
-`postprocess` 的实验性 capability。它固定暴露三个顶层命令：`operation`
+`postprocess` 的实验性 capability，typed `export` 提供实验性的 `export` capability 和
+`export` operation。它固定暴露三个顶层命令：`operation`
 （`scf`、`relax`、`cell-relax`、`md` 执行 `prepare`、`modify`、`execute`、`collect`；`atst-neb` 执行 `prepare`、
-`execute`、`postprocess`；`pyatb-band` 执行 `prepare`、`execute`、`collect`；`band`、`dos` 执行 `postprocess`）、`schema`（读取请求 schema）和
+`execute`、`postprocess`；`pyatb-band` 执行 `prepare`、`execute`、`collect`；`band`、`dos` 执行 `postprocess`；`export` 执行 `export`）、`schema`（读取请求 schema）和
 `capabilities`（读取能力发现）。兼容保留的顶层 `--help` 不列出这三个命令；请分别
 运行 `operation --help`、`schema --help` 和 `capabilities --help` 查看机器接口。
 
@@ -164,11 +165,11 @@ cat request.json | PYTHONPATH=src python -m abacus_forge.cli operation execute -
 ```
 
 `capabilities` 和 `schema <capability> <operation>` 返回确定性的 JSON 文档；当前发现的
-capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`pyatb-band`、`band`、`dos`；`md` 仅支持
+capability 为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`pyatb-band`、`band`、`dos`、`export`；`md` 仅支持
 `prepare`、`modify`、`execute`、`collect`，且 maturity 为 `experimental`；其他 capability
 按各自 descriptor 暴露 operation，`band`/`dos` 仅暴露 `postprocess` 且 maturity 为
 `experimental`，`pyatb-band` 仅暴露 `prepare`、`execute`、`collect` 且 maturity 为
-`experimental`。默认格式下，
+`experimental`，`export` 仅暴露 `export` 且 maturity 为 `experimental`。默认格式下，
 `operation` 在 stdout 输出恰好一个完整的 JSON outcome/error envelope，其中包含错误消息与
 结果 diagnostics；stderr 仅保留给受控诊断，当前覆盖路径为空。退出码分别为
 `0`（无执行失败）、
