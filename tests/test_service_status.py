@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import fcntl
 import hashlib
+import os
 from pathlib import Path
 import json
 import signal
@@ -181,6 +182,9 @@ def test_typed_execute_runs_relative_path_executable_resolved_from_process_cwd(
     assert result.status.execution == "completed"
     assert result.envelope.diagnostics["failure_class"] == "none"
     assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+    assert json.loads((workspace.root / "forge-result.json").read_text(encoding="utf-8"))["command"] == [
+        "bin/fake-abacus"
+    ]
 
 
 def test_local_runner_runs_relative_path_launcher_and_executable(
@@ -204,6 +208,49 @@ def test_local_runner_runs_relative_path_launcher_and_executable(
     assert result.status == "completed"
     assert result.returncode == 0
     assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+
+
+def test_local_runner_resolves_basename_from_relative_override_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "bin").mkdir()
+    write_fake_abacus(tmp_path / "bin" / "fake-abacus", stdout_lines=["NORMAL END"])
+
+    result = LocalRunner(
+        executable="fake-abacus",
+        env_overrides={"PATH": os.pathsep.join(("bin", str(Path(sys.executable).parent)))},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+    assert result.command == ["fake-abacus"]
+
+
+def test_local_runner_preserves_relative_symlink_argv_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "bin").mkdir()
+    target = tmp_path / "bin" / "target-abacus"
+    target.write_text(f"#!{sys.executable}\nimport sys\nprint(sys.argv[0])\n", encoding="utf-8")
+    target.chmod(target.stat().st_mode | stat.S_IEXEC)
+    link = tmp_path / "bin" / "link-abacus"
+    link.symlink_to(target)
+
+    result = LocalRunner(executable="bin/link-abacus").run(workspace)
+
+    assert result.status == "completed"
+    assert result.returncode == 0
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == str(link)
+    assert result.command == ["bin/link-abacus"]
 
 
 def test_relax_service_set_exposes_typed_operations(tmp_path: Path) -> None:
@@ -1808,7 +1855,7 @@ def test_missing_generated_mpirun_is_precondition_before_process_start(
     monkeypatch.setattr(
         runner_module.shutil,
         "which",
-        lambda name: None if name == "mpirun" else original_which(name),
+        lambda name, path=None: None if name == "mpirun" else original_which(name, path=path),
     )
     services = ForgeServices.default(
         workspace_root=tmp_path,

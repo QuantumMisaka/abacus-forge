@@ -46,46 +46,72 @@ class LocalRunner:
             "timeout_seconds": self.timeout_seconds,
         }
 
-    def _resolve_executable(self) -> str:
-        return self._resolve_program(self.executable, role="engine")
+    def _resolve_executable(self, workspace: Workspace) -> str:
+        return self._resolve_program(
+            self.executable,
+            role="engine",
+            cwd=workspace.inputs_dir,
+            env={**os.environ, **self._run_environment()},
+        )
 
     @staticmethod
-    def _resolve_program(program: str, *, role: str) -> str:
+    def _resolve_program(
+        program: str,
+        *,
+        role: str,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> str:
         candidate = Path(program)
         if candidate.parent != Path():
-            resolved = candidate if candidate.is_absolute() else candidate.resolve()
+            # Directory-qualified paths are relative to the caller's cwd.  Use
+            # lexical anchoring so a symlink remains visible as argv[0].
+            resolved = Path(os.path.abspath(os.fspath(candidate)))
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
             raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
 
-        resolved = shutil.which(program)
-        if resolved is None:
-            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
-        return resolved
+        # PATH entries are interpreted from the caller's cwd.  Resolve the
+        # selected basename before entering the workspace so subprocess launch
+        # does not reinterpret a relative PATH under ``cwd=inputs_dir``.
+        search_cwd = Path.cwd()
+        search_path = (env or os.environ).get("PATH", os.defpath)
+        if all(not entry or Path(entry).is_absolute() for entry in search_path.split(os.pathsep)):
+            resolved = shutil.which(program, path=search_path)
+            if resolved is not None:
+                return resolved
+        for entry in search_path.split(os.pathsep):
+            directory = Path(entry) if entry else Path(".")
+            if not directory.is_absolute():
+                directory = search_cwd / directory
+            resolved = Path(os.path.abspath(os.fspath(directory / program)))
+            if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
+                return str(resolved)
+        raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
 
     def preflight(self, workspace: Workspace) -> None:
         """Verify every program required before starting the local process."""
 
+        self._resolved_command(workspace)
+
+    def _resolved_command(self, workspace: Workspace) -> list[str]:
         command = self.build_command(workspace)
+        env = {**os.environ, **self._run_environment()}
         if self.launcher:
-            self._resolve_program(str(command[0]), role="launcher")
-        elif self.mpi_ranks > 1:
-            self._resolve_program("mpirun", role="launcher")
-        self._resolve_executable()
-
-    def _execution_command(self, workspace: Workspace) -> list[str]:
-        """Return the command with directory-qualified paths anchored to caller cwd."""
-
-        command = self.build_command(workspace)
-        if self.launcher and Path(command[0]).parent != Path():
-            command[0] = self._resolve_program(str(command[0]), role="launcher")
-        elif self.mpi_ranks > 1 and Path(command[0]).parent != Path():
-            command[0] = self._resolve_program(str(command[0]), role="launcher")
-        executable_index = len(self.launcher) if self.launcher else (3 if self.mpi_ranks > 1 else 0)
-        if Path(command[executable_index]).parent != Path():
-            command[executable_index] = self._resolve_program(
-                str(command[executable_index]), role="engine"
+            command[0] = self._resolve_program(
+                str(command[0]), role="launcher", cwd=workspace.inputs_dir, env=env
             )
+        elif self.mpi_ranks > 1:
+            command[0] = self._resolve_program(
+                "mpirun", role="launcher", cwd=workspace.inputs_dir, env=env
+            )
+        executable_index = len(self.launcher) if self.launcher else (3 if self.mpi_ranks > 1 else 0)
+        command[executable_index] = self._resolve_program(
+            str(command[executable_index]),
+            role="engine",
+            cwd=workspace.inputs_dir,
+            env=env,
+        )
         return command
 
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
@@ -102,7 +128,7 @@ class LocalRunner:
             "env_overrides": dict(self.env_overrides),
         }
         try:
-            self.preflight(workspace)
+            execution_command = self._resolved_command(workspace)
         except FileNotFoundError as exc:
             stdout_path.write_text("", encoding="utf-8")
             stderr_path.write_text(str(exc) + "\n", encoding="utf-8")
@@ -128,9 +154,8 @@ class LocalRunner:
             )
 
         try:
-            command = self._execution_command(workspace)
             completed = subprocess.run(
-                command,
+                execution_command,
                 cwd=workspace.inputs_dir,
                 check=False,
                 capture_output=True,
