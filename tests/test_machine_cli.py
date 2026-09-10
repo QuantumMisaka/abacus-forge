@@ -877,7 +877,19 @@ def test_pyatb_band_discovery_descriptor_and_schemas_match_wire_fields() -> None
 def test_pyatb_band_prepare_schema_advertises_spinor_nspin4_mode() -> None:
     schema = request_schema_document("pyatb-band", "prepare")["request_schema"]
 
+    assert schema["properties"]["nspin"]["type"] == "integer"
     assert schema["properties"]["nspin"]["enum"] == [1, 2, 4]
+    assert len(schema["allOf"]) == 1
+    conditional = schema["allOf"][0]
+    assert conditional["if"]["properties"]["nspin"]["const"] == 2
+    assert conditional["then"]["properties"]["hr_paths_rel"] == {
+        "minItems": 2,
+        "maxItems": 2,
+    }
+    assert conditional["else"]["properties"]["hr_paths_rel"] == {
+        "minItems": 1,
+        "maxItems": 1,
+    }
 
 
 def test_machine_process_pyatb_schema_and_capability_discovery_are_single_documents() -> None:

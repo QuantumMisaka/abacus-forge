@@ -1191,6 +1191,11 @@ def test_pyatb_band_prepare_nspin4_accepts_one_hr_path_and_round_trips() -> None
     assert PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(request.to_dict()))) == request
 
 
+def test_pyatb_band_prepare_rejects_boolean_nspin() -> None:
+    with pytest.raises(ValueError, match="nspin"):
+        _pyatb_prepare_request(nspin=True)
+
+
 @pytest.mark.parametrize("hr_paths_rel", [[], ["inputs/HR1.dat", "inputs/HR2.dat"]])
 def test_pyatb_band_prepare_nspin4_rejects_non_single_hr_cardinality(
     hr_paths_rel: list[str],

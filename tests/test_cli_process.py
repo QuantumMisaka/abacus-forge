@@ -494,6 +494,68 @@ def test_typed_pyatb_prepare_execute_collect_machine_parity(tmp_path: Path) -> N
     assert process_collect_manifest == direct_collect_manifest
 
 
+def test_typed_pyatb_nspin4_prepare_machine_api_parity_without_execution(tmp_path: Path) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    _write_typed_pyatb_fixture(api_root)
+    _write_typed_pyatb_fixture(cli_root)
+    request = PyatbBandPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174263",
+        workspace_rel="job",
+        structure_path_rel="source/STRU",
+        hr_paths_rel=("source/hr.csr",),
+        sr_path_rel="source/sr.csr",
+        rr_path_rel="source/rr.csr",
+        fermi_energy=1.25,
+        line_kpoints=(
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ),
+        nspin=4,
+    )
+
+    direct = PyatbBandServiceSet.default(workspace_root=api_root).prepare.prepare(request)
+    process = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert process.returncode == 0
+    assert process.stderr == ""
+    process_envelope = json.loads(process.stdout)["envelope"]
+    direct_envelope = direct.to_dict()["envelope"]
+    process_diagnostics = process_envelope["diagnostics"]
+    direct_diagnostics = direct_envelope["diagnostics"]
+    process_facts = {
+        "status": process_envelope["status"],
+        "artifacts": process_envelope["artifacts"],
+        "diagnostics": {
+            key: process_diagnostics[key]
+            for key in ("task", "unit", "engine", "pyatb_manifest", "artifact_refs")
+        },
+    }
+    direct_facts = {
+        "status": direct_envelope["status"],
+        "artifacts": direct_envelope["artifacts"],
+        "diagnostics": {
+            key: direct_diagnostics[key]
+            for key in ("task", "unit", "engine", "pyatb_manifest", "artifact_refs")
+        },
+    }
+    assert _normalize_operation_identity(
+        process_facts,
+        operation_id=request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_facts,
+        operation_id=request.operation_id,
+        workspace_root=api_root,
+    )
+
+
 def test_operation_parity_normalizer_preserves_non_path_strings(tmp_path: Path) -> None:
     root = tmp_path / "root"
     payload = {
