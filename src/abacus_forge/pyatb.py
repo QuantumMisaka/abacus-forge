@@ -670,6 +670,13 @@ def _typed_destination(root: Path, path_rel: str, role: str) -> Path:
         parent.relative_to(root)
     except (OSError, RuntimeError, ValueError) as error:
         raise ForgePathError(f"{role} destination escapes workspace: {normalized}") from error
+    for ancestor in candidate.parents:
+        if ancestor == root:
+            break
+        if ancestor.is_symlink():
+            raise ForgeRequestError(
+                f"{role} destination parent cannot be a symlink: {ancestor.name}"
+            )
     if candidate.parent.exists() and not candidate.parent.is_dir():
         raise ForgeRequestError(f"{role} destination parent is not a directory: {normalized}")
     try:
@@ -879,8 +886,12 @@ def _typed_output_artifact_id(path_rel: str) -> str:
 
 
 _TYPED_BAND_GAP_RE = re.compile(
-    r"Band\s+gap\b[^-+0-9]*(?P<value>[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
-    re.IGNORECASE,
+    r"^[ \t]*Band[ \t]+gap\b"
+    r"(?:[ \t]+is[ \t]+|[ \t]*(?:\([^:\r\n]*\)[ \t]*)?[:=][ \t]*|"
+    r"[ \t]+(?=[+-]?(?:\d|\.)))"
+    r"(?P<value>[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?)"
+    r"(?![0-9A-Za-z_.])[ \t]*(?:eV)?[ \t]*\r?$",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 _TYPED_BAND_SECTION_RE = re.compile(

@@ -240,6 +240,30 @@ def test_typed_prepare_link_alias_records_lexical_destination_without_replacing_
     assert os.readlink(alias) == original_target
 
 
+@pytest.mark.parametrize("handoff_mode", ("link", "copy"))
+def test_typed_prepare_rejects_directory_alias_without_partial_write(
+    tmp_path: Path, handoff_mode: str
+) -> None:
+    _sources(tmp_path)
+    (tmp_path / "matrix-store").mkdir()
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    (inputs / "pyatb_sources").symlink_to(Path("../matrix-store"), target_is_directory=True)
+
+    with pytest.raises(ForgeRequestError):
+        prepare_typed_pyatb_band(
+            tmp_path, _prepare_request(handoff_mode=handoff_mode)
+        )
+
+    staging_parent = inputs / "pyatb_sources"
+    assert staging_parent.is_symlink()
+    assert os.readlink(staging_parent) == "../matrix-store"
+    assert not (tmp_path / "matrix-store/hr.csr").exists()
+    assert not (tmp_path / "inputs/STRU").exists()
+    assert not (tmp_path / "inputs/Input").exists()
+    assert not (tmp_path / "inputs/KPT_band").exists()
+
+
 def test_typed_prepare_copy_rejects_exact_symlink_alias_without_mutation(tmp_path: Path) -> None:
     _sources(tmp_path)
     destination = tmp_path / "inputs/pyatb_sources"
@@ -437,6 +461,45 @@ def test_typed_collect_omits_ambiguous_spin_gap_without_total_section(tmp_path: 
         data=False,
         picture=False,
     )
+
+    result = collect_typed_pyatb_band(
+        tmp_path,
+        PyatbBandCollectRequest(operation_id=_id(), workspace_rel="."),
+    )
+
+    assert result.metrics == ()
+    assert result.diagnostics["malformed_output_paths_rel"] == (
+        "inputs/Out/Band_Structure/band_info.dat",
+    )
+
+
+def test_typed_collect_accepts_a_decimal_band_gap_without_leading_zero(tmp_path: Path) -> None:
+    _write_band_outputs(tmp_path, info="Band gap (eV): .25\n", data=False, picture=False)
+
+    result = collect_typed_pyatb_band(
+        tmp_path,
+        PyatbBandCollectRequest(operation_id=_id(), workspace_rel="."),
+    )
+
+    metric = next(metric for metric in result.metrics if metric.name == "band_gap")
+    assert metric.value == 0.25
+
+
+@pytest.mark.parametrize(
+    "info",
+    (
+        "Band gap (eV): nan\nEigenvalue of VBM (eV): 2.0000\n",
+        "Band gap (eV): nan 2.0000\n",
+        "Band gap (eV): Inf\nEigenvalue of VBM (eV): 2.0000\n",
+        "Band gap (eV):\nEigenvalue of VBM (eV): 2.0000\n",
+        "Band gap (eV): 1e\n",
+        "Band gap (eV): 1.2.3\n",
+    ),
+)
+def test_typed_collect_marks_nonfinite_empty_or_incomplete_band_gap_malformed(
+    tmp_path: Path, info: str
+) -> None:
+    _write_band_outputs(tmp_path, info=info, data=False, picture=False)
 
     result = collect_typed_pyatb_band(
         tmp_path,
