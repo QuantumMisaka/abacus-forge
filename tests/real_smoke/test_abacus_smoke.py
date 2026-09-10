@@ -52,7 +52,15 @@ def _assert_json_safe_finite(value: object) -> None:
 def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str) -> None:
     """Keep real-smoke collection facts attributable to the new execute call."""
     preexisting: list[str] = []
-    search_roots = [workspace, workspace / "inputs", workspace / "outputs"]
+    # These are the Forge-layout areas recursively inspected by collection.
+    # Keep the guard aligned with that visibility so a prior running log in
+    # reports/ cannot become the selected main log for a no-op executable.
+    search_roots = [
+        workspace,
+        workspace / "inputs",
+        workspace / "outputs",
+        workspace / "reports",
+    ]
     for root in search_roots:
         if not root.exists():
             continue
@@ -63,7 +71,8 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
             name = path.name
             relative_parts = path.relative_to(workspace).parts
             is_input_asset = bool(relative_parts and relative_parts[0] == "inputs")
-            generated = name == "out.log" and not is_input_asset
+            is_report_asset = bool(relative_parts and relative_parts[0] == "reports")
+            generated = name == "out.log" and not is_input_asset and not is_report_asset
             if capability == "md":
                 generated = generated or (
                     name in {"running_md.log", "MD_dump"} and not is_input_asset
@@ -72,8 +81,9 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
                 generated = generated or (name.startswith("running_") and name.endswith(".log"))
                 if capability in {"relax", "cell-relax"}:
                     generated = generated or (
-                        name in {"STRU_ION_D", "STRU_NOW.cif", "STRU.cif"}
+                        name in {"STRU_ION_D", "STRU_NOW.cif", "STRU.cif", "STRU"}
                         and not is_input_asset
+                        and not is_report_asset
                     )
             if generated:
                 preexisting.append(path.relative_to(workspace).as_posix())

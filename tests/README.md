@@ -86,12 +86,13 @@ threshold. `MD_dump` facts are collected as a separate factual projection.
 Missing MD-specific inputs skip, while supplied invalid paths or a non-MD
 workspace fail. The typed MD gate does not change legacy SCF/Relax smoke
 behavior. The supplied source must not already contain generated
-`running_md.log` or `MD_dump` files at the workspace root or under `outputs/`,
-so a no-op executable cannot pass by reusing an old MD result. Typed SCF and
-Relax use the same collector-aware guard for their running logs and fallback
-`out.log`; Relax also guards final-structure outputs. This is a real-smoke
-input condition only;
-normal Forge execute/collect behavior is unchanged.
+`running_md.log` or `MD_dump` files in collector-visible output areas, so a
+no-op executable cannot pass by reusing an old MD result. Typed SCF and Relax
+use the same collector-aware guard for their `running_*.log` files (including
+`reports/`) and fallback `out.log`; Relax also guards final-structure outputs
+outside `inputs/` and `reports/`. Explicit `inputs/OUT.*` handoff assets remain
+allowed. This is a real-smoke input condition only; normal Forge
+execute/collect behavior is unchanged.
 
 On this local checkout, where no external real workspace or executable is
 supplied, each focused typed selection skips and no real execution evidence is

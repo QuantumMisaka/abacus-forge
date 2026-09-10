@@ -23,6 +23,8 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 
 - `tests/real_smoke/test_abacus_smoke.py`: shared guard and calls from typed SCF,
   Relax/cell-relax, and MD tests.
+- `tests/test_real_smoke_freshness.py`: offline positive/negative coverage for
+  the guard's collector path and suffix boundaries.
 - `tests/real_smoke/README.md`, `tests/README.md`, `README.md`, `ROADMAP.md`:
   state that supplied real-smoke sources must be fresh with respect to
   generated domain outputs.
@@ -46,21 +48,25 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 **Files:** `tests/real_smoke/test_abacus_smoke.py`
 
 - [x] Write a helper that scans the copied workspace for generated files under
-  collector-visible root/input/output areas, with capability-specific names:
-  SCF/Relax running logs and fallback `out.log`; Relax final-structure
-  outputs; MD `running_md.log` and `MD_dump`.
+  collector-visible Forge areas (including `reports/` running logs), with
+  capability-specific names: SCF/Relax running logs and fallback `out.log`;
+  Relax final-structure outputs matching the collector suffix set; MD
+  `running_md.log` and `MD_dump`.
 - [x] Call the helper before each typed execute. Preserve the existing MD
   guard's behavior while moving it to the shared implementation.
 - [x] Verify `--run-real-smoke` with no variables still skips all four tests.
 
 ## Task 2: deterministic stale-output negatives
 
-**Files:** `tests/real_smoke/test_abacus_smoke.py`, optional temporary probe
+**Files:** `tests/real_smoke/test_abacus_smoke.py`,
+`tests/test_real_smoke_freshness.py`, optional temporary probe
 
-- [x] With `/bin/true` and a copied stale SCF source, verify the typed SCF
-  smoke fails before execution.
-- [x] With `/bin/true` and stale Relax log/final structure, verify the typed
-  Relax smoke fails before execution.
+- [x] With `/bin/true` and a copied stale SCF source (including a
+  `reports/running_scf.log` case), verify the typed SCF smoke fails before
+  execution.
+- [x] With `/bin/true` and stale Relax log/final structure (including the
+  ordinary `STRU` suffix), verify the typed Relax smoke fails before
+  execution.
 - [x] Keep the existing stale MD log negative and verify the shared guard also
   rejects stale MD dump output.
 
@@ -71,10 +77,25 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 - [x] Document the freshness requirement as an evidence-gate input condition,
   not a Forge runtime rule; keep `scientific=unassessed` and experimental
   maturity explicit.
-- [ ] Run typed real-smoke skip/fail-fast selections, all typed operation/API
+- [x] Run typed real-smoke skip/fail-fast selections, all typed operation/API
   owning suites, architecture, full offline, benchmark opt-in and diff checks.
 - [ ] Obtain an independent task/whole-branch review; fix all Critical and
   Important findings and record justified Minor findings.
+
+## Verification evidence
+
+- `--run-real-smoke -m real_smoke tests/real_smoke/test_abacus_smoke.py` with no
+  external variables: `4 skipped`.
+- Guard unit tests plus typed operation/API/architecture owning suites:
+  `660 passed`.
+- Full offline gate (`not real_smoke and not benchmark`): `1222 passed, 6
+  deselected`.
+- Benchmark opt-in: `2 passed, 1226 deselected`.
+- `/bin/true` fail-fast probes reject stale `reports/running_scf.log`, stale
+  `reports/running_relax.log` plus `outputs/OUT.ABACUS/STRU`, and stale MD
+  `outputs/OUT.ABACUS/MD_dump`; the offline guard positive test allows explicit
+  `inputs/OUT.*` handoff files and non-domain report files.
+- `git diff --check` passed before commit.
 
 ## Rulings
 
@@ -86,3 +107,7 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
   restart and artifact handoff assets may be legitimate prepared inputs and
   remain the caller's responsibility; the gate only prevents known collector
   outputs from being reused.
+- `Ruling: mirror collector suffix and path boundaries.` Relax freshness uses
+  the collector's complete final-structure suffix set while preserving
+  `inputs/` handoffs and `reports/` audit files as non-domain structure
+  candidates.
