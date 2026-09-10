@@ -50,7 +50,7 @@ def test_md_postprocess_round_trips_defaults_and_detaches_serialized_values() ->
     }
     assert MdPostprocessRequest.from_dict(json.loads(json.dumps(payload))) == request
 
-    payload["analysis"].append("msd")  # type: ignore[union-attr]
+    payload["analysis"].append("msd_diffusion")  # type: ignore[union-attr]
     payload["parameters"]["nested"] = {"values": [1]}  # type: ignore[index]
     assert request.analysis == ("rdf",)
     assert request.parameters == {}
@@ -63,12 +63,12 @@ def test_md_postprocess_round_trips_defaults_and_detaches_serialized_values() ->
 
 def test_md_postprocess_is_frozen_and_deeply_immutable() -> None:
     parameters = {"nested": {"values": [1]}}
-    analysis = ["rdf", "msd"]
+    analysis = ["rdf", "msd_diffusion"]
     request = _request(analysis=analysis, parameters=parameters)
     analysis.append("temperature")
     parameters["nested"]["values"].append(2)  # type: ignore[index]
 
-    assert request.analysis == ("rdf", "msd")
+    assert request.analysis == ("rdf", "msd_diffusion")
     assert request.parameters["nested"]["values"] == (1,)  # type: ignore[index]
     with pytest.raises(dataclasses.FrozenInstanceError):
         request.start = 1  # type: ignore[misc]
@@ -137,6 +137,10 @@ def test_md_postprocess_rejects_noncanonical_paths(field: str, value: object) ->
         ("analysis", [""]),
         ("analysis", ["rdf", 1]),
         ("analysis", "rdf"),
+        ("analysis", ["msd"]),
+        ("analysis", ["vacf"]),
+        ("analysis", ["bond"]),
+        ("analysis", ["invented"]),
         ("start", -1),
         ("start", True),
         ("start", 1.5),
@@ -161,6 +165,12 @@ def test_md_postprocess_rejects_invalid_analysis_and_sampling(field: str, value:
     "field,value",
     [
         ("parameters", []),
+        ("parameters", ("not", "a", "mapping")),
+        ("parameters", {"nested": {1: "non-string key"}}),
+        ("parameters", {"nested": (1, 2)}),
+        ("parameters", {"nested": {"set": {1, 2}}}),
+        ("parameters", {"nested": {"object": object()}}),
+        ("parameters", {"nested": {"infinity": float("inf")}}),
         ("parameters", "not-an-object"),
         ("parameters", None),
         ("parameters", {"value": object()}),
@@ -192,6 +202,9 @@ def test_md_postprocess_schema_matches_dataclass_and_wire_keys() -> None:
         "analysis",
     }
     assert schema["properties"]["analysis"]["uniqueItems"] is True
+    assert schema["properties"]["analysis"]["items"]["enum"] == [
+        "rdf", "msd_diffusion", "vacf_vdos", "bond_length", "bond_angle",
+    ]
     assert schema["properties"]["output_dir_rel"]["default"] == "outputs/md-postprocess"
     assert schema["properties"]["start"]["minimum"] == 0
     assert schema["properties"]["stride"]["minimum"] == 1

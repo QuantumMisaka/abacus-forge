@@ -24,7 +24,7 @@ from abacus_forge.md_contracts import (
     MdModifyRequest,
     MdPrepareRequest,
 )
-from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
+from abacus_forge.md_postprocess_contracts import MD_ANALYSIS_MODES, MdPostprocessRequest
 from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
@@ -358,7 +358,7 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 },
                 "analysis": {
                     "type": "array", "minItems": 1, "uniqueItems": True,
-                    "items": {"type": "string", "minLength": 1},
+                    "items": {"type": "string", "enum": list(MD_ANALYSIS_MODES)},
                 },
                 "output_dir_rel": {
                     "type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal
@@ -12,7 +13,6 @@ from abacus_forge.contracts import (
     OperationRef,
     _construct_strict,
     _freeze_json,
-    _json_round_trip,
     _mapping_payload,
     _require_schema_version,
     _thaw_json,
@@ -21,6 +21,13 @@ from abacus_forge.contracts import (
 
 
 _POSTPROCESS_OPERATION = "postprocess"
+MD_ANALYSIS_MODES = (
+    "rdf",
+    "msd_diffusion",
+    "vacf_vdos",
+    "bond_length",
+    "bond_angle",
+)
 
 
 def _canonical_file_path(value: object, field_name: str) -> str:
@@ -50,6 +57,8 @@ def _analysis_values(value: object) -> tuple[str, ...]:
     values = tuple(value)
     if not values or any(not isinstance(item, str) or not item for item in values):
         raise ValueError("analysis must be a non-empty sequence of unique strings")
+    if any(item not in MD_ANALYSIS_MODES for item in values):
+        raise ValueError("analysis must contain only canonical MD analysis modes")
     if len(set(values)) != len(values):
         raise ValueError("analysis must contain unique strings")
     return values
@@ -71,6 +80,22 @@ def _optional_positive_integer(value: object, field_name: str) -> int | None:
     return _sampling_integer(value, field_name, minimum=1)
 
 
+def _json_value(value: object) -> JSONValue:
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("parameters must contain only finite JSON numbers")
+        return value
+    if isinstance(value, list):
+        return [_json_value(item) for item in value]
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise ValueError("parameters object keys must be strings")
+        return {key: _json_value(item) for key, item in value.items()}
+    raise ValueError("parameters must contain only JSON-safe values")
+
+
 def _parameters(value: object) -> Mapping[str, JSONValue]:
     if not isinstance(value, Mapping):
         raise ValueError("parameters must be a JSON-safe object")
@@ -78,10 +103,8 @@ def _parameters(value: object) -> Mapping[str, JSONValue]:
         source = dict(value)
     except (TypeError, ValueError) as error:
         raise ValueError("parameters must be a JSON-safe object") from error
-    if not all(isinstance(key, str) for key in source):
-        raise ValueError("parameters keys must be strings")
     try:
-        normalized = _json_round_trip(source)
+        normalized = _json_value(source)
     except ValueError as error:
         raise ValueError("parameters must be a JSON-safe object") from error
     if not isinstance(normalized, dict):
@@ -155,4 +178,4 @@ class MdPostprocessRequest(OperationRef):
         return _construct_strict(cls, values, record_name)
 
 
-__all__ = ["MdPostprocessRequest"]
+__all__ = ["MD_ANALYSIS_MODES", "MdPostprocessRequest"]
