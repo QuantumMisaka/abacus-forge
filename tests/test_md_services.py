@@ -159,6 +159,38 @@ def test_md_collect_malformed_native_block_is_partial(tmp_path: Path) -> None:
     assert result.envelope.status.collection == "partial"
 
 
+def test_md_collect_without_pressure_column_is_complete(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md")
+    (workspace.outputs_dir / "OUT.ABACUS" / "running_md.log").write_text(
+        "Energy (Ry) Potential (Ry) Kinetic (Ry)\n-1 -1 0\n"
+        "Temperature (K)\n300\n!FINAL_ETOT_IS -13.605698 eV\n",
+        encoding="utf-8",
+    )
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "116")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"
+    assert any(metric.name == "md_last_temperature" and metric.value == 300 for metric in result.envelope.metrics)
+    assert not any(metric.name == "md_last_pressure" for metric in result.envelope.metrics)
+
+
+def test_md_collect_declared_non_numeric_pressure_is_partial(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md")
+    (workspace.outputs_dir / "OUT.ABACUS" / "running_md.log").write_text(
+        "Energy (Ry) Potential (Ry) Kinetic (Ry)\n-1 -1 0\n"
+        "Temperature (K) Pressure (kbar)\n300 not-a-number\n",
+        encoding="utf-8",
+    )
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "117")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "partial"
+
+
 def test_md_collect_without_any_domain_output_is_missing(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "md")
     workspace.ensure_layout()
