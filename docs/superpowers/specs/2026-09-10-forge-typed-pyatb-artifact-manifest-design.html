@@ -77,7 +77,7 @@
         <tbody>
           <tr><td>M1</td><td>成功的 typed <code>prepare</code>/<code>collect</code> diagnostics 必须包含 <code>pyatb_manifest</code>；其 <code>schema_version</code> 固定为 <code>forge.pyatb-manifest/v1</code>，并包含 <code>inputs</code>、<code>outputs</code>、<code>missing</code> 三个数组。失败 envelope 不伪造 manifest。</td><td>typed API 与 machine CLI 对同一 fixture 的 manifest 可 JSON round-trip；旧 envelope 字段和 legacy 输出不变。</td></tr>
           <tr><td>M2</td><td>输入 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>artifact_id</code>、<code>sha256</code>（目标文件哈希）；来自显式 handoff 的 entry 还记录 <code>source_path_rel</code>、<code>handoff_mode</code>、<code>source_sha256</code>。</td><td>prepare 的 STRU、HR、SR、rR、Input、KPT_band 均能映射，artifact id 能在同一 envelope 的 artifacts 中找到。</td></tr>
-          <tr><td>M3</td><td>输出 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>media_type</code>、<code>artifact_id</code>、<code>sha256</code> 和 <code>size_bytes</code>；缺失、越界或 malformed 文件只进入 <code>missing</code>，不伪造 artifact。</td><td>collect 覆盖 band_info、band data、PNG/PDF、<code>Out/input.json</code> 及未知显式路径；partial/missing 状态与现有 diagnostics 保持一致。</td></tr>
+          <tr><td>M3</td><td>输出 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>media_type</code>、<code>artifact_id</code>、<code>sha256</code> 和 <code>size_bytes</code>。不存在、越界或不可访问的路径进入 <code>missing</code> 并带 reason；存在但 parser malformed 的真实文件仍可作为 output artifact，解析不完整继续由既有 diagnostics 表达，不伪造不存在的 artifact。</td><td>collect 覆盖 band_info、band data、PNG/PDF、<code>Out/input.json</code> 及未知显式路径；partial/missing 状态与现有 diagnostics 保持一致。</td></tr>
           <tr><td>M4</td><td>kind 只使用有限的 PyATB 语义集合：<code>structure</code>、<code>matrix_hr</code>、<code>matrix_sr</code>、<code>matrix_rr</code>、<code>pyatb_input</code>、<code>kpoint_path</code>、<code>band_info</code>、<code>band_data</code>、<code>band_plot</code>、<code>run_input</code>、<code>other</code>。spin 只可为 <code>up</code>、<code>down</code>、<code>shared</code>、<code>total</code>、<code>unknown</code>。</td><td>映射表和未知/歧义文件测试钉死；不根据文件内容或科学常识猜测 spin。</td></tr>
           <tr><td>M5</td><td>artifact id 是当前 envelope 内的本地 id，不是跨 operation 的 <code>ArtifactRef</code>；manifest 不引入 operation/task/调度关系。</td><td>prepare 与 collect 各自独立产生 manifest；execute 不读取或修改先前 manifest/event，也不把上游结果隐式拼入自身 envelope。</td></tr>
           <tr><td>M6</td><td>所有 manifest 路径遵守现有 workspace-relative containment；manifest 生成失败沿用现有 persistence/internal error 映射。</td><td>路径越界、外部 symlink、文件消失、哈希读取失败和事件持久化失败均有回归，且不改变既有 exit class。</td></tr>
@@ -131,7 +131,7 @@
       <h2>错误处理</h2>
       <ul>
         <li>manifest 是对已有结果的投影；路径、请求、文件读取和持久化继续使用现有 <code>request.invalid</code>、<code>request.path</code>、<code>precondition.missing</code>、<code>persistence.failure</code>、<code>internal.failure</code> 映射。</li>
-        <li>缺失、外部 resolved symlink、非普通文件、哈希读取失败和 parser malformed 不创建伪造 entry；它们进入 <code>missing</code> 并保留现有 collection diagnostics/status。</li>
+        <li>缺失、外部 resolved symlink、非普通文件和哈希读取失败不创建伪造 entry，进入 <code>missing</code>；存在但 parser malformed 的文件保留真实 output artifact，并保留现有 collection diagnostics/status。</li>
         <li>manifest 不改变 <code>execution</code>、<code>collection</code>、<code>scientific</code> 或 process exit；尤其不把 band gap、文件齐全或 plot 存在转成接受结论。</li>
         <li>artifact id 不存在、manifest 与 envelope 不一致或 manifest 序列化失败属于内部/持久化问题，由既有 service persistence gate 报告；不自动重试、不回收 admission。</li>
       </ul>
