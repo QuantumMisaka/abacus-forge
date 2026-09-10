@@ -57,6 +57,8 @@ class CubeData:
             raise ValueError("cube data must contain finite values")
         if len(self.atom_lines) < abs(self.natoms):
             raise ValueError("cube atom records are incomplete")
+        for line in self.atom_lines:
+            _validate_atom_line(line)
         object.__setattr__(self, "origin", [float(value) for value in origin])
         object.__setattr__(self, "grid", normalized_grid)
         object.__setattr__(self, "data", data)
@@ -203,3 +205,19 @@ def _integer_token(value: str, label: str) -> int:
     if label == "cube grid count" and integer == 0:
         raise ValueError("cube grid counts must be non-zero integers")
     return integer
+
+
+def _validate_atom_line(line: object) -> None:
+    if not isinstance(line, str):
+        raise ValueError("cube atom records must be text")
+    parts = line.split()
+    if len(parts) < 5:
+        raise ValueError("cube atom record requires atomic number, charge, and three coordinates")
+    _integer_token(parts[0], "cube atom number")
+    for label, token in zip(("charge", "x", "y", "z"), parts[1:5], strict=True):
+        try:
+            converted = float(token)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"cube atom {label} must be a finite number") from error
+        if not math.isfinite(converted):
+            raise ValueError(f"cube atom {label} must be a finite number")

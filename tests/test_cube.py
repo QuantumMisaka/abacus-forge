@@ -15,6 +15,7 @@ def _cube(
     natoms: int = 1,
     first_count: int = 1,
     value: str = "1.0",
+    atom_line: str = "1 0.0 0.0 0.0 0.0",
 ) -> Path:
     path.write_text(
         "\n".join(
@@ -25,7 +26,7 @@ def _cube(
                 f"{first_count} 1.0 0.0 0.0",
                 "1 0.0 1.0 0.0",
                 "1 0.0 0.0 1.0",
-                "1 0.0 0.0 0.0 0.0",
+                atom_line,
                 value,
             ]
         )
@@ -78,3 +79,16 @@ def test_cube_value_rejects_unsupported_orbital_datasets():
             atom_lines=["1 0.0 0.0 0.0 0.0"],
             data=np.zeros((1, 1, 1)),
         )
+
+
+@pytest.mark.parametrize(
+    "atom_line",
+    [
+        "1 0.0 0.0 0.0",
+        "not-an-integer 0.0 0.0 0.0 0.0",
+        "1 nan 0.0 0.0 0.0",
+    ],
+)
+def test_cube_reader_rejects_malformed_atom_records(tmp_path: Path, atom_line: str):
+    with pytest.raises(ValueError, match="atom"):
+        CubeData.from_file(_cube(tmp_path / "malformed.cube", atom_line=atom_line))
