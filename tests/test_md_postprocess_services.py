@@ -172,3 +172,23 @@ def test_malformed_trajectory_is_precondition_after_admission(tmp_path: Path):
     assert result.error_class == "precondition.missing"
     assert (root / "reports/claims" / "123e4567-e89b-42d3-a456-426614174711.json").is_file()
     assert not (root / "reports/events").exists()
+
+
+def test_rdf_service_tracks_each_declared_pair_as_output(tmp_path: Path):
+    root = tmp_path / "job"
+    (root / "inputs").mkdir(parents=True)
+    (root / "inputs/traj.xyz").write_text(
+        '3\nLattice="4 0 0 0 4 0 0 0 4" Properties=species:S:1:pos:R:3 pbc="T T T"\n'
+        "H 0 0 0\nO 1 0 0\nC 1.2 0 0\n",
+        encoding="utf-8",
+    )
+    request = _request(712, analysis=("rdf",), parameters={"elements": ["H-O", "H-C"], "rmax": 1.5, "nbins": 3, "save_plot": False})
+
+    result = MdPostprocessServiceSet.default(workspace_root=tmp_path).postprocess.postprocess(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"
+    paths = {artifact.path_rel for artifact in result.envelope.artifacts}
+    assert "outputs/md-postprocess/rdf_H_O.txt" in paths
+    assert "outputs/md-postprocess/rdf_H_C.txt" in paths
+    assert "outputs/md-postprocess/analysis.json" in paths
