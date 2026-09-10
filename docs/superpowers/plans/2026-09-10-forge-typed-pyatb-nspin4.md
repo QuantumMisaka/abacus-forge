@@ -28,7 +28,7 @@
 
 ## Task 1: Add RED tests for nspin/cardinality and discovery
 
-**Files:** `tests/test_contracts.py`, `tests/test_machine_cli.py`, `tests/test_pyatb_typed.py`（只新增测试，不修改生产代码）。
+**Files:** `tests/test_contracts.py`, `tests/test_machine_cli.py`, `tests/test_cli_process.py`, `tests/test_pyatb_typed.py`（只新增测试，不修改生产代码）。
 
 **Behavior:**
 
