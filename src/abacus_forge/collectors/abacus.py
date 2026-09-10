@@ -165,6 +165,11 @@ def collect_abacus_metrics(
             diagnostics["time_json"] = str(time_path)
             if payload.get("total") is not None:
                 metric_origins["total_time"] = str(time_path)
+            else:
+                # The JSON artifact still follows the legacy assignment
+                # behavior, but it did not provide a metric value.  Do not
+                # leave an earlier output-log provenance attached to None.
+                metric_origins.pop("total_time", None)
         except Exception:
             diagnostics["time_json_error"] = str(time_path)
             diagnostics["warnings"].append("Failed to parse time.json.")

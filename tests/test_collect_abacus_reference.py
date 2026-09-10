@@ -117,6 +117,25 @@ def test_collect_sidecar_tracks_output_fallback_and_time_json_override(tmp_path:
     assert result.diagnostics["time_json"] == str(workspace.outputs_dir / "time.json")
 
 
+@pytest.mark.parametrize("payload", [{"total": None}, {}])
+def test_collect_time_json_without_total_drops_stale_output_provenance(
+    tmp_path: Path, payload: dict[str, object]
+) -> None:
+    workspace = Workspace(tmp_path / "invalid-time").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/out.log", "total 12.5\n")
+    workspace.write_json("outputs/time.json", payload)
+
+    result = collect(workspace)
+
+    assert result.metrics["total_time"] is None
+    assert "total_time" not in result.metric_origins
+    envelope = collection_envelope(result, "invalid-time")
+    metric = next(item for item in envelope.metrics if item.name == "total_time")
+    assert metric.source_artifact_id is None
+    assert metric.unit is None
+
+
 def test_typed_scf_projection_reports_repository_native_final_energy(tmp_path: Path) -> None:
     workspace = copy_abacustest_scf_workspace(tmp_path / "typed-native-final-energy")
     request = ScfCollectRequest(
@@ -231,6 +250,27 @@ def test_typed_collection_omits_source_id_for_external_origin(tmp_path: Path) ->
     )
 
     envelope = collection_envelope(result, "typed-external-origin")
+
+    metric = next(item for item in envelope.metrics if item.name == "total_energy")
+    assert metric.source_artifact_id is None
+    assert not envelope.artifacts
+
+
+def test_typed_collection_omits_source_id_for_escaped_origin(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "typed-escaped-origin").ensure_layout()
+    outside = tmp_path / "outside.log"
+    outside.write_text("TOTAL ENERGY = -1.0\n", encoding="utf-8")
+    escaped = workspace.outputs_dir / "alias.log"
+    escaped.symlink_to(outside)
+    result = CollectionResult(
+        workspace.root,
+        "completed",
+        metrics={"total_energy": -1.0},
+        artifacts={"outputs/alias.log": str(escaped)},
+        metric_origins={"total_energy": str(escaped)},
+    )
+
+    envelope = collection_envelope(result, "typed-escaped-origin")
 
     metric = next(item for item in envelope.metrics if item.name == "total_energy")
     assert metric.source_artifact_id is None

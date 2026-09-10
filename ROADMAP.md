@@ -10,6 +10,7 @@
 - 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
+- typed collection projection 已补齐语法确认的标量单位、`reported`/`derived`/`runtime` kind 和 workspace-contained `source_artifact_id`；不确定的单位/来源保持为空，legacy collection 元数据不变。
 - 2026-09-10 已补齐原生 ABACUS collection fidelity：SCF 识别 `!FINAL_ETOT_IS`（eV）；typed MD 从唯一 contained `running_md.log` 收集原生热力学事实（Ry→eV、K、可选 kbar），`MD_dump` 仅作为帧/步数与工件事实；legacy synthetic dump 兼容路径保持不变。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
@@ -29,6 +30,7 @@
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 - 可选 typed SCF machine-path 与 typed Relax real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；两者使用各自的环境门禁，未提供真实输入时不产生 release evidence。legacy SCF smoke 不能替代 typed SCF 证据。
+- typed SCF real-smoke 在首次 execute 前校验输入 calculation profile，typed Relax execute/collect 使用长 parent-process 超时；这些都是 release-gate 检查，不改变生产 service 的兼容行为。
 - typed prepare 已支持显式 `pseudo_sources` / `orbital_sources` 资产映射：默认 copy，contained-only relative link，缺失与冲突 fail-closed，并在 typed diagnostics、manifest 和事件中记录来源/目标及哈希 provenance；未映射 STRU 引用保留且不声明完整。
 
 ## 近期方向

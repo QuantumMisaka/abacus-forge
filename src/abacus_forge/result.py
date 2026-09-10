@@ -101,8 +101,8 @@ class CollectionResult:
     # Parser provenance is an internal bridge to the typed collection
     # projection.  These trailing fields intentionally do not participate in
     # either legacy serialization surface below.
-    metric_origins: dict[str, str] = field(default_factory=dict, repr=False)
-    derived_metrics: set[str] = field(default_factory=set, repr=False)
+    metric_origins: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
+    derived_metrics: set[str] = field(default_factory=set, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         return {

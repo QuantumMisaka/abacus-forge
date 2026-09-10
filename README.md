@@ -54,6 +54,7 @@ Forge 的 Angstrom 单位扩展仍可读取。支持 `Direct`、`Cartesian`、
 - `export(...)` / `abacus-forge export`
 - 已支持基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引收集
 - 原生 ABACUS SCF 的 `!FINAL_ETOT_IS ... eV` 会作为 `total_energy` 事实收集；typed MD 从 contained `running_md.log` 收集原生 Energy/Potential/Kinetic（Ry 转 eV）、Temperature（K）及可用 Pressure（kbar），`MD_dump` 只提供轨迹帧/步数与工件事实
+- Typed `collect` 的标量 `MetricRecord` 会在语法和来源已确认时附带单位、`reported`/`derived`/`runtime` kind，以及指向 workspace 内工件的 `source_artifact_id`；无法确认的单位或来源保持为空。这个增强只作用于 typed collection projection，legacy `collect()`、`CollectionResult.to_dict()` 和 `to_envelope()` 的既有元数据保持兼容，也不把事实转成科学接受结论。
 - `LocalRunner` 的 `executable`/`launcher` 带目录相对路径，以及 `PATH` 中的相对或空分量，均按调用进程的 cwd 解析；实际进程仍以 workspace 的 `inputs/` 为 cwd 启动，但使用同一解析结果。公开的 `command` 字段（包括 typed `forge-result`）保留调用方传入的原始请求字符串。
 
 ### Typed operation service boundary
@@ -757,8 +758,10 @@ Relax discovery 和 schema 当前保持 `experimental`；只有 mock/fixture 与
 machine/API parity 已验证。可选的 `real_smoke` 会在复制的用户准备 workspace 上验证
 execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；其中 typed SCF
 machine-path smoke 与 typed Relax smoke 都通过 machine CLI，legacy SCF API smoke 不能替代
-前者。没有真实证据时不应提升 maturity。`collect` 的 `scientific` 始终为 `unassessed`，
-缺少输出或解析不完整只反映 collection 状态。
+前者。没有真实证据时不应提升 maturity。typed SCF smoke 还会在首次执行前确认复制 workspace 的
+`inputs/INPUT` 声明 `calculation=scf`；typed Relax 的执行和收集使用同一长 parent-process
+超时预算。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析不完整只反映
+collection 状态。
 
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
 `postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact

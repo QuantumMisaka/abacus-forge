@@ -43,9 +43,11 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   tests/real_smoke/test_abacus_smoke.py -k typed_scf
 ```
 
-The typed Relax smoke is also opt-in and uses only the machine CLI. It copies
-a prepared workspace before running one `execute` and one `collect` request
-with different operation IDs. Set the shared executable and the
+The typed SCF and Relax smokes are opt-in and use only the machine CLI. The
+typed SCF gate checks the copied `inputs/INPUT` declares `calculation=scf` before
+the first execute call. The typed Relax gate copies a prepared workspace before
+running one `execute` and one `collect` request with different operation IDs;
+both calls use the long parent-process timeout. Set the shared executable and the
 Relax-specific workspace; `ABACUS_FORGE_RELAX_SMOKE_CAPABILITY` defaults to
 `relax` and accepts only `relax` or `cell-relax`:
 
