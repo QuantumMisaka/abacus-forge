@@ -88,8 +88,9 @@ workspace fail. The typed MD gate does not change legacy SCF/Relax smoke
 behavior. The supplied source must not already contain generated
 `running_md.log` or `MD_dump` files at the workspace root or under `outputs/`,
 so a no-op executable cannot pass by reusing an old MD result. Typed SCF and
-Relax use the same collector-aware guard for their running/fallback logs and,
-for Relax, final-structure outputs. This is a real-smoke input condition only;
+Relax use the same collector-aware guard for their running logs and fallback
+`out.log`; Relax also guards final-structure outputs. This is a real-smoke
+input condition only;
 normal Forge execute/collect behavior is unchanged.
 
 On this local checkout, where no external real workspace or executable is
