@@ -134,6 +134,7 @@ def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
             "services", "atst_neb", "preparation", "collection",
             "service_support", "compatibility_records", "modify",
             "collection_results", "relax_results",
+            "md_postprocess", "md_postprocess_services",
             "export_contracts", "export_io", "export_services",
         )
     }
