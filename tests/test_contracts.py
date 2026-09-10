@@ -525,7 +525,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
     ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]

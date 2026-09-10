@@ -42,6 +42,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
 )
+from abacus_forge.export_contracts import ExportRequest
 from abacus_forge.postprocess_services import PostprocessServiceSet
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.pyatb_services import PyatbBandServiceSet
@@ -85,6 +86,7 @@ _PYATB_BAND_DECODERS = {
     "execute": PyatbBandExecuteRequest.from_dict,
     "collect": PyatbBandCollectRequest.from_dict,
 }
+_EXPORT_DECODERS = {"export": ExportRequest.from_dict}
 _CAPABILITY_DECODERS = {
     "scf": _SCF_DECODERS,
     "relax": _RELAX_DECODERS,
@@ -93,6 +95,7 @@ _CAPABILITY_DECODERS = {
     "md": _MD_DECODERS,
     **_POSTPROCESS_DECODERS,
     "pyatb-band": _PYATB_BAND_DECODERS,
+    "export": _EXPORT_DECODERS,
 }
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,

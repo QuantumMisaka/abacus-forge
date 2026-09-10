@@ -195,7 +195,7 @@ def test_machine_discovery_advertises_experimental_capabilities() -> None:
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
     ]
     for capability in payload["capabilities"][:3]:
         assert capability["maturity"] == "experimental"

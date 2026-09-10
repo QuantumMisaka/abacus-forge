@@ -202,7 +202,7 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
 def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
     assert [descriptor["name"] for descriptor in descriptors] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
     ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"
@@ -217,7 +217,7 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[4]["engine"] == "abacus"
     assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect"]
     assert descriptors[4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
-    assert descriptors[5:] == [
+    assert descriptors[5:-1] == [
         {
             "schema_version": "forge.capability/v1",
             "name": "band",
@@ -253,6 +253,16 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
             "optional_dependencies": ["pyatb"],
         },
     ]
+    assert descriptors[-1] == {
+        "schema_version": "forge.capability/v1",
+        "name": "export",
+        "maturity": "experimental",
+        "engine": "forge",
+        "operations": ["export"],
+        "inputs": {"export": ["source_artifact_refs"]},
+        "artifact_roles": ["output"],
+        "optional_dependencies": [],
+    }
 
 
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
