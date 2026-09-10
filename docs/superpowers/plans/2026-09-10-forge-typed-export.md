@@ -281,3 +281,10 @@ is represented by commits `8e2591b`, `dc6032f`, `52a16d8`, `bda4597`,
 closes the marker and architecture-gate hygiene findings from the Task 3
 review. Task 4 documents the shipped experimental capability and records the
 final offline verification. No merge or push is part of this plan.
+
+The final containment/reconciliation review added commits `b8c4c44` and
+`aa800f4`; `4efcf6e` strengthens the external-event regression with an
+FD/inode-aware assertion. The whole-branch re-review approved the exact
+`aa800f4..4efcf6e` closure with no remaining findings. The final offline gate
+is `1034 passed, 3 skipped`; these tests are contract and filesystem tests
+only, not real ABACUS execution or scientific validation.

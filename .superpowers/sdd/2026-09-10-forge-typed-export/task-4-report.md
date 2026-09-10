@@ -7,8 +7,8 @@ approved typed-export plan. The capability remains `experimental` and is not
 presented as real ABACUS/PyATB or scientific-validation evidence.
 
 The documentation was checked against the approved typed-export SPEC, the
-2026-09-01/09-02 Forge contract/status SPECs, and the implementation at
-`ac74d55`. It records the explicit source `ArtifactRef` boundary, the
+2026-09-01/09-02 Forge contract/status SPECs, and the implementation through
+`4efcf6e`. It records the explicit source `ArtifactRef` boundary, the
 `forge.export/v1` JSON document, the shared API/machine service, legacy
 compatibility, and the caller-owned science/orchestration/scheduling boundary.
 
@@ -85,7 +85,7 @@ clean for `ac74d55`. The collection outputs above only establish discovery
 counts; they do not claim that the collected tests ran in this Task 4 gate.
 The final documentation work also passes `git diff --check` below.
 
-### Full offline suite
+### Full offline suite (initial Task 4 documentation gate)
 
 ```text
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider
@@ -105,6 +105,42 @@ git diff --check
 
 Exit code was `0` with no output.
 
+### Whole-branch containment closure
+
+The independent whole-branch review found two load-bearing boundary defects:
+component-prefix path protection was incomplete, and manifest reconciliation
+could follow an unrelated external event symlink. Commit `b8c4c44` fixes both
+by using component-aware overlap checks and directory-FD/`O_NOFOLLOW`
+reconciliation reads. Commit `aa800f4` restores legacy reconciliation through
+a symlink alias for the declared workspace root while retaining no-follow
+protection for descendants, and moves the external-event fixture outside the
+workspace. Commit `4efcf6e` makes the regression assert that the external
+file's device/inode is never opened through the FD read path.
+
+The final focused compatibility gate was:
+
+```text
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider tests/test_export_io.py tests/test_export_services.py tests/test_workspace.py tests/test_api.py tests/test_cli.py tests/test_cli_process.py tests/test_machine_cli.py
+```
+
+```text
+271 passed in 49.25s
+```
+
+The final full offline gate was rerun after `4efcf6e`:
+
+```text
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q -p no:cacheprovider
+```
+
+```text
+1034 passed, 3 skipped in 90.11s (0:01:30)
+```
+
+Both commands exited `0`; `git diff --check` also exited `0` with no output.
+The three skips remain opt-in real-smoke or benchmark cases, and no external
+ABACUS/PyATB process or scientific acceptance claim is included.
+
 ## Review status
 
 - Task 1 contract review: APPROVED after strict outcome and artifact-ref
@@ -114,8 +150,10 @@ Exit code was `0` with no output.
 - Task 3 service review: APPROVED; the marker and AST dependency-root minors
   were addressed by `ac74d55`, with scoped re-review APPROVED and no new
   Critical/Important findings.
-- Whole-branch review remains a final parent-agent gate over the exact typed
-  export diff; this report does not substitute for that review.
+- Whole-branch review of `7c0dab4..06a594e` requested changes for the two
+  containment defects. The fix/review sequence `b8c4c44` → `aa800f4` →
+  `4efcf6e` was independently re-reviewed; the final review approved
+  `aa800f4..4efcf6e` with no remaining Critical, Important or Minor findings.
 
 No merge, push, scheduler integration, workflow orchestration, retry/resume,
 or scientific validation was performed by this plan.
