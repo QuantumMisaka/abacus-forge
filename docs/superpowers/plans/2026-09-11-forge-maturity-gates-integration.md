@@ -41,8 +41,13 @@ fail-closed、真实绘图产物状态和 reported metric；freshness 只在
 - Explicit real-smoke selection without supplied inputs: `4 skipped`.
 - Benchmark opt-in: `2 passed, 1261 deselected`.
 - Source package gate: `abacus_forge-0.1.0-py3-none-any.whl` built with `--no-deps`
-  (SHA-256 `197af0387389c5f4efc6796804e4c8e3f2370bae7aa6fc5b8bfdb9346d7e1805`).
-- `git diff --check` must pass; real execution and scientific acceptance remain unavailable
+  (candidate rebuild SHA-256 `818a2a1f75240e2ac8787b07138e7ef2fd9817aeac42716b9902ed425e9f3ee2`).
+- Latest-candidate clean-environment gate: installed that wheel and its declared dependencies
+  into a fresh Python 3.13 venv; `import abacus_forge`, the console entry point,
+  `capabilities` (all nine advertised names), and `schema md postprocess` succeeded. The
+  venv also confirmed `abacus_agent_tools`, `abacustest`, `aiida`, and `atst_tools` were
+  absent. This validates packaging/import boundaries, not real ABACUS execution or science.
+- `git diff --check` passes; real execution and scientific acceptance remain unavailable
   unless a caller supplies an external environment.
 
 ## Acceptance
