@@ -110,7 +110,7 @@
 
 - [x] Update docs concisely after code behavior is fixed; do not claim real PyATB evidence.
 - [x] Run the full offline suite and diff/discovery/import gates; retain raw output in the ledger.
-- [ ] Obtain final review, close findings, and record exact commits/evidence.
+- [x] Obtain final review, close findings, and record exact commits/evidence.
 
 Task-local verification note: the architecture gate's capability-list assertion
 was updated to include the already implemented `pyatb-band` descriptor and its
