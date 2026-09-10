@@ -54,12 +54,12 @@
 
 ## Completion evidence (2026-09-11)
 
-- Implementation range: `da1d4df..4e642c5`; review-fix commits are `b052649` (request validation and reported diffusion metric), `2aeec15` (mass/MIC/plot hardening), `a55b5b2` (Babai-localized MIC translation invariance), `36e14a6` (README and historical-plan alignment), and `4e642c5` (preserve pre-fix historical evidence).
+- Implementation/documentation range: `da1d4df..07cf8f8`; review-fix commits are `b052649` (request validation and reported diffusion metric), `2aeec15` (mass/MIC/plot hardening), `a55b5b2` (Babai-localized MIC translation invariance), `36e14a6` (README and historical-plan alignment), and `4e642c5` (preserve pre-fix historical evidence). The final `07cf8f8` change only corrects the skip composition in this evidence ledger.
 - Focused contract/algorithm/service/machine/architecture gate: `174 passed in 62.46s`.
 - Full offline gate: `1252 passed, 5 skipped in 110.58s`; the skips are three opt-in real-smoke cases and two opt-in benchmark cases, none of which is scientific acceptance evidence.
 - Opt-in benchmark gate: `2 passed, 1255 deselected in 2.71s` with `--run-benchmark -m benchmark`.
 - Package-owner evidence: contract/service owner `179 passed`; algorithm owner `102 passed` after the MIC follow-up; both workers reported clean `git diff --check`.
-- Whole-branch review of `da1d4df..36e14a6`: no Critical/Important findings. The only Minor (historical evidence attribution) was fixed in `4e642c5`; reviewer independently checked the former MIC counterexample plus 45 random full/partial-PBC finite-enumeration cases and large lattice translations.
+- Whole-branch review of `da1d4df..5133981`: no Critical/Important findings. The only Minor (historical evidence attribution) was fixed in `4e642c5`; reviewer independently checked the former MIC counterexample plus 45 random full/partial-PBC finite-enumeration cases and large lattice translations. The later `07cf8f8` edit is evidence-only and was explicitly confirmed non-blocking by the reviewer.
 - The approved MD SPEC now records sampled-frame `timestep`, fail-closed unknown symbols, truthful plot omission/partial collection, and the input/provenance/output artifact mapping. No new workflow, scheduler, scientific-validation, or dependency boundary was added.
 - Formal integration (`forge-mainline-integration` at `da1d4df`), `main`, freshness candidate, and remote remain untouched. No real ABACUS/PyATB execution was available or claimed.
 
