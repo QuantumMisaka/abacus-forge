@@ -13,6 +13,7 @@ from abacus_forge.service_support import (
     ServiceContext, _with_workspace, _prepare_artifacts, _input_snapshot,
 )
 from abacus_forge import collection_results
+from abacus_forge import md_results
 from abacus_forge.contracts import (
     ArtifactRecord,
     ForgeErrorEnvelope,
@@ -402,6 +403,9 @@ class _CollectService:
                 if isinstance(typed_request, RelaxCollectRequest):
                     envelope = collection_envelope(result, typed_request.workspace_rel)
                     extra_observations = collection_observations(result)
+                elif isinstance(typed_request, MdCollectRequest):
+                    envelope = md_results.collection_envelope(result, typed_request.workspace_rel)
+                    extra_observations = md_results.collection_observations(result)
                 else:
                     envelope = collection_results.collection_envelope(result, typed_request.workspace_rel)
                     extra_observations = collection_results.collection_observations(result)

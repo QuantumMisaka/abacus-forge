@@ -17,6 +17,7 @@ from abacus_forge import (
     Workspace,
 )
 from tests.support.fake_executables import write_fake_abacus
+from tests.support.reference_workspaces import copy_native_md_workspace
 
 
 def _source(path: Path) -> Path:
@@ -98,7 +99,8 @@ def test_md_modify_and_collect_are_factual_and_unassessed(tmp_path: Path) -> Non
     assert collected.envelope.status.scientific == "unassessed"
     assert collected.envelope.metrics
     metric_names = {metric.name for metric in collected.envelope.metrics}
-    assert {"md_steps", "md_last_temperature", "md_last_total_energy"} <= metric_names
+    assert {"md_steps", "md_dump_frames", "md_dump_steps"} <= metric_names
+    assert not {"md_last_temperature", "md_last_total_energy"} & metric_names
     assert "md_dump_summary" in collected.envelope.diagnostics["legacy_metrics"]
     assert any(observation.name == "md_dump_summary" for observation in collected.observations)
     assert "trajectory" not in collected.to_dict()
@@ -113,6 +115,74 @@ def test_md_context_requires_matching_input_calculation(tmp_path: Path) -> None:
     result = services.collect.collect(_request(MdCollectRequest, "106"))
 
     assert result.error_class == "precondition.missing"
+
+
+def test_md_collect_uses_native_log_and_allows_missing_dump(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md")
+    (workspace.outputs_dir / "OUT.ABACUS" / "MD_dump").unlink()
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "108")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"
+    assert any(metric.name == "md_last_total_energy" for metric in result.envelope.metrics)
+    assert not any(metric.name == "md_last_kinetic_energy" and metric.value == -4.2 for metric in result.envelope.metrics)
+    assert result.envelope.status.scientific == "unassessed"
+
+
+def test_md_collect_stdout_or_dump_without_native_log_is_partial(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    workspace.write_text("outputs/stdout.log", "Energy (Ry) Potential (Ry) Kinetic (Ry) Temperature (K)\n-1 -1 0 300\n")
+    workspace.write_text("outputs/MD_dump", "MDSTEP: 1\n")
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "109")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "partial"
+    assert not any(metric.name.startswith("md_last_") for metric in result.envelope.metrics)
+
+
+def test_md_collect_malformed_native_block_is_partial(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md")
+    (workspace.outputs_dir / "OUT.ABACUS" / "running_md.log").write_text(
+        "Energy (Ry) Potential (Ry) Kinetic (Ry)\n-1 -1 0\n"
+        "Temperature (K) Pressure (kbar)\n300\n", encoding="utf-8"
+    )
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "110")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "partial"
+
+
+def test_md_collect_without_any_domain_output_is_missing(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "md")
+    workspace.ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation md\n")
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "111")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "missing_output"
+
+
+def test_md_collect_multiple_running_logs_is_partial(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md")
+    duplicate = workspace.outputs_dir / "OUT.SECOND"
+    duplicate.mkdir()
+    (duplicate / "running_md.log").write_text(
+        (workspace.outputs_dir / "OUT.ABACUS" / "running_md.log").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "112")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "partial"
 
 
 def test_md_execute_runs_local_runner_and_reports_process_facts(tmp_path: Path) -> None:

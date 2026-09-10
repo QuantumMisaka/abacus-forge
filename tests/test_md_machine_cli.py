@@ -19,6 +19,7 @@ from abacus_forge import (
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_operation_request, run_machine_cli
 from tests.support.fake_executables import write_fake_abacus
+from tests.support.reference_workspaces import copy_native_md_workspace
 from tests.support.process import run_cli
 
 
@@ -235,3 +236,26 @@ def test_md_subprocess_cli_matches_direct_service_facts(
     assert process.stderr == ""
     cli_result = OperationOutcome.from_dict(json.loads(process.stdout))
     assert _fact_projection(cli_result, cli_root) == _fact_projection(api_result, api_root)
+
+
+def test_native_md_machine_cli_preserves_native_energy_facts(tmp_path: Path) -> None:
+    api_root, cli_root = tmp_path / "api", tmp_path / "cli"
+    copy_native_md_workspace(api_root / "job")
+    copy_native_md_workspace(cli_root / "job")
+    api_request = MdCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174030",
+        workspace_rel="job", capability="md",
+    )
+    api_result = MdServiceSet.default(workspace_root=api_root).collect.collect(api_request)
+    assert isinstance(api_result, OperationOutcome)
+    payload = _payload("collect", operation_id="123e4567-e89b-42d3-a456-426614174031", workspace_rel="job")
+    process = run_cli("operation", "collect", "--stdin", cwd=cli_root, input_text=json.dumps(payload))
+    assert process.returncode == 0, process.stdout + process.stderr
+    cli_result = OperationOutcome.from_dict(json.loads(process.stdout))
+    assert cli_result.envelope.to_dict()["status"] == api_result.envelope.to_dict()["status"]
+    assert cli_result.envelope.to_dict()["metrics"] == api_result.envelope.to_dict()["metrics"]
+    cli_facts = {item["name"]: item["value"] for item in cli_result.to_dict()["observations"]}
+    api_facts = {item.name: item.value for item in api_result.observations}
+    for name in ("total_energy", "md_last_total_energy", "md_last_potential_energy", "md_last_kinetic_energy", "md_last_temperature", "md_last_pressure"):
+        assert cli_facts[name] == api_facts[name]
+    assert cli_result.envelope.status.collection == "complete"

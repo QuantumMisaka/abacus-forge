@@ -7,6 +7,7 @@ from abacus_forge.workspace import Workspace
 
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "abacustest-abacus-scf"
+NATIVE_MD_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "abacus-native-md"
 
 
 def copy_abacustest_scf_workspace(root: Path) -> Workspace:
@@ -33,4 +34,24 @@ def copy_abacustest_scf_workspace(root: Path) -> Workspace:
         "outputs/OUT.ABACUS/time.json",
         json.loads((FIXTURE_ROOT / "time.json").read_text(encoding="utf-8")),
     )
+    return workspace
+
+
+def copy_native_md_workspace(root: Path) -> Workspace:
+    """Copy the compact native ABACUS MD output fixture into a workspace."""
+    workspace = Workspace(root).ensure_layout()
+    for relative_path in ("INPUT", "STRU"):
+        workspace.write_text(
+            f"inputs/{relative_path}",
+            (NATIVE_MD_FIXTURE_ROOT / relative_path).read_text(encoding="utf-8"),
+        )
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_md.log",
+        (NATIVE_MD_FIXTURE_ROOT / "OUT.ABACUS" / "running_md.log").read_text(encoding="utf-8"),
+    )
+    workspace.write_text(
+        "outputs/OUT.ABACUS/MD_dump",
+        (NATIVE_MD_FIXTURE_ROOT / "OUT.ABACUS" / "MD_dump").read_text(encoding="utf-8"),
+    )
+    workspace.write_text("outputs/stderr.log", "")
     return workspace
