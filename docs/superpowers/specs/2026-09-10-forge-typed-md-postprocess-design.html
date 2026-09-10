@@ -25,7 +25,7 @@
 <body>
 <main>
   <h1>ABACUS-Forge typed <code>md.postprocess</code></h1>
-  <p class="meta"><strong>日期：</strong>2026-09-10　<strong>状态：</strong>Approved for this implementation thread</p>
+  <p class="meta"><strong>日期：</strong>2026-09-11　<strong>状态：</strong>Approved for this implementation thread</p>
   <p class="meta"><strong>负责人：</strong>QuantumMisaka / Codex</p>
   <p class="meta"><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
 
@@ -98,18 +98,18 @@
         <tr><td><code>parameters</code></td><td>JSON-safe object；首批识别 timestep、selection、elements、rmax、nbins、save_data、save_plot</td><td>分析专属参数的开放扩展面；不识别的键不得改变当前算法行为，需在 diagnostics 记录</td></tr>
       </tbody>
     </table>
-    <p><code>timestep</code> 仅在 MSD 或 VACF 模式出现时要求为有限正数；RDF 要求每个采样帧有非零 cell/PBC；元素对、键/角选择和帧数不足均在服务调用算法前校验。Paimon 的 <code>msd</code>、<code>vacf</code>、<code>bond</code> 兼容别名由上层 adapter 映射，不进入 Forge canonical request。</p>
+    <p><code>timestep</code> 仅在 MSD 或 VACF 模式出现时要求为有限正数，并表示采样帧视图中相邻两帧的时间间隔；<code>stride</code> 不会被 Forge 隐式乘入该值，调用方应交接与采样视图相符的时间间隔。RDF 要求每个采样帧有非零 cell/PBC；元素对、键/角选择和帧数不足均在服务调用算法前校验。Paimon 的 <code>msd</code>、<code>vacf</code>、<code>bond</code> 兼容别名由上层 adapter 映射，不进入 Forge canonical request。</p>
   </section>
 
   <section id="algorithms">
     <h2>分析内核与产物</h2>
     <ul>
-      <li><strong>trajectory reader：</strong>使用 ASE 的显式文件读取；保留 dependency-light XYZ fallback。所有采样帧必须保持原子数和元素顺序一致，数值必须 finite。</li>
+      <li><strong>trajectory reader：</strong>使用 ASE 的显式文件读取；保留 dependency-light XYZ fallback。fallback 只接受完整质量表中的真实元素，未知化学符号 fail-closed；所有采样帧必须保持原子数和元素顺序一致，数值必须 finite。</li>
       <li><strong>RDF：</strong>按显式元素对、<code>rmax</code>、<code>nbins</code> 计算每帧距离分布并聚合；输出 <code>rdf_&lt;A&gt;_&lt;B&gt;.txt</code>，可选 <code>.png</code>。Forge 只返回数值和参与帧数，不输出配位/结构判断。</li>
       <li><strong>MSD：</strong>使用周期 unwrap 与质量加权 Kabsch 刚体漂移校正，返回时间序列、方向分量、Einstein slope 和 reported diffusion metric；不判断扩散是否“合理”。</li>
       <li><strong>VACF/VDOS：</strong>优先使用轨迹速度，否则按采样位置差分；返回归一化 VACF、频率和 FFT DOS，输出数据文件与可选图。</li>
       <li><strong>键长/键角：</strong>按显式元素对/三元组或 1-based atom indices 选择，使用 minimum-image 几何；分别输出长度/角度数据与可选图。</li>
-      <li><strong>结果文件：</strong>始终生成 <code>trajectory_source.json</code> 与 <code>analysis.json</code>；analysis.json 为 <code>forge.md-postprocess/v1</code>，保存 canonical modes、sampling 和 JSON-safe results。模式数据/图片只在对应参数开启时生成。</li>
+      <li><strong>结果文件：</strong>始终生成 <code>trajectory_source.json</code> 与 <code>analysis.json</code>；analysis.json 为 <code>forge.md-postprocess/v1</code>，保存 canonical modes、sampling 和 JSON-safe results。模式数据/图片只在对应参数开启且实际生成成功时出现；绘图导入或渲染失败只记录有限诊断并省略失败图片，使服务按缺失产物返回 <code>partial</code>/<code>missing_output</code>。</li>
     </ul>
     <p>算法模块不接触 workspace/event/runner；service 负责路径受理、输出目录、持久化和 artifact。分析输出是解析/数值事实，MetricRecord 的 <code>kind</code> 只使用 <code>reported</code> 或 <code>runtime</code>，不生成科学 policy。</p>
   </section>
@@ -127,7 +127,6 @@
   └─ ServiceContext.persist → artifact_refs + one postprocess event</pre>
     <ul>
       <li>service 以一个窄的 <code>MdPostprocessService.postprocess(request)</code> 暴露能力；machine CLI 只做 decode、route、render，不复制算法。</li>
-      <li>所有输出必须在同一 workspace root；trajectory 是 <code>input</code>，source manifest 是 <code>provenance_manifest</code>，analysis/data/image/report 是 <code>output</code>。通用 <code>ArtifactRecord</code> 与 artifact-ref 单点注入保持不变。</li>
       <li>postprocess 事件的 operation 是 <code>postprocess</code>，不覆盖或修改上游 execute/collect event；本操作的 <code>execution=not_run</code>、<code>scientific=unassessed</code>，collection 按产物完整性为 complete/partial/missing_output。</li>
       <li>输出文件名由 canonical modes 和固定 basename 生成，不接受用户拼接任意 output name；parameters 中未来新增模式必须先扩展算法/输出映射和测试。</li>
     </ul>
