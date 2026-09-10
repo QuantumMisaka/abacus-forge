@@ -218,15 +218,24 @@ in the roadmap only after the commands pass.
 
 ## Acceptance record
 
-- [ ] Typed SCF/Relax/MD scalar metrics carry the finite unit/kind/source
+- [x] Typed SCF/Relax/MD scalar metrics carry the finite unit/kind/source
       metadata and retain legacy compatibility.
-- [ ] Existing observation source categories and event shape remain unchanged;
+- [x] Existing observation source categories and event shape remain unchanged;
       precise provenance is available through metric artifact IDs.
-- [ ] Typed SCF/Relax real-smoke gates reject mismatched input/avoid premature
+- [x] Typed SCF/Relax real-smoke gates reject mismatched input/avoid premature
       parent timeout; absent environment still skips cleanly.
-- [ ] Focused, full offline, archive, wheel/import, and diff checks pass.
-- [ ] No real execution or scientific acceptance claim is made without an
+- [x] Focused, full offline, archive, wheel/import, and diff checks pass.
+- [x] No real execution or scientific acceptance claim is made without an
       external supplied environment.
+
+**Recorded evidence (2026-09-10):** owning suites `193 passed`; combined
+collection/contract/machine/architecture/real-smoke focus `212 passed, 3
+skipped`; full deterministic offline suite `1209 passed, 5 skipped`; clean
+`git archive` focus `56 passed`; clean wheel installation/import and console
+entry-point checks passed in a fresh venv, with legacy packages absent. The
+real-smoke module itself reports `3 skipped` without supplied environment
+variables. `git diff --check` passed. No ABACUS executable or real workspace
+was supplied, so no real-execution or scientific-acceptance claim is made.
 
 **Ruling:** This plan closes a concrete facts-envelope fidelity gap and two
 release-gate hygiene defects while preserving Forge's narrow role as an
