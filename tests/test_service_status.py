@@ -231,6 +231,44 @@ def test_local_runner_resolves_basename_from_relative_override_path(
     assert result.command == ["fake-abacus"]
 
 
+def test_local_runner_resolves_empty_path_component_from_process_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["CALLER CWD"])
+    write_fake_abacus(workspace.inputs_dir / "fake-abacus", stdout_lines=["WORKSPACE CWD"])
+
+    result = LocalRunner(
+        executable="fake-abacus",
+        env_overrides={"PATH": os.pathsep.join(("", str(Path(sys.executable).parent)))},
+    ).run(workspace)
+
+    assert result.status == "completed"
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "CALLER CWD"
+
+
+def test_local_runner_preserves_symlink_lexical_parent_for_relative_executable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    (tmp_path / "real" / "sub").mkdir(parents=True)
+    (tmp_path / "link").symlink_to(tmp_path / "real" / "sub", target_is_directory=True)
+    write_fake_abacus(tmp_path / "real" / "fake-abacus", stdout_lines=["LEXICAL TARGET"])
+    write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMALIZED TARGET"])
+
+    result = LocalRunner(executable="link/../fake-abacus").run(workspace)
+
+    assert result.status == "completed"
+    assert (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8").strip() == "LEXICAL TARGET"
+    assert result.command == ["link/../fake-abacus"]
+
+
 def test_local_runner_preserves_relative_symlink_argv_zero(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

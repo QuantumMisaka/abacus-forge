@@ -57,7 +57,7 @@ class LocalRunner:
         if candidate.parent != Path():
             # Directory-qualified paths are relative to the caller's cwd.  Use
             # lexical anchoring so a symlink remains visible as argv[0].
-            resolved = Path(os.path.abspath(os.fspath(candidate)))
+            resolved = candidate if candidate.is_absolute() else Path.cwd() / candidate
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
             raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
@@ -67,16 +67,19 @@ class LocalRunner:
         # does not reinterpret a relative PATH under ``cwd=inputs_dir``.
         search_cwd = Path.cwd()
         search_path = (env or os.environ).get("PATH", os.defpath)
-        if all(not entry or Path(entry).is_absolute() for entry in search_path.split(os.pathsep)):
+        if all(entry and Path(entry).is_absolute() for entry in search_path.split(os.pathsep)):
             resolved = shutil.which(program, path=search_path)
             if resolved is not None:
                 return resolved
             raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         for entry in search_path.split(os.pathsep):
-            directory = Path(entry) if entry else Path(".")
-            if not directory.is_absolute():
-                directory = search_cwd / directory
-            resolved = Path(os.path.abspath(os.fspath(directory / program)))
+            if not entry:
+                resolved = search_cwd / program
+            else:
+                directory = Path(entry)
+                if not directory.is_absolute():
+                    directory = search_cwd / directory
+                resolved = directory / program
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
         raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
