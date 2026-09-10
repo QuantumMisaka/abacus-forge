@@ -138,7 +138,9 @@ helpers were not changed.  The architecture gate now traverses both
 API dependency.
 
 The hardening was delivered as `4778adb` with stale compatibility residue
-removed in `2d62f59`.  The focused PyATB/architecture/machine/service gate
-passed `325` tests, and the current full offline gate passed `1179 passed, 4
-skipped`.  These are compatibility and boundary results only; PyATB and
-ABACUS real-smoke evidence remains a separate release gate.
+removed in `2d62f59`; wrapper return annotations and the corresponding
+standalone-module comments were restored in `485ec2b`.  The focused
+PyATB/architecture/machine/service gate passed `325` tests, and the current
+full offline gate passed `1179 passed, 4 skipped`.  These are compatibility
+and boundary results only; PyATB and ABACUS real-smoke evidence remains a
+separate release gate.
