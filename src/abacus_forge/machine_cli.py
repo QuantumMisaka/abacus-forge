@@ -43,6 +43,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandPrepareRequest,
 )
 from abacus_forge.export_contracts import ExportRequest
+from abacus_forge.export_services import ExportServiceSet
 from abacus_forge.postprocess_services import PostprocessServiceSet
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.pyatb_services import PyatbBandServiceSet
@@ -424,9 +425,10 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | PyatbBandServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | PyatbBandServiceSet | ExportServiceSet | None = None,
     atst_services: AtstNebServiceSet | None = None,
     pyatb_services: PyatbBandServiceSet | None = None,
+    export_services: ExportServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
     parser = build_machine_parser()
@@ -480,6 +482,8 @@ def run_machine_cli(
             service_set = PostprocessServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, (PyatbBandPrepareRequest, PyatbBandExecuteRequest, PyatbBandCollectRequest)):
             service_set = pyatb_services if pyatb_services is not None else PyatbBandServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, ExportRequest):
+            service_set = export_services if export_services is not None else ExportServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):
             service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _MD_REQUEST_TYPES):

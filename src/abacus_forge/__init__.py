@@ -8,6 +8,7 @@ from abacus_forge.contracts import (ArtifactRecord, ArtifactRef, AtstNebExecuteR
     ScfModifyRequest, ScfPrepareRequest)
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.export_contracts import EXPORT_SCHEMA_VERSION, ExportDocument, ExportRequest
+from abacus_forge.export_services import ExportService, ExportServiceProtocol, ExportServiceSet
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
 from abacus_forge.modify import modify_input, modify_kpt, modify_stru
@@ -66,6 +67,9 @@ __all__ = [
     "ExportDocument",
     "ExportRequest",
     "EXPORT_SCHEMA_VERSION",
+    "ExportService",
+    "ExportServiceProtocol",
+    "ExportServiceSet",
     "AtstNebExecuteRequest",
     "AtstNebPostprocessRequest",
     "AtstNebPrepareRequest",
