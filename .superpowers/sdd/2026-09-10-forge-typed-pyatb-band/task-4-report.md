@@ -192,6 +192,19 @@ git diff --check
 
 Raw result: no output; exit code `0`.
 
+### Terminal-review addendum
+
+The independent whole-branch review initially found two boundary defects. They
+were fixed in `b044156` and recorded in `2dec57c`: typed preparation now rejects
+directory-symlink destination ancestors for both link and copy modes before
+any handoff write, and band-gap parsing is line-local with complete finite
+numeric matching. The owning typed-plus-legacy suite passed `50 passed in
+2.21s`; the final whole-branch review bound to `84adfcc..2dec57c` was
+CLEAN/APPROVED with no remaining findings. A final offline run at bookkeeping
+HEAD `f1f58ea` passed `901 passed, 3 skipped in 72.10s` (exit 0), with the
+architecture, forbidden-import/dependency and typed-discovery gates also
+passing.
+
 ## Not performed / remaining uncertainty
 
 - No real PyATB or ABACUS executable was started. The passing suite uses
@@ -200,5 +213,5 @@ Raw result: no output; exit code `0`.
 - No scheduler/platform integration, SCF sequence orchestration, PyATB
   property operation, nspin 4 support, typed export, scientific acceptance,
   retry/resume or monitoring was added.
-- The final whole-branch independent review and integration decision remain
-  with the parent agent. No merge or push was performed by this task.
+- No merge or push was performed by this task; integration remains a separate
+  parent-agent decision.
