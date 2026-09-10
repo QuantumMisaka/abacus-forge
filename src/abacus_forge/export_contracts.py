@@ -8,6 +8,7 @@ from typing import Mapping, Literal
 from abacus_forge.contracts import (
     ArtifactRef,
     JSONValue,
+    OperationOutcome,
     OperationRef,
     REQUEST_SCHEMA_VERSION,
     _construct_strict,
@@ -101,6 +102,13 @@ class ExportRequest(OperationRef):
         unknown = sorted(set(values) - allowed)
         if unknown:
             raise ValueError(f"export request contains unknown fields: {', '.join(unknown)}")
+        required = {
+            "schema_version", "capability", "operation", "operation_id", "workspace_rel",
+            "source_artifact_refs", "destination_path_rel",
+        }
+        missing = sorted(required - set(values))
+        if missing:
+            raise ValueError(f"export request is missing required fields: {', '.join(missing)}")
         if "source_artifact_refs" in values:
             values["source_artifact_refs"] = _refs(values["source_artifact_refs"])
         return _construct_strict(cls, values, "export request")
@@ -123,11 +131,13 @@ class ExportDocument:
             raise ValueError("source_artifact_refs must match source_operation_id")
         if not isinstance(self.source_outcome, Mapping):
             raise ValueError("source_outcome must be a JSON object")
-        outcome = _freeze_json(_json_safe_mapping(self.source_outcome))
-        if outcome.get("schema_version") != "forge.operation-outcome/v1":  # type: ignore[union-attr]
-            raise ValueError("source_outcome must be a forge.operation-outcome/v1 payload")
-        if outcome.get("operation_id") != self.source_operation_id:  # type: ignore[union-attr]
+        try:
+            parsed_outcome = OperationOutcome.from_dict(_json_safe_mapping(self.source_outcome))
+        except (TypeError, ValueError, KeyError) as error:
+            raise ValueError("source_outcome must be a valid forge.operation-outcome/v1 payload") from error
+        if parsed_outcome.operation_id != self.source_operation_id:
             raise ValueError("source_outcome operation_id must match source_operation_id")
+        outcome = _freeze_json(parsed_outcome.to_dict())
         object.__setattr__(self, "source_artifact_refs", refs)
         object.__setattr__(self, "source_outcome", outcome)
 

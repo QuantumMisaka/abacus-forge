@@ -632,9 +632,12 @@ def test_machine_rejects_postprocess_without_capability_or_with_unsupported_oper
     assert code == 2
     assert json.loads(output)["error"]["class"] == "request.invalid"
     unsupported = {
-        **capabilityless,
-        "capability": "band",
+        "schema_version": "forge.request/v1",
         "operation": "export",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "source_artifact_refs": [{"operation_id": OPERATION_ID, "artifact_id": "artifact"}],
+        "destination_path_rel": "exports/result.json",
     }
     code, output, _ = _invoke(
         ["operation", "export", "--stdin"],

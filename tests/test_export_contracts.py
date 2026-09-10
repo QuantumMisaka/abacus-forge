@@ -11,6 +11,25 @@ OP = "123e4567-e89b-42d3-a456-426614174000"
 SRC = "123e4567-e89b-42d3-a456-426614174001"
 
 
+def outcome_payload():
+    return {
+        "schema_version": "forge.operation-outcome/v1",
+        "operation_id": SRC,
+        "envelope": {
+            "schema_version": "forge.result/v1",
+            "operation": "collect",
+            "workspace_rel": ".",
+            "status": {"execution": "completed", "scientific": "unassessed", "collection": "complete"},
+            "artifacts": [],
+            "metrics": [],
+            "checks": [],
+            "warnings": [],
+            "diagnostics": {},
+        },
+        "observations": [],
+    }
+
+
 def request_payload(**overrides):
     payload = {
         "schema_version": "forge.request/v1",
@@ -56,16 +75,24 @@ def test_export_request_rejects_invalid_payload(changes):
         ExportRequest.from_dict(request_payload(**changes))
 
 
+@pytest.mark.parametrize("field", [
+    "schema_version", "capability", "operation", "operation_id", "workspace_rel",
+    "source_artifact_refs", "destination_path_rel",
+])
+def test_export_request_wire_required_fields_cannot_use_defaults(field):
+    payload = request_payload()
+    del payload[field]
+    with pytest.raises(ValueError):
+        ExportRequest.from_dict(payload)
+
+
 def test_export_document_round_trip_is_json_safe_and_strict():
     payload = {
         "schema_version": "forge.export/v1",
         "source_operation_id": SRC,
         "source_artifact_refs": [{"operation_id": SRC, "artifact_id": "energy"}],
         "source_outcome": {
-            "schema_version": "forge.operation-outcome/v1",
-            "operation_id": SRC,
-            "envelope": {"operation": "collect", "artifacts": [], "metrics": []},
-            "observations": [],
+            **outcome_payload(),
         },
     }
     document = ExportDocument.from_dict(payload)
@@ -80,12 +107,14 @@ def test_export_document_requires_source_identity_consistency():
         "schema_version": "forge.export/v1",
         "source_operation_id": SRC,
         "source_artifact_refs": [{"operation_id": SRC, "artifact_id": "energy"}],
-        "source_outcome": {"schema_version": "forge.operation-outcome/v1", "operation_id": SRC},
+        "source_outcome": outcome_payload(),
     }
     with pytest.raises(ValueError):
         ExportDocument.from_dict({**payload, "source_artifact_refs": []})
     with pytest.raises(ValueError):
         ExportDocument.from_dict({**payload, "source_outcome": {"schema_version": "forge.result/v1", "operation_id": SRC}})
+    with pytest.raises(ValueError):
+        ExportDocument.from_dict({**payload, "source_outcome": {**outcome_payload(), "envelope": None}})
 
 
 def test_export_is_explicitly_discoverable_and_decodable():
