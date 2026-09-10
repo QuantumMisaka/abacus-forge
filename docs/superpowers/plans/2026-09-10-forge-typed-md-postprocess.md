@@ -158,3 +158,8 @@ Verification at `84962ee`: the focused MD/legacy compatibility gate passed
 the experimental gate passed `39 passed, 1141 deselected`, and the full offline
 gate passed `1177 passed, 3 skipped`.  The skips remain opt-in real-smoke or
 benchmark evidence and are not scientific validation.
+
+After the public-loader fallback review, `58e54eb` adds the `load_frames()`
+regression and the latest verification passes `69` focused tests, `1139 passed,
+42 deselected` in the stable gate, `39 passed, 1142 deselected` in the
+experimental gate, and `1178 passed, 3 skipped` in the full offline gate.
