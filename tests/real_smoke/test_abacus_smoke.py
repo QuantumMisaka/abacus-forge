@@ -49,6 +49,41 @@ def _assert_json_safe_finite(value: object) -> None:
         assert math.isfinite(float(value))
 
 
+def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str) -> None:
+    """Keep real-smoke collection facts attributable to the new execute call."""
+    preexisting: list[str] = []
+    search_roots = [workspace, workspace / "inputs", workspace / "outputs"]
+    for root in search_roots:
+        if not root.exists():
+            continue
+        paths = root.iterdir() if root == workspace else root.rglob("*")
+        for path in paths:
+            if not path.is_file():
+                continue
+            name = path.name
+            relative_parts = path.relative_to(workspace).parts
+            is_input_asset = bool(relative_parts and relative_parts[0] == "inputs")
+            generated = name == "out.log" and not is_input_asset
+            if capability == "md":
+                generated = generated or (
+                    name in {"running_md.log", "MD_dump"} and not is_input_asset
+                )
+            else:
+                generated = generated or (name.startswith("running_") and name.endswith(".log"))
+                if capability in {"relax", "cell-relax"}:
+                    generated = generated or (
+                        name in {"STRU_ION_D", "STRU_NOW.cif", "STRU.cif"}
+                        and not is_input_asset
+                    )
+            if generated:
+                preexisting.append(path.relative_to(workspace).as_posix())
+    if preexisting:
+        pytest.fail(
+            f"typed {capability} smoke workspace must not contain pre-existing "
+            "generated outputs: " + ", ".join(sorted(set(preexisting)))
+        )
+
+
 @pytest.mark.real_smoke
 def test_real_abacus_scf_execute_and_collect(tmp_path: Path) -> None:
     source_value = os.environ.get("ABACUS_FORGE_REAL_SMOKE_WORKSPACE")
@@ -95,6 +130,7 @@ def test_typed_scf_machine_execute_and_collect(tmp_path: Path) -> None:
 
     workspace = tmp_path / "typed-scf-smoke"
     shutil.copytree(source, workspace, symlinks=False)
+    _assert_no_preexisting_generated_outputs(workspace, capability="scf")
     input_path = workspace / "inputs" / "INPUT"
     try:
         calculation = read_input(input_path).get("calculation", "").strip().lower()
@@ -277,23 +313,7 @@ def test_typed_md_machine_execute_and_collect(tmp_path: Path) -> None:
     # Materialize links while copying the prepared source so execution cannot
     # write through a preserved output symlink into the caller's workspace.
     shutil.copytree(source, workspace, symlinks=False)
-    preexisting_md_outputs = []
-    for root_name in ("running_md.log", "MD_dump"):
-        root_output = workspace / root_name
-        if root_output.is_file():
-            preexisting_md_outputs.append(root_output.relative_to(workspace).as_posix())
-    outputs_dir = workspace / "outputs"
-    if outputs_dir.is_dir():
-        preexisting_md_outputs.extend(
-            path.relative_to(workspace).as_posix()
-            for path in outputs_dir.rglob("*")
-            if path.is_file() and path.name in {"running_md.log", "MD_dump"}
-        )
-    if preexisting_md_outputs:
-        pytest.fail(
-            "typed MD smoke workspace must not contain pre-existing generated "
-            "MD outputs: " + ", ".join(sorted(preexisting_md_outputs))
-        )
+    _assert_no_preexisting_generated_outputs(workspace, capability="md")
     input_path = workspace / "inputs" / "INPUT"
     try:
         calculation = read_input(input_path).get("calculation", "").strip().lower()
@@ -513,6 +533,7 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
     # Materialize links while copying the prepared source so execution cannot
     # write through a preserved output symlink into the caller's workspace.
     shutil.copytree(source, workspace, symlinks=False)
+    _assert_no_preexisting_generated_outputs(workspace, capability=capability)
     workspace_root = workspace.resolve()
     workspace_rel = workspace.name
     execute_id = "123e4567-e89b-42d3-a456-426614174102"

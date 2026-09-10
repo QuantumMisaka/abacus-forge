@@ -74,7 +74,9 @@ or Relax workspace variables. Missing MD-specific values skip with a precise
 reason; an invalid supplied workspace, executable, or non-MD `INPUT` fails.
 The supplied source must not already contain generated `running_md.log` or
 `MD_dump` files at the workspace root or under `outputs/`; this prevents an
-old run from being mistaken for evidence from the new execute call.
+old run from being mistaken for evidence from the new execute call. The typed
+SCF and Relax gates apply the same freshness rule to their `running_*.log` and
+fallback logs, and Relax final-structure outputs.
 The gate checks parser facts only. It does not judge trajectory quality,
 physical temperature/energy correctness, convergence, scheduling, or workflow
 orchestration.

@@ -773,6 +773,10 @@ fail。用于 smoke 的源 workspace 还必须没有根目录或 `outputs/` 下�
 `running_md.log`/`MD_dump`，避免无操作 executable 复用旧结果；MD smoke 仍是
 experimental 证据，不改变生产 service 或稳定能力面。
 
+typed SCF 与 typed Relax real-smoke 也要求复制源保持 freshness：门禁会拒绝其
+collector 可消费的既有 `running_*.log`/fallback log，Relax 还会拒绝既有最终结构
+文件。这个条件只属于真实运行证据测试，不改变普通 Forge `execute`/`collect` 对外行为。
+
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立
 `postprocess` operation。MD 后处理只读取调用方明确交接的 workspace-relative exact
 trajectory，不扫描目录、不查找 latest、不自动转换 `MD_dump`，也不隐式启动 ABACUS 或

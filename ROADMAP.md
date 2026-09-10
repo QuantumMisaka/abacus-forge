@@ -32,6 +32,7 @@
 - 可选 typed SCF、typed Relax 与 typed MD real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；三者使用各自的环境门禁，未提供真实输入时不产生 release evidence。legacy SCF smoke 不能替代 typed SCF 证据。
 - typed SCF real-smoke 在首次 execute 前校验输入 calculation profile，typed Relax execute/collect 使用长 parent-process 超时；这些都是 release-gate 检查，不改变生产 service 的兼容行为。
 - typed MD real-smoke 还在首次 execute 前校验 `calculation=md`，拒绝复制源中已有的根目录/`outputs/` MD 生成物，并要求 collect 暴露本次 `running_md.log` 的原生热力学 facts；它只证明 operation/status/event/artifact 与 parser 边界，保持 `scientific=unassessed`，不承担轨迹质量或科学验收。
+- 三类 typed real-smoke 在复制后、首次 execute 前统一拒绝其 collector 可消费的既有生成日志；Relax 还拒绝既有最终结构。该 freshness 只属于 release-evidence 测试条件，不改变普通 Forge `execute`/`collect` 行为。
 - 本批 typed collection metadata 实现 revision 为 `5807af1`；`1209 passed, 5 skipped` 的全量离线门禁及 clean archive/wheel 记录见门禁文档 revision `beed6d1`。
 - typed prepare 已支持显式 `pseudo_sources` / `orbital_sources` 资产映射：默认 copy，contained-only relative link，缺失与冲突 fail-closed，并在 typed diagnostics、manifest 和事件中记录来源/目标及哈希 provenance；未映射 STRU 引用保留且不声明完整。
 
