@@ -142,8 +142,12 @@ class PyatbManifest:
         if set(values) - {"inputs", "outputs", "missing"}:
             unknown = sorted(set(values) - {"inputs", "outputs", "missing"})
             raise ValueError(f"PyATB manifest contains unknown fields: {', '.join(unknown)}")
+        required_arrays = {"inputs", "outputs", "missing"}
+        if set(values) != required_arrays:
+            missing = sorted(required_arrays - set(values))
+            raise ValueError(f"PyATB manifest is missing fields: {', '.join(missing)}")
         try:
-            if any(not isinstance(values.get(name, ()), list) for name in ("inputs", "outputs", "missing")):
+            if any(not isinstance(values[name], list) for name in required_arrays):
                 raise ValueError("manifest entry arrays must be JSON arrays")
             return cls(
                 inputs=tuple(PyatbManifestEntry.from_dict(item) for item in values.get("inputs", ())),

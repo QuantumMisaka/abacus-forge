@@ -81,3 +81,10 @@ def test_manifest_from_dict_rejects_unknown_fields() -> None:
     payload["extra"] = True
     with pytest.raises(ValueError, match="unknown fields"):
         PyatbManifest.from_dict(payload)
+
+
+def test_manifest_from_dict_requires_all_root_arrays() -> None:
+    payload = PyatbManifest(inputs=(), outputs=(), missing=()).to_dict()
+    del payload["missing"]
+    with pytest.raises(ValueError, match="missing fields"):
+        PyatbManifest.from_dict(payload)
