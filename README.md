@@ -126,6 +126,10 @@ typed prepare 可通过 `pseudo_sources` 与 `orbital_sources` 显式提供按�
 legacy `prepare(...)` 仍保留原有 `pseudo_path` / `orbital_path` 目录推断，默认使用
 `link`；需要该兼容行为时继续使用 legacy API。
 
+`abacuscopilot` 的 library-family 选择器属于上层人类 UX；Forge core 不维护全局家族
+配置，也不扫描目录或猜测文件名。人类/Agent 或可选 TUI 可以先把选定家族解析成上述
+显式元素映射，再交给 typed `prepare`，从而保留可审计的资产来源而不扩大 Forge 边界。
+
 ## Agent-first CLI
 
 Stage 3 的 machine surface 以及 Stage 4 首批现已提供 `scf`、`relax`、`cell-relax` 和
