@@ -203,6 +203,22 @@ property pack. It adds no typed capability, schema, status, orchestration,
 scheduling, or scientific-interpretation contract; spin-density remains
 experimental and is not evidence for Paimon v1.3 stable exposure.
 
+## Native charge-diff smoke follow-up (2026-09-11)
+
+Using the serial-PW binary built from `abacus-develop@94576a801`, a fresh
+workspace completed `prepare_charge_diff`, three serial runs for `full`,
+`subsystem1`, and `subsystem2` (all return code 0), and `post_charge_diff`.
+The collector discovered native `inputs/OUT.ABACUS/chg.cube` in each task and
+produced `reports/charge_density_diff.cube` plus
+`reports/metrics_charge_diff.json`. The property manifest recorded three source
+cube inputs and one derived cube with three `source_artifact_ids`.
+
+The three structures in this limited smoke were identical. This therefore
+records process, parser, and artifact compatibility only; it does not establish
+the scientific meaning or quality of a charge difference, benchmark parity, or
+maturity promotion. `charge-diff` remains experimental and is not evidence for
+Paimon v1.3 stable exposure.
+
 ## Native ABACUS species-label smoke follow-up (2026-09-11)
 
 The ABACUS Fe spin example uses distinct atom-type labels `Fe1` and `Fe2` for
