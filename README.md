@@ -699,8 +699,8 @@ services = PyatbBandServiceSet.default(workspace_root=".")
 result = services.prepare.prepare(PyatbBandPrepareRequest.from_dict(prepare_payload))
 ```
 
-该 capability 仅在离线 fixture/mock 与 API/CLI parity 范围内保持
-`experimental`；本仓库不以此文档声称真实 PyATB/ABACUS smoke、科学验证或稳定晋级。
+该 capability 已有离线 fixture/mock、API/CLI parity 以及本地输入/进程兼容性证据，仍保持
+`experimental`；本仓库不以此文档声称科学验证或稳定晋级。
 
 成功的 typed `prepare` 与 `collect` 结果会在同一 `forge.result/v1` envelope 的
 `diagnostics.pyatb_manifest` 中提供稳定文件语义。每个 present entry 的 `artifact_id`
