@@ -131,6 +131,32 @@ def test_md_collect_uses_native_log_and_allows_missing_dump(tmp_path: Path) -> N
     assert result.envelope.status.scientific == "unassessed"
 
 
+def test_md_collect_accepts_native_log_under_inputs_out_directory(tmp_path: Path) -> None:
+    workspace = copy_native_md_workspace(tmp_path / "md-input-out")
+    native_output = workspace.outputs_dir / "OUT.ABACUS"
+    native_input = workspace.inputs_dir / "OUT.ABACUS"
+    native_input.mkdir(parents=True)
+    (native_input / "running_md.log").write_text(
+        (native_output / "running_md.log").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (native_input / "MD_dump").write_text(
+        (native_output / "MD_dump").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (native_output / "running_md.log").unlink()
+    (native_output / "MD_dump").unlink()
+
+    result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(
+        _request(MdCollectRequest, "119", workspace="md-input-out")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"
+    assert any(metric.name == "md_last_total_energy" for metric in result.envelope.metrics)
+    assert result.envelope.status.scientific == "unassessed"
+
+
 def test_md_typed_metrics_carry_native_units_and_source_artifacts(tmp_path: Path) -> None:
     workspace = copy_native_md_workspace(tmp_path / "typed-md-metadata")
     result = MdServiceSet.default(workspace_root=tmp_path).collect.collect(

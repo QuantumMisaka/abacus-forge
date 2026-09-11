@@ -63,7 +63,9 @@ def _contained_relative(result: CollectionResult, raw: object) -> str | None:
         relative = path.relative_to(root).as_posix()
     except (OSError, RuntimeError, ValueError):
         return None
-    if not path.is_file() or relative.startswith(("inputs/", "reports/")):
+    if not path.is_file() or relative.startswith("reports/"):
+        return None
+    if relative.startswith("inputs/") and not _is_input_out_artifact(relative):
         return None
     return relative
 
@@ -73,9 +75,20 @@ def _canonical_native_log(result: CollectionResult) -> Path | None:
     relative = _contained_relative(result, selected)
     if relative is None or Path(relative).name != "running_md.log":
         return None
-    if relative != "running_md.log" and not relative.startswith("outputs/"):
+    # ABACUS is launched with ``inputs/`` as its working directory by the
+    # local runner, so its native OUT directory can remain under
+    # ``inputs/OUT.*``.  Keep the domain boundary explicit: a bare input log
+    # (or a report alias) is not a native result source.
+    if relative != "running_md.log" and not (
+        relative.startswith("outputs/") or _is_input_out_artifact(relative)
+    ):
         return None
     return Path(result.workspace).resolve() / relative
+
+
+def _is_input_out_artifact(relative: str) -> bool:
+    parts = Path(relative).parts
+    return len(parts) == 3 and parts[0] == "inputs" and parts[1].startswith("OUT.")
 
 
 def _candidate_sources(result: CollectionResult) -> tuple[object, ...]:
