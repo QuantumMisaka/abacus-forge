@@ -106,8 +106,21 @@ def post_charge_density(workspace: str | Path) -> TaskResult:
 def post_spin_density(workspace: str | Path) -> TaskResult:
     root = ensure_root(workspace)
     base = root.root / "spin-density"
-    up, up_escaped = _find_first(base, ["SPIN1_CHG.cube", "*SPIN1*.cube", "*UP*.cube"], workspace_root=root.root)
-    down, down_escaped = _find_first(base, ["SPIN2_CHG.cube", "*SPIN2*.cube", "*DOWN*.cube"], workspace_root=root.root)
+    # ABACUS current releases emit ``chgs1.cube``/``chgs2.cube`` for
+    # nspin=2, while older workflows commonly use ``SPIN1_CHG.cube`` /
+    # ``SPIN2_CHG.cube``.  Prefer exact native names before the broad
+    # compatibility globs so that auxiliary files (for example
+    # ``chgs1_ini.cube``) cannot be selected accidentally.
+    up, up_escaped = _find_first(
+        base,
+        ["SPIN1_CHG.cube", "chgs1.cube", "*SPIN1*.cube", "*UP*.cube"],
+        workspace_root=root.root,
+    )
+    down, down_escaped = _find_first(
+        base,
+        ["SPIN2_CHG.cube", "chgs2.cube", "*SPIN2*.cube", "*DOWN*.cube"],
+        workspace_root=root.root,
+    )
     up_source = up or up_escaped or _canonical_cube_path(base / "scf", "SPIN1_CHG.cube")
     down_source = down or down_escaped or _canonical_cube_path(base / "scf", "SPIN2_CHG.cube")
     diagnostics = {"spin_up": str(up) if up else None, "spin_down": str(down) if down else None}

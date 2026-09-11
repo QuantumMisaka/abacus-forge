@@ -121,6 +121,22 @@ def test_cube_subtraction_and_spin_density_postprocess(tmp_path: Path) -> None:
     assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
 
 
+def test_spin_density_postprocess_accepts_native_chgs_names(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "native-spin-root")
+    prepare_spin_density(workspace.root)
+    spin_dir = workspace.root / "spin-density" / "scf"
+    _write_cube(spin_dir / "outputs" / "chgs1.cube", [3.0, 4.0])
+    _write_cube(spin_dir / "outputs" / "chgs2.cube", [1.0, 1.5])
+
+    posted = post_spin_density(workspace.root)
+
+    assert posted.status == "completed"
+    assert posted.summary["spin_density_file"].endswith("spin_density.cube")
+    assert posted.diagnostics["spin_up"].endswith("chgs1.cube")
+    assert posted.diagnostics["spin_down"].endswith("chgs2.cube")
+    assert CubeData.from_file(workspace.root / "reports" / "spin_density.cube").data.reshape(-1).tolist() == [2.0, 2.5]
+
+
 def test_property_post_does_not_read_escaped_cube_symlinks(tmp_path: Path) -> None:
     workspace = _prepared_workspace(tmp_path / "escaped-spin-root")
     prepare_spin_density(workspace.root)
