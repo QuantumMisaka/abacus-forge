@@ -226,7 +226,7 @@ class LocalRunner:
 
 _NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
 
-_LogFingerprint = tuple[int, int, int, int, int, str]
+_LogFingerprint = tuple[int, int, int, int, int, str, bool]
 
 
 def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
@@ -285,8 +285,16 @@ def _running_log_snapshot(workspace: Workspace) -> dict[Path, _LogFingerprint]:
                 resolved = path.resolve(strict=True)
                 resolved.relative_to(root)
                 stat = resolved.stat()
-                digest, _ = _stream_digest_and_marker(resolved)
-                snapshot[resolved] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, digest)
+                digest, marker = _stream_digest_and_marker(resolved)
+                snapshot[resolved] = (
+                    stat.st_dev,
+                    stat.st_ino,
+                    stat.st_size,
+                    stat.st_mtime_ns,
+                    stat.st_ctime_ns,
+                    digest,
+                    marker,
+                )
             except (OSError, ValueError, RuntimeError):
                 continue
     return snapshot
@@ -322,6 +330,8 @@ def _normal_end_source(
                     append_marker = _stream_append_marker(resolved, previous[2], previous[5])
                     if append_marker is not None:
                         marker = append_marker
+                if previous is not None and stat.st_size <= previous[2] and previous[6] and marker:
+                    marker = False
                 if marker:
                     matches.append(resolved)
             except (OSError, ValueError, RuntimeError, UnicodeError):
