@@ -120,6 +120,9 @@ def collect_abacus_metrics(
             return
 
     mark_main(metrics)
+    native_fermi = _NATIVE_FERMI.findall(main_content)
+    generic_fermi = _METRIC_PATTERNS["fermi_energy"].search(main_content)
+    native_fermi_used = bool(native_fermi and generic_fermi is None)
     native_final = _NATIVE_FINAL_ETOT.findall(main_content)
     if native_final:
         metrics["total_energy"] = float(native_final[-1])
@@ -135,6 +138,8 @@ def collect_abacus_metrics(
     }
     if native_final:
         diagnostics["native_final_energy_markers"] = len(native_final)
+    if native_fermi_used:
+        diagnostics["native_fermi_markers"] = len(native_fermi)
     native_md = _native_md_metrics(main_content)
     metrics.update(native_md["metrics"])
     mark_main(native_md["metrics"])

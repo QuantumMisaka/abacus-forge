@@ -90,6 +90,14 @@ def test_collect_reads_native_abacus_fermi_energy_in_ev_column(tmp_path: Path) -
     result = collect(workspace)
 
     assert result.metrics["fermi_energy"] == pytest.approx(-3.9837910886)
+    typed = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174231",
+            workspace_rel="native-fermi",
+        )
+    )
+    assert isinstance(typed, OperationOutcome)
+    assert next(metric for metric in typed.envelope.metrics if metric.name == "fermi_energy").unit == "eV"
 
 
 def test_collect_sidecar_distinguishes_explicit_and_computed_energy_per_atom(tmp_path: Path) -> None:
