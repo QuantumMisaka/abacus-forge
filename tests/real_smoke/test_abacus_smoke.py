@@ -82,7 +82,8 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
             generated = name == "out.log" and not is_input_asset and not is_report_asset
             if capability == "md":
                 generated = generated or (
-                    name in {"running_md.log", "MD_dump"} and not is_input_asset
+                    name in {"running_md.log", "MD_dump"}
+                    and (not is_input_asset or is_inputs_output)
                 )
             else:
                 generated = generated or (name.startswith("running_") and name.endswith(".log"))

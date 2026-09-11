@@ -22,6 +22,8 @@ from tests.real_smoke.test_abacus_smoke import _assert_no_preexisting_generated_
         ("relax", "inputs/OUT.ABACUS/STRU_FINAL.cif"),
         ("relax", "inputs/OUT.ABACUS/STRU_NOW"),
         ("relax", "inputs/OUT.ABACUS/STRU_NOW.cif"),
+        ("md", "inputs/OUT.ABACUS/running_md.log"),
+        ("md", "inputs/OUT.ABACUS/MD_dump"),
     ),
 )
 def test_freshness_guard_rejects_collector_visible_generated_outputs(
@@ -40,11 +42,7 @@ def test_freshness_guard_allows_input_handoff_and_non_domain_report_files(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "md-workspace"
-    for relative in (
-        "inputs/OUT.ABACUS/running_md.log",
-        "inputs/OUT.ABACUS/MD_dump",
-        "inputs/OUT.ABACUS/restart_payload",
-    ):
+    for relative in ("inputs/OUT.ABACUS/restart_payload",):
         path = workspace / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("handoff\n", encoding="utf-8")
