@@ -278,10 +278,13 @@ Task 1's opt-in matrix in
 projection with the matching typed collect service on four isolated workspace
 copies: the existing `abacustest-abacus-scf` SCF fixture, the Forge-owned native
 Relax fixture for `relax` and `cell-relax`, and the existing native MD fixture.
-It records the checked-in input/profile scope, parser observations,
-workspace-relative artifact inventory, and typed envelope status shape for the
-four core capability names. The matrix does not add runtime dependencies or
-change any request, result, status, descriptor, or CLI contract.
+It exercises collection only: the typed collect requests use the checked-in
+fixture inputs and report `execution=not_run`. It records collection/parser
+observations, contained workspace-relative artifact inventory, and typed
+envelope/status facts for the four core capability names; it does not run
+`prepare` or `execute`, compare generated profiles, or establish process
+execution parity. The matrix does not add runtime dependencies or change any
+request, result, status, descriptor, or CLI contract.
 
 The exact opt-in benchmark commands and results are:
 
@@ -293,7 +296,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytes
 6 passed
 ```
 
-> The matrix proves only input/profile, process, parser-observation, artifact, and envelope compatibility for the four core capability names. It does not prove scientific correctness, convergence quality, workflow orchestration, scheduler integration, or stable maturity.
+> The matrix proves only collection/parser-observation, contained artifact, and envelope/status compatibility on checked-in fixtures for the four core capability names. It does not prove prepare/profile equivalence, process execution parity, scientific correctness, convergence quality, workflow orchestration, scheduler integration, or stable maturity.
 
 The typed capabilities remain `experimental` until the approved SPEC's
 separate `compat`, `real-smoke`, clean-environment, and release decision gates

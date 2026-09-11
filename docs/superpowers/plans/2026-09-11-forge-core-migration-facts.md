@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Forge 运行时继续不依赖 \`abacus-agent-tools\`、\`abacustest\`、AiiDA、调度器或平台；参考仓库只用于人工核对 fixture 和字段来源。
-- 矩阵只比较 INPUT/KPT/STRU profile、命令/进程事实、parser observations、workspace-relative artifact inventory、envelope/status 形状；不得比较能量物理正确性、收敛质量、轨迹质量或其他科学结论。
+- 矩阵只比较 checked-in fixture 上的 collection/parser observations、contained workspace-relative artifact inventory、envelope/status 形状；不得比较 prepare/profile 等价性、process execution parity、能量物理正确性、收敛质量、轨迹质量或其他科学结论。
 - \`scientific\` 必须保持 \`unassessed\`；benchmark 不能晋升 capability maturity，也不能代替 real-smoke 或上层 Paimon Agent Benchmark。
 - 默认 \`pytest -q\` 不运行 benchmark；必须通过 \`--run-benchmark -m benchmark\` 显式运行。
 - 新 fixture 不进入安装包，不复制 Paimon/AiiDA 状态字段，不引入 task/workflow/scheduler 语义。
@@ -231,7 +231,7 @@ Replace the Section 4 \`run\` paragraph with:
 
 In the integration plan, record the fixture scope, exact benchmark command and result, and this boundary sentence verbatim:
 
-> The matrix proves only input/profile, process, parser-observation, artifact, and envelope compatibility for the four core capability names. It does not prove scientific correctness, convergence quality, workflow orchestration, scheduler integration, or stable maturity.
+> The matrix proves only collection/parser-observation, contained artifact, and envelope/status compatibility on checked-in fixtures for the four core capability names. It does not prove prepare/profile equivalence, process execution parity, scientific correctness, convergence quality, workflow orchestration, scheduler integration, or stable maturity.
 
 State that typed capabilities remain \`experimental\` until the approved SPEC's separate compat, real-smoke, clean-environment and release decision gates are satisfied.
 
@@ -273,4 +273,3 @@ git commit -m "docs: record core migration fact boundary"
 - Shared-file scan: Task 1 owns only fixture/support/benchmark files; Task 2 owns only AGENTS and planning documents. No implementation task consumes a file written by another task except the documented benchmark evidence link.
 - Type consistency: \`copy_native_relax_workspace\` returns \`Workspace\`; typed requests use the existing four \`*CollectRequest\` classes; artifact paths use the existing \`ArtifactRecord.path_rel\`; all commands use the repository's \`conda run -n paimon\` gate.
 - No placeholders: the plan contains exact paths, fixture bytes, metric names, commands, and expected results. No \`TBD\`, \`TODO\`, or undefined interface remains.
-
