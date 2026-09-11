@@ -249,7 +249,7 @@ def _running_log_snapshot(workspace: Workspace) -> dict[Path, tuple[int, int, in
 
 
 def _normal_end_source(
-    workspace: Workspace, stdout: str, before: dict[Path, str]
+    workspace: Workspace, stdout: str, before: dict[Path, tuple[int, int, int, int, int]]
 ) -> Path | None:
     """Find a positive marker attributable to this LocalRunner invocation."""
     if _NORMAL_END_MARKER.search(stdout):

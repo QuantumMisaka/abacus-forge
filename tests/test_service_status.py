@@ -668,6 +668,85 @@ def test_typed_execute_omits_stale_normal_end_and_keeps_nonzero_independent(
     assert "normal_end" not in result.envelope.diagnostics
 
 
+def test_typed_execute_keeps_normal_end_when_process_exits_nonzero(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = tmp_path / "runner.py"
+    executable.write_text(f"#!{sys.executable}\nprint('NORMAL END')\nraise SystemExit(7)\n", encoding="utf-8")
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(_request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174037"))
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["failure_class"] == "nonzero_exit"
+    assert result.envelope.diagnostics["normal_end"] is True
+
+
+def test_typed_execute_omits_ambiguous_changed_running_logs(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = tmp_path / "runner.py"
+    executable.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\n"
+        "base = Path('../outputs/OUT.ABACUS'); base.mkdir(parents=True, exist_ok=True)\n"
+        "for name in ('running_scf.log', 'running_relax.log'): (base / name).write_text('Total  Time  : 1\\n')\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable))).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174038")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert "normal_end" not in result.envelope.diagnostics
+
+
+@pytest.mark.parametrize("source_kind", ["escaped", "symlink", "missing", "directory"])
+def test_typed_execute_invalid_normal_end_source_preserves_execute_outcome(
+    tmp_path: Path, source_kind: str
+) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    stdout = workspace.outputs_dir / "stdout.log"
+    stderr = workspace.outputs_dir / "stderr.log"
+    source = tmp_path / "outside.log" if source_kind == "escaped" else workspace.outputs_dir / f"{source_kind}.log"
+    if source_kind == "symlink":
+        source.symlink_to(tmp_path / "outside.log")
+    elif source_kind == "directory":
+        source.mkdir()
+    elif source_kind != "missing":
+        source.write_text("NORMAL END\n", encoding="utf-8")
+
+    class SidecarRunner:
+        def run(self, current_workspace: Workspace) -> RunResult:
+            stdout.write_text("done\n", encoding="utf-8")
+            stderr.write_text("", encoding="utf-8")
+            return RunResult(current_workspace.root, ["fake"], 0, "completed", stdout, stderr, 1, {}, True, source)
+
+    result = ForgeServices.default(workspace_root=tmp_path, runner=SidecarRunner()).execute_scf(
+        _request(ScfExecuteRequest, "scf", f"123e4567-e89b-42d3-a456-4266141740{39 + ['escaped','symlink','missing','directory'].index(source_kind)}")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.execution == "completed"
+    assert "normal_end" not in result.envelope.diagnostics
+
+
+def test_typed_stdout_normal_end_reuses_single_stdout_artifact(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    result = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable))).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174043")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert sum(item.path_rel == "outputs/stdout.log" for item in result.envelope.artifacts) == 1
+
+
+def test_legacy_run_result_serialization_excludes_normal_end_sidecar(tmp_path: Path) -> None:
+    stdout = tmp_path / "stdout.log"
+    stderr = tmp_path / "stderr.log"
+    result = RunResult(tmp_path, ["fake"], 0, "completed", stdout, stderr, 1, {}, True, tmp_path / "normal.log")
+    assert set(result.to_dict()) == {"workspace", "command", "returncode", "status", "stdout_path", "stderr_path", "omp_threads", "diagnostics"}
+    assert "normal_end" not in result.to_envelope().to_dict()["diagnostics"]
+
+
 @pytest.mark.parametrize(
     ("behavior", "expected_failure", "expected_termination", "expected_returncode", "operation_suffix"),
     [
