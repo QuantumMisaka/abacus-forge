@@ -14,8 +14,8 @@
 
 - 保持 `forge.request/v1`、`forge.result/v1`、`forge.pyatb-manifest/v1`、event、artifact ref、错误类和 exit mapping 不变。
 - `pyatb-band` 仍只声明 `prepare|execute|collect`，成熟度仍为 `experimental`；旧 nspin=1/2 wire 形式和所有 legacy helper 不变。
-- nspin=1/4 恰好一个 HR；nspin=2 恰好两个 HR；SR/rR 各一个。只校验显式 workspace-relative 文件、生成输入和 provenance。
-- nspin=4 的 HR/SR/rR 内容不在 Forge 解析范围；实际 PyATB 进程自行报告输入内容错误。Forge 不返回 property、spin-texture、接受/拒绝或科学质量判断。
+- nspin=1/4 恰好一个 HR；nspin=2 恰好两个 HR；SR 恰好一个，rR 可选且最多一个。只校验显式 workspace-relative 文件、生成输入和 provenance。
+- nspin=4 的 HR/SR 以及供给时的 rR 内容不在 Forge 解析范围；实际 PyATB 进程自行报告输入内容错误。Forge 不返回 property、spin-texture、接受/拒绝或科学质量判断。
 - 不修改 main，不合并、不 push；只在当前隔离 worktree 形成可审查提交。
 
 ## 文件责任
@@ -37,7 +37,7 @@
 - nspin=1 still requires one HR; nspin=2 still requires two HR;
 - discovery schema publishes enum `[1, 2, 4]` and conditional HR cardinality (`nspin=2` → 2; omitted/1/4 → 1), decoder routes nspin=4 without silently defaulting to 1;
 - JSON schema integer/type and runtime constructor both reject boolean nspin;
-- typed prepare with one nspin=4 HR produces `nspin 4`, one `HR_route`, shared SR/rR and manifest `matrix_hr/shared`.
+- typed prepare with one nspin=4 HR produces `nspin 4`, one `HR_route`, shared SR, and a shared rR only when supplied; the manifest always contains `matrix_hr/shared` and only conditionally contains `matrix_rr/shared`.
 - an isolated machine-process nspin=4 prepare produces the same envelope facts as the direct service API.
 
 **RED verification:** 先在当前 baseline（nspin=4 尚未实现）运行新增 focused tests；预期仅因现有 `nspin must be 1 or 2` 或 cardinality/schema 不符而失败，不接受 setup/import failure 作为 RED。
@@ -115,6 +115,10 @@ Also run the repository’s architecture/forbidden-import, discovery, clean arch
 - `Ruling: use an internal `(nspin, expected_hr_count)` mapping, derive discovery's enum from it, and express its two cardinality branches with JSON Schema if/then/else — runtime and machine-readable validation then reject the same malformed request without adding wire fields.`
 - `Ruling: keep nspin=4 HR as manifest `shared` — the manifest describes the one explicit route, not a complete spinor physics taxonomy; adding a new enum would expand v1 without a consumer need.`
 - `Ruling: do not add a real-smoke gate to this implementation plan — real process validation is a later release gate, while this batch proves only typed handoff and facts.`
+
+## Follow-up correction (2026-09-11)
+
+The local PyATB input contract confirms that `BAND_STRUCTURE` consumes HR/SR and does not require an rR route. The typed request therefore keeps `rr_path_rel` nullable/optional: supplied rR files remain strict workspace-relative handoffs with manifest provenance, while omitted rR produces no route or `matrix_rr` entry. This correction narrows an unnecessary input requirement without changing the nspin cardinality or Forge's facts-only boundary.
 
 ## Execution evidence (2026-09-11)
 

@@ -346,3 +346,13 @@ Implementation was executed after the companion SPEC approval with
 superpowers:subagent-driven-development, using task-scoped implementer/reviewer
 passes followed by a whole-branch review. Future extensions must use a new
 approved SPEC/PLAN when they change the manifest vocabulary or capability scope.
+
+## Follow-up contract correction (2026-09-11)
+
+The later typed PyATB nspin=4 handoff work and the optional-rR correction
+supersede the historical assumptions above that nspin=4 or rR were deferred or
+always present. Current truth is: Bands requires explicit HR/SR, accepts
+nspin=1|2|4 with HR cardinality 1|2|1, and records `matrix_rr` only when the
+caller supplies rR. The original manifest implementation and its verification
+evidence remain historical records; the current contract is defined by the
+approved nspin=4 design and `2026-09-11-forge-typed-pyatb-optional-rr.md`.

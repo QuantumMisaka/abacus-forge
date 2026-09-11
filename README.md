@@ -91,7 +91,7 @@ postprocess 与下文已有的 `run_band`、`run_dos`、`run_band_sequence`、
 `PyatbBandPrepareRequest`、`PyatbBandExecuteRequest` 与
 `PyatbBandCollectRequest` 提供独立的实验性 `pyatb-band` capability。它只暴露
 `prepare`、`execute`、`collect` 三个 operation：prepare 接收调用方已经放入同一
-workspace 的显式 `STRU`、HR、SR、rR 文件、Fermi 能量和 line-mode K 点；默认以
+workspace 的显式 `STRU`、HR、SR 文件、可选 rR 文件、Fermi 能量和 line-mode K 点；默认以
 workspace 内的相对链接完成 handoff，`handoff_mode="copy"` 可改为独立复制。绝对路径、
 跨 workspace 来源、隐式 SCF 目录扫描和从日志推导 Fermi 能量均不属于 typed 面。
 
@@ -99,7 +99,8 @@ workspace 内的相对链接完成 handoff，`handoff_mode="copy"` 可改为独�
 `inputs/KPT_band`，并在结果 diagnostics/manifest 中记录角色、来源与目标相对路径及
 SHA-256。`nspin` 支持 1、2 和 4：nspin=1/4 各需一个 HR 文件，nspin=2 需要两个 HR 文件，
 三种模式均共用一个 SR 文件；nspin=4 的单个 HR 在 manifest 中记为
-`matrix_hr/shared`。其他 PyATB property 尚未进入此 capability。执行只通过本地 runner
+`matrix_hr/shared`；rR 只有在请求提供时才生成 `rR_route` 并记为
+`matrix_rr/shared`，省略或传入 `null` 时不生成该 route 或 manifest entry。其他 PyATB property 尚未进入此 capability。执行只通过本地 runner
 启动一个 PyATB 进程；收集读取默认的
 `inputs/Out/Band_Structure/band_info.dat`，也可显式列出 band data/picture 路径，返回
 artifact、运行时和 parser facts。可解析的 `band_gap` 只是 `reported` metric，
@@ -638,7 +639,7 @@ typed `pyatb-band` 请求使用与其他 machine operation 相同的
   "structure_path_rel": "source/STRU",
   "hr_paths_rel": ["source/data-HR-sparse_SPIN0.csr"],
   "sr_path_rel": "source/data-SR-sparse_SPIN0.csr",
-  "rr_path_rel": "source/data-rR-sparse.csr",
+  "rr_path_rel": null,
   "fermi_energy": 4.25,
   "line_kpoints": [
     {"coords": [0.0, 0.0, 0.0], "label": "G"},
@@ -650,6 +651,9 @@ typed `pyatb-band` 请求使用与其他 machine operation 相同的
   "handoff_mode": "link"
 }
 ```
+
+`rr_path_rel` 是可选字段；请求可省略或显式传入 `null`。只有调用方确实提供 rR
+文件时，Forge 才会交接该文件并在生成的 `Input` 与 manifest 中记录对应事实。
 
 执行和收集仍是两个独立 operation，不依赖数字 Task-ID，也不隐式执行 prepare 或
 上游 SCF：

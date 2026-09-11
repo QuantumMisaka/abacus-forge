@@ -17,7 +17,7 @@
 - Keep `forge.request/v1`, `forge.result/v1`, `forge.operation-outcome/v1`, error classes and exit mapping unchanged; all typed operations use the existing UUIDv4 admission/event/artifact-ref path.
 - Capability name is exactly `pyatb-band`; maturity is `experimental`; advertised operations are exactly `prepare`, `execute`, and `collect`.
 - Typed preparation accepts only explicit workspace-relative paths; resolved sources and all generated/staged artifacts must remain under the destination workspace. Cross-workspace or absolute sources are rejected; an upper layer must materialize/link them before calling Forge.
-- The first typed slice supports `nspin` 1 and 2 only. Spin-2 HR requires two explicit HR paths; SR remains one shared explicit path, matching PyATB's current ABACUS reader. nspin 4 and other PyATB functions require later evidence and plans.
+- The typed handoff supports `nspin` 1, 2 and 4. Spin-2 HR requires two explicit HR paths; nspin-1/4 require one. SR remains one shared explicit path, matching PyATB's current ABACUS reader; rR is optional and is staged/rendered only when supplied. Other PyATB functions require later evidence and plans.
 - Handoff mode defaults to `link` and creates relative symlinks only for sources inside the same workspace; `copy` is explicit and uses `copy2`. Existing conflicting destinations are rejected without unlinking or overwriting.
 - Typed preparation performs no SCF directory scan and never derives Fermi energy from logs. It does not run ABACUS, PyATB, a workflow sequence, a scheduler, or a scientific acceptance check.
 - Typed execute runs exactly one local process through `LocalRunner`; launcher policy, retries, monitoring, resume/restart, Slurm/site scheduling and upper-layer task IDs remain outside Forge.
@@ -34,7 +34,7 @@
 - Modify: `tests/test_contracts.py`, `tests/test_machine_cli.py`, `tests/test_cli_process.py`
 
 **Interfaces:**
-- `PyatbBandPrepareRequest(operation_id, workspace_rel, structure_path_rel, hr_paths_rel, sr_path_rel, rr_path_rel, fermi_energy, line_kpoints, nspin=1, line_segments=20, max_kpoint_num=4000, handoff_mode="link")`.
+- `PyatbBandPrepareRequest(operation_id, workspace_rel, structure_path_rel, hr_paths_rel, sr_path_rel, rr_path_rel=None, fermi_energy, line_kpoints, nspin=1, line_segments=20, max_kpoint_num=4000, handoff_mode="link")`; the serialized field is nullable for stable round-trips and may be omitted by callers.
 - `PyatbBandExecuteRequest(operation_id, workspace_rel, executable="pyatb", mpi_ranks=1, omp_threads=1, timeout_seconds=None, dry_run=False)`.
 - `PyatbBandCollectRequest(operation_id, workspace_rel, band_info_path_rel="inputs/Out/Band_Structure/band_info.dat", band_data_paths_rel=(), band_picture_paths_rel=())`.
 - Every request serializes/deserializes under unchanged `forge.request/v1`, carries `capability="pyatb-band"` and the explicit operation, rejects unknown fields, freezes JSON-safe values, and validates canonical workspace-relative paths before any filesystem access.
@@ -57,11 +57,11 @@
 **Interfaces:**
 - `prepare_typed_pyatb_band(workspace, request) -> tuple[Workspace, tuple[dict[str, JSONValue], ...]]` (the implementation may use a clearer equivalent name, but must return the prepared workspace and serializable handoff records).
 - `collect_typed_pyatb_band(workspace, request) -> ForgeResultEnvelope` or an equivalent pure result record consumed by Task 3.
-- Handoff records contain role (`structure`/`hr`/`sr`/`rR`), source path relative to workspace, destination path relative to workspace, mode, source SHA-256 and destination SHA-256.
+- Handoff records contain role (`structure`/`hr`/`sr` and, when supplied, `rR`), source path relative to workspace, destination path relative to workspace, mode, source SHA-256 and destination SHA-256.
 
 **Behavior:**
 - Resolve and validate every declared source beneath the workspace root before writing. Stage the structure as `inputs/STRU`; stage matrix files under `inputs/pyatb_sources/<basename>` with deterministic relative routes in the generated PyATB `Input`. Reject missing/non-file sources, external/symlink-resolved escapes, duplicate destination basenames and conflicting existing destinations before any write.
-- Parse the declared STRU with `AbacusStructure`, preserve its lattice vectors, render PyATB `INPUT_PARAMETERS` (`package=ABACUS`, explicit `nspin`, Fermi in eV, HR/SR/rR routes, `HR_unit=Ry`, `rR_unit=Bohr`) and `BAND_STRUCTURE` from the normalized line points, and write `inputs/Input` plus `inputs/KPT_band`. The algorithm must not read a sibling SCF `INPUT`, output log or Fermi metric.
+- Parse the declared STRU with `AbacusStructure`, preserve its lattice vectors, render PyATB `INPUT_PARAMETERS` (`package=ABACUS`, explicit `nspin`, Fermi in eV, HR/SR routes, and a conditional rR route when supplied; `HR_unit=Ry` and conditional `rR_unit=Bohr`) and `BAND_STRUCTURE` from the normalized line points, and write `inputs/Input` plus `inputs/KPT_band`. The algorithm must not read a sibling SCF `INPUT`, output log or Fermi metric.
 - Link mode creates relative links only; copy mode creates independent files with `copy2`. A destination that already is the exact requested source may be retained, but any other existing file/link is a hard conflict. No legacy absolute symlink behavior is changed.
 - Collection uses the explicit/default `band_info_path_rel` plus optional data/picture paths. It records only contained existing files as output artifacts, parses the existing `Band gap ...` value as a reported `band_gap` metric when parseable, and returns missing/partial/complete collection facts and diagnostics for absent or malformed requested outputs. It does not calculate or classify a band gap.
 
@@ -104,7 +104,7 @@
 - Create: `.superpowers/sdd/2026-09-10-forge-typed-pyatb-band/task-4-report.md`
 - No compatibility code changes in this task.
 
-**Behavior:** README documents the typed `pyatb-band` request examples, explicit workspace-local handoff, default relative link/copy option, generated files, execution/collection facts, reported-vs-scientific boundary and legacy helper separation. ROADMAP marks only this experimental band handoff as implemented; PyATB properties, nspin 4, typed export, SCF sequence orchestration, scheduling and stable/real-smoke promotion remain deferred.
+**Behavior:** README documents the typed `pyatb-band` request examples, explicit workspace-local handoff, default relative link/copy option, generated files, execution/collection facts, reported-vs-scientific boundary and legacy helper separation. This plan records only the experimental band handoff; PyATB properties and stable/real-smoke promotion remain separate follow-up work. The optional rR handoff is documented without making it a required Bands input.
 
 **Verification:** Run the full offline gate with the repository's fixed interpreter and flags, `git diff --check`, discovery assertions and forbidden-import scan. Bind every result to the final code revision. Obtain task reviews and one whole-branch review; fix all Critical/Important findings before marking this plan complete. No merge or push is part of this plan.
 
@@ -121,9 +121,13 @@ fix only; no production behavior or compatibility surface changed.
 
 - Checked against the two approved SPECs, the local PyATB `80f7c2d` input/output contract, Forge legacy tests, Paimon/abacus-agent-tools band behavior and abacuslab matrix handoff templates. The plan adds no runtime dependency and keeps legacy helpers intact.
 - `Ruling: use a named `pyatb-band` capability with prepare/execute/collect — the existing `band` capability is already the ABACUS parser surface and a generic PyATB function selector would freeze unsupported property contracts; if wrong, only the new registry/request names need migration.`
-- `Ruling: require explicit Fermi and workspace-relative matrix paths — PyATB consumes HR/SR/rR from one SCF handoff, while automatic SCF discovery/metric lookup is exactly the legacy workflow boundary; if wrong, callers can still materialize the same files and a later adapter can add a separate explicit source-reference contract.`
+- `Ruling: require explicit Fermi and workspace-relative matrix paths — PyATB consumes HR/SR and, for modules that need it, an optional rR from one SCF handoff, while automatic SCF discovery/metric lookup is exactly the legacy workflow boundary; if wrong, callers can still materialize the same files and a later adapter can add a separate explicit source-reference contract.`
 - `Ruling: default relative link, copy as opt-in — matrix files can be large and same-workspace links preserve zero-copy handoff, while relative links satisfy workspace portability; if wrong, a future default change is confined to the new request default and docs.`
 - `Ruling: collect standard band outputs without scientific acceptance — `band_gap` may be emitted as a reported parser fact, but Forge does not classify it; this keeps the SPEC's facts-only status model and avoids importing abacus-agent-tools policy.`
+
+## Follow-up correction (2026-09-11)
+
+The local PyATB input contract confirms that `BAND_STRUCTURE` consumes HR/SR and does not require an rR route. The typed request therefore keeps `rr_path_rel` nullable/optional: supplied rR files remain strict workspace-relative handoffs with manifest provenance, while omitted rR produces no route or `matrix_rr` entry. This correction narrows an unnecessary input requirement and does not expand the capability into PyATB properties, orchestration, scheduling or scientific validation.
 
 ## Follow-up architecture hardening (2026-09-10)
 

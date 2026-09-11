@@ -20,7 +20,7 @@
 - typed `band`/`dos` postprocess 不等同于既有 `run_band`、`run_dos`、sequence helper 或 `abacus-forge band|dos` task；后者继续保持 legacy task/sequence 语义，不被隐式改写。
 - 2026-09-10 已落地独立的实验性 typed `md.postprocess`：只接受调用方明确交接的 exact trajectory，支持 RDF、漂移校正 MSD/扩散、VACF/VDOS、键长和键角五个 canonical mode；返回 trajectory provenance、analysis/data/plot facts、artifact hash/size 和单个 operation event。它不扫描 latest、不转换 `MD_dump`、不隐式执行 MD、collect 或 workflow，也不做科学验收。
 - `band` sequence 已支持 `backend="pyatb"`，将 LCAO SCF matrix files 转为 PyATB `Input` 并收集 PyATB band artifacts。
-- 2026-09-10 已落地独立的 typed `pyatb-band` handoff capability：仅提供 `prepare`、`execute`、`collect`，成熟度为 `experimental`。prepare 接收显式 workspace-relative STRU、HR、SR、rR、Fermi 能量和 line-mode K 点，默认创建相对链接（可显式选择 copy），生成 `inputs/Input` 与 `inputs/KPT_band`；nspin=1/4 各使用一个 HR，nspin=2 使用两个 HR，nspin=4 的唯一 HR 在 manifest 中记为 `matrix_hr/shared`；execute 只启动一个本地 PyATB 进程；collect 只返回声明输出的 artifact、运行时和 parser facts，`band_gap` 仅为 reported metric，scientific 保持 `unassessed`。
+- 2026-09-10 已落地独立的 typed `pyatb-band` handoff capability：仅提供 `prepare`、`execute`、`collect`，成熟度为 `experimental`。prepare 接收显式 workspace-relative STRU、HR、SR、可选 rR、Fermi 能量和 line-mode K 点，默认创建相对链接（可显式选择 copy），生成 `inputs/Input` 与 `inputs/KPT_band`；nspin=1/4 各使用一个 HR，nspin=2 使用两个 HR，rR 仅在供给时写入 route 并记为 `matrix_rr/shared`，nspin=4 的唯一 HR 在 manifest 中记为 `matrix_hr/shared`；execute 只启动一个本地 PyATB 进程；collect 只返回声明输出的 artifact、运行时和 parser facts，`band_gap` 仅为 reported metric，scientific 保持 `unassessed`。
 - typed `pyatb-band` 与 legacy `prepare_pyatb_band` / `run_pyatb` / `collect_pyatb` / `run_band_sequence(..., backend="pyatb")` 分开；legacy helper 的 SCF 自动发现和原有兼容行为保持不变。
 - 2026-09-10 已落地独立的 typed `export` capability：成熟度为 `experimental`，仅将同一 workspace 内由 `ArtifactRef` 显式指定的单个 operation outcome 序列化为 `forge.export/v1` JSON 文档；API 与 Agent-first machine CLI 共用同一 service，并追加一个 output artifact 与 export event。
 - typed `export` 不复制二进制 artifact、不查找 latest、不隐式执行 collect/postprocess、不发布报告、不做科学验证，也不负责 workflow 编排、重试/恢复或平台调度；legacy `export` 保持原行为。
@@ -45,14 +45,14 @@
 - typed MD 当前交付单工作目录的准备、修改、一次本地执行、原生日志/`MD_dump` 事实收集以及独立 `postprocess`；`running_md.log` 的热力学事实与 `MD_dump` 的帧/步数事实分开投影，legacy synthetic dump 解析保持兼容。MD 后处理仍不负责 trajectory conversion、PDB/TUI、monitor、restart/resume、workflow 编排、调度、导出或科学判断；这些边界保持在 Forge 外。后续批次仍包括 PyATB properties 和更多 property-pack 的真实 smoke。
 - 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；nspin=4 handoff 已沿用 `matrix_hr/shared` 映射，PyATB properties、property/composite 聚合和 real-smoke 继续 deferred。
 - 继续固化 SCF->NSCF artifact handoff 规则，扩展到其他 property family 时仍需独立设计和验证。
-- 当前 manifest 已覆盖 nspin=1/2/4 的 HR：nspin=1/4 为 `shared`，nspin=2 按请求顺序为 `up/down`，SR/rR 均为 `shared`；后续若扩展到 PyATB properties、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些额外语义。
+- 当前 manifest 已覆盖 nspin=1/2/4 的 HR：nspin=1/4 为 `shared`，nspin=2 按请求顺序为 `up/down`，SR 为 `shared`，供给的 rR 为 `shared`；未供给 rR 时不创建 `matrix_rr` entry。后续若扩展到 PyATB properties、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些额外语义。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
 - 已落地可选、实验性的 atst-tools NEB engine adapter：以 Forge 的 `prepare -> execute -> postprocess` 单元承接配置、图像执行事实、链路日志和后处理产物；NEB 图像/链路编排及并行执行委托 atst-tools。该能力暂不晋升稳定面；发布前仍须单独通过 atst-tools 安装与版本/API 锁定、干净环境 import/process 验证，以及真实 NEB smoke 门禁。
 - 2026-09-09 已用当前 `atst-tools` `2.2.4` 可执行文件完成 Forge machine-CLI 的实际进程契约 smoke（`prepare`、`execute --dry-run`、`postprocess`）及临时 workspace 产物/审计检查；该检查未启动 ABACUS，不构成真实 NEB workflow 证据。
 - 2026-09-09 已通过 Forge wheel 在全新 Python 3.13 venv 中的安装/import/console-entry-point 检查，且未安装或导入 `abacus-agent-tools`、`abacustest`、AiiDA 或 `atst-tools`；这只覆盖 Forge 自身的 clean package gate，不替代 ATST 进程隔离与真实 NEB workflow 门禁。
 - 2026-09-10 已落地实验性的 `forge.property-manifest/v1` legacy diagnostics projection：`charge-density`、`spin-density` 和 `charge-diff` post 记录明确选中的 cube source、派生 cube、metrics report 以及 missing/escaped/unavailable 事实；artifact id、哈希和大小复用同一结果的 artifact projection。该增量不新增 typed property capability，不做目录扫描、科学验收、workflow 编排或调度。
 - cube family 的 potential/ELF/Bader 输出、更多 property 语义、跨 operation 聚合和真实运行证据仍须各自独立 SPEC/PLAN，不从当前 manifest 推断。
-- 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录；在此之前，typed `pyatb-band` 只保持 experimental，不声称真实运行或科学验证证据。
+- 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录；2026-09-11 已在隔离临时 workspace 用当前可用的 serial PyATB 完成 HR/SR-only Bands 输入兼容性运行（exit 0，产出 `band_info.dat`、`band_up.dat`、`band_dn.dat`、`band.pdf`），这只证明输入/进程兼容性，不构成科学验证或稳定晋级证据；typed `pyatb-band` 继续保持 experimental。
 
 ## 中期方向
 - 进一步补齐更多 ABACUS 输出指标解析。

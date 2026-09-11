@@ -47,8 +47,9 @@
   <main>
     <section id="summary">
       <h2>摘要</h2>
-      <p>typed <code>pyatb-band</code> 已经能接收显式的 ABACUS STRU、HR、SR、rR 文件并生成 PyATB 输入。在本切片形成时，请求契约把 HR 文件数直接限制为 <code>nspin</code>，因此无法表达 PyATB 已有的非共线 <code>nspin=4</code>；发现文档当时也如实公布了实现的 <code>1|2</code> 范围。</p>
+      <p>typed <code>pyatb-band</code> 已经能接收显式的 ABACUS STRU、HR、SR 和可选 rR 文件并生成 PyATB 输入。在本切片形成时，请求契约把 HR 文件数直接限制为 <code>nspin</code>，因此无法表达 PyATB 已有的非共线 <code>nspin=4</code>；发现文档当时也如实公布了实现的 <code>1|2</code> 范围。</p>
       <p>本切片把 <code>nspin=4</code> 作为一个最小的 typed handoff 扩展：请求允许 <code>1|2|4</code>；HR 路由数按 PyATB 的实际规则映射为 <code>1|2|1</code>；单个 nspin=4 复数 HR 在 manifest 中使用已有的 <code>spin="shared"</code>。Forge 只交接文件、写入输入并记录事实，不读取矩阵内容、不执行属性计算、不解释自旋纹理。</p>
+      <p><strong>后续契约修正（2026-09-11）：</strong>Bands 只要求 HR/SR；<code>rr_path_rel</code> 默认序列化为 <code>null</code>，也可在请求中省略。调用方提供 rR 时仍按 workspace-relative 文件严格交接并记录 <code>matrix_rr/shared</code>；未提供时不生成 <code>rR_route</code>，也不产生对应 manifest entry。</p>
       <div class="decision"><p><strong>核心结论：</strong>这是一项 capability 内的输入契约修正，不是新的 PyATB property capability；保持 <code>forge.pyatb-manifest/v1</code>、通用 result、事件和 legacy helper 不变。</p></div>
     </section>
 
@@ -76,9 +77,9 @@
         <thead><tr><th>ID</th><th>需求</th><th>验收信号</th></tr></thead>
         <tbody>
           <tr><td>N1</td><td>typed prepare request 的 <code>nspin</code> 只接受整数 <code>1</code>、<code>2</code>、<code>4</code>；布尔值和其它整数继续拒绝。</td><td>构造、JSON round-trip、request decoder 与 discovery schema 的枚举一致为 <code>[1,2,4]</code>；schema 的 integer 类型也拒绝布尔值。</td></tr>
-          <tr><td>N2</td><td>HR 路径数量由 spin mode 决定：<code>nspin=1</code> 或 <code>4</code> 要求恰好一个 HR，<code>nspin=2</code> 要求恰好两个 HR；SR/rR 始终各一个。</td><td>缺少或多余 HR 在任何文件写入前失败；discovery 用 <code>if/then/else</code> 公开同一条件；三种模式生成的 route 数与请求一致。</td></tr>
-          <tr><td>N3</td><td>nspin=4 的 generated <code>Input</code> 写入 <code>nspin 4</code> 和一个 <code>HR_route</code>；HR、SR、rR 均保留显式 workspace-relative route。</td><td>prepare fixture 检查文本、路径 containment、link/copy provenance 和无部分写入。</td></tr>
-          <tr><td>N4</td><td>prepare manifest 对 nspin=4 的唯一 HR 使用现有 <code>kind=matrix_hr</code>、<code>spin=shared</code>；SR/rR 仍为 shared。</td><td>manifest entry 与同一 envelope artifact id、hash、size 对齐；不新增 <code>spinor</code> 值或 schema 版本。</td></tr>
+          <tr><td>N2</td><td>HR 路径数量由 spin mode 决定：<code>nspin=1</code> 或 <code>4</code> 要求恰好一个 HR，<code>nspin=2</code> 要求恰好两个 HR；SR 始终一个，rR 可选且最多一个。</td><td>缺少或多余 HR 在任何文件写入前失败；discovery 用 <code>if/then/else</code> 公开同一条件；三种模式生成的 HR/SR route 数与请求一致，rR 仅在供给时出现。</td></tr>
+          <tr><td>N3</td><td>nspin=4 的 generated <code>Input</code> 写入 <code>nspin 4</code> 和一个 <code>HR_route</code>；HR、SR 保留显式 workspace-relative route，供给 rR 时再写入 <code>rR_route</code>。</td><td>prepare fixture 检查文本、路径 containment、link/copy provenance 和无部分写入；HR/SR-only 输入不含 <code>rR_route</code>。</td></tr>
+          <tr><td>N4</td><td>prepare manifest 对 nspin=4 的唯一 HR 使用现有 <code>kind=matrix_hr</code>、<code>spin=shared</code>；SR 为 shared，供给 rR 时其 <code>matrix_rr</code> 也为 shared，未供给时不创建该 entry。</td><td>manifest entry 与同一 envelope artifact id、hash、size 对齐；不新增 <code>spinor</code> 值或 schema 版本；未提供（省略或 null）的 rR 不进入 <code>inputs</code> 或 <code>missing</code>，已声明但缺失的 rR 仍按既有前置条件错误处理。</td></tr>
           <tr><td>N5</td><td>API 与 machine CLI 继续调用同一 typed service；legacy PyATB 面的参数、输出和测试保持不变。</td><td>typed API/CLI parity、discovery、完整离线 suite 与 legacy PyATB regression 通过。</td></tr>
           <tr><td>N6</td><td>Forge 只交付输入交接和可观察事实；不因 nspin=4 输出 scientific acceptance、property result、workflow relation 或 scheduler state。</td><td>测试只断言生成文件、manifest、artifact、状态和错误；文档明确 real-smoke/科学判断仍在外层。</td></tr>
         </tbody>
@@ -100,14 +101,14 @@
       <pre>PyatbBandPrepareRequest(nspin=4, hr_paths_rel=[hr.csr])
         │
         ├─ contract: expected_hr_count(4) == 1
-        ├─ typed handoff: structure + HR + SR + rR
-        ├─ generated Input: nspin=4, one HR_route, shared SR/rR
-        └─ pyatb_manifest/v1: matrix_hr/shared + matrix_sr/shared + matrix_rr/shared</pre>
+        ├─ typed handoff: structure + HR + SR [+ optional rR]
+        ├─ generated Input: nspin=4, one HR_route, SR_route [+ rR_route]
+        └─ pyatb_manifest/v1: matrix_hr/shared + matrix_sr/shared [+ matrix_rr/shared when supplied]</pre>
       <ul>
         <li><strong>契约层：</strong>集中定义允许值和期望 HR 数量；discovery 通过同一允许值和显式 JSON Schema conditional 公布字段及 cardinality，避免 discovery、服务和 manifest 各自漂移。</li>
         <li><strong>交接层：</strong>复用现有 typed staging、relative link/copy、hash 和 collision preflight；nspin=4 不读取 sibling workspace。</li>
         <li><strong>渲染层：</strong>现有 route 列表渲染对一个 nspin=4 HR 已经足够，只需由契约允许其通过；不改变 Input 字段命名。</li>
-        <li><strong>结果层：</strong>现有 manifest builder 根据 HR entry 数量选择 shared/up/down；单 HR nspin=4 自然落到 shared，不改变持久化协议。</li>
+        <li><strong>结果层：</strong>现有 manifest builder 根据 handoff entries 记录实际供给的文件；单 HR nspin=4 自然落到 shared，rR 只有在供给时才落为 <code>matrix_rr/shared</code>，不改变持久化协议。</li>
       </ul>
     </section>
 
@@ -121,7 +122,7 @@
       <h2>测试</h2>
       <ul>
         <li><strong>契约：</strong>nspin=1/2/4 round-trip；nspin=4 单 HR 接受；nspin=4 的 0 或 2 个 HR 拒绝；nspin=3、布尔值和未知字段拒绝；discovery schema 枚举与 decoder 一致，并对 nspin=2/其它已知模式公开 HR cardinality conditional。</li>
-        <li><strong>prepare：</strong>nspin=4 生成一个 HR route 和 <code>nspin 4</code>；manifest HR/SR/rR 的 kind/spin、artifact refs、hash/size 和 provenance 正确；link/copy、containment、collision/no-partial-write 保持覆盖。</li>
+        <li><strong>prepare：</strong>nspin=4 生成一个 HR route 和 <code>nspin 4</code>；manifest HR/SR 以及供给时的 rR 的 kind/spin、artifact refs、hash/size 和 provenance 正确；link/copy、containment、collision/no-partial-write 保持覆盖。</li>
         <li><strong>service/parity：</strong>隔离 workspace 中 Python API 与 machine CLI 的 request、状态、artifacts、manifest 和 event 等价；不启动真实 PyATB。</li>
         <li><strong>回归/门禁：</strong>现有 PyATB legacy、machine CLI、contracts、workspace、architecture suites；完整离线 pytest、<code>git diff --check</code>、clean wheel/import gate 按计划执行。</li>
       </ul>
