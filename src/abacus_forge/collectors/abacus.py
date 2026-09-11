@@ -43,6 +43,10 @@ _METRIC_PATTERNS = {
 
 _POSITIVE_CONVERGENCE_PATTERNS = {
     "scf_converged": re.compile(r"\bSCF\s+CONVERGED\b", re.IGNORECASE),
+    # Native ABACUS running logs use ``#SCF IS CONVERGED#``.  Keep this as a
+    # separate marker so diagnostics preserve the exact source spelling while
+    # sharing the existing factual convergence projection.
+    "scf_is_converged": re.compile(r"\bSCF\s+IS\s+CONVERGED\b", re.IGNORECASE),
     "charge_density_converged": re.compile(r"charge density convergence is achieved", re.IGNORECASE),
 }
 

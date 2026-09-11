@@ -56,6 +56,26 @@ def test_collect_reads_repository_native_final_energy_marker(tmp_path: Path) -> 
     assert result.metrics["total_energy"] == pytest.approx(-28364.4012275304485229)
 
 
+def test_collect_recognizes_repository_native_scf_convergence_marker(tmp_path: Path) -> None:
+    """ABACUS writes ``#SCF IS CONVERGED#`` in running_scf.log."""
+    workspace = Workspace(tmp_path / "native-scf-convergence").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "#SCF IS CONVERGED#\n"
+        "#TOTAL ENERGY# -12.491608215 eV\n"
+        "!FINAL_ETOT_IS -12.49160821520403 eV\n"
+        "TOTAL  Time  : 1\n",
+    )
+
+    result = collect(workspace)
+
+    assert result.status == "completed"
+    assert result.metrics["converged"] is True
+    assert result.metrics["converge"] is True
+    assert result.diagnostics["matched_converged_markers"] == ["scf_is_converged"]
+
+
 def test_collect_sidecar_distinguishes_explicit_and_computed_energy_per_atom(tmp_path: Path) -> None:
     explicit = Workspace(tmp_path / "explicit").ensure_layout()
     explicit.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
