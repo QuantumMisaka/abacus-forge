@@ -76,6 +76,21 @@ def test_collect_recognizes_repository_native_scf_convergence_marker(tmp_path: P
     assert result.diagnostics["matched_converged_markers"] == ["scf_is_converged"]
 
 
+def test_collect_reads_native_abacus_fermi_energy_in_ev_column(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "native-fermi").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "      Energy           Rydberg                 eV\n"
+        " E_Fermi        -0.2928031394        -3.9837910886\n"
+        " #SCF IS CONVERGED#\n",
+    )
+
+    result = collect(workspace)
+
+    assert result.metrics["fermi_energy"] == pytest.approx(-3.9837910886)
+
+
 def test_collect_sidecar_distinguishes_explicit_and_computed_energy_per_atom(tmp_path: Path) -> None:
     explicit = Workspace(tmp_path / "explicit").ensure_layout()
     explicit.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")

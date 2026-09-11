@@ -16,6 +16,7 @@ _KBAR_TO_EV_PER_ANGSTROM3 = 3.398927420868445e-6 * 27.211396132 / 0.52917721092*
 _KS_SOLVER_LIST = {"DA", "DS", "GE", "GV", "BP", "CG", "CU", "PE", "LA"}
 _NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 _NATIVE_FINAL_ETOT = re.compile(rf"!FINAL_ETOT_IS\s*[=:]*\s*({_NUMBER})\s*eV", re.IGNORECASE)
+_NATIVE_FERMI = re.compile(rf"\bE_Fermi\s+({_NUMBER})\s+({_NUMBER})", re.IGNORECASE)
 _MD_THERMO_HEADER = re.compile(
     r"Energy(?:\s*\(Ry\))?\s+Potential(?:\s*\(Ry\))?\s+Kinetic(?:\s*\(Ry\))?\s+"
     r"Temperature(?:\s*\(K\))?(?:\s+Pressure(?:\s*\(kbar\))?)?",
@@ -69,6 +70,12 @@ def _regex_metrics(content: str) -> dict[str, Any]:
             metrics[key] = int(value)
         else:
             metrics[key] = float(value)
+    if "fermi_energy" not in metrics:
+        native_fermi = _NATIVE_FERMI.search(content)
+        if native_fermi:
+            # Native ABACUS prints Rydberg first and eV second; Forge's
+            # reported fermi_energy contract is eV, matching the legacy form.
+            metrics["fermi_energy"] = float(native_fermi.group(2))
     positive_matches, negative_matches = _collect_convergence_matches(content)
     metrics["converged"] = bool(positive_matches) and not negative_matches
     metrics["converge"] = metrics["converged"]
