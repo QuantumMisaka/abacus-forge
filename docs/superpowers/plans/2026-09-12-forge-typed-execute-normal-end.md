@@ -114,8 +114,13 @@ Implementation and review were completed in the candidate worktree:
   nonzero-plus-marker, legacy key sets and artifact de-duplication.
 - `eb1b004` made attribution conservative for mtime/ctime-only changes and
   added the touch-only stale-log regression.
-- Owning service/result/CLI suite: `219 passed in 60.66s`.
-- Full offline gate: `1342 passed, 10 skipped in 98.59s`.
-- Independent review of `8c14a39..eb1b004`: PASS; no Critical, Important or
-  Minor findings.
-- `git diff --check 8c14a39..eb1b004`: clean.
+- `db3b3c2` added a streaming pre/post content fingerprint so same-inode,
+  same-size rewrites are detected while touch-only stale logs remain ignored;
+  its regression uses equal-size before/after content.
+- Owning service/result/CLI suite after the final repair: `220 passed in
+  60.25s`.
+- Full offline gate after the final repair: `1343 passed, 10 skipped in
+  98.63s`.
+- Independent final review of `8c14a39..db3b3c2`: PASS; no Critical,
+  Important or Minor findings.
+- `git diff --check 8c14a39..db3b3c2`: clean.
