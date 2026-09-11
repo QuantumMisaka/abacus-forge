@@ -45,20 +45,24 @@ Add a concise statement that typed capability requests and existing `INPUT` prof
 
 ## Verification record
 
-- Task 1 implementation: `3d5d6f2`, `97e591f`, `e49de5a`; typed SCF guards are strict on the public
-  `ScfServiceSet`, while the private compatibility path used by `ForgeServices` remains permissive.
-- Focused/owning controller gate after repair: `601 passed` across
+- Task 1 implementation: `3d5d6f2`, `97e591f`, `e49de5a`, `9012e8e`, `2210a66`, `371e4ef`; typed SCF guards are
+  strict on the public `ScfServiceSet`, while the private compatibility path used by `ForgeServices`
+  remains permissive. The final hardening checks the actual flat `INPUT` serialization, including
+  whitespace/comment keys, line-break injection, and duplicate existing `calculation` directives.
+- Focused/owning controller gate after final hardening: `603 passed` across
   `tests/test_typed_calculation_guards.py`, contract, service, machine CLI, process CLI, and MD service
-  suites; the follow-up guard-assertion refinement is `7 passed` and the full offline gate below includes it.
-  The implementation agent independently reported `515 passed` for its focused owning command.
-- Independent Task 1 review: passed; no Critical or Important findings. One Minor suggests adding explicit
-  no-admission assertions and a same-profile modify regression in a later test refinement.
+  suites. The implementation agent independently reported `517 passed` for its final owning command.
+- Independent Task 1 review: passed after two repair rounds; no Critical or Important findings remain.
+  The earlier non-blocking no-admission/same-profile test suggestion was closed by `90f3c8d`.
 - `tests/conftest.py` registers the guard suite as `integration`; process CLI regression verifies mismatch →
   one JSON `request.schema` envelope, empty stderr, and exit `2`.
-- Discovery smoke: 4 typed ABACUS capabilities and 17 request schemas passed; the guard suite is selected
-  by `-m integration` with 7 collected tests.
-- Architecture gate: `8 passed`. Full default offline gate: `1325 passed, 10 skipped` (the skips are the
+- Discovery smoke: the complete registry exposed 9 capabilities and 26 request schemas; the four typed
+  ABACUS calculation profiles covered by this plan account for 17 of those schemas. The guard suite is
+  selected by `-m integration` with 9 collected tests.
+- Architecture gate: `8 passed`. Full default offline gate: `1327 passed, 10 skipped` (the skips are the
   repository's opt-in real-smoke/benchmark cases). Opt-in core capability benchmark: `6 passed`.
 - Documentation gate: 7 Forge SPEC HTML files parsed successfully; changed-doc placeholder scan is clean.
-- `git diff --check`: passed for the implementation, test refinement, and documentation range. All
-  capability descriptors remain `experimental`; no claim of scientific validation or stable release is made.
+- `git diff --check`: passed for the implementation, test refinement, and documentation range. The final
+  whole-plan review passed with no Critical or Important findings; remaining schema/runtime equivalence
+  nuances were recorded as non-blocking Minor follow-up. All capability descriptors remain `experimental`;
+  no claim of scientific validation or stable release is made.
