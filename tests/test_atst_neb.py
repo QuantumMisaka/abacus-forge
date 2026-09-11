@@ -39,6 +39,35 @@ def test_prepare_persists_artifacts_and_unassessed_status(tmp_path: Path) -> Non
     assert any(item.role == "output" for item in result.envelope.artifacts)
     assert (tmp_path / "reports/forge-workspace.json").is_file()
 
+def test_prepare_anchors_relative_atst_path_to_calling_cwd(tmp_path: Path, monkeypatch) -> None:
+    caller = tmp_path / "caller"
+    caller.mkdir()
+    bin_dir = caller / "bin"
+    bin_dir.mkdir()
+    fake = _fake_atst(caller)
+    fake.rename(bin_dir / "atst")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "init.xyz").write_text("init")
+    (workspace / "final.xyz").write_text("final")
+    monkeypatch.chdir(caller)
+
+    result = AtstNebServiceSet.default(
+        workspace_root=workspace, atst_executable="bin/atst"
+    ).prepare.prepare(
+        AtstNebPrepareRequest(
+            operation_id=_id(),
+            workspace_rel=".",
+            init_structure_path_rel="init.xyz",
+            final_structure_path_rel="final.xyz",
+            chain_path_rel="outputs/chain.traj",
+        )
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert any(item.path_rel == "outputs/chain.traj" for item in result.envelope.artifacts)
+
 def test_execute_dry_run_and_postprocess(tmp_path: Path) -> None:
     (tmp_path / "config.yaml").write_text("workflow: []"); (tmp_path / "neb.traj").write_text("trajectory")
     services = AtstNebServiceSet.default(workspace_root=tmp_path, atst_executable=str(_fake_atst(tmp_path)))

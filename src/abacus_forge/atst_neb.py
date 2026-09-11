@@ -56,7 +56,12 @@ class _AtstContext(ServiceContext):
             if candidate.is_file() and candidate.stat().st_mode & 0o111: return str(candidate)
         else:
             found = shutil.which(self.atst_executable)
-            if found: return found
+            if found:
+                resolved = Path(found)
+                if not resolved.is_absolute():
+                    resolved = (Path.cwd() / resolved).resolve()
+                if resolved.is_file() and resolved.stat().st_mode & 0o111:
+                    return str(resolved)
         raise ForgePreconditionError("configured atst executable is missing or not executable")
     @staticmethod
     def artifacts(workspace: Workspace, entries: list[tuple[str, str, str]]) -> tuple[ArtifactRecord, ...]:
