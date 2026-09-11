@@ -2,7 +2,9 @@
 
 **Goal:** 将已分别审查的 typed MD postprocess hardening、real-smoke freshness
 门禁和当前 ABACUS 原生输出兼容修复放在同一候选分支上验证，为后续正式集成提供
-一组不改变 Forge 版本化运行时契约的发布证据。
+发布证据。本候选同时包含已独立审查并批准的 typed PyATB optional-rR 唯一契约
+修正：`rr_path_rel` 可省略；除此之外不新增改变 request/result/error/status/
+descriptor/execute/collect 行为。
 
 **Normative sources:** approved Forge 2026-09-01/09-02 SPECs，以及
 `2026-09-10-forge-typed-md-postprocess-design.html`、
@@ -33,8 +35,9 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
 ## Explicit non-goals
 
 - 不把缺少真实 ABACUS workspace/executable 的 skip 当成真实科学证据或 maturity promotion。
-- 不改变任何 `forge.request/v1`、`forge.result/v1`、错误类、状态枚举、descriptor 或
-  普通 `execute`/`collect` 行为。
+- 除已批准的 typed PyATB optional-rR 契约修正（`rr_path_rel` 可省略）外，不改变
+  `forge.request/v1`、`forge.result/v1`、错误类、状态枚举、descriptor 或普通
+  `execute`/`collect` 行为。
 - 不在本候选中合入正式集成分支、`main`，也不 push。
 
 ## Verification record
@@ -43,7 +46,7 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
   runtime/test state is checked from the resulting branch, not inferred from ancestry.
 - Focused gate: `142 passed, 4 skipped`.
 - Initial integration full offline gate: `1257 passed, 6 deselected`.
-- Latest candidate full offline gate after native-output follow-up:
+- Earlier candidate full offline gate after native-output follow-up:
   `1277 passed, 6 deselected`.
 - Explicit real-smoke selection without supplied inputs: `4 skipped`.
 - With a locally built serial PW ABACUS from `abacus-develop@94576a801` and
@@ -52,13 +55,18 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
   These are parser/artifact integration evidence only; all typed capabilities
   remain experimental and `scientific=unassessed`.
 - Benchmark opt-in: `2 passed`.
-- Latest-candidate clean-environment/package gate: rebuilt after the native-output follow-up
+- Earlier clean-environment/package gate: rebuilt after the native-output follow-up
   (SHA-256 `d4eeae4ee37bdfa4fd6df793498f8269cb7720b8ca2a3b60cc2283d18f847988`),
   reinstalled that wheel and its declared dependencies
   into the isolated Python 3.13 venv; `import abacus_forge`, the console entry point,
   `capabilities` (all nine advertised names), and `schema md postprocess` succeeded. The
   venv also confirmed `abacus_agent_tools`, `abacustest`, `aiida`, and `atst_tools` were
   absent. This validates packaging/import boundaries, not real ABACUS execution or science.
+- Current HEAD `112108d` final full offline gate: `1314 passed, 6 skipped`; the
+  current owning gate passes `114` tests. `git diff --check`, documentation text
+  checks, and the merge-tree check against `forge-mainline-integration` pass.
+  The wheel/import evidence above is from the earlier native follow-up; the
+  documentation commits after it did not change package structure.
 - `git diff --check` passes; any supplied real execution remains an opt-in
   integration evidence gate and never becomes scientific acceptance.
 
@@ -83,7 +91,7 @@ records.
 
 ## Review result
 
-The independent whole-branch review of `da1d4df..1686eeb` found no Critical,
+The earlier/historical independent whole-branch review of `da1d4df..1686eeb` found no Critical,
 Important, or substantive Minor issue. It confirmed that the MD production
 changes and approved MD SPEC are unchanged by the freshness commits, and that
 the freshness helper remains confined to test evidence: its generated-file
