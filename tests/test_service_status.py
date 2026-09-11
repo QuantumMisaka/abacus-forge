@@ -46,7 +46,10 @@ def _prepared_scf_workspace_with_log(tmp_path: Path, content: str) -> Path:
 
 
 def _write_prepared_inputs(workspace: Workspace) -> None:
-    for input_name in ("INPUT", "STRU", "KPT"):
+    (workspace.inputs_dir / "INPUT").write_text(
+        "INPUT_PARAMETERS\ncalculation scf\n", encoding="utf-8"
+    )
+    for input_name in ("STRU", "KPT"):
         (workspace.inputs_dir / input_name).write_text("prepared\n", encoding="utf-8")
 
 

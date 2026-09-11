@@ -40,7 +40,7 @@ from abacus_forge.md_contracts import (
     MdPrepareRequest,
 )
 from abacus_forge.runner import LocalRunner
-from abacus_forge.errors import ForgePreconditionError
+from abacus_forge.errors import ForgePreconditionError, ForgeSchemaError
 from abacus_forge.workspace import Workspace
 
 
@@ -137,6 +137,23 @@ class _AbacusServiceContext(ServiceContext):
             return
         self.require_matching_calculation(workspace, task)
 
+    def validate_request_calculation(self, request: object, task: str) -> None:
+        """Reject typed requests that try to cross capability profiles."""
+        if not self.validate_input_calculation:
+            return
+        if isinstance(request, (ScfPrepareRequest, RelaxPrepareRequest, MdPrepareRequest)):
+            values = request.parameters
+            field_name = "parameters"
+        elif isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)):
+            values = request.input_updates
+            field_name = "input_updates"
+            if "calculation" in request.remove_parameters:
+                raise ForgeSchemaError("remove_parameters cannot include calculation")
+        else:
+            return
+        if "calculation" in values and values["calculation"] != task:
+            raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
+
 
 class _PrepareService:
     def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
@@ -150,6 +167,8 @@ class _PrepareService:
             )
         try:
             typed_request = request  # type: ignore[assignment]
+            task = self._context.task_for(typed_request)
+            self._context.validate_request_calculation(typed_request, task)
             workspace = self._context.workspace(typed_request.workspace_rel)  # type: ignore[attr-defined]
             # Resolve and validate containment before admission.  Existence and
             # file type are operation preconditions and must be checked after
@@ -161,7 +180,6 @@ class _PrepareService:
                 self._context.require_file(
                     structure_path, typed_request.structure_path_rel, "structure_path_rel"  # type: ignore[attr-defined]
                 )
-                task = self._context.task_for(typed_request)
                 _, materialization = prepare_with_assets(
                     workspace,
                     task=task,
@@ -221,14 +239,17 @@ class _ModifyService:
             )
         try:
             typed_request = request  # type: ignore[assignment]
+            task = self._context.task_for(typed_request)
+            self._context.validate_request_calculation(typed_request, task)
             workspace = self._context.workspace(typed_request.workspace_rel)  # type: ignore[attr-defined]
             with workspace.operation_guard(typed_request.operation_id, typed_request.operation) as owner_token:  # type: ignore[attr-defined]
                 input_path = self._context.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
                 self._context.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
                 before = _input_snapshot(workspace)
-                task = self._context.task_for(typed_request)
                 updates = dict(typed_request.input_updates)  # type: ignore[attr-defined]
                 removed = typed_request.remove_parameters  # type: ignore[attr-defined]
+                if self._context.validate_input_calculation:
+                    self._context.validate_collect_calculation(workspace, task)
                 modified_files: list[str] = []
                 changes: dict[str, object] = {}
                 if updates or removed:
@@ -428,16 +449,36 @@ class ScfCollectService(_CollectService):
 class ScfServiceSet:
     """Per-operation SCF services sharing one private execution context."""
 
-    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
-        context = _AbacusServiceContext(workspace_root=workspace_root, runner_factory=runner_factory)
+    def __init__(
+        self,
+        *,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+        validate_input_calculation: bool = True,
+    ) -> None:
+        context = _AbacusServiceContext(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=validate_input_calculation,
+        )
         self.prepare: PrepareService = ScfPrepareService(context)
         self.modify: ModifyService = ScfModifyService(context)
         self.execute: ExecuteService = ScfExecuteService(context)
         self.collect: CollectService = ScfCollectService(context)
 
     @classmethod
-    def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> "ScfServiceSet":
-        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+    def default(
+        cls,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+        *,
+        validate_input_calculation: bool = True,
+    ) -> "ScfServiceSet":
+        return cls(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=validate_input_calculation,
+        )
 
 
 class RelaxServiceSet:
@@ -506,7 +547,11 @@ class ForgeServices:
             runner_factory: RunnerFactory = LocalRunner
         else:
             runner_factory = lambda **_: self.runner
-        self._service_set = ScfServiceSet.default(workspace_root=self.workspace_root, runner_factory=runner_factory)
+        self._service_set = ScfServiceSet.default(
+            workspace_root=self.workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=False,
+        )
 
     @classmethod
     def default(

@@ -416,10 +416,9 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
             "propertyNames": {"type": "string"},
             "default": {},
         }
-        if capability != "scf":
-            parameters["properties"] = {
-                "calculation": {"type": "string", "const": capability}
-            }
+        parameters["properties"] = {
+            "calculation": {"type": "string", "const": capability}
+        }
         properties.update(
             {
                 "structure_path_rel": {
@@ -455,11 +454,10 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
             "default": {},
         }
         remove_item: dict[str, JSONValue] = {"type": "string", "minLength": 1}
-        if capability != "scf":
-            input_updates["properties"] = {
-                "calculation": {"type": "string", "const": capability}
-            }
-            remove_item["not"] = {"const": "calculation"}
+        input_updates["properties"] = {
+            "calculation": {"type": "string", "const": capability}
+        }
+        remove_item["not"] = {"const": "calculation"}
         properties.update(
             {
                 "input_updates": input_updates,
