@@ -35,14 +35,30 @@ Add a concise statement that typed capability requests and existing `INPUT` prof
 
 ## Acceptance checklist
 
-- [ ] All typed ABACUS capabilities reject conflicting calculation profiles at the request/service boundary.
-- [ ] Typed modify cannot delete or rewrite `calculation`; same-profile no-op remains accepted.
-- [ ] Typed execute/collect reject mismatched existing `INPUT`, while output-only collect remains available.
-- [ ] Discovery schemas and runtime behavior agree for SCF, Relax, cell-relax, and MD.
-- [ ] Legacy facade/API/CLI behavior remains covered and unchanged.
-- [ ] No scientific status, task orchestration, platform scheduling, or dependency boundary changes.
-- [ ] Focused and full offline evidence plus independent review are recorded below.
+- [x] All typed ABACUS capabilities reject conflicting calculation profiles at the request/service boundary.
+- [x] Typed modify cannot delete or rewrite `calculation`; same-profile no-op remains accepted.
+- [x] Typed execute/collect reject mismatched existing `INPUT`, while output-only collect remains available.
+- [x] Discovery schemas and runtime behavior agree for SCF, Relax, cell-relax, and MD.
+- [x] Legacy facade/API/CLI behavior remains covered and unchanged.
+- [x] No scientific status, task orchestration, platform scheduling, or dependency boundary changes.
+- [x] Focused and full offline evidence plus independent review are recorded below.
 
 ## Verification record
 
-Pending implementation.
+- Task 1 implementation: `3d5d6f2`, `97e591f`, `e49de5a`; typed SCF guards are strict on the public
+  `ScfServiceSet`, while the private compatibility path used by `ForgeServices` remains permissive.
+- Focused/owning controller gate after repair: `601 passed` across
+  `tests/test_typed_calculation_guards.py`, contract, service, machine CLI, process CLI, and MD service
+  suites; the follow-up guard-assertion refinement is `7 passed` and the full offline gate below includes it.
+  The implementation agent independently reported `515 passed` for its focused owning command.
+- Independent Task 1 review: passed; no Critical or Important findings. One Minor suggests adding explicit
+  no-admission assertions and a same-profile modify regression in a later test refinement.
+- `tests/conftest.py` registers the guard suite as `integration`; process CLI regression verifies mismatch →
+  one JSON `request.schema` envelope, empty stderr, and exit `2`.
+- Discovery smoke: 4 typed ABACUS capabilities and 17 request schemas passed; the guard suite is selected
+  by `-m integration` with 7 collected tests.
+- Architecture gate: `8 passed`. Full default offline gate: `1325 passed, 10 skipped` (the skips are the
+  repository's opt-in real-smoke/benchmark cases). Opt-in core capability benchmark: `6 passed`.
+- Documentation gate: 7 Forge SPEC HTML files parsed successfully; changed-doc placeholder scan is clean.
+- `git diff --check`: passed for the implementation, test refinement, and documentation range. All
+  capability descriptors remain `experimental`; no claim of scientific validation or stable release is made.

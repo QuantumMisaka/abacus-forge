@@ -7,6 +7,7 @@
 - Stage 3 已合并：SCF 的 typed Python services 与 Agent-first CLI 共用请求、结果和错误语义，当前 maturity 为 experimental。
 - Stage 4 首批已实现：`relax` 与 `cell-relax` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；两个 capability 均保持 `experimental` maturity。
 - Stage 4 typed MD 基础操作已实现：`md` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；另有独立的 typed `postprocess` operation（见下文）；`md` 保持 `experimental` maturity，默认 profile 为 PBE/NVE，专属控制项继续位于 `parameters` map。
+- 2026-09-12 已为 typed `scf`、`relax`、`cell-relax` 和 `md` 收紧 calculation-profile 一致性：prepare/modify/已有 INPUT 的 execute/collect 现在按能力名校验，冲突请求在 admission 前返回 `request.schema`，外部 output-only collect 例外保留；`ForgeServices` 兼容 facade 及 legacy API/CLI 行为不变。该校验只表达输入/过程前置条件，不承担科学判断或任务编排，所有 capability 仍为 `experimental`。
 - 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。

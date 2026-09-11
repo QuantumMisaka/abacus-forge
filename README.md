@@ -69,6 +69,11 @@ execution/collection 事实与 observations；若兼容结果保留 `scientific`
 `execution=skipped`；typed execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，
 并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
 给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
+四个 ABACUS typed capability 的 `calculation` profile 必须与能力名一致：`prepare` 可以省略该
+参数并使用 profile 默认值，但显式冲突会在 admission 前返回 `request.schema`；`modify` 只能重复
+当前 profile，不能改写或删除；`execute`/`collect` 遇到已有 `inputs/INPUT` 时要求其 profile
+匹配（没有 `INPUT` 的外部 output-only `collect` 仍可用）。这是输入/过程前置条件，不是科学验收；
+保留的 `ForgeServices` legacy facade 继续维持历史宽松行为。
 SCF/Relax collection 将已解析的数组指标和有效结构快照作为事实 observations。
 SCF 收集完整性由非空输出日志、有限总能量和解析情况决定，Relax 还要求有效的
 最终结构；收敛标志独立返回。typed collect 只读取 workspace 内的领域文件，
