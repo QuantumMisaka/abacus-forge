@@ -375,6 +375,38 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "stride": {"type": "integer", "minimum": 1, "default": 1},
                 "parameters": {
                     "type": "object", "propertyNames": {"type": "string"}, "default": {},
+                    "additionalProperties": True,
+                    "properties": {
+                        "timestep": {
+                            "type": "number", "exclusiveMinimum": 0,
+                            "description": "Sampling frame interval; required for MSD/VACF analyses.",
+                        },
+                        "selection": {
+                            "type": ["object", "array"],
+                            "description": "Optional atom-pair, angle, or index selection.",
+                        },
+                        "elements": {
+                            "type": "array",
+                            "description": "Optional RDF element-pair selection.",
+                            "items": {"oneOf": [{"type": "string"}, {"type": "array"}]},
+                        },
+                        "rmax": {
+                            "type": "number", "exclusiveMinimum": 0,
+                            "description": "Positive RDF maximum distance.",
+                        },
+                        "nbins": {
+                            "type": "integer", "minimum": 1,
+                            "description": "Positive RDF histogram bin count.",
+                        },
+                        "save_data": {
+                            "type": "boolean",
+                            "description": "Whether to write analysis data files.",
+                        },
+                        "save_plot": {
+                            "type": "boolean",
+                            "description": "Whether to write analysis plots.",
+                        },
+                    },
                 },
             }
         )

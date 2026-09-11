@@ -279,3 +279,27 @@ def test_md_postprocess_schema_matches_dataclass_and_wire_keys() -> None:
     assert schema["properties"]["start"]["minimum"] == 0
     assert schema["properties"]["stride"]["minimum"] == 1
     assert schema["properties"]["end"]["exclusiveMinimum"] == 0
+
+
+def test_md_postprocess_schema_describes_recognized_parameters_without_closing_extensions() -> None:
+    schema = request_schema_document("md", "postprocess")["request_schema"]
+    parameters = schema["properties"]["parameters"]
+    properties = parameters["properties"]
+
+    assert set(properties) == {
+        "timestep",
+        "selection",
+        "elements",
+        "rmax",
+        "nbins",
+        "save_data",
+        "save_plot",
+    }
+    assert parameters.get("additionalProperties", True) is not False
+    assert properties["timestep"]["type"] == "number"
+    assert properties["timestep"]["exclusiveMinimum"] == 0
+    timestep_description = properties["timestep"]["description"].lower()
+    assert "sampling frame interval" in timestep_description
+    assert "msd/vacf" in timestep_description
+    assert properties["save_data"]["type"] == "boolean"
+    assert properties["save_plot"]["type"] == "boolean"
