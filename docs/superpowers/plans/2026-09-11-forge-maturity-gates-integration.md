@@ -145,7 +145,9 @@ after the expected inputs, with a regression covering both tokens. The targeted
 comment suite now passes `4` tests, the owning structure/maturation/API suites
 pass `90` tests, and the pre-label-slice full offline gate passed `1298` tests
 with `6` opt-in skips. After the native species-label slice, the current full
-offline gate passes `1313` tests with `6` opt-in skips.
+offline gate passes `1313` tests with `6` opt-in skips. After the native Fermi
+parser follow-up, the current full offline gate passes `1314` tests with `6`
+opt-in skips.
 This is an input-fidelity correction only: it does not add a schema, capability,
 status, orchestration, scheduler, or scientific-judgement contract.
 
