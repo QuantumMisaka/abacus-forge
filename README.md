@@ -763,11 +763,13 @@ Machine 请求必须带显式 capability，例如：
 PYTHONPATH=src python -m abacus_forge.cli operation execute --request request.json
 ```
 
-Relax discovery 和 schema 当前保持 `experimental`；只有 mock/fixture 与离线
-machine/API parity 已验证。可选的 `real_smoke` 会在复制的用户准备 workspace 上验证
-execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；其中 typed SCF
-machine-path smoke 与 typed Relax smoke 都通过 machine CLI，legacy SCF API smoke 不能替代
-前者。没有真实证据时不应提升 maturity。typed SCF smoke 还会在首次执行前确认复制 workspace 的
+Relax discovery 和 schema 当前保持 `experimental`；默认离线门禁仍覆盖 mock/fixture 与
+machine/API parity。可选的 `real_smoke` 会在复制的用户准备 workspace 上验证
+execute/collect 的序列化 outcome、事件和 artifact，但不作物理收敛判断；当前候选已用本地
+serial-PW ABACUS 运行并通过 typed SCF、Relax/cell-relax 和 MD 的 process/parser/artifact
+smoke（详见候选 [maturity-gates plan](docs/superpowers/plans/2026-09-11-forge-maturity-gates-integration.md)）。
+其中 typed SCF machine-path smoke 与 typed Relax smoke 都通过 machine CLI，legacy SCF API
+smoke 不能替代前者。真实 smoke 证据也不自动提升 maturity。typed SCF smoke 还会在首次执行前确认复制 workspace 的
 `inputs/INPUT` 声明 `calculation=scf`；typed Relax 的执行和收集使用同一长 parent-process
 超时预算。`collect` 的 `scientific` 始终为 `unassessed`，缺少输出或解析不完整只反映
 collection 状态。
