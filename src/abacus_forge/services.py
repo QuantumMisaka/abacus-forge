@@ -438,30 +438,32 @@ class _ExecuteService:
                     if getattr(runner_result, "normal_end", None) is True:
                         source = getattr(runner_result, "normal_end_source", None)
                         if isinstance(source, Path):
+                            artifacts = envelope.artifacts
                             try:
                                 resolved_source = source.resolve(strict=True)
-                                if not resolved_source.is_file():
+                                if source.is_symlink() or not resolved_source.is_file():
                                     raise ValueError("normal-end source is not a file")
                                 source_rel = resolved_source.relative_to(workspace.root.resolve()).as_posix()
-                            except (OSError, RuntimeError, ValueError):
-                                source_rel = None
-                            if source_rel is not None:
-                                diagnostics = dict(envelope.to_dict()["diagnostics"])
-                                diagnostics.update({"normal_end": True, "normal_end_source": source_rel})
-                                artifacts = envelope.artifacts
                                 if not any(artifact.path_rel == source_rel for artifact in artifacts):
                                     digest = hashlib.sha256()
+                                    size_bytes = 0
                                     with resolved_source.open("rb") as stream:
                                         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                                             digest.update(chunk)
+                                            size_bytes += len(chunk)
                                     artifacts = artifacts + (ArtifactRecord(
                                         id="abacus_running_log",
                                         path_rel=source_rel,
                                         role="output",
                                         stage="execute",
                                         sha256=digest.hexdigest(),
-                                        size_bytes=resolved_source.stat().st_size,
+                                        size_bytes=size_bytes,
                                     ),)
+                            except (OSError, RuntimeError, ValueError, UnicodeError):
+                                source_rel = None
+                            if source_rel is not None:
+                                diagnostics = dict(envelope.to_dict()["diagnostics"])
+                                diagnostics.update({"normal_end": True, "normal_end_source": source_rel})
                                 envelope = replace(
                                     envelope,
                                     artifacts=artifacts,
