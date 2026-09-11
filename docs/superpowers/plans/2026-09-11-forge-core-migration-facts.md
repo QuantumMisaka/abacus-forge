@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (\`- [ ]\`) syntax for tracking.
 
-**Goal:** 为 v1.3 首批核心能力建立可重复的 SCF、relax、cell-relax、MD 迁移事实矩阵，证明 Forge 与既有 ABACUS/abacustest 操作在输入、解析和产物边界上的一致性，而不把科学验收、编排或调度引入 Forge。
+**Goal:** 为 v1.3 首批核心能力建立可重复的 SCF、relax、cell-relax、MD 迁移事实矩阵，记录 Forge 在 checked-in fixtures 上的 collection/parser/artifact/envelope/status 投影，并明确不把科学验收、编排、调度、prepare/profile 等价性或 process parity 引入 Forge。
 
 **Spec:** \`docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html\`（R10、R11、Phase 4、首批稳定面）与 \`docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html\`（R2/R4、Stage 3/4、事实与解释边界）。
 
