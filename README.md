@@ -69,6 +69,9 @@ execution/collection 事实与 observations；若兼容结果保留 `scientific`
 `execution=skipped`；typed execute 不会根据已有日志（包括 `NORMAL END`）推断跳过，
 并且实际执行直接调用本地 runner。底层 `run_many(..., skip_completed=True)` 仍保留
 给现有 composite 兼容调用，但属于 legacy helper，不是 typed service 的状态协议。
+若本次进程的 stdout 或新建/实际内容变化的 workspace-contained `running_*.log` 含有
+ABACUS 正常结束标志，typed execute 还会返回 `normal_end=true` 及其相对来源路径作为
+log observation；没有可归因标志时省略该观察，不改变 execution 或 scientific 状态。
 四个 ABACUS typed capability 的 `calculation` profile 必须与能力名一致：`prepare` 可以省略该
 参数并使用 profile 默认值，但显式冲突会在 admission 前返回 `request.schema`；`modify` 只能重复
 当前 profile，不能改写或删除；`execute`/`collect` 遇到已有 `inputs/INPUT` 时要求其 profile
