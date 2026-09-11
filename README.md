@@ -71,8 +71,8 @@ SCF/Relax collection 将已解析的数组指标和有效结构快照作为事�
 SCF 收集完整性由非空输出日志、有限总能量和解析情况决定，Relax 还要求有效的
 最终结构；收敛标志独立返回。typed collect 只读取 workspace 内的领域文件，
 审计事件、claims、锁和 workspace manifest 不进入计算产物列表。
-typed MD 的 `collection=complete` 只表示存在唯一、contained 且可读的
-`outputs/**/running_md.log`，其中至少有一个完整原生热力学 block；缺失或歧义日志、
+typed MD 的 `collection=complete` 只表示存在唯一、contained 且可读的原生
+`running_md.log`（包括 runner 在 `inputs/OUT.*` 下产生的域路径），其中至少有一个完整热力学 block；缺失或歧义日志、
 不完整 block 和仅有 `stdout`/`MD_dump` 的输入会保持 `partial` 或 `missing_output`。
 legacy `collect()` 继续读取历史 synthetic `MD_dump` 的兼容指标，但 typed MD 的
 `md_last_*` 热力学字段只来自原生 `running_md.log`。
@@ -774,14 +774,15 @@ collection 状态。
 `MD_dump` 事实作为独立投影保留。该门禁不判断轨迹质量、温度/能量物理正确性、收敛或任务
 编排；缺少 `ABACUS_FORGE_MD_SMOKE_WORKSPACE` 或共享 executable 时只 skip，错误输入则
 fail。用于 smoke 的源 workspace 还必须没有 collector 可见位置下既有的
-`running_md.log`/`MD_dump`，避免无操作 executable 复用旧结果；显式
-`inputs/OUT.*` handoff 资产仍由调用方负责。MD smoke 仍是 experimental 证据，
+`running_md.log`/`MD_dump`（包括 `inputs/OUT.*` 下的同名生成文件），避免无操作 executable 复用旧结果；显式
+`inputs/OUT.*` 中的其它 handoff 资产仍由调用方负责。MD smoke 仍是 experimental 证据，
 不改变生产 service 或稳定能力面。
 
 typed SCF 与 typed Relax real-smoke 也要求复制源保持 freshness：门禁会拒绝其
 collector 可消费的既有 `running_*.log`（包括 `reports/` 下的运行日志）/fallback
-log，Relax 还会拒绝 `STRU_ION_D`、`STRU_NOW.cif`、`STRU.cif` 或 `STRU` 等既有最终
-结构文件（仅限 `inputs/`、`reports/` 之外的输出位置）。这个条件只属于真实运行
+log，Relax 还会拒绝 `STRU_FINAL`、`STRU_FINAL.cif`、`STRU_ION_D`、`STRU_NOW`、
+`STRU_NOW.cif`、`STRU.cif` 或 `STRU` 等既有最终结构文件（包括 `inputs/OUT.*` 域路径；
+普通 `inputs/` 和 `reports/` 中的非域 handoff/审计文件不受此检查）。这个条件只属于真实运行
 证据测试，不改变普通 Forge `execute`/`collect` 对外行为。
 
 typed MD 首批已提供实验性的 `prepare`、`modify`、`execute`、`collect` 和独立

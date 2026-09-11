@@ -93,7 +93,8 @@ replace; it never deletes the caller's source. Normal Forge `execute` and
 - Benchmark opt-in: `2 passed, 1227 deselected`.
 - `/bin/true` fail-fast probes reject stale `reports/running_scf.log`, stale
   `reports/running_relax.log` plus `outputs/OUT.ABACUS/STRU`, and stale MD
-  `outputs/OUT.ABACUS/MD_dump`; the offline guard positive test allows explicit
+  `outputs/OUT.ABACUS/MD_dump` (including native `inputs/OUT.*` log/dump
+  locations); the offline guard positive test allows explicit non-generated
   `inputs/OUT.*` handoff files and non-domain report files. A prefixed
   `outputs/OUT.ABACUS/final_STRU` probe also fails, proving suffix matching
   follows the collector rather than exact basenames.

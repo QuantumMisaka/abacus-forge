@@ -296,7 +296,7 @@ def _read_stru_text(text: str) -> Atoms:
     while index < len(lines):
         # ABACUS native output annotates section headers (for example
         # ``LATTICE_VECTORS  # in units of lat0``).  Parse the directive
-        # before the comment while retaining inline comments for atom labels.
+        # before the comment; atom labels are handled in the positional block.
         stripped = lines[index].split("#", 1)[0].strip()
         if not stripped or stripped.startswith("#"):
             index += 1
