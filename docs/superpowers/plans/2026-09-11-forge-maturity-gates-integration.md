@@ -155,3 +155,19 @@ points. The smoke records prepare/execute/post process and parser compatibility;
 it does not establish cutoff convergence, physical correctness, benchmark parity,
 or maturity. Property packs therefore remain experimental and outside the
 stable Paimon v1.3 capability surface.
+
+## Native spin-density smoke follow-up (2026-09-11)
+
+The current serial-PW ABACUS binary emitted `chgs1.cube` and `chgs2.cube` for a
+fresh `nspin=2` property run. Forge initially returned `degraded` because the
+legacy property matcher only listed `SPIN1_CHG.cube`/`SPIN2_CHG.cube`; `8ba64b1`
+adds the exact current names ahead of the existing compatibility globs and keeps
+the older names supported. A regression test covers both native names and the
+derived cube manifest. Re-running `post_spin_density` on the fresh ABACUS output
+now returns `completed`, records both contained source cubes, and writes
+`reports/spin_density.cube`.
+
+This is a filename/parser compatibility correction within the existing legacy
+property pack. It adds no typed capability, schema, status, orchestration,
+scheduling, or scientific-interpretation contract; spin-density remains
+experimental and is not evidence for Paimon v1.3 stable exposure.

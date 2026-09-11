@@ -135,6 +135,13 @@ def test_spin_density_postprocess_accepts_native_chgs_names(tmp_path: Path) -> N
     assert posted.diagnostics["spin_up"].endswith("chgs1.cube")
     assert posted.diagnostics["spin_down"].endswith("chgs2.cube")
     assert CubeData.from_file(workspace.root / "reports" / "spin_density.cube").data.reshape(-1).tolist() == [2.0, 2.5]
+    manifest = posted.diagnostics["property_manifest"]
+    assert {entry["path_rel"] for entry in manifest["inputs"]} == {
+        "spin-density/scf/outputs/chgs1.cube",
+        "spin-density/scf/outputs/chgs2.cube",
+    }
+    derived = next(entry for entry in manifest["outputs"] if entry["path_rel"] == "reports/spin_density.cube")
+    assert derived["source_artifact_ids"] == [entry["artifact_id"] for entry in manifest["inputs"]]
 
 
 def test_property_post_does_not_read_escaped_cube_symlinks(tmp_path: Path) -> None:
