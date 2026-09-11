@@ -100,3 +100,14 @@ notes were stale freshness wording, now corrected above. The post-review
 documentation-only commits `dadad05`, `3c795e4`, `25a457b`, and `5afa934`
 record earlier acceptance and package/boundary evidence; the present docs-only
 corrections record the native-output follow-up and do not alter runtime behavior.
+
+## Post-review closeout (2026-09-11)
+
+The remaining Stage 3 coverage note was closed by `4bb8b41`, which directly
+exercises `ScfServiceSet.modify` (not the legacy `ForgeServices` shim); its
+focused service suite passed `153` tests. The candidate-wide offline gate at
+`3e46946` passed `1295` tests with `6` opt-in skips. Documentation checks
+(`git diff --check`, HTML parsing, and placeholder scan) pass, and the merge
+tree against `forge-mainline-integration@da1d4df` remains conflict-free. The
+property-manifest plan status wording was clarified in `f5c3bbc`; its SPEC is
+still Draft/provisional and no normative or stable-release decision is implied.
