@@ -118,6 +118,8 @@ Implementation and review were completed in the candidate worktree:
   same-size rewrites are detected while touch-only stale logs remain ignored;
   `db3b3c2` made the private fingerprint type explicit and its regression uses
   equal-size before/after content.
+- `a0718ce` documents the typed `normal_end` observation and its attribution
+  boundary in `README.md` and `ROADMAP.md` without changing legacy usage.
 - Owning service/result/CLI suite after the final repair: `220 passed in
   60.25s`.
 - Full offline gate after the final repair: `1343 passed, 10 skipped in
