@@ -149,7 +149,7 @@ class PyatbBandPrepareRequest(_PyatbBandRequest):
     structure_path_rel: str = field(default=_MISSING)  # type: ignore[arg-type]
     hr_paths_rel: Sequence[str] = field(default=_MISSING)  # type: ignore[arg-type]
     sr_path_rel: str = field(default=_MISSING)  # type: ignore[arg-type]
-    rr_path_rel: str = field(default=_MISSING)  # type: ignore[arg-type]
+    rr_path_rel: str | None = None
     fermi_energy: float = field(default=_MISSING)  # type: ignore[arg-type]
     line_kpoints: Sequence[Mapping[str, object]] = field(default=_MISSING)  # type: ignore[arg-type]
     nspin: int = 1
@@ -170,7 +170,8 @@ class PyatbBandPrepareRequest(_PyatbBandRequest):
             )
         object.__setattr__(self, "hr_paths_rel", hr_paths)
         object.__setattr__(self, "sr_path_rel", _file_path(self.sr_path_rel, "sr_path_rel"))
-        object.__setattr__(self, "rr_path_rel", _file_path(self.rr_path_rel, "rr_path_rel"))
+        if self.rr_path_rel is not None:
+            object.__setattr__(self, "rr_path_rel", _file_path(self.rr_path_rel, "rr_path_rel"))
         _finite_number(self.fermi_energy, "fermi_energy")
         object.__setattr__(self, "line_kpoints", _line_points(self.line_kpoints))
         object.__setattr__(self, "line_segments", _positive_integer(self.line_segments, "line_segments"))

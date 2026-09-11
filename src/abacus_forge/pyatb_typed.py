@@ -285,7 +285,7 @@ def _typed_pyatb_source_specs(request: Any) -> tuple[tuple[str, str, str], ...]:
             for path in request.hr_paths_rel
         )
         sr_path = _typed_relative_file(request.sr_path_rel, "sr_path_rel")
-        rr_path = _typed_relative_file(request.rr_path_rel, "rr_path_rel")
+        rr_path = request.rr_path_rel
     except AttributeError as error:
         raise ForgeRequestError("request is missing typed PyATB handoff fields") from error
 
@@ -297,11 +297,11 @@ def _typed_pyatb_source_specs(request: Any) -> tuple[tuple[str, str, str], ...]:
         for source_rel in hr_paths
     )
     specs.extend(
-        [
-            ("sr", sr_path, f"inputs/pyatb_sources/{Path(sr_path).name}"),
-            ("rR", rr_path, f"inputs/pyatb_sources/{Path(rr_path).name}"),
-        ]
+        [("sr", sr_path, f"inputs/pyatb_sources/{Path(sr_path).name}")]
     )
+    if rr_path is not None:
+        rr_path = _typed_relative_file(rr_path, "rr_path_rel")
+        specs.append(("rR", rr_path, f"inputs/pyatb_sources/{Path(rr_path).name}"))
     return tuple(specs)
 
 
@@ -508,18 +508,20 @@ def _render_typed_pyatb_input(
     matrix_routes: Mapping[str, str],
 ) -> str:
     rows = ["INPUT_PARAMETERS", "{"]
-    values = (
+    values = [
         ("nspin", int(request.nspin)),
         ("package", "ABACUS"),
         ("fermi_energy", float(request.fermi_energy)),
         ("fermi_energy_unit", "eV"),
         ("HR_route", matrix_routes["HR_route"]),
         ("SR_route", matrix_routes["SR_route"]),
-        ("rR_route", matrix_routes["rR_route"]),
-        ("HR_unit", "Ry"),
-        ("rR_unit", "Bohr"),
-        ("max_kpoint_num", int(request.max_kpoint_num)),
-    )
+    ]
+    if matrix_routes.get("rR_route"):
+        values.append(("rR_route", matrix_routes["rR_route"]))
+    values.append(("HR_unit", "Ry"))
+    if matrix_routes.get("rR_route"):
+        values.append(("rR_unit", "Bohr"))
+    values.append(("max_kpoint_num", int(request.max_kpoint_num)))
     rows.extend(f"    {name}  {value}" for name, value in values)
     rows.extend(
         [

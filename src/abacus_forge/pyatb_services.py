@@ -323,7 +323,7 @@ def _require_prepared_pyatb_inputs(context: ServiceContext, workspace: Workspace
             raise ForgePreconditionError(f"prepared inputs/Input has an empty {fields[0]}")
         route_values[fields[0]] = values
 
-    missing_routes = [name for name in ("HR_route", "SR_route", "rR_route") if name not in route_values]
+    missing_routes = [name for name in ("HR_route", "SR_route") if name not in route_values]
     if missing_routes:
         raise ForgePreconditionError(
             "prepared inputs/Input is missing PyATB routes: " + ", ".join(missing_routes)

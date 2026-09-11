@@ -166,7 +166,7 @@ _PYATB_BAND_DESCRIPTOR = CapabilityDescriptor(
     engine="pyatb",
     operations=("prepare", "execute", "collect"),
     inputs={
-        "prepare": ("structure", "hr", "sr", "rr", "fermi_energy", "line_kpoints"),
+        "prepare": ("structure", "hr", "sr", "fermi_energy", "line_kpoints"),
         "execute": ("prepared_workspace",),
         "collect": ("workspace_outputs",),
     },
@@ -245,7 +245,12 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                     "items": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
                 },
                 "sr_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
-                "rr_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
+                "rr_path_rel": {
+                    "type": ["string", "null"],
+                    "minLength": 1,
+                    "pattern": _CANONICAL_FILE_PATTERN,
+                    "default": None,
+                },
                 "fermi_energy": {"type": "number"},
                 "line_kpoints": {
                     "type": "array", "minItems": 2,
@@ -575,7 +580,7 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
     ]
     if capability == "pyatb-band" and operation == "prepare":
         required.extend(
-            ["hr_paths_rel", "sr_path_rel", "rr_path_rel", "fermi_energy", "line_kpoints"]
+            ["hr_paths_rel", "sr_path_rel", "fermi_energy", "line_kpoints"]
         )
     elif capability == "band" and operation == "postprocess":
         required.append("source_paths_rel")
