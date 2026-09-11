@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
@@ -47,16 +46,6 @@ from abacus_forge.workspace import Workspace
 
 ServiceResult = OperationOutcome | ForgeErrorEnvelope
 RunnerFactory = Callable[..., object]
-
-
-def _contains_line_break(value: object) -> bool:
-    if isinstance(value, str):
-        return "\r" in value or "\n" in value
-    if isinstance(value, Mapping):
-        return any(_contains_line_break(key) or _contains_line_break(item) for key, item in value.items())
-    if isinstance(value, (list, tuple)):
-        return any(_contains_line_break(item) for item in value)
-    return False
 
 
 @runtime_checkable
@@ -165,23 +154,28 @@ class _AbacusServiceContext(ServiceContext):
         if "calculation" in values and values["calculation"] != task:
             raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
         if any(
-            str(key).strip() != str(key)
+            not str(key)
+            or str(key).strip() != str(key)
             or any(char.isspace() for char in str(key))
             or "#" in str(key)
             for key in values
         ):
             raise ForgeSchemaError(f"{field_name} contains an invalid INPUT parameter name")
-        if _contains_line_break(values):
-            raise ForgeSchemaError(f"{field_name} cannot contain line breaks")
         if isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)) and any(
-            str(key).strip() != str(key)
+            not str(key)
+            or str(key).strip() != str(key)
             or any(char.isspace() for char in str(key))
             or "#" in str(key)
             for key in request.remove_parameters
         ):
             raise ForgeSchemaError("remove_parameters contains an invalid INPUT parameter name")
         calculations = serialized_calculation_values(values)
-        if len(calculations) > 1 or (calculations and calculations[0] != task):
+        if calculations and (
+            "calculation" not in values
+            or values["calculation"] != task
+            or len(calculations) != 1
+            or calculations[0] != task
+        ):
             raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
 
     def validate_modify_serialization(self, workspace: Workspace, request: object, task: str) -> None:

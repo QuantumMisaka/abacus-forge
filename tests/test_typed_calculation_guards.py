@@ -70,6 +70,7 @@ def test_typed_scf_prepare_rejects_input_token_injection_before_admission(tmp_pa
         ("123e4567-e89b-42d3-a456-426614174809", {"calculation ": "scf"}),
         ("123e4567-e89b-42d3-a456-426614174810", {"suffix": "ABACUS\ncalculation relax"}),
         ("123e4567-e89b-42d3-a456-426614174812", {"calculation": "scf #comment"}),
+        ("123e4567-e89b-42d3-a456-426614174816", {"": "value"}),
     ):
         result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(
             ScfPrepareRequest(
@@ -137,6 +138,15 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.schema"
     assert (workspace.inputs_dir / "INPUT").read_text() == before
+
+    ordinary_multiline = services.modify.modify(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174817",
+            workspace_rel="job",
+            input_updates={"suffix": "ordinary\ntext"},
+        )
+    )
+    assert isinstance(ordinary_multiline, OperationOutcome)
 
     same_profile = services.modify.modify(
         ScfModifyRequest(
