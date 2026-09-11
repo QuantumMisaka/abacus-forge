@@ -82,6 +82,7 @@ def test_collect_reads_native_abacus_fermi_energy_in_ev_column(tmp_path: Path) -
     workspace.write_text(
         "outputs/OUT.ABACUS/running_scf.log",
         "      Energy           Rydberg                 eV\n"
+        " E_Fermi        -0.2769920298        -3.7686699060\n"
         " E_Fermi        -0.2928031394        -3.9837910886\n"
         " #SCF IS CONVERGED#\n",
     )

@@ -71,11 +71,12 @@ def _regex_metrics(content: str) -> dict[str, Any]:
         else:
             metrics[key] = float(value)
     if "fermi_energy" not in metrics:
-        native_fermi = _NATIVE_FERMI.search(content)
+        native_fermi = _NATIVE_FERMI.findall(content)
         if native_fermi:
             # Native ABACUS prints Rydberg first and eV second; Forge's
             # reported fermi_energy contract is eV, matching the legacy form.
-            metrics["fermi_energy"] = float(native_fermi.group(2))
+            # Iterative logs repeat the row, so retain the final iteration.
+            metrics["fermi_energy"] = float(native_fermi[-1][1])
     positive_matches, negative_matches = _collect_convergence_matches(content)
     metrics["converged"] = bool(positive_matches) and not negative_matches
     metrics["converge"] = metrics["converged"]
