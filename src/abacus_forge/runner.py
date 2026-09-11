@@ -268,7 +268,8 @@ def _normal_end_source(
                 resolved.relative_to(root)
                 stat = resolved.stat()
                 fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
-                if before.get(resolved) == fingerprint:
+                previous = before.get(resolved)
+                if previous is not None and previous[:3] == fingerprint[:3]:
                     continue
                 with resolved.open(encoding="utf-8", errors="ignore") as stream:
                     if any(_NORMAL_END_MARKER.search(line) for line in stream):
