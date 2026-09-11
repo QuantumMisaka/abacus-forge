@@ -111,3 +111,25 @@ focused service suite passed `153` tests. The candidate-wide offline gate at
 tree against `forge-mainline-integration@da1d4df` remains conflict-free. The
 property-manifest plan status wording was clarified in `f5c3bbc`; its SPEC is
 still Draft/provisional and no normative or stable-release decision is implied.
+
+## Fresh serial-PW runtime confirmation (2026-09-11)
+
+A fresh, generated-output-free copy of the local Si PBE fixtures was used for each
+run. The executable was rebuilt from `abacus-develop@94576a801` as a serial PW
+binary (MPI/OpenMP/LCAO disabled) against the temporary OpenBLAS/FFTW dependency
+prefix. With `--run-real-smoke`, the following gates passed:
+
+- legacy API SCF execute/collect: `1 passed`;
+- typed SCF machine execute/collect: `1 passed`;
+- typed Relax machine execute/collect with `capability=relax`: `1 passed`;
+- typed Relax machine execute/collect with `capability=cell-relax`: `1 passed`;
+- typed native-MD machine execute/collect: `1 passed`.
+
+The Relax and cell-relax inputs use the standard `suffix=ABACUS`, so the observed
+`inputs/OUT.ABACUS` output domain and `STRU_FINAL`/`STRU_NOW` handoff are the same
+paths asserted by the smoke contract. The MD input uses the native `running_md.log`
+and `MD_dump` outputs. These runs verify Forge process invocation, workspace
+containment, native parsing, artifact references, and persisted event payloads;
+they do not assert convergence quality, physical correctness, benchmark parity, or
+stable capability maturity. Typed capabilities therefore remain experimental and
+their reported scientific state remains `unassessed`.
