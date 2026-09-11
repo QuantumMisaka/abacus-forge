@@ -91,13 +91,31 @@ suites, full offline gate, independent review, and diff hygiene.
 
 ## Acceptance checklist
 
-- [ ] Typed ABACUS execute exposes positive current `normal_end` with source.
-- [ ] Missing/stale/escaped marker is omitted, never inferred false.
-- [ ] Legacy RunResult/result serialization and status/scientific semantics are
+- [x] Typed ABACUS execute exposes positive current `normal_end` with source.
+- [x] Missing/stale/escaped marker is omitted, never inferred false; mtime-only
+  touches of an old log are also ignored.
+- [x] Legacy RunResult/result serialization and status/scientific semantics are
   unchanged.
-- [ ] Owning/full verification and independent review pass.
+- [x] Owning/full verification and independent review pass.
 
 ## Verification record
 
-Pending implementation and review.
+Implementation and review were completed in the candidate worktree:
 
+- `98c2502` added the non-serialized runner sidecar, current stdout/running-log
+  detection, typed diagnostics and observation projection, plus API/CLI parity.
+- `ec411f3` replaced whole-file snapshots with stat fingerprints and streaming
+  marker scans; it also made running-log artifacts auditable and reused the
+  existing stdout artifact.
+- `8d9bf4c` made source validation and artifact hashing failure-tolerant, so a
+  disappearing, unreadable, escaped, directory, or symlink source only omits
+  the observation and cannot turn a completed execute into an internal error.
+- `14c69ff` added boundary regressions for ambiguous logs, invalid sources,
+  nonzero-plus-marker, legacy key sets and artifact de-duplication.
+- `eb1b004` made attribution conservative for mtime/ctime-only changes and
+  added the touch-only stale-log regression.
+- Owning service/result/CLI suite: `219 passed in 60.66s`.
+- Full offline gate: `1342 passed, 10 skipped in 98.59s`.
+- Independent review of `8c14a39..eb1b004`: PASS; no Critical, Important or
+  Minor findings.
+- `git diff --check 8c14a39..eb1b004`: clean.
