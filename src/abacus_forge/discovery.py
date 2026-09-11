@@ -386,7 +386,7 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                             "description": "Optional atom-pair, angle, or index selection.",
                         },
                         "elements": {
-                            "type": "array",
+                            "type": ["array", "null"],
                             "description": "Optional RDF element-pair selection.",
                             "items": {"oneOf": [{"type": "string"}, {"type": "array"}]},
                         },

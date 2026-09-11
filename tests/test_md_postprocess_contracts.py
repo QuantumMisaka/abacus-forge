@@ -303,3 +303,14 @@ def test_md_postprocess_schema_describes_recognized_parameters_without_closing_e
     assert "msd/vacf" in timestep_description
     assert properties["save_data"]["type"] == "boolean"
     assert properties["save_plot"]["type"] == "boolean"
+
+
+def test_md_postprocess_schema_accepts_null_elements_for_default_rdf_selection() -> None:
+    request = _request(analysis=("rdf",), parameters={"elements": None})
+    round_tripped = MdPostprocessRequest.from_dict(request.to_dict())
+    schema = request_schema_document("md", "postprocess")["request_schema"]
+
+    assert round_tripped == request
+    assert schema["properties"]["parameters"]["properties"]["elements"]["type"] == [
+        "array", "null"
+    ]
