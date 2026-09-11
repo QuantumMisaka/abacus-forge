@@ -143,10 +143,11 @@ found that the initial unbounded truncation would corrupt valid asset tokens
 such as `pp//Si.upf` and `Si#test.orb`; `ee03c41` narrows recognition to fields
 after the expected inputs, with a regression covering both tokens. The targeted
 comment suite now passes `4` tests, the owning structure/maturation/API suites
-pass `90` tests, and the current full offline gate passes `1298` tests with `6`
-opt-in skips. This is an input-fidelity correction only: it does not add a
-schema, capability, status, orchestration, scheduler, or scientific-judgement
-contract.
+pass `90` tests, and the pre-label-slice full offline gate passed `1298` tests
+with `6` opt-in skips. After the native species-label slice, the current full
+offline gate passes `1313` tests with `6` opt-in skips.
+This is an input-fidelity correction only: it does not add a schema, capability,
+status, orchestration, scheduler, or scientific-judgement contract.
 
 After the fix, a fresh generated-output-free Si PBE workspace completed the
 experimental `convergence` pack with `key=ecutwfc` and values `[20, 30]`: two
@@ -171,3 +172,25 @@ This is a filename/parser compatibility correction within the existing legacy
 property pack. It adds no typed capability, schema, status, orchestration,
 scheduling, or scientific-interpretation contract; spin-density remains
 experimental and is not evidence for Paimon v1.3 stable exposure.
+
+## Native ABACUS species-label smoke follow-up (2026-09-11)
+
+The ABACUS Fe spin example uses distinct atom-type labels `Fe1` and `Fe2` for
+one chemical element. Before `483ac13`, the Forge STRU reader passed those labels
+to ASE as chemical symbols and failed with `KeyError`; the fix stores the
+original per-atom labels separately, maps them to canonical ASE elements, and
+keeps label-keyed species blocks/resources through STRU writing, supercell and
+vacancy edits. Element-keyed asset maps remain the public input convention.
+`2af077a` and `77ce4b9` make prefix inference case-sensitive and fail closed for
+unknown two-letter prefixes and lowercase labels; standardization rejects
+non-element labels rather than silently dropping them. The implementation does
+not introduce an `X`/`empty` pseudo-element conversion.
+
+The original Fe1/Fe2 `nspin=2` example was then prepared in a fresh workspace
+with the local serial-PW binary built from `abacus-develop@94576a801`. The
+property pack completed `prepare`, one `run` subtask, and `post`; native
+`chgs1.cube`/`chgs2.cube` were found as contained inputs and
+`reports/spin_density.cube` was produced. The owning structure/modify/API gate
+passes `96` tests. This smoke confirms input, process, and parser compatibility
+only; it does not assert spin-density quality, physical correctness, benchmark
+parity, scientific acceptance, or maturity promotion.
