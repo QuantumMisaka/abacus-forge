@@ -413,7 +413,7 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     elif operation == "prepare":
         parameters: dict[str, JSONValue] = {
             "type": "object",
-            "propertyNames": {"type": "string"},
+            "propertyNames": {"type": "string", "pattern": r"^[^\s#]+$"},
             "default": {},
         }
         parameters["properties"] = {
@@ -450,10 +450,12 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     elif operation == "modify":
         input_updates: dict[str, JSONValue] = {
             "type": "object",
-            "propertyNames": {"minLength": 1},
+            "propertyNames": {"minLength": 1, "pattern": r"^[^\s#]+$"},
             "default": {},
         }
-        remove_item: dict[str, JSONValue] = {"type": "string", "minLength": 1}
+        remove_item: dict[str, JSONValue] = {
+            "type": "string", "minLength": 1, "pattern": r"^[^\s#]+$"
+        }
         input_updates["properties"] = {
             "calculation": {"type": "string", "const": capability}
         }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
@@ -25,7 +26,7 @@ from abacus_forge.contracts import (
     ScfModifyRequest,
     ScfPrepareRequest,
 )
-from abacus_forge.input_io import read_input
+from abacus_forge.input_io import read_input, serialized_calculation_values
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -46,6 +47,16 @@ from abacus_forge.workspace import Workspace
 
 ServiceResult = OperationOutcome | ForgeErrorEnvelope
 RunnerFactory = Callable[..., object]
+
+
+def _contains_line_break(value: object) -> bool:
+    if isinstance(value, str):
+        return "\r" in value or "\n" in value
+    if isinstance(value, Mapping):
+        return any(_contains_line_break(key) or _contains_line_break(item) for key, item in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_line_break(item) for item in value)
+    return False
 
 
 @runtime_checkable
@@ -151,8 +162,35 @@ class _AbacusServiceContext(ServiceContext):
                 raise ForgeSchemaError("remove_parameters cannot include calculation")
         else:
             return
-        if "calculation" in values and values["calculation"] != task:
+        if any(
+            str(key).strip() != str(key)
+            or any(char.isspace() for char in str(key))
+            or "#" in str(key)
+            for key in values
+        ):
+            raise ForgeSchemaError(f"{field_name} contains an invalid INPUT parameter name")
+        if _contains_line_break(values):
+            raise ForgeSchemaError(f"{field_name} cannot contain line breaks")
+        calculations = serialized_calculation_values(values)
+        if len(calculations) > 1 or (calculations and calculations[0] != task):
             raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
+
+    def validate_modify_serialization(self, workspace: Workspace, request: object, task: str) -> None:
+        """Validate the complete INPUT text that a strict modify would write."""
+        if not self.validate_input_calculation:
+            return
+        input_path = self.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
+        self.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
+        try:
+            values = read_input(input_path)
+        except (OSError, ValueError) as error:
+            raise ForgePreconditionError("inputs/INPUT calculation cannot be read") from error
+        values.update(dict(request.input_updates))  # type: ignore[attr-defined]
+        for key in request.remove_parameters:  # type: ignore[attr-defined]
+            values.pop(str(key), None)
+        calculations = serialized_calculation_values(values)
+        if len(calculations) != 1 or calculations[0] != task:
+            raise ForgeSchemaError(f"serialized INPUT calculation must match capability {task!r}")
 
 
 class _PrepareService:
@@ -245,11 +283,12 @@ class _ModifyService:
             with workspace.operation_guard(typed_request.operation_id, typed_request.operation) as owner_token:  # type: ignore[attr-defined]
                 input_path = self._context.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
                 self._context.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
+                if self._context.validate_input_calculation:
+                    self._context.validate_collect_calculation(workspace, task)
+                self._context.validate_modify_serialization(workspace, typed_request, task)
                 before = _input_snapshot(workspace)
                 updates = dict(typed_request.input_updates)  # type: ignore[attr-defined]
                 removed = typed_request.remove_parameters  # type: ignore[attr-defined]
-                if self._context.validate_input_calculation:
-                    self._context.validate_collect_calculation(workspace, task)
                 modified_files: list[str] = []
                 changes: dict[str, object] = {}
                 if updates or removed:

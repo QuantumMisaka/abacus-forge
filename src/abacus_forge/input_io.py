@@ -38,6 +38,25 @@ def write_input(
     return target
 
 
+def serialized_calculation_values(parameters: Mapping[str, Any]) -> tuple[str | None, ...]:
+    """Return every ``calculation`` value produced by ``write_input``.
+
+    This deliberately tokenizes the rendered lines rather than trusting the
+    mapping keys.  It therefore also sees newline/whitespace key and value
+    injections which would otherwise create a second INPUT directive.
+    """
+    text = "\n".join(f"{key} {value}" for key, value in sorted(parameters.items()))
+    values: list[str | None] = []
+    for line in text.splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if not stripped:
+            continue
+        parts = stripped.split(None, 1)
+        if parts[0] == "calculation":
+            values.append(parts[1].strip() if len(parts) == 2 else None)
+    return tuple(values)
+
+
 def write_kpt_mesh(path: str | Path, mesh: Iterable[int], shifts: Iterable[int] | None = None) -> Path:
     """Write a mesh-mode ABACUS ``KPT`` file."""
     grid = list(mesh)

@@ -62,6 +62,27 @@ def test_typed_scf_prepare_rejects_conflicting_calculation_before_admission(tmp_
     assert not (workspace.root / "forge-unit.json").exists()
 
 
+def test_typed_scf_prepare_rejects_input_token_injection_before_admission(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path, calculation=None)
+    source = workspace.root / "source.STRU"
+    source.write_text("structure", encoding="utf-8")
+    for parameter_id, parameters in (
+        ("123e4567-e89b-42d3-a456-426614174809", {"calculation ": "scf"}),
+        ("123e4567-e89b-42d3-a456-426614174810", {"suffix": "ABACUS\ncalculation relax"}),
+    ):
+        result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(
+            ScfPrepareRequest(
+                operation_id=parameter_id,
+                workspace_rel="job",
+                structure_path_rel="source.STRU",
+                parameters=parameters,
+            )
+        )
+        assert isinstance(result, ForgeErrorEnvelope)
+        assert result.error_class == "request.schema"
+        assert not (workspace.root / "forge-unit.json").exists()
+
+
 def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     before = (workspace.inputs_dir / "INPUT").read_text()
@@ -74,6 +95,17 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     result = services.modify.modify(request)
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.schema"
+    assert (workspace.inputs_dir / "INPUT").read_text() == before
+
+    injected = services.modify.modify(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174811",
+            workspace_rel="job",
+            input_updates={"suffix": "ABACUS\ncalculation relax"},
+        )
+    )
+    assert isinstance(injected, ForgeErrorEnvelope)
+    assert injected.error_class == "request.schema"
     assert (workspace.inputs_dir / "INPUT").read_text() == before
     assert not (workspace.reports_dir / "forge-workspace.json").exists()
     assert not (workspace.reports_dir / "claims").exists()
@@ -157,4 +189,6 @@ def test_scf_discovery_freezes_calculation_profile() -> None:
     assert modify["properties"]["input_updates"]["properties"]["calculation"] == {
         "type": "string", "const": "scf"
     }
+    assert modify["properties"]["input_updates"]["propertyNames"]["pattern"] == r"^[^\s#]+$"
+    assert prepare["properties"]["parameters"]["propertyNames"]["pattern"] == r"^[^\s#]+$"
     assert modify["properties"]["remove_parameters"]["items"]["not"] == {"const": "calculation"}
