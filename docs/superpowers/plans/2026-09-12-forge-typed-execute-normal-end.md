@@ -114,9 +114,10 @@ Implementation and review were completed in the candidate worktree:
   nonzero-plus-marker, legacy key sets and artifact de-duplication.
 - `eb1b004` made attribution conservative for mtime/ctime-only changes and
   added the touch-only stale-log regression.
-- `db3b3c2` added a streaming pre/post content fingerprint so same-inode,
+- `ad1e167` added a streaming pre/post content fingerprint so same-inode,
   same-size rewrites are detected while touch-only stale logs remain ignored;
-  its regression uses equal-size before/after content.
+  `db3b3c2` made the private fingerprint type explicit and its regression uses
+  equal-size before/after content.
 - Owning service/result/CLI suite after the final repair: `220 passed in
   60.25s`.
 - Full offline gate after the final repair: `1343 passed, 10 skipped in
