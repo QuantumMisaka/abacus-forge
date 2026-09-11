@@ -354,6 +354,42 @@ def test_operation_stdin_matches_direct_collect_api(tmp_path: Path, stdout: str,
     )
 
 
+def test_native_fermi_operation_stdin_matches_direct_typed_collect_api(tmp_path: Path) -> None:
+    operation_id = "123e4567-e89b-42d3-a456-426614174233"
+    for root in (tmp_path / "api", tmp_path / "cli"):
+        workspace = Workspace(root / "scf").ensure_layout()
+        workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+        workspace.write_text(
+            "outputs/OUT.ABACUS/running_scf.log",
+            "Energy Rydberg eV\n"
+            "E_Fermi -0.2928031394 -3.9837910886\n"
+            "#SCF IS CONVERGED#\n",
+        )
+
+    request = ScfCollectRequest(operation_id=operation_id, workspace_rel="scf")
+    direct = ScfServiceSet.default(workspace_root=tmp_path / "api").collect.collect(request)
+    process = run_cli(
+        "operation",
+        "collect",
+        "--stdin",
+        cwd=tmp_path / "cli",
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert isinstance(direct, OperationOutcome)
+    assert process.returncode == 0
+    assert process.stderr == ""
+    cli_payload = json.loads(process.stdout)
+    assert _normalize_operation_identity(
+        cli_payload, operation_id=operation_id, workspace_root=tmp_path / "cli"
+    ) == _normalize_operation_identity(
+        direct.to_dict(), operation_id=operation_id, workspace_root=tmp_path / "api"
+    )
+    direct_metric = next(metric for metric in direct.envelope.metrics if metric.name == "fermi_energy")
+    cli_metric = next(metric for metric in cli_payload["envelope"]["metrics"] if metric["name"] == "fermi_energy")
+    assert direct_metric.value == pytest.approx(-3.9837910886)
+    assert direct_metric.unit == cli_metric["unit"] == "eV"
+    assert direct_metric.value == pytest.approx(cli_metric["value"])
 def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp_path: Path) -> None:
     api_workspace = _write_prepared_scf(tmp_path / "api", stdout="existing\n")
     cli_workspace = _write_prepared_scf(tmp_path / "cli", stdout="existing\n")
