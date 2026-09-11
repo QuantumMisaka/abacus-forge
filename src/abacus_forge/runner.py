@@ -242,6 +242,34 @@ def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
     return digest.hexdigest(), marker
 
 
+def _stream_append_marker(path: Path, prefix_size: int, prefix_digest: str) -> bool | None:
+    """Return a marker found after an unchanged prefix, or ``None`` if it changed."""
+    digest = hashlib.sha256()
+    consumed = 0
+    tail = ""
+    with path.open("rb") as stream:
+        while consumed < prefix_size:
+            chunk = stream.read(min(1024 * 1024, prefix_size - consumed))
+            if not chunk:
+                return None
+            digest.update(chunk)
+            consumed += len(chunk)
+            tail = (tail + chunk.decode("utf-8", errors="ignore"))[-64:]
+        if digest.hexdigest() != prefix_digest:
+            return None
+
+        marker = False
+        while True:
+            chunk = stream.read(1024 * 1024)
+            if not chunk:
+                break
+            text = tail + chunk.decode("utf-8", errors="ignore")
+            boundary = len(tail)
+            marker = marker or any(match.end() > boundary for match in _NORMAL_END_MARKER.finditer(text))
+            tail = text[-64:]
+        return marker
+
+
 def _running_log_snapshot(workspace: Workspace) -> dict[Path, _LogFingerprint]:
     """Snapshot contained native logs with stat metadata and a streaming digest."""
     root = workspace.root.resolve()
@@ -290,6 +318,10 @@ def _normal_end_source(
                 digest, marker = _stream_digest_and_marker(resolved)
                 if previous is not None and previous[5] == digest:
                     continue
+                if previous is not None and stat.st_size > previous[2]:
+                    append_marker = _stream_append_marker(resolved, previous[2], previous[5])
+                    if append_marker is not None:
+                        marker = append_marker
                 if marker:
                     matches.append(resolved)
             except (OSError, ValueError, RuntimeError, UnicodeError):
