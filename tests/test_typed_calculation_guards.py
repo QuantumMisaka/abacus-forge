@@ -69,6 +69,7 @@ def test_typed_scf_prepare_rejects_input_token_injection_before_admission(tmp_pa
     for parameter_id, parameters in (
         ("123e4567-e89b-42d3-a456-426614174809", {"calculation ": "scf"}),
         ("123e4567-e89b-42d3-a456-426614174810", {"suffix": "ABACUS\ncalculation relax"}),
+        ("123e4567-e89b-42d3-a456-426614174812", {"calculation": "scf #comment"}),
     ):
         result = ScfServiceSet.default(workspace_root=tmp_path).prepare.prepare(
             ScfPrepareRequest(
@@ -96,6 +97,21 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.schema"
     assert (workspace.inputs_dir / "INPUT").read_text() == before
+
+    for operation_id, remove_parameters in (
+        ("123e4567-e89b-42d3-a456-426614174813", ("ecutwfc ",)),
+        ("123e4567-e89b-42d3-a456-426614174814", ("ecutwfc#comment",)),
+    ):
+        result = services.modify.modify(
+            ScfModifyRequest(
+                operation_id=operation_id,
+                workspace_rel="job",
+                remove_parameters=remove_parameters,
+            )
+        )
+        assert isinstance(result, ForgeErrorEnvelope)
+        assert result.error_class == "request.schema"
+        assert (workspace.inputs_dir / "INPUT").read_text() == before
 
     injected = services.modify.modify(
         ScfModifyRequest(
@@ -142,6 +158,21 @@ def test_typed_scf_execute_and_collect_reject_mismatched_input(tmp_path: Path) -
     assert execute.error_class == "precondition.missing"
     assert isinstance(collect, ForgeErrorEnvelope)
     assert collect.error_class == "precondition.missing"
+
+
+def test_typed_scf_modify_rejects_duplicate_existing_calculation_as_precondition(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\ncalculation relax\n")
+    result = ScfServiceSet.default(workspace_root=tmp_path).modify.modify(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174815",
+            workspace_rel="job",
+            input_updates={"ecutwfc": 80},
+        )
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert "calculation relax" in (workspace.inputs_dir / "INPUT").read_text()
 
 
 def test_typed_scf_collect_allows_external_output_only_workspace(tmp_path: Path) -> None:
@@ -192,3 +223,4 @@ def test_scf_discovery_freezes_calculation_profile() -> None:
     assert modify["properties"]["input_updates"]["propertyNames"]["pattern"] == r"^[^\s#]+$"
     assert prepare["properties"]["parameters"]["propertyNames"]["pattern"] == r"^[^\s#]+$"
     assert modify["properties"]["remove_parameters"]["items"]["not"] == {"const": "calculation"}
+    assert modify["properties"]["remove_parameters"]["items"]["pattern"] == r"^[^\s#]+$"

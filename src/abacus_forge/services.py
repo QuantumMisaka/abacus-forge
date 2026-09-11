@@ -26,7 +26,7 @@ from abacus_forge.contracts import (
     ScfModifyRequest,
     ScfPrepareRequest,
 )
-from abacus_forge.input_io import read_input, serialized_calculation_values
+from abacus_forge.input_io import input_calculation_values, read_input, serialized_calculation_values
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -133,10 +133,10 @@ class _AbacusServiceContext(ServiceContext):
         input_path = self.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
         self.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
         try:
-            calculation = read_input(input_path).get("calculation")
+            calculations = input_calculation_values(input_path)
         except (OSError, ValueError) as error:
             raise ForgePreconditionError("inputs/INPUT calculation cannot be read") from error
-        if calculation != task:
+        if len(calculations) != 1 or calculations[0] != task:
             raise ForgePreconditionError(
                 f"inputs/INPUT calculation must match capability {task!r}"
             )
@@ -162,6 +162,8 @@ class _AbacusServiceContext(ServiceContext):
                 raise ForgeSchemaError("remove_parameters cannot include calculation")
         else:
             return
+        if "calculation" in values and values["calculation"] != task:
+            raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
         if any(
             str(key).strip() != str(key)
             or any(char.isspace() for char in str(key))
@@ -171,6 +173,13 @@ class _AbacusServiceContext(ServiceContext):
             raise ForgeSchemaError(f"{field_name} contains an invalid INPUT parameter name")
         if _contains_line_break(values):
             raise ForgeSchemaError(f"{field_name} cannot contain line breaks")
+        if isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)) and any(
+            str(key).strip() != str(key)
+            or any(char.isspace() for char in str(key))
+            or "#" in str(key)
+            for key in request.remove_parameters
+        ):
+            raise ForgeSchemaError("remove_parameters contains an invalid INPUT parameter name")
         calculations = serialized_calculation_values(values)
         if len(calculations) > 1 or (calculations and calculations[0] != task):
             raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")

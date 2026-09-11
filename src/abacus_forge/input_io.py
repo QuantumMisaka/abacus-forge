@@ -23,6 +23,19 @@ def read_input(path: str | Path) -> dict[str, str]:
     return values
 
 
+def input_calculation_values(path: str | Path) -> tuple[str | None, ...]:
+    """Return all calculation directives, preserving duplicate occurrences."""
+    values: list[str | None] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if not stripped or stripped.upper().startswith("INPUT_PARAMETERS"):
+            continue
+        parts = stripped.split(None, 1)
+        if parts[0] == "calculation":
+            values.append(parts[1].strip() if len(parts) == 2 else None)
+    return tuple(values)
+
+
 def write_input(
     path: str | Path,
     parameters: dict[str, Any],
