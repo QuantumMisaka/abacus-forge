@@ -62,7 +62,8 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
   `capabilities` (all nine advertised names), and `schema md postprocess` succeeded. The
   venv also confirmed `abacus_agent_tools`, `abacustest`, `aiida`, and `atst_tools` were
   absent. This validates packaging/import boundaries, not real ABACUS execution or science.
-- Current HEAD `112108d` final full offline gate: `1314 passed, 6 skipped`; the
+- Current production code revision `112108d` (HEAD `51a6869` is documentation-only)
+  final full offline gate: `1314 passed, 6 skipped`; the
   current owning gate passes `114` tests. `git diff --check`, documentation text
   checks, and the merge-tree check against `forge-mainline-integration` pass.
   The wheel/import evidence above is from the earlier native follow-up; the
