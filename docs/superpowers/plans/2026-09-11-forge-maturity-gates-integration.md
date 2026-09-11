@@ -230,7 +230,7 @@ The current `abacus-test` BEC implementation confirms the required shape: each
 structure directory has an `INPUT.scf` plus three `INPUT.nscf*`/`KPT.nscf*`
 inputs, and its caller-owned shell runner executes the SCF before the three
 NSCF directions. The ABACUS Berry-phase inputs also require `calculation=nscf`,
-an explicit `gdir`, and the example's `symmetry=-1`; Forge currently emits none
+an explicit `gdir`, and `symmetry=-1`; Forge currently emits none
 of these phase-specific files or KPT refinements. The current ABACUS source
 writes the polarization blocks into the selected `running_nscf*.log`; Forge's
 `post_bec` still only consumes the legacy fixture-side

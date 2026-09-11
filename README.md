@@ -269,7 +269,7 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 
 `bec` 当前仍是 fixture/legacy 形态，不能视为已验证的原生端到端流程：ABACUS
 对每个结构要求先执行 SCF 生成 restart，再以 `calculation=nscf`、显式
-`gdir=1/2/3`（示例还要求 `symmetry=-1`）执行 NSCF；当前 Forge 尚未把这些
+`gdir=1/2/3` 和 `symmetry=-1` 执行 NSCF；当前 Forge 尚未把这些
 阶段作为显式、由调用方交接的独立 operation，也尚未将原生
 `running_nscf*.log` 的 polarization 事实接入 `post_bec`。这项能力保持
 experimental，不进入 Paimon v1.3 稳定面；顺序、重试、artifact handoff 和
