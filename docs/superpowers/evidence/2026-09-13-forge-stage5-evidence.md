@@ -5,6 +5,9 @@ backend 发布决定。
 
 **候选提交：** `368447432a3b8cc86ee7321268ad30c764373d10`
 
+**证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续仅有
+文档校正，不改变上述代码候选。
+
 **规范源：**
 `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html`
 与 `docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html`。
@@ -51,6 +54,9 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 git diff --check
 passed (no output)
 ```
+
+本证据/计划提交自身的 `git diff --check` 通过，placeholder scan（`TODO`、`TBD`、
+`FIXME`、`<unknown>`）无匹配。
 
 `benchmark` 当前是既有 fixture/collection 事实矩阵；它不是全链路执行等价、
 科学正确性或稳定 maturity 证据。
