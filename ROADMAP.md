@@ -14,7 +14,7 @@
 - 2026-09-11 已补齐当前 ABACUS 原生 collection fidelity：SCF 识别 `#SCF IS CONVERGED#` 与 `!FINAL_ETOT_IS`（eV）；Relax/cell-relax 识别 `STRU_FINAL`/`STRU_NOW`（含 CIF 及 runner 的 `inputs/OUT.*` 布局），并保留旧 `STRU_ION_D` 兼容名；typed MD 从唯一 contained `running_md.log` 收集原生热力学事实（Ry→eV、K、可选 kbar），包括 runner 的 `inputs/OUT.*` 路径，`MD_dump` 仅作为帧/步数与工件事实；legacy synthetic dump 兼容路径保持不变。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
-- 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位与资源/质量保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
+- 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位、资源/质量与 `Fe1`/`Fe2` 等物种标签保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
 - `band` / `dos` 单任务输入已对齐 ABACUS NSCF 语义；`run_band_sequence` / `run_dos_sequence` 提供本地 `SCF -> NSCF` 组合入口。
 - 2026-09-10 已落地独立的 typed `band.postprocess` / `dos.postprocess` service 与 Agent-first machine routing：两者均为 `experimental`，要求显式非空 source path，返回 facts-only 的 `execution=not_run` envelope、workspace-relative input/output artifacts（sha256/size）并追加一个 operation event；API 与 CLI 在隔离 workspace 中保持事实 parity。
 - typed `band`/`dos` postprocess 不等同于既有 `run_band`、`run_dos`、sequence helper 或 `abacus-forge band|dos` task；后者继续保持 legacy task/sequence 语义，不被隐式改写。
