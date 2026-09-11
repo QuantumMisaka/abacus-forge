@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import re
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -119,6 +121,7 @@ class LocalRunner:
 
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
+        running_log_snapshot = _running_log_snapshot(workspace)
         command = self.build_command(workspace)
         stdout_path = workspace.outputs_dir / "stdout.log"
         stderr_path = workspace.outputs_dir / "stderr.log"
@@ -184,6 +187,7 @@ class LocalRunner:
 
         stdout_path.write_text(stdout, encoding="utf-8")
         stderr_path.write_text(stderr, encoding="utf-8")
+        normal_end_source = _normal_end_source(workspace, stdout, running_log_snapshot)
         diagnostics.update(
             {
                 "failure_class": failure_class,
@@ -210,12 +214,65 @@ class LocalRunner:
             stderr_path=stderr_path,
             omp_threads=self.omp_threads,
             diagnostics=diagnostics,
+            normal_end=True if normal_end_source is not None else None,
+            normal_end_source=normal_end_source,
         )
 
     def _run_environment(self) -> dict[str, str]:
         env = {"OMP_NUM_THREADS": str(self.omp_threads)}
         env.update({str(key): str(value) for key, value in self.env_overrides.items()})
         return env
+
+
+_NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
+
+
+def _running_log_snapshot(workspace: Workspace) -> dict[Path, str]:
+    """Hash existing contained native running logs before launching."""
+    root = workspace.root.resolve()
+    snapshot: dict[Path, str] = {}
+    directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("running_*.log")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+                resolved.relative_to(root)
+                snapshot[resolved] = hashlib.sha256(resolved.read_bytes()).hexdigest()
+            except (OSError, ValueError, RuntimeError):
+                continue
+    return snapshot
+
+
+def _normal_end_source(
+    workspace: Workspace, stdout: str, before: dict[Path, str]
+) -> Path | None:
+    """Find a positive marker attributable to this LocalRunner invocation."""
+    if _NORMAL_END_MARKER.search(stdout):
+        return workspace.outputs_dir / "stdout.log"
+    root = workspace.root.resolve()
+    directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
+    matches: list[Path] = []
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("running_*.log")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+                resolved.relative_to(root)
+                digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+                if before.get(resolved) == digest:
+                    continue
+                if _NORMAL_END_MARKER.search(resolved.read_text(encoding="utf-8", errors="ignore")):
+                    matches.append(resolved)
+            except (OSError, ValueError, RuntimeError, UnicodeError):
+                continue
+    return matches[0] if len(matches) == 1 else None
 
 
 def run_many(

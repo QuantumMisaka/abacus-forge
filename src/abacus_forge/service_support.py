@@ -162,7 +162,9 @@ def _observations(envelope: ForgeResultEnvelope) -> tuple[Observation, ...]:
     if isinstance(diagnostics, dict):
         for name in ("failure_class", "dry_run", "normal_end", "converged", "termination"):
             if name in diagnostics:
-                source = "runtime" if name in {"failure_class", "dry_run", "termination"} else "parser"
+                source = "log" if name == "normal_end" else (
+                    "runtime" if name in {"failure_class", "dry_run", "termination"} else "parser"
+                )
                 add(Observation(name=name, value=diagnostics[name], source=source))
     return tuple(observations)
 

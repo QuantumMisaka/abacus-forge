@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import replace
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
@@ -433,6 +434,27 @@ class _ExecuteService:
                         },
                     )
                     envelope = _with_workspace(runner_result.to_envelope(), typed_request.workspace_rel)  # type: ignore[attr-defined]
+                    if getattr(runner_result, "normal_end", None) is True:
+                        source = getattr(runner_result, "normal_end_source", None)
+                        if isinstance(source, Path):
+                            try:
+                                source_rel = source.resolve().relative_to(workspace.root.resolve()).as_posix()
+                            except ValueError:
+                                source_rel = None
+                            if source_rel is not None:
+                                diagnostics = dict(envelope.to_dict()["diagnostics"])
+                                diagnostics.update({"normal_end": True, "normal_end_source": source_rel})
+                                running_artifact = ArtifactRecord(
+                                    id="abacus_running_log",
+                                    path_rel=source_rel,
+                                    role="output",
+                                    stage="execute",
+                                )
+                                envelope = replace(
+                                    envelope,
+                                    artifacts=envelope.artifacts + (running_artifact,),
+                                    diagnostics=diagnostics,
+                                )
                 return self._context.persist(
                     workspace, typed_request, envelope, owner_token=owner_token  # type: ignore[arg-type]
                 )

@@ -587,6 +587,87 @@ def test_typed_execute_does_not_infer_skip_from_normal_end(tmp_path: Path) -> No
     assert result.status.execution == "completed"
 
 
+def test_typed_execute_reports_current_stdout_normal_end_fact(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(
+        _request(
+            ScfExecuteRequest,
+            "scf",
+            "123e4567-e89b-42d3-a456-426614174034",
+        )
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["normal_end"] is True
+    assert result.envelope.diagnostics["normal_end_source"] == "outputs/stdout.log"
+    assert any(
+        observation.name == "normal_end" and observation.source == "log"
+        for observation in result.observations
+    )
+    assert "outputs/stdout.log" in {
+        artifact.path_rel for artifact in result.envelope.artifacts
+    }
+
+
+def test_typed_execute_reports_changed_native_running_log_and_ignores_stale_log(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
+    running_log.parent.mkdir(parents=True, exist_ok=True)
+    running_log.write_text("NORMAL END\n", encoding="utf-8")
+    executable = tmp_path / "runner.py"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "from pathlib import Path\n"
+        "Path('../outputs/OUT.ABACUS/running_scf.log').write_text('Total  Time  : 1.0 seconds\\n')\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174035")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["normal_end"] is True
+    assert result.envelope.diagnostics["normal_end_source"] == "outputs/OUT.ABACUS/running_scf.log"
+    assert any(
+        artifact.path_rel == "outputs/OUT.ABACUS/running_scf.log"
+        for artifact in result.envelope.artifacts
+    )
+
+
+def test_typed_execute_omits_stale_normal_end_and_keeps_nonzero_independent(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
+    running_log.parent.mkdir(parents=True, exist_ok=True)
+    running_log.write_text("NORMAL END\n", encoding="utf-8")
+    executable = tmp_path / "runner.py"
+    executable.write_text(f"#!{sys.executable}\nraise SystemExit(7)\n", encoding="utf-8")
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174036")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["failure_class"] == "nonzero_exit"
+    assert "normal_end" not in result.envelope.diagnostics
+
+
 @pytest.mark.parametrize(
     ("behavior", "expected_failure", "expected_termination", "expected_returncode", "operation_suffix"),
     [

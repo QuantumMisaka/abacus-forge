@@ -21,9 +21,13 @@ class RunResult:
     stderr_path: Path
     omp_threads: int
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    normal_end: bool | None = field(default=None, repr=False, compare=False)
+    normal_end_source: Path | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
+        payload.pop("normal_end", None)
+        payload.pop("normal_end_source", None)
         return {
             **payload,
             "workspace": str(self.workspace),

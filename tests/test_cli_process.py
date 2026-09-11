@@ -423,6 +423,35 @@ def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp
     )
 
 
+def test_operation_execute_matches_direct_typed_api_with_normal_end_fact(tmp_path: Path) -> None:
+    api_workspace = _write_prepared_scf(tmp_path / "api", stdout="existing\n")
+    cli_workspace = _write_prepared_scf(tmp_path / "cli", stdout="existing\n")
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174234",
+        workspace_rel="scf",
+        executable=str(executable),
+    )
+    direct = ScfServiceSet.default(workspace_root=api_workspace.root.parent).execute.execute(request)
+    process = run_cli(
+        "operation", "execute", "--stdin", cwd=cli_workspace.root.parent,
+        input_text=json.dumps(request.to_dict()),
+    )
+
+    assert isinstance(direct, OperationOutcome)
+    assert process.returncode == 0
+    assert process.stderr == ""
+    assert len(_parse_concatenated_json_values(process.stdout)) == 1
+    cli_payload = json.loads(process.stdout)
+    assert _normalize_operation_identity(
+        cli_payload, operation_id=request.operation_id, workspace_root=cli_workspace.root.parent
+    ) == _normalize_operation_identity(
+        direct.to_dict(), operation_id=request.operation_id, workspace_root=api_workspace.root.parent
+    )
+    assert cli_payload["envelope"]["diagnostics"]["normal_end"] is True
+    assert cli_payload["envelope"]["diagnostics"]["normal_end_source"] == "outputs/stdout.log"
+
+
 def _write_typed_pyatb_fixture(root: Path, *, include_rr: bool = True) -> None:
     workspace = root / "job"
     source = workspace / "source"
