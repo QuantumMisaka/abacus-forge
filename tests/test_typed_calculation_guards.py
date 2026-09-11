@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from abacus_forge import ForgeServices, OperationOutcome, ScfServiceSet, Workspace
 from abacus_forge.contracts import (
     ForgeErrorEnvelope,
@@ -66,15 +68,22 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     workspace = _workspace(tmp_path)
     before = (workspace.inputs_dir / "INPUT").read_text()
     services = ScfServiceSet.default(workspace_root=tmp_path)
-    for operation_id, kwargs in (
-        ("123e4567-e89b-42d3-a456-426614174805", {"input_updates": {"calculation": "relax"}}),
-        ("123e4567-e89b-42d3-a456-426614174806", {"remove_parameters": ("calculation",)}),
-    ):
-        request = ScfModifyRequest(operation_id=operation_id, workspace_rel="job", **kwargs)
-        result = services.modify.modify(request)
-        assert isinstance(result, ForgeErrorEnvelope)
-        assert result.error_class == "request.schema"
-        assert (workspace.inputs_dir / "INPUT").read_text() == before
+    request = ScfModifyRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174805",
+        workspace_rel="job",
+        input_updates={"calculation": "relax"},
+    )
+    result = services.modify.modify(request)
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.schema"
+    assert (workspace.inputs_dir / "INPUT").read_text() == before
+
+    with pytest.raises(ValueError, match="remove_parameters cannot include calculation"):
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174806",
+            workspace_rel="job",
+            remove_parameters=("calculation",),
+        )
 
 
 def test_typed_scf_execute_and_collect_reject_mismatched_input(tmp_path: Path) -> None:
