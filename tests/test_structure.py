@@ -158,18 +158,34 @@ def test_stru_labels_are_distinct_from_elements_and_roundtrip(tmp_path: Path) ->
     assert recovered.atoms.info["abacus_move_flags"] == [[1, 1, 1], [0, 1, 1]]
 
 
-def test_stru_label_without_element_prefix_fails_explicitly(tmp_path: Path) -> None:
+@pytest.mark.parametrize("label", ["Xx1", "Cq1"])
+def test_stru_label_without_element_prefix_fails_explicitly(tmp_path: Path, label: str) -> None:
     source = tmp_path / "invalid.STRU"
     source.write_text(
-        "ATOMIC_SPECIES\nXx1 1.0 Xx.upf\n\n"
+        f"ATOMIC_SPECIES\n{label} 1.0 Xx.upf\n\n"
         "LATTICE_CONSTANT\n1.0\n\n"
         "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
-        "ATOMIC_POSITIONS\nDirect\nXx1\n0\n1\n0 0 0\n",
+        f"ATOMIC_POSITIONS\nDirect\n{label}\n0\n1\n0 0 0\n",
         encoding="utf-8",
     )
 
     with pytest.raises(ValueError, match="element|label"):
         AbacusStructure.from_input(source, structure_format="stru")
+
+
+@pytest.mark.parametrize("label", ["Fe1", "C2", "C_UP", "CUp", "CDown", "NDown"])
+def test_stru_label_with_unambiguous_element_prefix_is_accepted(tmp_path: Path, label: str) -> None:
+    source = tmp_path / "valid.STRU"
+    source.write_text(
+        f"ATOMIC_SPECIES\n{label} 1.0 source.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        f"ATOMIC_POSITIONS\nDirect\n{label}\n0\n1\n0 0 0\n",
+        encoding="utf-8",
+    )
+    structure = AbacusStructure.from_input(source, structure_format="stru")
+    expected = "Fe" if label == "Fe1" else ("N" if label == "NDown" else "C")
+    assert structure.atoms.get_chemical_symbols() == [expected]
 
 
 def test_supercell_preserves_abacus_atom_labels(tmp_path: Path) -> None:

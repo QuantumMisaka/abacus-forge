@@ -307,9 +307,14 @@ def _resolved_species_value(
 def _infer_element_from_label(label: str) -> str:
     """Resolve an ABACUS atom-type label to its ASE chemical element."""
 
-    for candidate in (label[:2].capitalize(), label[:1].capitalize()):
+    if len(label) >= 2 and label[0].isupper() and label[1].islower():
+        candidate = label[:2]
         if candidate in chemical_symbols and candidate != "X":
             return candidate
+        raise ValueError(f"cannot determine element for ABACUS atom label {label!r}")
+    candidate = label[:1].capitalize()
+    if candidate in chemical_symbols and candidate != "X":
+        return candidate
     raise ValueError(f"cannot determine element for ABACUS atom label {label!r}")
 
 
