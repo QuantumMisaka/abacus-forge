@@ -281,7 +281,7 @@ def _read_stru(path: Path) -> Atoms:
 
 
 def _read_stru_text(text: str) -> Atoms:
-    lines = [_strip_inline_comment(line.rstrip("\n")) for line in text.splitlines()]
+    lines = [line.rstrip("\n") for line in text.splitlines()]
     species_meta: dict[str, dict[str, str | float]] = {}
     lattice_constant = 1.0
     lattice_unit = "bohr"
@@ -297,7 +297,7 @@ def _read_stru_text(text: str) -> Atoms:
         # ABACUS native output annotates section headers (for example
         # ``LATTICE_VECTORS  # in units of lat0``).  Parse the directive
         # before the comment; atom labels are handled in the positional block.
-        stripped = lines[index].strip()
+        stripped = _first_token(lines[index])
         if not stripped or stripped.startswith("#"):
             index += 1
             continue
@@ -305,7 +305,7 @@ def _read_stru_text(text: str) -> Atoms:
         if stripped == "ATOMIC_SPECIES":
             index += 1
             while index < len(lines):
-                parts = lines[index].split()
+                parts = _tokens_before_comment(lines[index], min_fields=2)
                 if not parts:
                     index += 1
                     continue
@@ -324,7 +324,7 @@ def _read_stru_text(text: str) -> Atoms:
             orbitals = list(species_meta)
             orbital_idx = 0
             while index < len(lines):
-                parts = lines[index].split()
+                parts = _tokens_before_comment(lines[index], min_fields=1)
                 if not parts:
                     index += 1
                     continue
@@ -337,38 +337,43 @@ def _read_stru_text(text: str) -> Atoms:
             continue
 
         if stripped == "LATTICE_CONSTANT":
-            lattice_constant = float(lines[index + 1].split()[0])
+            lattice_constant = float(_tokens_before_comment(lines[index + 1], min_fields=1)[0])
             index += 2
             continue
 
         if stripped == "LATTICE_CONSTANT_UNIT":
-            lattice_unit = lines[index + 1].split()[0].lower()
+            lattice_unit = _tokens_before_comment(lines[index + 1], min_fields=1)[0].lower()
             index += 2
             continue
 
         if stripped == "LATTICE_VECTORS":
             lattice_vectors = []
             for offset in range(1, 4):
-                lattice_vectors.append([float(token) for token in lines[index + offset].split()[:3]])
+                lattice_vectors.append(
+                    [
+                        float(token)
+                        for token in _tokens_before_comment(lines[index + offset], min_fields=3)[:3]
+                    ]
+                )
             index += 4
             continue
 
         if stripped == "ATOMIC_POSITIONS":
-            coordinate_tokens = lines[index + 1].split(maxsplit=1)
+            coordinate_tokens = _tokens_before_comment(lines[index + 1], min_fields=1)
             coordinate_mode = coordinate_tokens[0].lower() if coordinate_tokens else ""
             index += 2
             while index < len(lines):
-                symbol = lines[index].strip()
+                symbol = _first_token(lines[index])
                 if not symbol:
                     index += 1
                     continue
                 if symbol.isupper() and symbol in {"LATTICE_CONSTANT", "LATTICE_VECTORS", "NUMERICAL_ORBITAL"}:
                     break
-                species_mag = float(lines[index + 1].split()[0])
-                count = int(float(lines[index + 2].split()[0]))
+                species_mag = float(_tokens_before_comment(lines[index + 1], min_fields=1)[0])
+                count = int(float(_tokens_before_comment(lines[index + 2], min_fields=1)[0]))
                 index += 3
                 for _ in range(count):
-                    parts = lines[index].split()
+                    parts = _tokens_before_comment(lines[index], min_fields=3)
                     coords = [float(token) for token in parts[:3]]
                     move = [1, 1, 1]
                     atom_mag = species_mag
@@ -425,13 +430,34 @@ def _read_stru_text(text: str) -> Atoms:
     return atoms
 
 
-def _strip_inline_comment(line: str) -> str:
-    """Remove the inline comment styles accepted by native ABACUS STRU files."""
+def _first_token(line: str) -> str:
+    """Return the first field, treating standalone comment lines as empty."""
 
-    markers = [marker for marker in ("#", "//") if (index := line.find(marker)) >= 0]
-    if not markers:
-        return line
-    return line[: min(line.find(marker) for marker in markers)].rstrip()
+    parts = line.split()
+    if not parts or _is_comment_start(parts[0]):
+        return ""
+    return parts[0]
+
+
+def _tokens_before_comment(line: str, *, min_fields: int) -> list[str]:
+    """Keep fields before an inline comment without rewriting asset tokens.
+
+    ``min_fields`` protects the fields whose contents may legitimately contain
+    ``#`` or ``//`` (for example ``Si#test.orb`` and ``pp//Si.upf``).  Comment
+    markers are recognized only after those fields have been read.
+    """
+
+    parts = line.split()
+    if not parts or _is_comment_start(parts[0]):
+        return []
+    for index, token in enumerate(parts):
+        if index >= min_fields and _is_comment_start(token):
+            return parts[:index]
+    return parts
+
+
+def _is_comment_start(token: str) -> bool:
+    return token.startswith("#") or token.startswith("//")
 
 
 def _is_float(token: str) -> bool:

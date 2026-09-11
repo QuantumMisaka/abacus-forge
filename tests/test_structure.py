@@ -187,6 +187,25 @@ def test_read_stru_accepts_native_abacus_slash_comments(tmp_path: Path) -> None:
     assert atoms.cell.lengths().tolist() == pytest.approx([10.2 * BOHR_TO_ANG / np.sqrt(2)] * 3)
 
 
+def test_read_stru_preserves_asset_tokens_containing_comment_markers(tmp_path: Path) -> None:
+    path = tmp_path / "STRU"
+    path.write_text(
+        "ATOMIC_SPECIES\nSi 28.0855 pp//Si.upf upf201\n\n"
+        "NUMERICAL_ORBITAL\nSi#test.orb\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\n0.0\n1\n"
+        "0 0 0 1 1 1\n",
+        encoding="utf-8",
+    )
+
+    atoms = _read_stru(path)
+
+    assert atoms.info["abacus_species_meta"] == {
+        "Si": {"mass": 28.0855, "pp": "pp//Si.upf", "orb": "Si#test.orb"}
+    }
+
+
 def test_to_stru_preserves_existing_move_flags(tmp_path: Path) -> None:
     atoms = Atoms(
         symbols=["Si", "O"],
