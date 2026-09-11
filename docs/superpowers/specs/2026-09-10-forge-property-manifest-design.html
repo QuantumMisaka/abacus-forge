@@ -24,7 +24,7 @@
     <h1>ABACUS-Forge property/cube artifact manifest</h1>
     <p><strong>状态：</strong>Draft for review</p>
     <p><strong>负责人：</strong>QuantumMisaka / Codex</p>
-    <p><strong>更新：</strong>2026-09-10</p>
+    <p><strong>更新：</strong>2026-09-11</p>
     <p><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
   </header>
 
@@ -173,7 +173,7 @@
 
     <section id="rollout">
       <h2>兼容与推进</h2>
-      <p>本文件获批后另写 PLAN，按 RED→GREEN 拆为：manifest value object/builder、charge/spin/charge-diff post 投影、API/CLI/legacy 回归、文档与独立复核。计划只改 property 相关模块和必要测试/文档，不引入新的运行时依赖。</p>
+      <p>配套 PLAN 已按 RED→GREEN 完成 manifest value object/builder、charge/spin/charge-diff post 投影、API/CLI/legacy 回归、文档与独立复核。实现只改 property 相关模块和必要测试/文档，不引入新的运行时依赖；本 SPEC 仍保持 Draft，批准与稳定发布是独立的人类决策。</p>
       <p>第一批只把 manifest 作为 diagnostics 增量交付，成熟度仍为 <code>experimental</code>。workfunc/ELF/Bader 等输出形态、Bader 外部进程和真实 ABACUS smoke 在后续独立计划中处理。manifest 本身不构成科学验证或 Paimon v1.3 稳定能力证明。</p>
     </section>
 
@@ -181,12 +181,12 @@
       <h2>风险与开放项</h2>
       <div class="decision open">
         <p><strong>已知风险：</strong>不同 ABACUS/abacustest 版本可能使用不同 cube 文件名、输出目录或 z-fastest 标记；本设计只记录 post 实际选定的路径，并在没有选定文件时使用上表 canonical expected path，不扩张自动发现规则。</p>
-        <p><strong>需要用户确认的唯一公共决策：</strong>是否接受“legacy property pack + diagnostics.property_manifest 增量、首批 charge/spin/charge-diff、上表 canonical 路径、通用 ArtifactRecord 与旧 CLI 不变”的形态。若接受，后续 PLAN 只需冻结 builder 的内部输入、测试矩阵和 malformed 降级策略；若不接受，应在实现前改写本 SPEC。</p>
+        <p><strong>需要用户确认的唯一公共决策：</strong>是否把“legacy property pack + diagnostics.property_manifest 增量、首批 charge/spin/charge-diff、上表 canonical 路径、通用 ArtifactRecord 与旧 CLI 不变”的形态提升为批准的规范。当前实现和复核记录只证明 provisional experimental 行为；若不接受，应在继续扩大能力前改写本 SPEC。</p>
       </div>
       <p><strong>参考快照：</strong>Forge <code>3466b1a</code>；abacus-agent-tools <code>0627377</code>；abacus-test <code>1c9acbc</code>；abacuslab <code>d641692</code>；abacuscopilot <code>91b9456</code>。PyATB manifest 设计只作为 diagnostics 组织方式先例，不直接套用其 property 语义。</p>
     </section>
   </main>
 
-  <footer>本文件仍是 Draft；获得确认后才进入 writing-plans 和实现阶段。Forge 不因本设计承担科学判定、任务编排或平台调度。</footer>
+  <footer>本文件仍是 Draft for review；配套 PLAN 已完成 provisional 实现与复核，但在获得显式人类确认前不将其视为规范性或稳定契约。Forge 不因本设计承担科学判定、任务编排或平台调度。</footer>
 </body>
 </html>

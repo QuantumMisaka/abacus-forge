@@ -49,9 +49,10 @@ commit. The reviewer reported no Critical or Important findings. The only
 Minor item was documentation commit hygiene; it is resolved by the closing
 documentation commit.
 
-## Remaining release gates
+## Remaining release evidence
 
-Before stable Paimon v1.3 consumption, run the independent clean-environment
-install check, real ABACUS trajectory smoke, benchmark parity, and upper-layer
-scientific interpretation/orchestration review. Those gates are intentionally
-outside Forge's current implementation contract.
+The later collection-metadata record covers Forge's clean-package/install
+gate. Complete Paimon benchmark parity and a real ABACUS
+trajectory-to-postprocess smoke remain separate release evidence; this report
+does not claim either one. Scientific interpretation and workflow/orchestration
+remain caller-owned boundaries, not missing Forge implementation work.

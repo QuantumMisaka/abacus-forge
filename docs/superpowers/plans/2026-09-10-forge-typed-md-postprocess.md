@@ -192,3 +192,14 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider
 These are offline compatibility and contract gates.  The four skipped tests
 remain opt-in real-smoke/benchmark boundaries; no real ABACUS execution or
 scientific acceptance claim is made.
+
+## Current-state boundary clarification (2026-09-11)
+
+The later review-fixes plan
+`2026-09-11-forge-md-postprocess-review-fixes.md` supersedes the historical
+fallback wording above: current behavior uses a complete finite element-mass
+table and rejects unknown symbols. Later clean-package evidence is recorded in
+the collection-metadata plan. Complete Paimon benchmark parity and a real
+trajectory-to-postprocess smoke remain separate release evidence; scientific
+interpretation and workflow/orchestration are caller-owned boundaries, not
+missing Forge implementation tasks.

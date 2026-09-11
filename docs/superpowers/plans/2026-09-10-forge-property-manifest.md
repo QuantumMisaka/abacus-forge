@@ -308,7 +308,7 @@ git commit -m "test: lock legacy property manifest parity"
 - Modify: `README.md` with a short property manifest example and explicit facts-only boundary.
 - Modify: `ROADMAP.md` to record this as experimental diagnostics support while leaving typed property promotion, nspin 4, workfunc/ELF/Bader manifests, aggregation, and real-smoke deferred.
 - Modify: `tests/test_architecture.py` to include `property_manifest` in the neutral import-graph roots and verify it has no legacy API or forbidden upper-layer dependency.
-- Modify: `docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html` only after the human approves it: change status to Approved and record the approval date/source.
+- Modify: `docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html` only to keep its Draft/provisional status and implementation boundary accurate; changing it to Approved remains a separate explicit human decision.
 - Modify: this plan with completed task ledger and exact verification output after implementation.
 - Create: `.superpowers/sdd/2026-09-10-forge-property-manifest/task-4-report.md` with raw gate output; force-add it because `.superpowers/` is ignored.
 
@@ -319,7 +319,7 @@ git commit -m "test: lock legacy property manifest parity"
 
 **Interfaces:**
 - Consume the completed value objects, builder, and legacy post projection from Tasks 1–3.
-- Produce an approved SPEC/PLAN record, current documentation, architecture evidence, and a clean offline branch; no new runtime wire object beyond `diagnostics.property_manifest`.
+- Produce a provisional SPEC/PLAN implementation and review record, current documentation, architecture evidence, and a clean offline branch; no new runtime wire object beyond `diagnostics.property_manifest`. SPEC approval remains a separate explicit decision.
 
 - [x] **Step 1: Update README and ROADMAP after behavior is green.** Show one JSON fragment with `schema_version`, `task`, `inputs`, `outputs`, and `missing`; state that actual variant paths are preserved, canonical paths are only missing facts, and scientific validation/orchestration/scheduling remain outside Forge.
 
