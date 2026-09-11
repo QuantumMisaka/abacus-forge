@@ -158,7 +158,7 @@ def test_stru_labels_are_distinct_from_elements_and_roundtrip(tmp_path: Path) ->
     assert recovered.atoms.info["abacus_move_flags"] == [[1, 1, 1], [0, 1, 1]]
 
 
-@pytest.mark.parametrize("label", ["Xx1", "Cq1"])
+@pytest.mark.parametrize("label", ["Xx1", "Cq1", "fe1", "si1", "co1"])
 def test_stru_label_without_element_prefix_fails_explicitly(tmp_path: Path, label: str) -> None:
     source = tmp_path / "invalid.STRU"
     source.write_text(
