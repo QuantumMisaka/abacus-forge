@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from dataclasses import replace
+import hashlib
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
@@ -438,21 +439,32 @@ class _ExecuteService:
                         source = getattr(runner_result, "normal_end_source", None)
                         if isinstance(source, Path):
                             try:
-                                source_rel = source.resolve().relative_to(workspace.root.resolve()).as_posix()
-                            except ValueError:
+                                resolved_source = source.resolve(strict=True)
+                                if not resolved_source.is_file():
+                                    raise ValueError("normal-end source is not a file")
+                                source_rel = resolved_source.relative_to(workspace.root.resolve()).as_posix()
+                            except (OSError, RuntimeError, ValueError):
                                 source_rel = None
                             if source_rel is not None:
                                 diagnostics = dict(envelope.to_dict()["diagnostics"])
                                 diagnostics.update({"normal_end": True, "normal_end_source": source_rel})
-                                running_artifact = ArtifactRecord(
-                                    id="abacus_running_log",
-                                    path_rel=source_rel,
-                                    role="output",
-                                    stage="execute",
-                                )
+                                artifacts = envelope.artifacts
+                                if not any(artifact.path_rel == source_rel for artifact in artifacts):
+                                    digest = hashlib.sha256()
+                                    with resolved_source.open("rb") as stream:
+                                        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                                            digest.update(chunk)
+                                    artifacts = artifacts + (ArtifactRecord(
+                                        id="abacus_running_log",
+                                        path_rel=source_rel,
+                                        role="output",
+                                        stage="execute",
+                                        sha256=digest.hexdigest(),
+                                        size_bytes=resolved_source.stat().st_size,
+                                    ),)
                                 envelope = replace(
                                     envelope,
-                                    artifacts=envelope.artifacts + (running_artifact,),
+                                    artifacts=artifacts,
                                     diagnostics=diagnostics,
                                 )
                 return self._context.persist(

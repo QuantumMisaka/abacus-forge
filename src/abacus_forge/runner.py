@@ -227,10 +227,10 @@ class LocalRunner:
 _NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
 
 
-def _running_log_snapshot(workspace: Workspace) -> dict[Path, str]:
-    """Hash existing contained native running logs before launching."""
+def _running_log_snapshot(workspace: Workspace) -> dict[Path, tuple[int, int, int, int, int]]:
+    """Snapshot existing contained native running logs without reading them."""
     root = workspace.root.resolve()
-    snapshot: dict[Path, str] = {}
+    snapshot: dict[Path, tuple[int, int, int, int, int]] = {}
     directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
     for directory in directories:
         if not directory.is_dir():
@@ -241,7 +241,8 @@ def _running_log_snapshot(workspace: Workspace) -> dict[Path, str]:
             try:
                 resolved = path.resolve(strict=True)
                 resolved.relative_to(root)
-                snapshot[resolved] = hashlib.sha256(resolved.read_bytes()).hexdigest()
+                stat = resolved.stat()
+                snapshot[resolved] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
             except (OSError, ValueError, RuntimeError):
                 continue
     return snapshot
@@ -265,11 +266,13 @@ def _normal_end_source(
             try:
                 resolved = path.resolve(strict=True)
                 resolved.relative_to(root)
-                digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
-                if before.get(resolved) == digest:
+                stat = resolved.stat()
+                fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+                if before.get(resolved) == fingerprint:
                     continue
-                if _NORMAL_END_MARKER.search(resolved.read_text(encoding="utf-8", errors="ignore")):
-                    matches.append(resolved)
+                with resolved.open(encoding="utf-8", errors="ignore") as stream:
+                    if any(_NORMAL_END_MARKER.search(line) for line in stream):
+                        matches.append(resolved)
             except (OSError, ValueError, RuntimeError, UnicodeError):
                 continue
     return matches[0] if len(matches) == 1 else None
