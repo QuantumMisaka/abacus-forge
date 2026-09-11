@@ -390,6 +390,8 @@ def test_native_fermi_operation_stdin_matches_direct_typed_collect_api(tmp_path:
     assert direct_metric.value == pytest.approx(-3.9837910886)
     assert direct_metric.unit == cli_metric["unit"] == "eV"
     assert direct_metric.value == pytest.approx(cli_metric["value"])
+
+
 def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp_path: Path) -> None:
     api_workspace = _write_prepared_scf(tmp_path / "api", stdout="existing\n")
     cli_workspace = _write_prepared_scf(tmp_path / "cli", stdout="existing\n")
