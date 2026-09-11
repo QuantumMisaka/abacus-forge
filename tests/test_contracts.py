@@ -1152,6 +1152,47 @@ def test_pyatb_band_requests_round_trip_with_defaults_and_frozen_payloads() -> N
 
 
 @pytest.mark.parametrize(
+    ("nspin", "hr_paths_rel"),
+    [
+        (1, ["inputs/HR.dat"]),
+        (2, ["inputs/HR-up.dat", "inputs/HR-down.dat"]),
+        (4, ["inputs/HR.dat"]),
+    ],
+)
+@pytest.mark.parametrize("rr_mode", ["omitted", "null"])
+def test_pyatb_band_prepare_accepts_omitted_or_null_rr_for_each_nspin(
+    nspin: int,
+    hr_paths_rel: list[str],
+    rr_mode: str,
+) -> None:
+    payload = _pyatb_prepare_request(nspin=nspin, hr_paths_rel=hr_paths_rel).to_dict()
+    if rr_mode == "omitted":
+        payload.pop("rr_path_rel")
+    else:
+        payload["rr_path_rel"] = None
+
+    values = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"schema_version", "capability", "operation"}
+    }
+    request = PyatbBandPrepareRequest(**values)
+
+    assert request.rr_path_rel is None
+    assert request.to_dict()["rr_path_rel"] is None
+    restored = PyatbBandPrepareRequest.from_dict(json.loads(json.dumps(payload)))
+    assert restored == request
+
+
+def test_pyatb_band_prepare_schema_marks_rr_nullable_but_optional() -> None:
+    schema = request_schema_document("pyatb-band", "prepare")["request_schema"]
+
+    assert schema["properties"]["rr_path_rel"]["type"] == ["string", "null"]
+    assert schema["properties"]["rr_path_rel"]["default"] is None
+    assert "rr_path_rel" not in schema["required"]
+
+
+@pytest.mark.parametrize(
     ("field", "value"),
     [
         ("nspin", 3),

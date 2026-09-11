@@ -385,12 +385,15 @@ def test_operation_request_file_matches_direct_execute_api_with_typed_config(tmp
     )
 
 
-def _write_typed_pyatb_fixture(root: Path) -> None:
+def _write_typed_pyatb_fixture(root: Path, *, include_rr: bool = True) -> None:
     workspace = root / "job"
     source = workspace / "source"
     source.mkdir(parents=True, exist_ok=True)
     source.joinpath("STRU").write_text(_STRU_TEXT, encoding="utf-8")
-    for name, content in (("hr.csr", "hr"), ("sr.csr", "sr"), ("rr.csr", "rr")):
+    matrix_files = (("hr.csr", "hr"), ("sr.csr", "sr"))
+    if include_rr:
+        matrix_files += (("rr.csr", "rr"),)
+    for name, content in matrix_files:
         source.joinpath(name).write_text(content, encoding="utf-8")
 
 
@@ -492,6 +495,78 @@ def test_typed_pyatb_prepare_execute_collect_machine_parity(tmp_path: Path) -> N
     process_collect_manifest = json.loads(process_collect.stdout)["envelope"]["diagnostics"]["pyatb_manifest"]
     direct_collect_manifest = direct_collect.to_dict()["envelope"]["diagnostics"]["pyatb_manifest"]
     assert process_collect_manifest == direct_collect_manifest
+
+
+def test_typed_pyatb_hr_sr_only_prepare_execute_machine_api_parity(tmp_path: Path) -> None:
+    api_root = tmp_path / "api"
+    cli_root = tmp_path / "cli"
+    _write_typed_pyatb_fixture(api_root, include_rr=False)
+    _write_typed_pyatb_fixture(cli_root, include_rr=False)
+    executable = _write_fake_typed_pyatb(tmp_path / "fake-pyatb")
+
+    prepare_request = PyatbBandPrepareRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174264",
+        workspace_rel="job",
+        structure_path_rel="source/STRU",
+        hr_paths_rel=("source/hr.csr",),
+        sr_path_rel="source/sr.csr",
+        rr_path_rel=None,
+        fermi_energy=1.25,
+        line_kpoints=(
+            {"coords": [0.0, 0.0, 0.0], "label": "G"},
+            {"coords": [0.5, 0.0, 0.0], "label": "X"},
+        ),
+    )
+    direct_services = PyatbBandServiceSet.default(workspace_root=api_root)
+    direct_prepare = direct_services.prepare.prepare(prepare_request)
+    process_prepare = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(prepare_request.to_dict()),
+    )
+
+    assert process_prepare.returncode == 0
+    assert process_prepare.stderr == ""
+    process_prepare_payload = json.loads(process_prepare.stdout)
+    assert _normalize_operation_identity(
+        process_prepare_payload,
+        operation_id=prepare_request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_prepare.to_dict(),
+        operation_id=prepare_request.operation_id,
+        workspace_root=api_root,
+    )
+    assert "rR_route" not in (cli_root / "job/inputs/Input").read_text(encoding="utf-8")
+    assert "rR_route" not in (api_root / "job/inputs/Input").read_text(encoding="utf-8")
+
+    execute_request = PyatbBandExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174265",
+        workspace_rel="job",
+        executable=str(executable),
+    )
+    direct_execute = direct_services.execute.execute(execute_request)
+    process_execute = run_cli(
+        "operation",
+        "execute",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(execute_request.to_dict()),
+    )
+
+    assert process_execute.returncode == 0
+    assert process_execute.stderr == ""
+    assert _normalize_operation_identity(
+        json.loads(process_execute.stdout),
+        operation_id=execute_request.operation_id,
+        workspace_root=cli_root,
+    ) == _normalize_operation_identity(
+        direct_execute.to_dict(),
+        operation_id=execute_request.operation_id,
+        workspace_root=api_root,
+    )
 
 
 def test_typed_pyatb_nspin4_prepare_machine_api_parity_without_execution(tmp_path: Path) -> None:

@@ -245,7 +245,7 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
             "engine": "pyatb",
             "operations": ["prepare", "execute", "collect"],
             "inputs": {
-                "prepare": ["structure", "hr", "sr", "rr", "fermi_energy", "line_kpoints"],
+                "prepare": ["structure", "hr", "sr", "fermi_energy", "line_kpoints"],
                 "execute": ["prepared_workspace"],
                 "collect": ["workspace_outputs"],
             },
@@ -842,6 +842,36 @@ def test_decode_operation_request_accepts_pyatb_band_nspin4_without_defaulting_t
     assert request.hr_paths_rel == ("inputs/HR.dat",)
 
 
+@pytest.mark.parametrize(
+    ("nspin", "hr_paths_rel"),
+    [
+        (1, ["inputs/HR.dat"]),
+        (2, ["inputs/HR-up.dat", "inputs/HR-down.dat"]),
+        (4, ["inputs/HR.dat"]),
+    ],
+)
+@pytest.mark.parametrize("rr_mode", ["omitted", "null"])
+def test_decode_operation_request_accepts_omitted_or_null_pyatb_rr_for_each_nspin(
+    nspin: int,
+    hr_paths_rel: list[str],
+    rr_mode: str,
+) -> None:
+    payload = _pyatb_prepare_payload()
+    payload["nspin"] = nspin
+    payload["hr_paths_rel"] = hr_paths_rel
+    if rr_mode == "omitted":
+        payload.pop("rr_path_rel")
+    else:
+        payload["rr_path_rel"] = None
+
+    request = _decode_operation_request("prepare", payload)
+
+    assert isinstance(request, PyatbBandPrepareRequest)
+    assert request.nspin == nspin
+    assert request.rr_path_rel is None
+    assert request.to_dict()["rr_path_rel"] is None
+
+
 def test_machine_pyatb_band_unknown_selectors_are_invalid_without_service() -> None:
     payload = _pyatb_prepare_payload()
     with pytest.raises(ForgeRequestError):
@@ -869,9 +899,12 @@ def test_pyatb_band_discovery_descriptor_and_schemas_match_wire_fields() -> None
         assert set(schema["properties"]) == set(request.to_dict())
         assert set(schema["required"]) == (
             {"schema_version", "capability", "operation", "operation_id", "workspace_rel"}
-            | ({"structure_path_rel", "hr_paths_rel", "sr_path_rel", "rr_path_rel", "fermi_energy", "line_kpoints"} if operation == "prepare" else set())
+            | ({"structure_path_rel", "hr_paths_rel", "sr_path_rel", "fermi_energy", "line_kpoints"} if operation == "prepare" else set())
         )
         assert schema["properties"]["schema_version"]["const"] == "forge.request/v1"
+        if operation == "prepare":
+            assert schema["properties"]["rr_path_rel"]["type"] == ["string", "null"]
+            assert schema["properties"]["rr_path_rel"]["default"] is None
 
 
 def test_pyatb_band_prepare_schema_advertises_spinor_nspin4_mode() -> None:

@@ -70,7 +70,7 @@ def _prepare_request(**updates: object) -> PyatbBandPrepareRequest:
     return PyatbBandPrepareRequest(**values)
 
 
-def _sources(root: Path, *, spin2: bool = False) -> None:
+def _sources(root: Path, *, spin2: bool = False, include_rr: bool = True) -> None:
     source = root / "source"
     source.mkdir(parents=True, exist_ok=True)
     (source / "STRU").write_text(STRU, encoding="utf-8")
@@ -78,7 +78,32 @@ def _sources(root: Path, *, spin2: bool = False) -> None:
     if spin2:
         (source / "hr-down.csr").write_text("hr1", encoding="utf-8")
     (source / "sr.csr").write_text("sr", encoding="utf-8")
-    (source / "rr.csr").write_text("rr", encoding="utf-8")
+    if include_rr:
+        (source / "rr.csr").write_text("rr", encoding="utf-8")
+
+
+def _write_prepared_pyatb_inputs(
+    root: Path,
+    *,
+    include_rr_route: bool = False,
+    include_rr_file: bool = False,
+) -> None:
+    inputs = root / "inputs"
+    sources = inputs / "pyatb_sources"
+    sources.mkdir(parents=True)
+    (inputs / "STRU").write_text(STRU, encoding="utf-8")
+    (inputs / "KPT_band").write_text("K_POINTS\n2\nLine\n", encoding="utf-8")
+    (sources / "hr.csr").write_text("hr", encoding="utf-8")
+    (sources / "sr.csr").write_text("sr", encoding="utf-8")
+    routes = [
+        "HR_route  pyatb_sources/hr.csr",
+        "SR_route  pyatb_sources/sr.csr",
+    ]
+    if include_rr_route:
+        routes.append("rR_route  pyatb_sources/rr.csr")
+        if include_rr_file:
+            (sources / "rr.csr").write_text("rr", encoding="utf-8")
+    (inputs / "Input").write_text("\n".join(routes) + "\n", encoding="utf-8")
 
 
 def test_typed_prepare_link_mode_is_relative_and_records_provenance(tmp_path: Path) -> None:
@@ -140,6 +165,44 @@ def test_typed_prepare_renders_explicit_routes_lattice_and_kpt(tmp_path: Path) -
     assert "K_POINTS\n2\nLine" in kpt_text
     assert "0.00000000 0.00000000 0.00000000 12 #G" in kpt_text
     assert "0.50000000 0.00000000 0.00000000 1 #X" in kpt_text
+
+
+def test_typed_prepare_hr_sr_only_omits_rr_route_and_manifest_entry(tmp_path: Path) -> None:
+    _sources(tmp_path, include_rr=False)
+    request = _prepare_request(rr_path_rel=None)
+
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).prepare.prepare(request)
+
+    assert isinstance(result, OperationOutcome)
+    input_text = (tmp_path / "inputs/Input").read_text(encoding="utf-8")
+    assert "rR_route" not in input_text
+    assert all(record["role"] != "rR" for record in result.envelope.diagnostics["pyatb_handoff"])
+    manifest = result.envelope.diagnostics["pyatb_manifest"]
+    assert all(entry["kind"] != "matrix_rr" for entry in manifest["inputs"])
+    assert all("rr.csr" not in entry["path_rel"] for entry in manifest["inputs"])
+
+
+def test_typed_execute_preflight_accepts_prepared_hr_sr_only_workspace(tmp_path: Path) -> None:
+    _write_prepared_pyatb_inputs(tmp_path)
+
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).execute.execute(
+        PyatbBandExecuteRequest(operation_id=_id(), workspace_rel=".", dry_run=True)
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "skipped"
+
+
+def test_typed_execute_preflight_keeps_declared_missing_rr_as_precondition_error(tmp_path: Path) -> None:
+    _write_prepared_pyatb_inputs(tmp_path, include_rr_route=True, include_rr_file=False)
+
+    result = PyatbBandServiceSet.default(workspace_root=tmp_path).execute.execute(
+        PyatbBandExecuteRequest(operation_id=_id(), workspace_rel=".", dry_run=True)
+    )
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert "rR_route" in result.message
 
 
 def test_typed_prepare_spin_two_has_two_hr_routes_and_shared_sr(tmp_path: Path) -> None:
