@@ -157,6 +157,24 @@ it does not establish cutoff convergence, physical correctness, benchmark parity
 or maturity. Property packs therefore remain experimental and outside the
 stable Paimon v1.3 capability surface.
 
+## Native work-function smoke follow-up (2026-09-11)
+
+A fresh Si PBE serial-PW run produced the current ABACUS potential file
+`inputs/OUT.ABACUS/potes.cube`, which the existing case-compatible `*.cube`
+fallback already discovers. The first smoke still returned `degraded` because
+the native log's repeated `E_Fermi <Rydberg> <eV>` rows were not projected into
+the existing `fermi_energy` fact. `1d9877b` adds that explicit native marker,
+selects the eV column, and keeps the legacy `FERMI ENERGY =` form; `79d7d6e`
+selects the final repeated iteration rather than the first observation.
+
+With the same fresh workspace and local ABACUS binary, `workfunc` now completes
+`prepare`, `run`, and `post`; `post` reports the final Fermi observation
+`-3.9837910886` eV, a potential-derived vacuum-level observation, and a
+`work_function_ev` output. Collector, maturation, and workfunc owning tests
+pass `37` tests. This is native input/process/parser compatibility evidence
+only: it does not assert work-function quality, physical correctness, benchmark
+parity, scientific acceptance, or maturity promotion.
+
 ## Native spin-density smoke follow-up (2026-09-11)
 
 The current serial-PW ABACUS binary emitted `chgs1.cube` and `chgs2.cube` for a
