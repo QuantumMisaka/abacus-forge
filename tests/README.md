@@ -96,11 +96,11 @@ guarded). Explicit non-generated `inputs/OUT.*` handoff assets remain allowed.
 This is a real-smoke input condition only; normal Forge
 execute/collect behavior is unchanged.
 
-On this local checkout, where no external real workspace or executable is
-supplied, each focused typed selection skips and no real execution evidence is
-claimed. No smoke result is promoted to stable capability evidence; the
-current capabilities remain experimental until their own real gates and the
-remaining Stage 4 release conditions are complete.
+When no external real workspace or executable is supplied, each focused typed
+selection skips and no real execution evidence is claimed. No smoke result is
+promoted to stable capability evidence; the current capabilities remain
+experimental until their own real gates and the remaining Stage 4 release
+conditions are complete.
 
 ## Contract and workspace gate
 

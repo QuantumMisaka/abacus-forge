@@ -55,7 +55,7 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
 - Latest-candidate clean-environment/package gate: rebuilt after the native-output follow-up
   (SHA-256 `d4eeae4ee37bdfa4fd6df793498f8269cb7720b8ca2a3b60cc2283d18f847988`),
   reinstalled that wheel and its declared dependencies
-  into a fresh Python 3.13 venv; `import abacus_forge`, the console entry point,
+  into the isolated Python 3.13 venv; `import abacus_forge`, the console entry point,
   `capabilities` (all nine advertised names), and `schema md postprocess` succeeded. The
   venv also confirmed `abacus_agent_tools`, `abacustest`, `aiida`, and `atst_tools` were
   absent. This validates packaging/import boundaries, not real ABACUS execution or science.
@@ -88,9 +88,9 @@ Important, or substantive Minor issue. It confirmed that the MD production
 changes and approved MD SPEC are unchanged by the freshness commits, and that
 the freshness helper remains confined to test evidence: its generated-file
 scan follows collector-visible paths and Relax final-structure suffix rules,
-without adding runtime constraints to `execute` or `collect`. The four
-real-smoke skips are expected because no external workspace or executable is
-provided; they are not maturity evidence.
+without adding runtime constraints to `execute` or `collect`. The earlier
+input-free real-smoke selection skipped four tests; those skips are not
+maturity evidence.
 
 The candidate is therefore ready for a separate, explicit integration
 decision. `forge-mainline-integration` remains at `da1d4df`, `main` and the
