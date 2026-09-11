@@ -105,3 +105,25 @@ The current mandatory rR field is an accidental over-constraint contradicted
 by the local PyATB Bands input contract. Making it optional is the smallest
 faithful correction: it broadens valid handoffs without adding a capability,
 new operation, implicit discovery, or scientific policy.
+
+## Execution evidence (2026-09-11)
+
+- Task 1 test commit: `7abbd4a`; Task 2 implementation commit: `8d41e64`;
+  documentation alignment and review fixes: `97de6dc`.
+- Focused contract/CLI/typed/legacy/workspace suites: `523 passed in 50.59s`.
+- Full offline suite: `1294 passed, 6 skipped in 95.84s`.
+- Architecture/discovery/forbidden-import selection: `10 passed, 36 deselected
+  in 15.45s`; HTML parse, placeholder scan and `git diff --check` passed.
+- A clean Python 3.13 wheel/import/console gate passed with declared
+  dependencies and no `abacus_agent_tools`, `abacustest`, `aiida` or
+  `atst_tools` installed. The wheel SHA-256 was
+  `9582cde343f3b38df329ac1ac037be861022dabccd74ff1aa0f465abb774f702`.
+- Candidate typed service was run in a temporary workspace with archived
+  ABACUS HR/SR matrix inputs and the locally available serial PyATB executable:
+  prepare completed, execute returned `execution=completed`, and collect
+  returned `collection=complete` with `band_info.dat`, `band_up.dat`,
+  `band_dn.dat` and `band.pdf`. This is input/process compatibility evidence
+  only, not scientific validation or maturity promotion.
+- Independent documentation and whole-branch reviews found no Critical or
+  Important findings. Two Minor wording findings were corrected before this
+  closeout. The candidate remains isolated; no merge or push was performed.
