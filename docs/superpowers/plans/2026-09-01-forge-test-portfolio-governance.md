@@ -858,6 +858,11 @@ The skipped cases are still explicitly gated real-smoke/benchmark evidence;
 these results do not promote any capability to `stable` and do not constitute
 scientific validation.
 
+The four-capability core migration fact matrix is recorded in
+[`tests/benchmark/test_core_capability_facts.py`](../../../tests/benchmark/test_core_capability_facts.py)
+and remains opt-in migration evidence, not a required default gate or stable
+maturity/scientific-validation claim.
+
 ## Plan Self-Review
 
 - Coverage: Task 1 makes the test portfolio and gates explicit; Task 2 removes duplicate test infrastructure; Task 3 covers the Agent-first process boundary and the one backward-compatible CLI behavior; Task 4 protects collector migration and serialized result contracts; Task 5 adds real ABACUS evidence without contaminating default CI.

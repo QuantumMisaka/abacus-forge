@@ -270,3 +270,32 @@ this integration candidate. BEC remains experimental and is not evidence for
 Paimon v1.3 stable exposure. A future BEC-specific SPEC/PLAN must first choose
 an explicit phase/workspace handoff and native polarization parser; it must keep
 the caller responsible for ordering and scientific interpretation.
+
+## Core migration fact matrix follow-up (2026-09-11)
+
+Task 1's opt-in matrix in
+`tests/benchmark/test_core_capability_facts.py` compares the legacy `collect()`
+projection with the matching typed collect service on four isolated workspace
+copies: the existing `abacustest-abacus-scf` SCF fixture, the Forge-owned native
+Relax fixture for `relax` and `cell-relax`, and the existing native MD fixture.
+It records the checked-in input/profile scope, parser observations,
+workspace-relative artifact inventory, and typed envelope status shape for the
+four core capability names. The matrix does not add runtime dependencies or
+change any request, result, status, descriptor, or CLI contract.
+
+The exact opt-in benchmark commands and results are:
+
+```text
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q tests/benchmark/test_core_capability_facts.py --run-benchmark
+4 passed
+
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q tests/benchmark/test_core_capability_facts.py tests/benchmark/test_abacustest_compatibility.py --run-benchmark
+6 passed
+```
+
+> The matrix proves only input/profile, process, parser-observation, artifact, and envelope compatibility for the four core capability names. It does not prove scientific correctness, convergence quality, workflow orchestration, scheduler integration, or stable maturity.
+
+The typed capabilities remain `experimental` until the approved SPEC's
+separate `compat`, `real-smoke`, clean-environment, and release decision gates
+are satisfied. The benchmark remains explicit opt-in migration evidence; it is
+not a default gate, a scientific acceptance test, or a maturity promotion.
