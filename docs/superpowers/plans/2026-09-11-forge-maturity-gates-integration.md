@@ -143,7 +143,7 @@ found that the initial unbounded truncation would corrupt valid asset tokens
 such as `pp//Si.upf` and `Si#test.orb`; `ee03c41` narrows recognition to fields
 after the expected inputs, with a regression covering both tokens. The targeted
 comment suite now passes `4` tests, the owning structure/maturation/API suites
-pass `90` tests, and the current full offline gate passes `1297` tests with `6`
+pass `90` tests, and the current full offline gate passes `1298` tests with `6`
 opt-in skips. This is an input-fidelity correction only: it does not add a
 schema, capability, status, orchestration, scheduler, or scientific-judgement
 contract.
