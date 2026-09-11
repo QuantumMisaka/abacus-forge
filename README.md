@@ -253,7 +253,7 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 
 ### 本地 property pack
 
-> **成熟度：实验性。** 以下能力仍主要依赖 API/CLI 与 mock/fixture 回归，尚未逐项完成真实 ABACUS 操作/解析验收；`convergence` 已有一次本地 serial-PW 操作/解析 smoke，但不应视为 PAIMON v1.3 已稳定暴露的能力。
+> **成熟度：实验性。** 以下能力仍主要依赖 API/CLI 与 mock/fixture 回归，尚未逐项完成真实 ABACUS 操作/解析验收；`convergence`、`spin-density`、`workfunc` 各已有一次本地 serial-PW 操作/解析 smoke，但不应视为 PAIMON v1.3 已稳定暴露的能力。
 
 - `abacus-forge convergence prepare|run|post`
 - `abacus-forge charge-density prepare|run|post`
