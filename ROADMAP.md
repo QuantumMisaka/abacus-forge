@@ -11,7 +11,7 @@
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
 - typed collection projection 已补齐语法确认的标量单位、`reported`/`derived`/`runtime` kind 和 workspace-contained `source_artifact_id`；不确定的单位/来源保持为空，legacy collection 元数据不变。
-- 2026-09-10 已补齐原生 ABACUS collection fidelity：SCF 识别 `!FINAL_ETOT_IS`（eV）；typed MD 从唯一 contained `running_md.log` 收集原生热力学事实（Ry→eV、K、可选 kbar），`MD_dump` 仅作为帧/步数与工件事实；legacy synthetic dump 兼容路径保持不变。
+- 2026-09-11 已补齐当前 ABACUS 原生 collection fidelity：SCF 识别 `#SCF IS CONVERGED#` 与 `!FINAL_ETOT_IS`（eV）；Relax/cell-relax 识别 `STRU_FINAL`/`STRU_NOW`（含 CIF 及 runner 的 `inputs/OUT.*` 布局），并保留旧 `STRU_ION_D` 兼容名；typed MD 从唯一 contained `running_md.log` 收集原生热力学事实（Ry→eV、K、可选 kbar），包括 runner 的 `inputs/OUT.*` 路径，`MD_dump` 仅作为帧/步数与工件事实；legacy synthetic dump 兼容路径保持不变。
 - ABACUS task profile 的 `dft_functional` 默认已显式固定为 `pbe`，调用方参数仍可覆盖。
 - Relax collection 返回可用的能量、力/应力/relax parser facts、电子收敛观察和 workspace-relative 最终结构 artifact；`scientific` 保持 `unassessed`，不把观察转换为物理接受结论。
 - 输入保真与中立内核收口见 [2026-09-09 PLAN](docs/superpowers/plans/2026-09-09-forge-core-fidelity.md)：原生 STRU 单位与资源/质量保留、周期真空几何、标准化保真、SCF/Relax 事实投影，以及 typed service 与 legacy API 的下层基元共享；[参考证据](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md) 记录 Paimon v1.2、abacustest、abacuslab 和 abacuscopilot 的复用与差异。
@@ -29,10 +29,10 @@
 - property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 操作/解析验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
-- 可选 typed SCF、typed Relax 与 typed MD real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；三者使用各自的环境门禁，未提供真实输入时不产生 release evidence。legacy SCF smoke 不能替代 typed SCF 证据。
+- 可选 typed SCF、typed Relax/cell-relax 与 typed MD real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；三者使用各自的环境门禁，未提供真实输入时不产生 release evidence。当前已有本地 serial-PW ABACUS 的 SCF/Relax/cell-relax/MD parser-artifact smoke 证据，但仍不晋升稳定能力或科学结论；legacy SCF smoke 不能替代 typed SCF 证据。
 - typed SCF real-smoke 在首次 execute 前校验输入 calculation profile，typed Relax execute/collect 使用长 parent-process 超时；这些都是 release-gate 检查，不改变生产 service 的兼容行为。
 - typed MD real-smoke 还在首次 execute 前校验 `calculation=md`，拒绝复制源中已有的 collector-visible MD 生成物，并要求 collect 暴露本次 `running_md.log` 的原生热力学 facts；它只证明 operation/status/event/artifact 与 parser 边界，保持 `scientific=unassessed`，不承担轨迹质量或科学验收。
-- 三类 typed real-smoke 在复制后、首次 execute 前统一拒绝其 collector 可消费的既有生成日志；Relax 还拒绝既有最终结构。该 freshness 只属于 release-evidence 测试条件，不改变普通 Forge `execute`/`collect` 行为。
+- 三类 typed real-smoke 在复制后、首次 execute 前统一拒绝其 collector 可消费的既有生成日志（包括 native `inputs/OUT.*` 域路径）；Relax 还拒绝既有最终结构，同时保留普通非生成 handoff。该 freshness 只属于 release-evidence 测试条件，不改变普通 Forge `execute`/`collect` 行为。
 - 本批 typed collection metadata 实现 revision 为 `5807af1`；`1209 passed, 5 skipped` 的全量离线门禁及 clean archive/wheel 记录见门禁文档 revision `beed6d1`。
 - typed prepare 已支持显式 `pseudo_sources` / `orbital_sources` 资产映射：默认 copy，contained-only relative link，缺失与冲突 fail-closed，并在 typed diagnostics、manifest 和事件中记录来源/目标及哈希 provenance；未映射 STRU 引用保留且不声明完整。
 
