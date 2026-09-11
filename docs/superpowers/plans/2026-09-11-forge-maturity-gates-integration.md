@@ -42,7 +42,7 @@ SCF 收敛标记、Relax 的 `STRU_FINAL`/`STRU_NOW` 结构名与 `inputs/OUT.*`
 - Candidate base: `7d813dc`; freshness source: `da1d4df..c18f6dc`; current candidate
   runtime/test state is checked from the resulting branch, not inferred from ancestry.
 - Focused gate: `142 passed, 4 skipped`.
-- Initial integration full offline gate: `1257 passed, 6 skipped`.
+- Initial integration full offline gate: `1257 passed, 6 deselected`.
 - Latest candidate full offline gate after native-output follow-up:
   `1277 passed, 6 deselected`.
 - Explicit real-smoke selection without supplied inputs: `4 skipped`.
