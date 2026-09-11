@@ -26,7 +26,7 @@
 - typed `export` 不复制二进制 artifact、不查找 latest、不隐式执行 collect/postprocess、不发布报告、不做科学验证，也不负责 workflow 编排、重试/恢复或平台调度；legacy `export` 保持原行为。
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
 - 已初步实现 Forge-level 实验性 property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
-- property pack 目前仅完成 mock/fixture 回归，未经逐项真实 ABACUS 操作/解析验收；不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
+- property pack 目前仍主要依赖 mock/fixture 回归，尚未逐项完成真实 ABACUS 操作/解析验收；`convergence` 已有一次本地 serial-PW 操作/解析 smoke（详见 2026-09-11 maturity-gates plan），不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 - 可选 typed SCF、typed Relax/cell-relax 与 typed MD real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；三者使用各自的环境门禁，未提供真实输入时不产生 release evidence。当前已有本地 serial-PW ABACUS 的 SCF/Relax/cell-relax/MD parser-artifact smoke 证据，但仍不晋升稳定能力或科学结论；legacy SCF smoke 不能替代 typed SCF 证据。

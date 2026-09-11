@@ -133,3 +133,25 @@ containment, native parsing, artifact references, and persisted event payloads;
 they do not assert convergence quality, physical correctness, benchmark parity, or
 stable capability maturity. Typed capabilities therefore remain experimental and
 their reported scientific state remains `unassessed`.
+
+## Native STRU comment and convergence smoke follow-up (2026-09-11)
+
+The follow-up fix `c73a2f0` makes the existing STRU reader accept native ABACUS
+inline `#` and `//` comments. The regression test first reproduced the failure
+against an ABACUS test STRU (`Si // Element type`). Independent review then
+found that the initial unbounded truncation would corrupt valid asset tokens
+such as `pp//Si.upf` and `Si#test.orb`; `ee03c41` narrows recognition to fields
+after the expected inputs, with a regression covering both tokens. The targeted
+comment suite now passes `4` tests, the owning structure/maturation/API suites
+pass `90` tests, and the current full offline gate passes `1297` tests with `6`
+opt-in skips. This is an input-fidelity correction only: it does not add a
+schema, capability, status, orchestration, scheduler, or scientific-judgement
+contract.
+
+After the fix, a fresh generated-output-free Si PBE workspace completed the
+experimental `convergence` pack with `key=ecutwfc` and values `[20, 30]`: two
+local serial-PW ABACUS executions completed and `post` returned two parsed energy
+points. The smoke records prepare/execute/post process and parser compatibility;
+it does not establish cutoff convergence, physical correctness, benchmark parity,
+or maturity. Property packs therefore remain experimental and outside the
+stable Paimon v1.3 capability surface.
