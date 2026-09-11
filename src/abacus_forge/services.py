@@ -446,7 +446,7 @@ class ScfCollectService(_CollectService):
         super().__init__(context, ScfCollectRequest)
 
 
-class ScfServiceSet:
+class _ScfServiceSet:
     """Per-operation SCF services sharing one private execution context."""
 
     def __init__(
@@ -479,6 +479,21 @@ class ScfServiceSet:
             runner_factory=runner_factory,
             validate_input_calculation=validate_input_calculation,
         )
+
+
+class ScfServiceSet(_ScfServiceSet):
+    """Per-operation SCF services with strict typed profile matching."""
+
+    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
+        super().__init__(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=True,
+        )
+
+    @classmethod
+    def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> "ScfServiceSet":
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
 
 
 class RelaxServiceSet:
@@ -547,7 +562,7 @@ class ForgeServices:
             runner_factory: RunnerFactory = LocalRunner
         else:
             runner_factory = lambda **_: self.runner
-        self._service_set = ScfServiceSet.default(
+        self._service_set = _ScfServiceSet(
             workspace_root=self.workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=False,

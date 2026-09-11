@@ -926,6 +926,30 @@ def test_machine_process_rejects_invalid_typed_prepare_asset_fields_as_request_s
     assert json.loads(result.stdout)["error"]["class"] == "request.schema"
 
 
+def test_machine_process_rejects_typed_prepare_calculation_mismatch_as_request_schema(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.STRU"
+    source.write_text("structure", encoding="utf-8")
+    request = _operation_request(
+        "prepare",
+        "123e4567-e89b-42d3-a456-426614174230",
+        structure_path_rel="source.STRU",
+        parameters={"calculation": "relax"},
+    )
+    result = run_cli(
+        "operation",
+        "prepare",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(request),
+    )
+
+    assert result.returncode == 2
+    assert result.stderr == ""
+    assert json.loads(result.stdout)["error"]["class"] == "request.schema"
+
+
 def test_atst_neb_machine_process_supports_stdin_prepare_and_request_file_execute(tmp_path: Path) -> None:
     _write_neb_fixture(tmp_path)
     fake = _write_fake_atst(tmp_path / "atst")

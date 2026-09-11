@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from abacus_forge import ForgeServices, OperationOutcome, ScfServiceSet, Workspace
 from abacus_forge.contracts import (
     ForgeErrorEnvelope,
@@ -14,6 +12,7 @@ from abacus_forge.contracts import (
     ScfPrepareRequest,
 )
 from abacus_forge.discovery import request_schema_document
+from abacus_forge.input_io import read_input
 
 
 OPERATION_IDS = {
@@ -78,12 +77,15 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     assert result.error_class == "request.schema"
     assert (workspace.inputs_dir / "INPUT").read_text() == before
 
-    with pytest.raises(ValueError, match="remove_parameters cannot include calculation"):
+    result = services.modify.modify(
         ScfModifyRequest(
             operation_id="123e4567-e89b-42d3-a456-426614174806",
             workspace_rel="job",
             remove_parameters=("calculation",),
         )
+    )
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.schema"
 
 
 def test_typed_scf_execute_and_collect_reject_mismatched_input(tmp_path: Path) -> None:
@@ -107,6 +109,30 @@ def test_scf_compatibility_facade_keeps_permissive_input_behavior(tmp_path: Path
     _workspace(tmp_path, calculation="relax", output=True)
     result = ForgeServices.default(workspace_root=tmp_path).collect_scf(_request("collect"))
     assert isinstance(result, OperationOutcome)
+
+
+def test_scf_compatibility_facade_keeps_calculation_rewrite_and_removal(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    facade = ForgeServices.default(workspace_root=tmp_path)
+    rewritten = facade.modify_scf(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174807",
+            workspace_rel="job",
+            input_updates={"calculation": "relax"},
+        )
+    )
+    assert isinstance(rewritten, OperationOutcome)
+    assert read_input(workspace.inputs_dir / "INPUT")["calculation"] == "relax"
+
+    removed = facade.modify_scf(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174808",
+            workspace_rel="job",
+            remove_parameters=("calculation",),
+        )
+    )
+    assert isinstance(removed, OperationOutcome)
+    assert "calculation" not in read_input(workspace.inputs_dir / "INPUT")
 
 
 def test_scf_discovery_freezes_calculation_profile() -> None:

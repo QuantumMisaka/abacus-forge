@@ -548,8 +548,6 @@ class ScfModifyRequest(_ScfRequest):
             raise ValueError("remove_parameters must contain non-empty strings") from error
         if not all(isinstance(key, str) and key for key in removed):
             raise ValueError("remove_parameters must contain non-empty strings")
-        if "calculation" in removed:
-            raise ValueError("remove_parameters cannot include calculation")
         object.__setattr__(self, "remove_parameters", removed)
 
     def to_dict(self) -> dict[str, JSONValue]:
