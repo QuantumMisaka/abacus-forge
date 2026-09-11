@@ -375,6 +375,50 @@ def test_relax_prepare_and_modify_use_capability_profile_and_snapshots(
     assert event["payload"] == result.to_dict()
 
 
+def test_scf_modify_direct_service_updates_input_and_persists_facts(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    source = _relax_source(workspace)
+    services = ScfServiceSet.default(workspace_root=tmp_path)
+    prepared = services.prepare.prepare(
+        ScfPrepareRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174142",
+            workspace_rel="scf",
+            structure_path_rel=source.name,
+            parameters={"ecutwfc": 80},
+        )
+    )
+    assert isinstance(prepared, OperationOutcome)
+
+    request = ScfModifyRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174143",
+        workspace_rel="scf",
+        input_updates={"ecutwfc": 90},
+    )
+    result = services.modify.modify(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.operation_id == request.operation_id
+    assert result.envelope.workspace_rel == request.workspace_rel
+    assert result.envelope.operation == "modify"
+    assert result.status.execution == "not_run"
+    assert result.status.scientific == "unassessed"
+    assert result.status.collection == "not_collected"
+    assert read_input(workspace.inputs_dir / "INPUT")["ecutwfc"] == "90"
+    diagnostics = result.envelope.diagnostics
+    assert diagnostics["changes"]["INPUT"]["updates"] == {"ecutwfc": 90}
+    assert diagnostics["input_snapshot_before"] != diagnostics["input_snapshot_after"]
+    assert {artifact.path_rel for artifact in result.envelope.artifacts} >= {"inputs/INPUT"}
+
+    event = json.loads(
+        (workspace.reports_dir / "events" / f"{request.operation_id}-modify.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert event["id"] == request.operation_id
+    assert event["payload"] == result.to_dict()
+
+
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
 def test_relax_execute_dry_run_is_explicit_and_does_not_start_runner(
     tmp_path: Path, capability: str
