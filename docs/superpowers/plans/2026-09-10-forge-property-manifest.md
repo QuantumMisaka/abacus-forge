@@ -6,7 +6,7 @@
 
 **Goal:** Add a facts-only `forge.property-manifest/v1` projection to the legacy `charge-density`, `spin-density`, and `charge-diff` post operations without changing the generic result contract, property CLI syntax, or Forge's scientific/workflow boundary.
 
-**Spec:** `docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html` (Draft for review; this plan must not be executed until that SPEC is approved).
+**Spec:** `docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html` (Draft for review; the provisional implementation and review record are complete, while normative approval and stable release remain separate human decisions).
 
 **Architecture:** A focused `property_manifest.py` module owns immutable manifest records, strict JSON validation, and an explicit-path builder. Legacy property post functions keep their existing compatibility selection and cube arithmetic, then attach the manifest as `TaskResult.diagnostics["property_manifest"]`. The builder consumes the same `ArtifactRecord` projection as the returned result, so manifest IDs, hashes, sizes, and paths cannot diverge; it never scans directories, chooses latest files, or creates cross-operation provenance.
 
