@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from ase import Atoms
 
 from abacus_forge.api import UnitModifySpec, UnitSpec, collect_unit, execute_unit, modify_unit, prepare_unit
 from abacus_forge.input_io import read_input, read_kpt
 from abacus_forge.dos_data import write_sample_dos_family_artifacts
+from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
 from tests.support.fake_executables import write_fake_abacus
 
@@ -51,6 +53,42 @@ def test_prepare_unit_writes_manifest_and_handoffs_source_artifacts(tmp_path: Pa
     assert manifest["unit"] == "nscf"
     assert manifest["source_workdir"] == str(source)
     assert manifest["prepared"] is True
+
+
+def test_prepare_unit_uses_native_relax_structure_handoff(tmp_path: Path) -> None:
+    source = Workspace(tmp_path / "relax-source").ensure_layout()
+    source.write_text(
+        "inputs/INPUT",
+        "INPUT_PARAMETERS\ncalculation relax\nbasis_type pw\n",
+    )
+    native_output = source.inputs_dir / "OUT.ABACUS"
+    native_output.mkdir(parents=True)
+    native_output.joinpath("STRU_FINAL").write_text(
+        "ATOMIC_SPECIES\nH 1.008 H.upf\n\n"
+        "LATTICE_CONSTANT  # in Bohr\n1.8897261246\n\n"
+        "LATTICE_VECTORS  # in units of lat0\n"
+        "8 0 0\n0 8 0\n0 0 8\n\n"
+        "ATOMIC_POSITIONS\nDirect\nH # final\n0.0\n1\n"
+        "0 0 0 m 1 1 1\n",
+        encoding="utf-8",
+    )
+
+    result = prepare_unit(
+        UnitSpec(
+            task="band",
+            unit="nscf",
+            workdir=tmp_path / "band-nscf",
+            source_workdir=source.root,
+            line_kpoints=[
+                {"coords": [0.0, 0.0, 0.0], "label": "G"},
+                {"coords": [0.5, 0.0, 0.0], "label": "X"},
+            ],
+        )
+    )
+
+    prepared = AbacusStructure.from_input(result.workspace.inputs_dir / "STRU", structure_format="stru")
+    assert prepared.atoms.get_chemical_symbols() == ["H"]
+    assert prepared.atoms.cell.lengths().tolist() == pytest.approx([8.0, 8.0, 8.0])
 
 
 def test_unit_operations_append_v1_events_without_replacing_prior_events(tmp_path: Path) -> None:

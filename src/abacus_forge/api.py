@@ -650,19 +650,36 @@ def _normalize_line_kpoints_for_unit(points: Iterable[dict[str, Any] | tuple[Ite
 
 
 def _source_structure_path(source: Workspace) -> Path | None:
-    for candidate in (
-        source.outputs_dir / "OUT.ABACUS" / "STRU_ION_D",
-        source.inputs_dir / "OUT.ABACUS" / "STRU_ION_D",
-        source.inputs_dir / "STRU",
-        source.root / "STRU",
-    ):
+    # ABACUS's current Relax writer emits STRU_FINAL/STRU_NOW (and optional
+    # CIF variants); older releases and compatibility fixtures use
+    # STRU_ION_D/STRU.  Prefer explicit final snapshots while retaining the
+    # historical names and the original flat/input fallbacks.
+    output_names = (
+        "STRU_FINAL",
+        "STRU_FINAL.cif",
+        "STRU_ION_D",
+        "STRU_NOW",
+        "STRU_NOW.cif",
+        "STRU.cif",
+        "STRU",
+    )
+    candidates = [
+        directory / name
+        for directory in (
+            source.outputs_dir / "OUT.ABACUS",
+            source.inputs_dir / "OUT.ABACUS",
+        )
+        for name in output_names
+    ]
+    candidates.extend((source.inputs_dir / "STRU", source.root / "STRU"))
+    for candidate in candidates:
         if candidate.exists():
             return candidate
     return None
 
 
 def _structure_format_for_path(path: Path) -> str | None:
-    return "stru" if path.name in {"STRU", "STRU_ION_D"} else None
+    return "stru" if path.name in {"STRU", "STRU_ION_D", "STRU_FINAL", "STRU_NOW"} else None
 
 
 def _stage_source_out_dirs(source: Workspace, destination: Workspace, *, link: bool = False) -> list[str]:
