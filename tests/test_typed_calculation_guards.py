@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from abacus_forge import ForgeServices, OperationOutcome, ScfServiceSet, Workspace
@@ -76,6 +75,9 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.schema"
     assert (workspace.inputs_dir / "INPUT").read_text() == before
+    assert not (workspace.reports_dir / "forge-workspace.json").exists()
+    assert not (workspace.reports_dir / "claims").exists()
+    assert not (workspace.reports_dir / "events").exists()
 
     result = services.modify.modify(
         ScfModifyRequest(
@@ -86,6 +88,17 @@ def test_typed_scf_modify_rejects_rewrite_or_removal_before_input_mutation(tmp_p
     )
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.schema"
+    assert (workspace.inputs_dir / "INPUT").read_text() == before
+
+    same_profile = services.modify.modify(
+        ScfModifyRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174809",
+            workspace_rel="job",
+            input_updates={"calculation": "scf"},
+        )
+    )
+    assert isinstance(same_profile, OperationOutcome)
+    assert read_input(workspace.inputs_dir / "INPUT")["calculation"] == "scf"
 
 
 def test_typed_scf_execute_and_collect_reject_mismatched_input(tmp_path: Path) -> None:
