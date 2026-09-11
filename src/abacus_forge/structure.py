@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 import numpy as np
 from ase import Atoms
+from ase.data import chemical_symbols
 from ase.io import read as ase_read
 
 from abacus_forge.errors import ForgeRequestError
@@ -143,6 +144,13 @@ class AbacusStructure:
                 for _ in range(int(np.prod(repeats)))
                 for flag in source_move_flags
             ]
+        source_labels = self.atoms.info.get("abacus_atom_labels")
+        if isinstance(source_labels, list) and len(source_labels) == len(self.atoms):
+            repeated.info["abacus_atom_labels"] = [
+                label
+                for _ in range(int(np.prod(repeats)))
+                for label in source_labels
+            ]
         return AbacusStructure(repeated, source_format=self.source_format)
 
     def to_stru(
@@ -154,18 +162,28 @@ class AbacusStructure:
         atoms = self.atoms
         order = np.argsort(atoms.get_atomic_numbers(), kind="stable")
         symbols = [atoms[idx].symbol for idx in order]
-        species = list(OrderedDict.fromkeys(symbols))
+        labels_info = atoms.info.get("abacus_atom_labels")
+        if isinstance(labels_info, list) and len(labels_info) == len(atoms):
+            labels = [str(labels_info[idx]) for idx in order]
+        else:
+            labels = symbols.copy()
+        species = list(OrderedDict.fromkeys(labels))
         species_meta = _species_metadata(atoms)
         masses: dict[str, float] = {}
-        for symbol, atom in zip(symbols, (atoms[idx] for idx in order), strict=False):
-            masses.setdefault(symbol, float(atom.mass))
+        element_by_label = dict(zip(labels, symbols, strict=False))
+        for label, atom in zip(labels, (atoms[idx] for idx in order), strict=False):
+            masses.setdefault(label, float(atom.mass))
         pp_values = {
-            symbol: _resolved_species_value(symbol, "pp", pp_map, species_meta)
-            for symbol in species
+            label: _resolved_species_value(
+                label, "pp", pp_map, species_meta, element=element_by_label[label]
+            )
+            for label in species
         }
         orbital_values = {
-            symbol: _resolved_species_value(symbol, "orb", orb_map, species_meta)
-            for symbol in species
+            label: _resolved_species_value(
+                label, "orb", orb_map, species_meta, element=element_by_label[label]
+            )
+            for label in species
         }
         if any(orbital_values.values()) and not all(orbital_values.values()):
             raise ForgeRequestError(
@@ -185,13 +203,13 @@ class AbacusStructure:
         lines = [
             "ATOMIC_SPECIES",
         ]
-        for symbol in species:
-            pp = pp_values[symbol]
-            lines.append(f"{symbol} {masses[symbol]:.6f} {pp}".rstrip())
+        for label in species:
+            pp = pp_values[label]
+            lines.append(f"{label} {masses[label]:.6f} {pp}".rstrip())
         if all(orbital_values.values()) and orbital_values:
             lines.extend(["", "NUMERICAL_ORBITAL"])
-            for symbol in species:
-                lines.append(orbital_values[symbol])
+            for label in species:
+                lines.append(orbital_values[label])
 
         lines.extend(
             [
@@ -206,14 +224,14 @@ class AbacusStructure:
             lines.append(" ".join(f"{float(component):.12f}" for component in vector))
 
         lines.extend(["", "ATOMIC_POSITIONS", "Direct"])
-        for symbol in species:
-            idxs = [idx for idx, atom_symbol in enumerate(symbols) if atom_symbol == symbol]
+        for label in species:
+            idxs = [idx for idx, atom_label in enumerate(labels) if atom_label == label]
             species_magmoms = [float(magmoms[idx]) for idx in idxs]
             write_site_magmoms = bool(species_magmoms) and not np.allclose(
                 species_magmoms,
                 np.full(len(species_magmoms), species_magmoms[0]),
             )
-            lines.append(symbol)
+            lines.append(label)
             lines.append(f"{0.0 if write_site_magmoms else (species_magmoms[0] if species_magmoms else 0.0):.8f}")
             lines.append(str(len(idxs)))
             for idx in idxs:
@@ -228,6 +246,10 @@ class AbacusStructure:
 
 def _validate_standardization_metadata(atoms: Atoms) -> None:
     """Reject metadata that geometric symmetry may merge or rotate ambiguously."""
+    labels = atoms.info.get("abacus_atom_labels")
+    if isinstance(labels, list) and len(labels) == len(atoms):
+        if any(str(label) != atom.symbol for label, atom in zip(labels, atoms, strict=False)):
+            raise ForgeRequestError("standardization cannot preserve ABACUS atom labels")
     if atoms.constraints:
         raise ForgeRequestError("standardization cannot preserve ASE constraints")
     move_flags = atoms.info.get("abacus_move_flags")
@@ -267,13 +289,28 @@ def _resolved_species_value(
     field: str,
     overrides: Mapping[str, str] | None,
     metadata: Mapping[str, Mapping[str, str | float]],
+    *,
+    element: str | None = None,
 ) -> str:
     if overrides is not None:
         override = overrides.get(symbol)
+        if override is None and element is not None:
+            override = overrides.get(element)
         if override is not None and str(override).strip():
             return str(override)
     source_value = metadata.get(symbol, {}).get(field, "")
+    if source_value in (None, "") and element is not None:
+        source_value = metadata.get(element, {}).get(field, "")
     return str(source_value) if source_value is not None else ""
+
+
+def _infer_element_from_label(label: str) -> str:
+    """Resolve an ABACUS atom-type label to its ASE chemical element."""
+
+    for candidate in (label[:2].capitalize(), label[:1].capitalize()):
+        if candidate in chemical_symbols and candidate != "X":
+            return candidate
+    raise ValueError(f"cannot determine element for ABACUS atom label {label!r}")
 
 
 def _read_stru(path: Path) -> Atoms:
@@ -289,6 +326,7 @@ def _read_stru_text(text: str) -> Atoms:
     coordinate_mode = "direct"
     positions: list[list[float]] = []
     symbols: list[str] = []
+    atom_labels: list[str] = []
     magmoms: list[float] = []
     move_flags: list[list[int]] = []
 
@@ -397,7 +435,8 @@ def _read_stru_text(text: str) -> Atoms:
                             continue
                         cursor += 1
                     positions.append(coords)
-                    symbols.append(symbol)
+                    atom_labels.append(symbol)
+                    symbols.append(_infer_element_from_label(symbol))
                     magmoms.append(atom_mag)
                     move_flags.append(move)
                     index += 1
@@ -423,9 +462,10 @@ def _read_stru_text(text: str) -> Atoms:
         raise UnsupportedCoordinateModeError(
             f"unsupported coordinate mode: {coordinate_mode or '<empty>'}"
         )
-    atoms.set_masses([float(species_meta[symbol]["mass"]) for symbol in symbols])
+    atoms.set_masses([float(species_meta[label]["mass"]) for label in atom_labels])
     atoms.set_initial_magnetic_moments(magmoms)
     atoms.info["abacus_move_flags"] = move_flags
+    atoms.info["abacus_atom_labels"] = atom_labels
     atoms.info["abacus_species_meta"] = species_meta
     return atoms
 

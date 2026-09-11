@@ -9,7 +9,7 @@ from ase.constraints import FixAtoms
 from ase.io import write as ase_write
 
 from abacus_forge.errors import ForgeRequestError
-from abacus_forge.structure import BOHR_TO_ANG, AbacusStructure, _read_stru
+from abacus_forge.structure import BOHR_TO_ANG, AbacusStructure, _read_stru, _validate_standardization_metadata
 from abacus_forge.structure_recognition import detect_structure_format, detect_vacuum_info
 
 
@@ -120,6 +120,76 @@ def test_stru_roundtrip_preserves_species_metadata_and_masses_after_sorting(tmp_
         "O": {"mass": 16.654321, "pp": "O.source.upf", "orb": "O.override.orb"},
         "Fe": {"mass": 55.123456, "pp": "Fe.override.upf", "orb": "Fe.source.orb"},
     }
+
+
+def test_stru_labels_are_distinct_from_elements_and_roundtrip(tmp_path: Path) -> None:
+    source = tmp_path / "Fe-afm.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\n"
+        "Fe1 55.845 Fe.upf\n"
+        "Fe2 55.845 Fe.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n4 0 0\n0 4 0\n0 0 4\n\n"
+        "ATOMIC_POSITIONS\nDirect\n"
+        "Fe1\n1.0\n1\n0 0 0 1 1 1\n"
+        "Fe2\n-1.0\n1\n0.5 0.5 0.5 0 1 1\n",
+        encoding="utf-8",
+    )
+
+    structure = AbacusStructure.from_input(source, structure_format="stru")
+
+    assert structure.atoms.get_chemical_symbols() == ["Fe", "Fe"]
+    assert structure.atoms.info["abacus_atom_labels"] == ["Fe1", "Fe2"]
+    assert structure.atoms.info["abacus_species_meta"]["Fe1"]["pp"] == "Fe.upf"
+    assert structure.atoms.get_initial_magnetic_moments().tolist() == [1.0, -1.0]
+    assert structure.atoms.info["abacus_move_flags"] == [[1, 1, 1], [0, 1, 1]]
+
+    roundtrip = tmp_path / "roundtrip.STRU"
+    roundtrip.write_text(structure.to_stru(), encoding="utf-8")
+    text = roundtrip.read_text(encoding="utf-8")
+    assert "Fe1 55.845000 Fe.upf" in text
+    assert "Fe2 55.845000 Fe.upf" in text
+    assert text.count("\nFe1\n") == 1
+    assert text.count("\nFe2\n") == 1
+    recovered = AbacusStructure.from_input(roundtrip, structure_format="stru")
+    assert recovered.atoms.get_chemical_symbols() == ["Fe", "Fe"]
+    assert recovered.atoms.info["abacus_atom_labels"] == ["Fe1", "Fe2"]
+    assert recovered.atoms.get_initial_magnetic_moments().tolist() == [1.0, -1.0]
+    assert recovered.atoms.info["abacus_move_flags"] == [[1, 1, 1], [0, 1, 1]]
+
+
+def test_stru_label_without_element_prefix_fails_explicitly(tmp_path: Path) -> None:
+    source = tmp_path / "invalid.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nXx1 1.0 Xx.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\n\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n\n"
+        "ATOMIC_POSITIONS\nDirect\nXx1\n0\n1\n0 0 0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="element|label"):
+        AbacusStructure.from_input(source, structure_format="stru")
+
+
+def test_supercell_preserves_abacus_atom_labels(tmp_path: Path) -> None:
+    source = tmp_path / "Fe.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nFe1 55.845 Fe.upf\n\nLATTICE_CONSTANT\n1.0\n"
+        "LATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\nATOMIC_POSITIONS\nDirect\n"
+        "Fe1\n0\n1\n0 0 0\n",
+        encoding="utf-8",
+    )
+    structure = AbacusStructure.from_input(source, structure_format="stru")
+    repeated = structure.make_supercell((2, 1, 1))
+    assert repeated.atoms.info["abacus_atom_labels"] == ["Fe1", "Fe1"]
+
+
+def test_standardization_rejects_non_element_abacus_labels() -> None:
+    atoms = Atoms("Fe", cell=[3, 3, 3], pbc=True)
+    atoms.info["abacus_atom_labels"] = ["Fe1"]
+    with pytest.raises(ForgeRequestError, match="atom labels"):
+        _validate_standardization_metadata(atoms)
 
 
 def test_to_stru_serializes_geometry_with_native_bohr_lattice_units() -> None:

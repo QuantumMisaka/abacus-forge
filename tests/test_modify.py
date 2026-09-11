@@ -148,6 +148,18 @@ def test_modify_stru_explicit_magmoms_override_element_defaults_and_afm() -> Non
     assert modified.atoms.get_initial_magnetic_moments().tolist() == pytest.approx([1.0, 1.5, -0.2])
 
 
+def test_modify_stru_vacancy_preserves_abacus_atom_labels(tmp_path) -> None:
+    source = tmp_path / "Fe.STRU"
+    source.write_text(
+        "ATOMIC_SPECIES\nFe1 55.845 Fe.upf\nFe2 55.845 Fe.upf\n\n"
+        "LATTICE_CONSTANT\n1.0\nLATTICE_VECTORS\n1 0 0\n0 1 0\n0 0 1\n"
+        "ATOMIC_POSITIONS\nDirect\nFe1\n0\n1\n0 0 0\nFe2\n0\n1\n0.5 0.5 0.5\n",
+        encoding="utf-8",
+    )
+    modified = modify_stru(source, vacancy_indices=[1])
+    assert modified.atoms.info["abacus_atom_labels"] == ["Fe2"]
+
+
 def test_modify_stru_standardization_keeps_distinct_species_resources(tmp_path) -> None:
     # Conventional rocksalt NiO has four fcc sites of each species.
     atoms = Atoms(
