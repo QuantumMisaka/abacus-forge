@@ -454,7 +454,10 @@ def _structure_snapshot(path: Path) -> dict[str, Any] | None:
 
 def _final_structure_snapshot(artifacts: dict[str, str]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     candidate_suffixes = (
+        "STRU_FINAL",
+        "STRU_FINAL.cif",
         "STRU_ION_D",
+        "STRU_NOW",
         "STRU_NOW.cif",
         "STRU.cif",
         "STRU",
@@ -478,7 +481,7 @@ def _final_structure_snapshot(artifacts: dict[str, str]) -> tuple[dict[str, Any]
     diagnostics["final_structure_path"] = str(selected_path)
     diagnostics["final_structure_selected_suffix"] = selected_suffix
     try:
-        fmt = "stru" if selected_suffix.endswith("STRU") or selected_suffix == "STRU_ION_D" else None
+        fmt = "stru" if selected_suffix in {"STRU", "STRU_ION_D", "STRU_FINAL", "STRU_NOW"} else None
         structure = AbacusStructure.from_input(selected_path, structure_format=fmt)
         payload = structure.metadata().to_dict()
         payload["source"] = str(selected_path)

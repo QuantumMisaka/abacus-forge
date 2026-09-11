@@ -2305,6 +2305,50 @@ def test_relax_collection_external_output_without_forge_manifest_is_supported(tm
     assert result.status.collection == "complete"
 
 
+@pytest.mark.parametrize("filename", ["STRU_FINAL", "STRU_FINAL.cif", "STRU_NOW", "STRU_NOW.cif"])
+def test_relax_collection_supports_native_abacus_final_structure_names(
+    tmp_path: Path, filename: str
+) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, final_structure=None)
+    structure = Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True)
+    output = workspace.outputs_dir / "OUT.ABACUS" / filename
+    if filename.endswith(".cif"):
+        ase_write(output, structure, format="cif")
+    else:
+        output.write_text(abacus_forge.AbacusStructure(structure, source_format="ase").to_stru(), encoding="utf-8")
+
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174150",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    assert result.envelope.diagnostics["final_structure_path"].endswith(filename)
+
+
+def test_relax_collection_prefers_native_final_over_per_step_structure(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, final_structure=None)
+    output_dir = workspace.outputs_dir / "OUT.ABACUS"
+    structure = Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True)
+    structure_payload = abacus_forge.AbacusStructure(structure, source_format="ase").to_stru()
+    (output_dir / "STRU_NOW").write_text(structure_payload, encoding="utf-8")
+    (output_dir / "STRU_FINAL").write_text(structure_payload, encoding="utf-8")
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174151",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    assert result.envelope.diagnostics["final_structure_path"].endswith("STRU_FINAL")
+
+
 def test_relax_collection_ambiguous_log_or_final_structure_is_partial(tmp_path: Path) -> None:
     workspace = _write_relax_collection_workspace(tmp_path)
     duplicate_log = workspace.outputs_dir / "other" / "running_relax.log"

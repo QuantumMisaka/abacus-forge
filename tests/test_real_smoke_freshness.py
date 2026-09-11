@@ -14,6 +14,10 @@ from tests.real_smoke.test_abacus_smoke import _assert_no_preexisting_generated_
         ("relax", "reports/running_relax.log"),
         ("relax", "outputs/OUT.ABACUS/STRU"),
         ("relax", "outputs/OUT.ABACUS/final_STRU"),
+        ("relax", "outputs/OUT.ABACUS/STRU_FINAL"),
+        ("relax", "outputs/OUT.ABACUS/STRU_FINAL.cif"),
+        ("relax", "outputs/OUT.ABACUS/STRU_NOW"),
+        ("relax", "outputs/OUT.ABACUS/STRU_NOW.cif"),
     ),
 )
 def test_freshness_guard_rejects_collector_visible_generated_outputs(

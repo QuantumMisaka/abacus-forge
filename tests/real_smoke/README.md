@@ -77,8 +77,9 @@ The supplied source must not already contain generated `running_md.log` or
 from being mistaken for evidence from the new execute call. The typed SCF and
 Relax gates apply the same freshness rule to their `running_*.log` files,
 including logs under `reports/`, and to the Forge fallback `out.log`. Relax
-also rejects existing final-structure outputs (`STRU_ION_D`, `STRU_NOW.cif`,
-`STRU.cif`, or `STRU`) outside `inputs/` and `reports/`. Explicit
+also rejects existing final-structure outputs (`STRU_FINAL`,
+`STRU_FINAL.cif`, `STRU_ION_D`, `STRU_NOW`, `STRU_NOW.cif`, `STRU.cif`, or
+`STRU`) outside `inputs/` and `reports/`. Explicit
 `inputs/OUT.*` restart or handoff assets remain the caller's responsibility and
 are not rejected by this evidence-only guard.
 The gate checks parser facts only. It does not judge trajectory quality,

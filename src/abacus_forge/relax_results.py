@@ -13,7 +13,18 @@ from abacus_forge.result import CollectionResult
 from abacus_forge.structure import AbacusStructure
 
 
-_FINAL_STRUCTURE_SUFFIXES = ("STRU_ION_D", "STRU_NOW.cif", "STRU.cif", "STRU")
+# ABACUS writes STRU_FINAL (or STRU_FINAL.cif) at the end of a Relax and may
+# keep STRU_NOW/STRU_NOW.cif as the latest per-step snapshot.  Keep the
+# historical names for older outputs.
+_FINAL_STRUCTURE_SUFFIXES = (
+    "STRU_FINAL",
+    "STRU_FINAL.cif",
+    "STRU_ION_D",
+    "STRU_NOW",
+    "STRU_NOW.cif",
+    "STRU.cif",
+    "STRU",
+)
 
 
 def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeResultEnvelope:
@@ -140,12 +151,20 @@ def _final_structure_candidates(result: CollectionResult) -> tuple[tuple[str, Pa
             continue
         by_relative.setdefault(relative, resolved)
 
-    return tuple(
+    candidates = tuple(
         (relative, by_relative[relative])
         for suffix in _FINAL_STRUCTURE_SUFFIXES
         for relative in sorted(by_relative)
         if relative.endswith(suffix)
     )
+    # Native ABACUS emits both the per-step STRU_NOW and the final
+    # STRU_FINAL.  The latter has explicit final semantics, so it is the only
+    # candidate family considered when present.  Preserve the old ambiguity
+    # behavior for legacy names and for duplicate native final files.
+    native_final = tuple(
+        item for item in candidates if item[0].endswith(("STRU_FINAL", "STRU_FINAL.cif"))
+    )
+    return native_final or candidates
 
 
 def _final_structure_artifact_is_contained(
