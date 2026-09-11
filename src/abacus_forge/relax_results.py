@@ -131,7 +131,7 @@ def _final_structure_candidates(result: CollectionResult) -> tuple[tuple[str, Pa
         lexical = raw_relative.replace("\\", "/")
         # Inputs and reports are not domain output candidates.  A root-level
         # STRU remains valid for the legacy flat layout.
-        if lexical.startswith("inputs/") or lexical.startswith("reports/"):
+        if (lexical.startswith("inputs/") and not _is_inputs_output_path(lexical)) or lexical.startswith("reports/"):
             continue
         if not lexical.endswith(_FINAL_STRUCTURE_SUFFIXES):
             continue
@@ -143,7 +143,7 @@ def _final_structure_candidates(result: CollectionResult) -> tuple[tuple[str, Pa
             continue
         if (
             relative == "."
-            or relative.startswith("inputs/")
+            or (relative.startswith("inputs/") and not _is_inputs_output_path(relative))
             or relative.startswith("reports/")
             or not resolved.is_file()
             or not relative.endswith(_FINAL_STRUCTURE_SUFFIXES)
@@ -167,6 +167,12 @@ def _final_structure_candidates(result: CollectionResult) -> tuple[tuple[str, Pa
     return native_final or candidates
 
 
+def _is_inputs_output_path(relative: str) -> bool:
+    """Return whether a path is under a Forge input ``OUT.*`` handoff."""
+    parts = Path(relative).parts
+    return len(parts) >= 3 and parts[0] == "inputs" and parts[1].startswith("OUT.")
+
+
 def _final_structure_artifact_is_contained(
     result: CollectionResult, envelope: ForgeResultEnvelope
 ) -> bool:
@@ -188,7 +194,11 @@ def _final_structure_artifact_is_contained(
     # ``api.collect`` falls back to an input STRU when no output structure is
     # present.  That is an initial snapshot, not evidence of a final Relax
     # structure for collection completeness.
-    if relative.startswith("inputs/") or relative == "." or not resolved.is_file():
+    if (
+        (relative.startswith("inputs/") and not _is_inputs_output_path(relative))
+        or relative == "."
+        or not resolved.is_file()
+    ):
         return False
     return any(artifact.path_rel == relative for artifact in envelope.artifacts)
 

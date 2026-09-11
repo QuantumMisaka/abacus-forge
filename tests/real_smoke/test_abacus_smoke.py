@@ -73,6 +73,11 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
             relative = path.relative_to(workspace).as_posix()
             relative_parts = Path(relative).parts
             is_input_asset = bool(relative_parts and relative_parts[0] == "inputs")
+            is_inputs_output = (
+                len(relative_parts) >= 3
+                and relative_parts[0] == "inputs"
+                and relative_parts[1].startswith("OUT.")
+            )
             is_report_asset = bool(relative_parts and relative_parts[0] == "reports")
             generated = name == "out.log" and not is_input_asset and not is_report_asset
             if capability == "md":
@@ -84,7 +89,7 @@ def _assert_no_preexisting_generated_outputs(workspace: Path, *, capability: str
                 if capability in {"relax", "cell-relax"}:
                     generated = generated or (
                         relative.endswith(_FINAL_STRUCTURE_SUFFIXES)
-                        and not is_input_asset
+                        and (not is_input_asset or is_inputs_output)
                         and not is_report_asset
                     )
             if generated:
@@ -619,7 +624,15 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
         artifact
         for artifact in collect_envelope["artifacts"]
         if artifact["path_rel"].endswith(
-            ("STRU_ION_D", "STRU_NOW.cif", "STRU.cif", "STRU")
+            (
+                "STRU_FINAL",
+                "STRU_FINAL.cif",
+                "STRU_ION_D",
+                "STRU_NOW",
+                "STRU_NOW.cif",
+                "STRU.cif",
+                "STRU",
+            )
         )
         and "OUT.ABACUS" in Path(artifact["path_rel"]).parts
     ]

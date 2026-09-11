@@ -18,6 +18,10 @@ from tests.real_smoke.test_abacus_smoke import _assert_no_preexisting_generated_
         ("relax", "outputs/OUT.ABACUS/STRU_FINAL.cif"),
         ("relax", "outputs/OUT.ABACUS/STRU_NOW"),
         ("relax", "outputs/OUT.ABACUS/STRU_NOW.cif"),
+        ("relax", "inputs/OUT.ABACUS/STRU_FINAL"),
+        ("relax", "inputs/OUT.ABACUS/STRU_FINAL.cif"),
+        ("relax", "inputs/OUT.ABACUS/STRU_NOW"),
+        ("relax", "inputs/OUT.ABACUS/STRU_NOW.cif"),
     ),
 )
 def test_freshness_guard_rejects_collector_visible_generated_outputs(
@@ -39,12 +43,19 @@ def test_freshness_guard_allows_input_handoff_and_non_domain_report_files(
     for relative in (
         "inputs/OUT.ABACUS/running_md.log",
         "inputs/OUT.ABACUS/MD_dump",
+        "inputs/OUT.ABACUS/restart_payload",
     ):
         path = workspace / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("handoff\n", encoding="utf-8")
 
     _assert_no_preexisting_generated_outputs(workspace, capability="md")
+
+    relax_handoff = tmp_path / "relax-handoff"
+    path = relax_handoff / "inputs/OUT.ABACUS/custom_handoff"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("handoff\n", encoding="utf-8")
+    _assert_no_preexisting_generated_outputs(relax_handoff, capability="relax")
 
     relax_workspace = tmp_path / "relax-workspace"
     for relative in ("reports/STRU", "reports/out.log"):

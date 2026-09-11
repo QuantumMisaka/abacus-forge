@@ -2349,6 +2349,28 @@ def test_relax_collection_prefers_native_final_over_per_step_structure(tmp_path:
     assert result.envelope.diagnostics["final_structure_path"].endswith("STRU_FINAL")
 
 
+def test_relax_collection_accepts_native_structure_in_inputs_out_handoff(tmp_path: Path) -> None:
+    workspace = _write_relax_collection_workspace(tmp_path, final_structure=None)
+    output_dir = workspace.inputs_dir / "OUT.ABACUS"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    structure = Atoms("Si", positions=[[0.0, 0.0, 0.0]], cell=[4.0, 4.0, 4.0], pbc=True)
+    (output_dir / "STRU_FINAL").write_text(
+        abacus_forge.AbacusStructure(structure, source_format="ase").to_stru(),
+        encoding="utf-8",
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174152",
+        workspace_rel="collection",
+        capability="relax",
+    )
+
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.collection == "complete"
+    assert result.envelope.diagnostics["final_structure_path"].endswith("STRU_FINAL")
+
+
 def test_relax_collection_ambiguous_log_or_final_structure_is_partial(tmp_path: Path) -> None:
     workspace = _write_relax_collection_workspace(tmp_path)
     duplicate_log = workspace.outputs_dir / "other" / "running_relax.log"
