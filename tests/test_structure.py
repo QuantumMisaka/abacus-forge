@@ -168,6 +168,25 @@ def test_read_stru_accepts_native_abacus_section_header_comments(tmp_path: Path)
     assert atoms.cell.lengths().tolist() == pytest.approx([8.0, 8.0, 8.0])
 
 
+def test_read_stru_accepts_native_abacus_slash_comments(tmp_path: Path) -> None:
+    path = tmp_path / "STRU"
+    path.write_text(
+        "ATOMIC_SPECIES\nSi 28.0855 Si.upf upf201\n\n"
+        "LATTICE_CONSTANT\n10.2  // add lattice constant\n\n"
+        "LATTICE_VECTORS\n"
+        "0 0.5 0.5\n0.5 0 0.5\n0.5 0.5 0\n\n"
+        "ATOMIC_POSITIONS\nDirect\nSi\t// Element type\n"
+        "0.0\t// magnetism\n2\n"
+        "0.0 0.0 0.0 1 1 1\n0.25 0.25 0.25 1 1 1\n",
+        encoding="utf-8",
+    )
+
+    atoms = _read_stru(path)
+
+    assert atoms.get_chemical_symbols() == ["Si", "Si"]
+    assert atoms.cell.lengths().tolist() == pytest.approx([10.2 * BOHR_TO_ANG / np.sqrt(2)] * 3)
+
+
 def test_to_stru_preserves_existing_move_flags(tmp_path: Path) -> None:
     atoms = Atoms(
         symbols=["Si", "O"],

@@ -281,7 +281,7 @@ def _read_stru(path: Path) -> Atoms:
 
 
 def _read_stru_text(text: str) -> Atoms:
-    lines = [line.rstrip("\n") for line in text.splitlines()]
+    lines = [_strip_inline_comment(line.rstrip("\n")) for line in text.splitlines()]
     species_meta: dict[str, dict[str, str | float]] = {}
     lattice_constant = 1.0
     lattice_unit = "bohr"
@@ -297,7 +297,7 @@ def _read_stru_text(text: str) -> Atoms:
         # ABACUS native output annotates section headers (for example
         # ``LATTICE_VECTORS  # in units of lat0``).  Parse the directive
         # before the comment; atom labels are handled in the positional block.
-        stripped = lines[index].split("#", 1)[0].strip()
+        stripped = lines[index].strip()
         if not stripped or stripped.startswith("#"):
             index += 1
             continue
@@ -358,7 +358,7 @@ def _read_stru_text(text: str) -> Atoms:
             coordinate_mode = coordinate_tokens[0].lower() if coordinate_tokens else ""
             index += 2
             while index < len(lines):
-                symbol = lines[index].split("#", 1)[0].strip()
+                symbol = lines[index].strip()
                 if not symbol:
                     index += 1
                     continue
@@ -423,6 +423,15 @@ def _read_stru_text(text: str) -> Atoms:
     atoms.info["abacus_move_flags"] = move_flags
     atoms.info["abacus_species_meta"] = species_meta
     return atoms
+
+
+def _strip_inline_comment(line: str) -> str:
+    """Remove the inline comment styles accepted by native ABACUS STRU files."""
+
+    markers = [marker for marker in ("#", "//") if (index := line.find(marker)) >= 0]
+    if not markers:
+        return line
+    return line[: min(line.find(marker) for marker in markers)].rstrip()
 
 
 def _is_float(token: str) -> bool:
