@@ -17,18 +17,27 @@
 
 **Files:** `src/abacus_forge/collectors/abacus.py`, `src/abacus_forge/collection_results.py`, nearest collection/API/CLI tests.
 
-- [ ] Add a private parser diagnostic/provenance marker only when native `E_Fermi` supplies `fermi_energy`; do not mark the generic legacy regex path.
-- [ ] Map that marker to typed `fermi_energy.unit="eV"` while retaining `kind="reported"` and source artifact behavior.
-- [ ] Add regressions for native eV selection, generic unitless fallback, and API/CLI parity; verify legacy envelopes remain unchanged.
-- [ ] Run owning/full gates, review the diff, and record exact evidence here.
+- [x] Add a private parser diagnostic/provenance marker only when native `E_Fermi` supplies `fermi_energy`; do not mark the generic legacy regex path.
+- [x] Map that marker to typed `fermi_energy.unit="eV"` while retaining `kind="reported"` and source artifact behavior.
+- [x] Add regressions for native eV selection, generic unitless fallback, and API/CLI parity; verify legacy envelopes remain unchanged.
+- [x] Run owning/full gates, review the diff, and record exact evidence here.
 
 ## Acceptance checklist
 
-- [ ] Native `E_Fermi` typed metric has unit `eV`.
-- [ ] Generic `FERMI ENERGY =` typed metric remains unitless.
-- [ ] Legacy output and scientific/status boundaries are unchanged.
-- [ ] Full verification and independent review pass.
+- [x] Native `E_Fermi` typed metric has unit `eV`.
+- [x] Generic `FERMI ENERGY =` typed metric remains unitless.
+- [x] Legacy output and scientific/status boundaries are unchanged.
+- [x] Full verification and independent review pass.
 
 ## Verification record
 
-Pending implementation and review.
+Implemented on candidate branch `forge-maturity-gates`:
+
+- `0ba5f90` introduced native Fermi unit provenance; `1b09a22` moved that provenance to a private `CollectionResult.metric_units` sidecar so it cannot leak into legacy or typed diagnostics/events.
+- `e612740` added a real direct typed-API versus `operation collect --stdin` parity fixture; `ce25c8d` tidied the test boundary without behavior changes.
+- Owning regression command (`tests/test_collect_abacus_reference.py`, `tests/test_cli_process.py`, `tests/test_result_contract.py`, `tests/test_service_status.py`, `tests/test_machine_cli.py`): **309 passed in 56.87s**.
+- Full offline gate (`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider`): **1329 passed, 10 skipped in 102.29s**.
+- `git diff --check e467633..ce25c8d`: clean.
+- Independent task review of `e467633..ce25c8d`: no Critical, Important, or Minor findings. Review confirmed native/generic precedence, typed unit projection, Relax sidecar propagation, legacy/event non-leakage, and real process/API parity.
+
+No SPEC, schema, status, scientific, workflow, scheduling, or execution contract changed. The capability remains experimental pending the existing maturity gates.
