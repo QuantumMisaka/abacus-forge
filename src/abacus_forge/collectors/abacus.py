@@ -139,7 +139,7 @@ def collect_abacus_metrics(
     if native_final:
         diagnostics["native_final_energy_markers"] = len(native_final)
     if native_fermi_used:
-        diagnostics["native_fermi_markers"] = len(native_fermi)
+        diagnostics["_metric_units"] = {"fermi_energy": "eV"}
     native_md = _native_md_metrics(main_content)
     metrics.update(native_md["metrics"])
     mark_main(native_md["metrics"])

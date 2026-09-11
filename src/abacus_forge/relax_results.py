@@ -62,6 +62,7 @@ def _projection_result(result: CollectionResult) -> CollectionResult:
         final_structure_snapshot=final_structure_snapshot,
         metric_origins=dict(result.metric_origins),
         derived_metrics=set(result.derived_metrics),
+        metric_units=dict(result.metric_units),
     )
 
 

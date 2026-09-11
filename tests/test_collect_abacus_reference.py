@@ -90,6 +90,9 @@ def test_collect_reads_native_abacus_fermi_energy_in_ev_column(tmp_path: Path) -
     result = collect(workspace)
 
     assert result.metrics["fermi_energy"] == pytest.approx(-3.9837910886)
+    assert "_metric_units" not in result.diagnostics
+    assert "_metric_units" not in result.to_dict()["diagnostics"]
+    assert "_metric_units" not in result.to_envelope().to_dict()["diagnostics"]
     typed = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
         ScfCollectRequest(
             operation_id="123e4567-e89b-42d3-a456-426614174231",
@@ -98,6 +101,29 @@ def test_collect_reads_native_abacus_fermi_energy_in_ev_column(tmp_path: Path) -
     )
     assert isinstance(typed, OperationOutcome)
     assert next(metric for metric in typed.envelope.metrics if metric.name == "fermi_energy").unit == "eV"
+    event_paths = list((workspace.root / "reports/events").glob("*.json"))
+    assert event_paths
+    event_payload = json.loads(event_paths[0].read_text(encoding="utf-8"))["payload"]
+    assert "_metric_units" not in event_payload["envelope"]["diagnostics"]
+
+
+def test_generic_fermi_takes_precedence_over_native_and_stays_unitless(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "generic-native-fermi").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "FERMI ENERGY = 1.25\nE_Fermi -0.2 9.9\n",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path).collect.collect(
+        ScfCollectRequest(
+            operation_id="123e4567-e89b-42d3-a456-426614174232",
+            workspace_rel="generic-native-fermi",
+        )
+    )
+    assert isinstance(result, OperationOutcome)
+    metric = next(item for item in result.envelope.metrics if item.name == "fermi_energy")
+    assert metric.value == pytest.approx(1.25)
+    assert metric.unit is None
 
 
 def test_collect_sidecar_distinguishes_explicit_and_computed_energy_per_atom(tmp_path: Path) -> None:

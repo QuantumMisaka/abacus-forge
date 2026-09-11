@@ -160,7 +160,6 @@ def _typed_metric_records(
     artifact_ids = _artifact_ids_by_contained_path(result, artifacts)
     native_md = result.diagnostics.get("native_md_block_complete") is True
     native_final_energy = bool(result.diagnostics.get("native_final_energy_markers"))
-    native_fermi = bool(result.diagnostics.get("native_fermi_markers"))
     total_energy_unit = "eV" if native_final_energy else None
     records: list[MetricRecord] = []
     for legacy in legacy_metrics:
@@ -173,7 +172,7 @@ def _typed_metric_records(
             name,
             native_md=native_md,
             total_energy_unit=total_energy_unit,
-            native_fermi=native_fermi,
+            metric_units=result.metric_units,
             kind=kind,
         )
         source_artifact_id = _source_artifact_id(result, name, artifact_ids)
@@ -195,13 +194,13 @@ def _typed_metric_unit(
     *,
     native_md: bool,
     total_energy_unit: str | None,
-    native_fermi: bool,
+    metric_units: Mapping[str, str],
     kind: str,
 ) -> str | None:
     if name == "total_energy":
         return total_energy_unit
     if name == "fermi_energy":
-        return "eV" if native_fermi else None
+        return metric_units.get(name)
     if name in _NATIVE_MD_ENERGY_NAMES:
         return "eV" if native_md else None
     if name in _NATIVE_MD_TEMPERATURE_NAMES:

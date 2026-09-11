@@ -103,6 +103,7 @@ class CollectionResult:
     # either legacy serialization surface below.
     metric_origins: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
     derived_metrics: set[str] = field(default_factory=set, repr=False, compare=False)
+    metric_units: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         return {

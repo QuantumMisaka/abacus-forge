@@ -78,6 +78,7 @@ def _collect_workspace(
     # neither diagnostics nor wire serialization exposes the sidecar.
     raw_metric_origins = diagnostics.pop("_metric_origins", {})
     raw_derived_metrics = diagnostics.pop("_derived_metrics", ())
+    raw_metric_units = diagnostics.pop("_metric_units", {})
     metric_origins = (
         {str(name): str(path) for name, path in raw_metric_origins.items()}
         if isinstance(raw_metric_origins, dict)
@@ -87,6 +88,11 @@ def _collect_workspace(
         {str(name) for name in raw_derived_metrics}
         if isinstance(raw_derived_metrics, (list, tuple, set, frozenset))
         else set()
+    )
+    metric_units = (
+        {str(name): str(unit) for name, unit in raw_metric_units.items()}
+        if isinstance(raw_metric_units, dict)
+        else {}
     )
     diagnostics.update(log_selection["diagnostics"])
     diagnostics.update(final_structure_diagnostics)
@@ -127,6 +133,7 @@ def _collect_workspace(
         final_structure_snapshot=final_structure_snapshot,
         metric_origins=metric_origins,
         derived_metrics=derived_metrics,
+        metric_units=metric_units,
     )
 
 
