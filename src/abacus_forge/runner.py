@@ -226,7 +226,7 @@ class LocalRunner:
 
 _NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
 
-LogFingerprint = tuple[int, int, int, int, int, str]
+_LogFingerprint = tuple[int, int, int, int, int, str]
 
 
 def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
@@ -242,10 +242,10 @@ def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
     return digest.hexdigest(), marker
 
 
-def _running_log_snapshot(workspace: Workspace) -> dict[Path, LogFingerprint]:
+def _running_log_snapshot(workspace: Workspace) -> dict[Path, _LogFingerprint]:
     """Snapshot contained native logs with stat metadata and a streaming digest."""
     root = workspace.root.resolve()
-    snapshot: dict[Path, LogFingerprint] = {}
+    snapshot: dict[Path, _LogFingerprint] = {}
     directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
     for directory in directories:
         if not directory.is_dir():
@@ -265,7 +265,7 @@ def _running_log_snapshot(workspace: Workspace) -> dict[Path, LogFingerprint]:
 
 
 def _normal_end_source(
-    workspace: Workspace, stdout: str, before: dict[Path, LogFingerprint]
+    workspace: Workspace, stdout: str, before: dict[Path, _LogFingerprint]
 ) -> Path | None:
     """Find a positive marker attributable to this LocalRunner invocation."""
     if _NORMAL_END_MARKER.search(stdout):

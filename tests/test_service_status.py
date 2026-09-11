@@ -694,7 +694,8 @@ def test_typed_execute_detects_same_size_running_log_rewrite(tmp_path: Path) -> 
     _write_prepared_inputs(workspace)
     running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
     running_log.parent.mkdir(parents=True, exist_ok=True)
-    running_log.write_text("XXXXXXXXX\n", encoding="utf-8")
+    running_log.write_text("XXXXXXXXXX\n", encoding="utf-8")
+    size_before = running_log.stat().st_size
     executable = tmp_path / "runner.py"
     executable.write_text(
         f"#!{sys.executable}\nfrom pathlib import Path\n"
@@ -707,6 +708,7 @@ def test_typed_execute_detects_same_size_running_log_rewrite(tmp_path: Path) -> 
     )
     assert isinstance(result, OperationOutcome)
     assert result.envelope.diagnostics["normal_end"] is True
+    assert running_log.stat().st_size == size_before
 
 
 def test_typed_execute_keeps_normal_end_when_process_exits_nonzero(tmp_path: Path) -> None:
