@@ -689,6 +689,26 @@ def test_typed_execute_ignores_touch_only_stale_running_log(tmp_path: Path) -> N
     assert "normal_end" not in result.envelope.diagnostics
 
 
+def test_typed_execute_detects_same_size_running_log_rewrite(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
+    running_log.parent.mkdir(parents=True, exist_ok=True)
+    running_log.write_text("XXXXXXXXX\n", encoding="utf-8")
+    executable = tmp_path / "runner.py"
+    executable.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\n"
+        "Path('../outputs/OUT.ABACUS/running_scf.log').write_text('NORMAL END\\n')\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(workspace_root=tmp_path, runner=LocalRunner(executable=str(executable))).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174045")
+    )
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["normal_end"] is True
+
+
 def test_typed_execute_keeps_normal_end_when_process_exits_nonzero(tmp_path: Path) -> None:
     _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
     executable = tmp_path / "runner.py"

@@ -226,11 +226,26 @@ class LocalRunner:
 
 _NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
 
+LogFingerprint = tuple[int, int, int, int, int, str]
 
-def _running_log_snapshot(workspace: Workspace) -> dict[Path, tuple[int, int, int, int, int]]:
-    """Snapshot existing contained native running logs without reading them."""
+
+def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
+    digest = hashlib.sha256()
+    marker = False
+    tail = ""
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+            text = tail + chunk.decode("utf-8", errors="ignore")
+            marker = marker or _NORMAL_END_MARKER.search(text) is not None
+            tail = text[-64:]
+    return digest.hexdigest(), marker
+
+
+def _running_log_snapshot(workspace: Workspace) -> dict[Path, LogFingerprint]:
+    """Snapshot contained native logs with stat metadata and a streaming digest."""
     root = workspace.root.resolve()
-    snapshot: dict[Path, tuple[int, int, int, int, int]] = {}
+    snapshot: dict[Path, LogFingerprint] = {}
     directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
     for directory in directories:
         if not directory.is_dir():
@@ -242,14 +257,15 @@ def _running_log_snapshot(workspace: Workspace) -> dict[Path, tuple[int, int, in
                 resolved = path.resolve(strict=True)
                 resolved.relative_to(root)
                 stat = resolved.stat()
-                snapshot[resolved] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+                digest, _ = _stream_digest_and_marker(resolved)
+                snapshot[resolved] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, digest)
             except (OSError, ValueError, RuntimeError):
                 continue
     return snapshot
 
 
 def _normal_end_source(
-    workspace: Workspace, stdout: str, before: dict[Path, tuple[int, int, int, int, int]]
+    workspace: Workspace, stdout: str, before: dict[Path, LogFingerprint]
 ) -> Path | None:
     """Find a positive marker attributable to this LocalRunner invocation."""
     if _NORMAL_END_MARKER.search(stdout):
@@ -269,11 +285,13 @@ def _normal_end_source(
                 stat = resolved.stat()
                 fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
                 previous = before.get(resolved)
-                if previous is not None and previous[:3] == fingerprint[:3]:
+                if previous is not None and previous[:5] == fingerprint[:5]:
                     continue
-                with resolved.open(encoding="utf-8", errors="ignore") as stream:
-                    if any(_NORMAL_END_MARKER.search(line) for line in stream):
-                        matches.append(resolved)
+                digest, marker = _stream_digest_and_marker(resolved)
+                if previous is not None and previous[5] == digest:
+                    continue
+                if marker:
+                    matches.append(resolved)
             except (OSError, ValueError, RuntimeError, UnicodeError):
                 continue
     return matches[0] if len(matches) == 1 else None
