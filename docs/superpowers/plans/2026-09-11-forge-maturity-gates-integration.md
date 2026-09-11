@@ -214,3 +214,33 @@ property pack completed `prepare`, one `run` subtask, and `post`; native
 passes `96` tests. This smoke confirms input, process, and parser compatibility
 only; it does not assert spin-density quality, physical correctness, benchmark
 parity, scientific acceptance, or maturity promotion.
+
+## BEC real-smoke boundary follow-up (2026-09-11)
+
+A fresh Si PBE workspace was used to exercise `prepare_bec` with one atom and
+one displacement direction against the serial-PW binary built from
+`abacus-develop@94576a801`. The existing pack created `bec/org` and the two
+displacement directories, but every directory contained only one `INPUT` and
+retained the caller's original `calculation` value. `run_bec` therefore launched
+the displacement directories without the phase-specific SCF/NSCF inputs that
+ABACUS requires; the native logs reported the Berry-phase `calculation=nscf`
+precondition and then the missing `ABACUS-CHARGE-DENSITY.restart` precondition.
+
+The current `abacus-test` BEC implementation confirms the required shape: each
+structure directory has an `INPUT.scf` plus three `INPUT.nscf*`/`KPT.nscf*`
+inputs, and its caller-owned shell runner executes the SCF before the three
+NSCF directions. The ABACUS Berry-phase inputs also require `calculation=nscf`,
+an explicit `gdir`, and the example's `symmetry=-1`; Forge currently emits none
+of these phase-specific files or KPT refinements. The current ABACUS source
+writes the polarization blocks into the selected `running_nscf*.log`; Forge's
+`post_bec` still only consumes the legacy fixture-side
+`reports/polarization.json`.
+
+This is recorded as a negative compatibility finding, not as a candidate-core
+failure. The approved SPEC explicitly keeps SCF→NSCF dependencies, artifact
+handoff, retries and multi-operation orchestration with the human/Agent or
+upper workflow. We therefore do not turn `run_bec` into an implicit workflow in
+this integration candidate. BEC remains experimental and is not evidence for
+Paimon v1.3 stable exposure. A future BEC-specific SPEC/PLAN must first choose
+an explicit phase/workspace handoff and native polarization parser; it must keep
+the caller responsible for ordering and scientific interpretation.

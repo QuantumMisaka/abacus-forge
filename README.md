@@ -267,6 +267,14 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 - property pack 从 `abacus-test CLI` 与 `ABACUS-agent-tools` 的底层能力拆解而来，只承接输入生成、本地子目录执行、cube/文本后处理和 JSON 结果汇总；不承接 Bohrium/dflow/Slurm 编排。
 - `bader post` 只调用本机已有 `bader` 可执行文件；缺失时返回 diagnostics，不自动安装外部程序。
 
+`bec` 当前仍是 fixture/legacy 形态，不能视为已验证的原生端到端流程：ABACUS
+对每个结构要求先执行 SCF 生成 restart，再以 `calculation=nscf`、显式
+`gdir=1/2/3`（示例还要求 `symmetry=-1`）执行 NSCF；当前 Forge 尚未把这些
+阶段作为显式、由调用方交接的独立 operation，也尚未将原生
+`running_nscf*.log` 的 polarization 事实接入 `post_bec`。这项能力保持
+experimental，不进入 Paimon v1.3 稳定面；顺序、重试、artifact handoff 和
+科学解释由人类/Agent 负责，待独立 BEC SPEC/PLAN 收敛后再推进。
+
 `charge-density`、`spin-density` 和 `charge-diff` 的 legacy `post` 结果会在
 `diagnostics.property_manifest` 中附加 `forge.property-manifest/v1` 文件事实索引：
 `inputs` 记录明确选中的 cube source，`outputs` 记录派生 cube 与 metrics report，

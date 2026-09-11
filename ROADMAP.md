@@ -27,6 +27,7 @@
 - KPT line-mode 已使用 ABACUS 原生 `kx ky kz npoints [#label]` 格式，并保留旧 `segments` payload 兼容。
 - 已初步实现 Forge-level 实验性 property pack：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec` 均提供 Python API 与 CLI `prepare|run|post` 入口。
 - property pack 目前仍主要依赖 mock/fixture 回归，尚未逐项完成真实 ABACUS 操作/解析验收；`convergence`、`spin-density`、`workfunc` 各已有一次本地 serial-PW 操作/解析 smoke（详见 2026-09-11 maturity-gates plan），不自动进入 ABACUS Agent（Paimon）v1.3 稳定能力面。
+- `bec` 的真实 serial-PW 试跑已确认当前 legacy pack 缺少 ABACUS 所需的逐结构 `SCF -> restart -> NSCF(gdir=1/2/3)` 阶段输入和原生 polarization 日志解析；按已批准 SPEC，不在 Forge 内补隐式多 operation 编排。本能力继续保持 experimental，待独立 BEC SPEC/PLAN 明确显式阶段交接后再推进。
 - property pack 只承担本地输入生成、子目录 runner、cube/文本后处理与 JSON 汇总。
 - 当前 Forge 测试基线：`conda run -n paimon python -m pytest -q`。
 - 可选 typed SCF、typed Relax/cell-relax 与 typed MD real smoke 均只复制用户提供的 prepared workspace，并通过 machine CLI 分别执行和收集；三者使用各自的环境门禁，未提供真实输入时不产生 release evidence。当前已有本地 serial-PW ABACUS 的 SCF/Relax/cell-relax/MD parser-artifact smoke 证据，但仍不晋升稳定能力或科学结论；legacy SCF smoke 不能替代 typed SCF 证据。
@@ -46,7 +47,7 @@
 - 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；nspin=4 handoff 已沿用 `matrix_hr/shared` 映射，PyATB properties、property/composite 聚合和 real-smoke 继续 deferred。
 - 继续固化 SCF->NSCF artifact handoff 规则，扩展到其他 property family 时仍需独立设计和验证。
 - 当前 manifest 已覆盖 nspin=1/2/4 的 HR：nspin=1/4 为 `shared`，nspin=2 按请求顺序为 `up/down`，SR 为 `shared`，供给的 rR 为 `shared`；未供给 rR 时不创建 `matrix_rr` entry。后续若扩展到 PyATB properties、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些额外语义。
-- 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：优先顺序为 `convergence -> spin-density/charge-diff -> workfunc -> vacancy -> bec`。
+- 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：当前已完成 `convergence`、`spin-density`、`workfunc` 的本地 serial-PW 兼容性 smoke；`charge-diff`/`vacancy` 可继续做独立事实门禁，`bec` 需先完成独立 SPEC/PLAN，不把隐式 SCF→NSCF 编排下沉到 Forge。
 - 已落地可选、实验性的 atst-tools NEB engine adapter：以 Forge 的 `prepare -> execute -> postprocess` 单元承接配置、图像执行事实、链路日志和后处理产物；NEB 图像/链路编排及并行执行委托 atst-tools。该能力暂不晋升稳定面；发布前仍须单独通过 atst-tools 安装与版本/API 锁定、干净环境 import/process 验证，以及真实 NEB smoke 门禁。
 - 2026-09-09 已用当前 `atst-tools` `2.2.4` 可执行文件完成 Forge machine-CLI 的实际进程契约 smoke（`prepare`、`execute --dry-run`、`postprocess`）及临时 workspace 产物/审计检查；该检查未启动 ABACUS，不构成真实 NEB workflow 证据。
 - 2026-09-09 已通过 Forge wheel 在全新 Python 3.13 venv 中的安装/import/console-entry-point 检查，且未安装或导入 `abacus-agent-tools`、`abacustest`、AiiDA 或 `atst-tools`；这只覆盖 Forge 自身的 clean package gate，不替代 ATST 进程隔离与真实 NEB workflow 门禁。
