@@ -64,6 +64,18 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
         "ABACUS_FORGE_RELAX_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",
     ),
+    "test_typed_lcao_scf_machine_execute_and_collect": (
+        "ABACUS_FORGE_LCAO_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
+    "test_typed_lcao_nspin2_machine_execute_and_collect": (
+        "ABACUS_FORGE_LCAO_NSPIN2_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
+    "test_typed_lcao_matrices_machine_execute_and_collect": (
+        "ABACUS_FORGE_LCAO_MATRICES_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
     "test_typed_pyatb_band_machine_process_smoke": (
         "ABACUS_FORGE_PYATB_SMOKE_WORKSPACE",
         "ABACUS_FORGE_PYATB_EXECUTABLE",

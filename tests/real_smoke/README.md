@@ -93,6 +93,46 @@ convergence studies, platform validation, workflow/scheduler checks, or the
 Paimon v1.2 benchmark. All capabilities remain experimental until their own
 real gates and the other Stage 4 release conditions are satisfied.
 
+The typed LCAO SCF smokes are additional opt-in gates over the same typed
+machine path, asserting `basis_type=lcao` in the prepared INPUT. They come in
+three variants with separate workspace variables, sharing
+`ABACUS_FORGE_ABACUS_EXECUTABLE`:
+
+```bash
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+export ABACUS_FORGE_LCAO_SMOKE_WORKSPACE=/absolute/path/to/si-lcao-scf-source
+export ABACUS_FORGE_LCAO_NSPIN2_SMOKE_WORKSPACE=/absolute/path/to/fe-lcao-nspin2-source
+export ABACUS_FORGE_LCAO_MATRICES_SMOKE_WORKSPACE=/absolute/path/to/si-lcao-matrices-source
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k lcao
+```
+
+The nspin2 variant additionally asserts `nspin=2`; the matrices variant
+asserts `out_mat_hs2=1` and `out_mat_r=1` and checks that the ABACUS process
+generated the sparse HR/SR/rR matrices under `inputs/OUT.ABACUS/`. The gate
+accepts both the v1.2/LTS-era file names (`data-HR-sparse_SPIN0.csr`,
+`data-SR-sparse_SPIN0.csr`, `data-rR-sparse.csr`) and the v3.11-beta names
+(`hrs1_nao.csr`, `sr_nao.csr`, `rr.csr`); which naming the typed
+`pyatb-band` handoff can consume is a version-policy question recorded in the
+Stage 5 evidence, not an assertion of this gate. The LCAO sources used for
+the recorded evidence take PP/ORB from the Paimon v1.2 `abacus-pp-orb`
+lineage (see the workspace `abacus-packages/` README). These gates check
+process, parser, and artifact facts only; they make no convergence or
+scientific acceptance decision.
+
+Known version-matrix findings (recorded in the Stage 5 evidence):
+
+- ABACUS develop (v3.11.0-beta8+56, `94576a801`): all nine real-smoke gates
+  pass, but the LCAO sparse matrix files use the new `*_nao.csr`/`rr.csr`
+  names, so a develop executable does not satisfy the current typed
+  `pyatb-band` handoff file contract without an explicit rename or handoff
+  extension.
+- ABACUS LTS (v3.10.1, `f71921fe8`): the typed relax/cell-relax collection is
+  `partial` because v3.10.1 does not write `STRU_FINAL` (it writes
+  `STRU_ION_D`/`STRU_NOW.cif`), so the final-structure fact is unavailable;
+  the other eight gates pass.
+
 The typed PyATB band process smoke is an additional opt-in gate. It consumes a
 caller-provided source directory with this layout and copies it into an isolated
 temporary Forge workspace before running:

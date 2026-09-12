@@ -667,3 +667,234 @@ def test_typed_relax_machine_execute_and_collect(tmp_path: Path) -> None:
         assert not event_path.is_absolute()
         assert ".." not in event_path.parts
         assert (workspace / event_path).is_file()
+
+
+def _resolve_lcao_smoke_inputs(env_var: str) -> tuple[Path, str]:
+    """Resolve the caller-provided LCAO source workspace and executable."""
+    source_value = os.environ.get(env_var)
+    executable = os.environ.get("ABACUS_FORGE_ABACUS_EXECUTABLE")
+    if not source_value or not executable:
+        pytest.skip(f"set {env_var} and ABACUS_FORGE_ABACUS_EXECUTABLE")
+    source = Path(source_value)
+    if not source.is_dir():
+        pytest.fail(f"{env_var} is not a directory: {source}")
+    executable_path = Path(executable)
+    if executable_path.parent != Path():
+        executable_ok = executable_path.is_file() and os.access(executable_path, os.X_OK)
+    else:
+        executable_ok = shutil.which(executable) is not None
+    if not executable_ok:
+        pytest.fail(f"ABACUS_FORGE_ABACUS_EXECUTABLE is not executable: {executable}")
+    return source, executable
+
+
+def _assert_lcao_input_profile(workspace: Path, expected: dict[str, str]) -> None:
+    """Fail unless the prepared INPUT declares the expected LCAO profile."""
+    input_path = workspace / "inputs" / "INPUT"
+    try:
+        parsed = read_input(input_path)
+    except (OSError, UnicodeError) as exc:
+        pytest.fail(f"typed LCAO smoke workspace has unreadable INPUT: {input_path}: {exc}")
+    for key, expected_value in expected.items():
+        actual = str(parsed.get(key, "")).strip().lower()
+        if actual != expected_value:
+            pytest.fail(
+                f"typed LCAO smoke workspace must declare {key}={expected_value} in "
+                f"{input_path}; got {actual or '<missing>'!r}"
+            )
+
+
+def _typed_lcao_machine_execute_and_collect(
+    tmp_path: Path,
+    source: Path,
+    executable: str,
+    *,
+    expected_input: dict[str, str],
+) -> None:
+    """Run one typed machine execute + collect on a caller-provided LCAO workspace."""
+    workspace = tmp_path / "typed-lcao-smoke"
+    shutil.copytree(source, workspace, symlinks=False)
+    _assert_no_preexisting_generated_outputs(workspace, capability="scf")
+    _assert_lcao_input_profile(workspace, expected_input)
+    workspace_root = workspace.resolve()
+    workspace_rel = workspace.name
+    execute_id = str(uuid.uuid4())
+    collect_id = str(uuid.uuid4())
+    assert execute_id != collect_id
+
+    execute_request = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": execute_id,
+        "workspace_rel": workspace_rel,
+        "executable": executable,
+        "mpi_ranks": 1,
+        "omp_threads": 1,
+        "timeout_seconds": _REAL_SMOKE_ENGINE_TIMEOUT_SECONDS,
+        "dry_run": False,
+    }
+    executed = run_cli(
+        "operation",
+        "execute",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(execute_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
+    )
+    assert executed.returncode == 0, executed.stdout + executed.stderr
+    assert executed.stderr == ""
+    execute_payload = _load_one_json_document(executed.stdout)
+    assert execute_payload["operation_id"] == execute_id
+    execute_envelope = execute_payload["envelope"]
+    assert isinstance(execute_envelope, dict)
+    execute_status = execute_envelope["status"]
+    assert isinstance(execute_status, dict)
+    assert execute_status["execution"] == "completed"
+    assert execute_status["collection"] == "not_collected"
+    assert execute_status["scientific"] == "unassessed"
+
+    collect_request = {
+        "schema_version": "forge.request/v1",
+        "operation": "collect",
+        "operation_id": collect_id,
+        "workspace_rel": workspace_rel,
+    }
+    collected = run_cli(
+        "operation",
+        "collect",
+        "--stdin",
+        cwd=tmp_path,
+        input_text=json.dumps(collect_request),
+        timeout=_REAL_SMOKE_PROCESS_TIMEOUT_SECONDS,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    assert collected.stderr == ""
+    collect_payload = _load_one_json_document(collected.stdout)
+    assert collect_payload["operation_id"] == collect_id
+    collect_envelope = collect_payload["envelope"]
+    assert isinstance(collect_envelope, dict)
+    collect_status = collect_envelope["status"]
+    assert isinstance(collect_status, dict)
+    assert collect_status["collection"] == "complete"
+    assert collect_status["execution"] == "not_run"
+    assert collect_status["scientific"] == "unassessed"
+    metrics = collect_envelope["metrics"]
+    assert isinstance(metrics, list)
+    energy_metrics = [
+        metric
+        for metric in metrics
+        if isinstance(metric, dict) and metric.get("name") == "total_energy"
+    ]
+    assert len(energy_metrics) == 1
+    energy = energy_metrics[0]["value"]
+    assert isinstance(energy, (int, float)) and not isinstance(energy, bool)
+    assert math.isfinite(float(energy))
+
+    for operation_id, operation, payload in (
+        (execute_id, "execute", execute_payload),
+        (collect_id, "collect", collect_payload),
+    ):
+        event_path = workspace / "reports" / "events" / f"{operation_id}-{operation}.json"
+        event = json.loads(event_path.read_text(encoding="utf-8"))
+        assert event["id"] == operation_id
+        assert event["operation"] == operation
+        assert event["payload"] == payload
+        envelope = payload["envelope"]
+        artifacts = envelope["artifacts"]
+        artifact_ids = {artifact["id"] for artifact in artifacts}
+        for artifact in artifacts:
+            _assert_contained_file(workspace_root, artifact["path_rel"])
+        diagnostics = envelope["diagnostics"]
+        artifact_refs = diagnostics["artifact_refs"]
+        assert {reference["artifact_id"] for reference in artifact_refs} == artifact_ids
+        assert all(
+            reference["operation_id"] == operation_id for reference in artifact_refs
+        )
+
+    manifest = json.loads(
+        (workspace / "reports" / "forge-workspace.json").read_text(encoding="utf-8")
+    )
+    manifest_events = {
+        event["id"]: event
+        for event in manifest["events"]
+        if isinstance(event, dict) and isinstance(event.get("id"), str)
+    }
+    assert execute_id in manifest_events
+    assert collect_id in manifest_events
+    for operation_id, operation in ((execute_id, "execute"), (collect_id, "collect")):
+        event = manifest_events[operation_id]
+        assert event["operation"] == operation
+        assert event["path_rel"] == f"reports/events/{operation_id}-{operation}.json"
+        _assert_contained_file(workspace_root, event["path_rel"])
+    return workspace
+
+
+@pytest.mark.real_smoke
+def test_typed_lcao_scf_machine_execute_and_collect(tmp_path: Path) -> None:
+    """Typed LCAO SCF smoke on a caller-provided Si LCAO workspace."""
+    source, executable = _resolve_lcao_smoke_inputs("ABACUS_FORGE_LCAO_SMOKE_WORKSPACE")
+    _typed_lcao_machine_execute_and_collect(
+        tmp_path,
+        source,
+        executable,
+        expected_input={"calculation": "scf", "basis_type": "lcao"},
+    )
+
+
+@pytest.mark.real_smoke
+def test_typed_lcao_nspin2_machine_execute_and_collect(tmp_path: Path) -> None:
+    """Typed spin-polarized LCAO SCF smoke (nspin=2) on a caller-provided workspace."""
+    source, executable = _resolve_lcao_smoke_inputs(
+        "ABACUS_FORGE_LCAO_NSPIN2_SMOKE_WORKSPACE"
+    )
+    _typed_lcao_machine_execute_and_collect(
+        tmp_path,
+        source,
+        executable,
+        expected_input={"calculation": "scf", "basis_type": "lcao", "nspin": "2"},
+    )
+
+
+@pytest.mark.real_smoke
+def test_typed_lcao_matrices_machine_execute_and_collect(tmp_path: Path) -> None:
+    """Typed LCAO SCF smoke asserting PyATB handoff matrix generation.
+
+    The caller-provided workspace must request out_mat_hs2 and out_mat_r; the
+    gate asserts the ABACUS process generated the sparse HR/SR/rR matrices
+    that the typed pyatb-band handoff consumes. This is process and artifact
+    evidence only, not a scientific validation of the matrices.
+    """
+    source, executable = _resolve_lcao_smoke_inputs(
+        "ABACUS_FORGE_LCAO_MATRICES_SMOKE_WORKSPACE"
+    )
+    workspace = _typed_lcao_machine_execute_and_collect(
+        tmp_path,
+        source,
+        executable,
+        expected_input={
+            "calculation": "scf",
+            "basis_type": "lcao",
+            "out_mat_hs2": "1",
+            "out_mat_r": "1",
+        },
+    )
+    out_abacus = workspace / "inputs" / "OUT.ABACUS"
+    # ABACUS v3.11-beta renamed the sparse matrix outputs: the v1.2/LTS-era
+    # names (data-*-sparse*.csr) became hrs1_nao/sr_nao/rr.csr on develop.
+    # The gate accepts either naming as generation evidence; which naming the
+    # typed pyatb-band handoff can consume is tracked in the version-policy
+    # evidence, not asserted here.
+    matrix_name_candidates = {
+        "data-HR-sparse_SPIN0.csr": ("data-HR-sparse_SPIN0.csr", "hrs1_nao.csr"),
+        "data-SR-sparse_SPIN0.csr": ("data-SR-sparse_SPIN0.csr", "sr_nao.csr"),
+        "data-rR-sparse.csr": ("data-rR-sparse.csr", "rr.csr"),
+    }
+    for expected_name, accepted_names in matrix_name_candidates.items():
+        generated = [name for name in accepted_names if (out_abacus / name).is_file()]
+        if not generated:
+            pytest.fail(
+                "expected LCAO matrix artifact not generated (accepts "
+                f"{'/'.join(accepted_names)} for {expected_name}): {out_abacus}"
+            )
+        for name in generated:
+            assert (out_abacus / name).stat().st_size > 0

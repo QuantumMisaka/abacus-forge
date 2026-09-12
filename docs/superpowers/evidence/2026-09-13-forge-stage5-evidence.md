@@ -247,7 +247,75 @@ containment，不启动 ABACUS。没有提供 ATST executable 时，精确选择
 in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unproven`。Forge
 不启动 Slurm，也不复制 atst 的链路编排。
 
-## 5. 发布判断与未决条件
+## 5. 双版本 LCAO/版本矩阵证据（2026-09-12 增补）
+
+本节记录把 real-smoke 从易失 `/tmp` 环境迁到持久 `abacus-packages/` 基座后的
+双版本（develop + LTS）、双基组（PW + LCAO）矩阵结果。构建遵循
+`abacus-develop` 仓内 toolchain（`toolchain_gnu.sh` + `build_abacus_gnu.sh`
+配方），输出与源码仓隔离；复现脚本与溯源见
+`abacus-packages/README.md`（工作区级目录，不属 Forge 仓）。
+
+两轨构建均为生产级形态：MPI(OpenMPI 5.0.10/5.0.8) + LCAO + ELPA(genelpa) +
+LibRI/LibComm + DFTD4 + RapidJSON + OpenMP，`BUILD_TESTING=OFF`。
+`ENABLE_LIBXC=OFF` 是本地偏离：develop@`94576a801` 的 `xc_grad.cpp` 经
+`xc_functional.h` 只包含 `<xc.h>`，而 libxc 7.x 将 `XC_GGA_C_LYP` 等 id 宏移入
+`xc_funcs.h`，`ENABLE_LIBXC=ON` 编译失败；该不兼容属 abacus-develop 上游问题
+（`libxc_abacus.h` 已示范正确包含方式），不是 Forge 缺口。LTS 轨本地另有两处
+toolchain workaround（cereal 6190 补丁对 master 不适用、ELPA openmp 头文件
+路径），均在 `abacus-packages/README.md` 记录且未修改任何被跟踪文件。
+
+可执行文件与 sha256（前 24 位）：
+
+| 轨 | commit | 可执行文件 | sha256 |
+| --- | --- | --- | --- |
+| develop | `94576a80169de36e02e637edc2a0963fba9e1838`（v3.11.0-beta8+56） | `abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus` | `7ca5a99e0d68cfb4a65707db…` |
+| LTS | `f71921fe8`（v3.10.1） | `abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus` | `51f898a40698200db79bacfd…` |
+
+LCAO smoke 源（`abacus-packages/smoke-sources/lcao-*`）使用 Paimon v1.2
+`abacus-pp-orb` submodule（`f4711b7`）的 PP/ORB 配对（Si→`PP/Si.upf`+
+`ORB/Si_gga_7au_100Ry_2s2p1d.orb`，Fe→`PP/Fe_ONCV_PBE-1.2.upf`+
+`ORB/Fe_gga_7au_100Ry_4s2p2d1f.orb`），`ecutwfc=100` 遵循该仓
+`max(PP 推荐, ORB 截断)` 规则；Fe bcc primitive 几何取自 v1.2
+`demos/strus/Fe_bcc.cif`。三个源分别为 Si LCAO SCF、Fe LCAO SCF nspin=2、
+Si LCAO SCF + `out_mat_hs2=1` + `out_mat_r=1`。矩阵门禁断言 `inputs/OUT.ABACUS/`
+下生成了 HR/SR/rR 稀疏矩阵，接受 v1.2/LTS 命名与 v3.11-beta 新命名两套
+文件名（见下）。三个 LCAO 门禁新增于
+`tests/real_smoke/test_abacus_smoke.py`，环境变量与无输入跳过语义见
+`tests/real_smoke/README.md`；无外部输入时精确选择为 `9 skipped, 1352
+deselected`（含新增 3 项）。
+
+精确组合命令与结果（`S=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources`，
+两轨分别 source 各自 toolchain 的 `install/setup` 后运行）：
+
+```text
+develop 轨（ABACUS_FORGE_ABACUS_EXECUTABLE=…/abacus-develop/build-mpi-lcao/install/bin/abacus）：
+  9 passed, 1352 deselected in 135.50s
+LTS 轨（ABACUS_FORGE_ABACUS_EXECUTABLE=…/abacus-LTS/build-mpi-lcao/install/bin/abacus）：
+  1 failed, 8 passed, 1352 deselected in 147.42s
+  （失败项：test_typed_relax_machine_execute_and_collect，见下）
+```
+
+两条版本兼容发现（属于 ABACUS 版本行为差异，构成 v1.3 版本策略 SPEC 的
+必要输入；不是本次修正的 Forge 缺陷）：
+
+1. **develop 重命名 LCAO 稀疏矩阵输出**：v3.11.0-beta8+56 将
+   `data-HR-sparse_SPIN*.csr`/`data-SR-sparse_SPIN0.csr`/`data-rR-sparse.csr`
+   改名为 `hrs1_nao.csr`/`sr_nao.csr`/`rr.csr`。LTS 轨矩阵门禁以旧名通过，
+   develop 轨以新名通过；typed `pyatb-band` handoff 当前只消费旧名契约，
+   develop 可执行文件生成的矩阵需要显式改名或 handoff 扩展才能进入该链路。
+2. **LTS v3.10.1 relax 不写 `STRU_FINAL`**：cell-relax 收敛后只写
+   `STRU_ION_D`/`STRU_NOW.cif`，typed relax collection 因 final-structure
+   fact 缺失返回 `partial`（collector 行为正确；develop 轨同输入
+   `1 passed`）。LTS 轨 `test_typed_relax_machine_execute_and_collect`
+   失败即此发现，不作为 Forge 回归处理；是否扩展 final-structure 候选
+   （如 `STRU_NOW.cif`）属于版本策略决策，须独立 SPEC。
+
+离线回归基线更新：`1346 passed, 15 skipped in 147.36s`（无外部输入时
+real-smoke 选择为 `9 skipped`）。以上仍只证明进程调用、workspace containment、
+原生 parser facts、audit event 与 artifact 引用，不构成科学正确性、NEB 真实
+执行或 capability maturity 晋升依据。
+
+## 6. 发布判断与未决条件
 
 - 所有九个 typed capability 继续为 `experimental`；property packs 也继续为
   `experimental`。
@@ -255,9 +323,11 @@ in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unprov
   postprocess/export、事实型观察和 artifact 引用。
 - 科学验证与接受判断、跨 operation 编排、重试/续算、资源选择、平台/调度和
   Paimon v3 thin adapter 均在 Forge 外部。
-- 当前 clean package、离线契约、architecture、benchmark，以及 ABACUS/ATST/PyATB
-  real-process smoke 已形成候选证据；真实 NEB workflow 和上层 Paimon v1.2 全链路
-  parity 尚未齐全。
+- 当前 clean package、离线契约、architecture、benchmark，以及
+  ABACUS（develop/LTS 双版本、PW/LCAO 双基组）/ATST/PyATB real-process smoke
+  已形成候选证据；真实 NEB workflow、上层 Paimon v1.2 全链路 parity、LTS
+  relax final-structure 兼容决策和 develop 矩阵命名对 `pyatb-band` handoff
+  的影响尚未闭环。
 - 因此本记录不能宣称 Stage 5“证据齐全”，不能把 capability 改为 `stable`，也
   不能宣称 Forge 已是 Paimon v1.3 stable backend。后续由外部上层提供真实输入、
   benchmark harness 和独立发布决定。

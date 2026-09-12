@@ -12,7 +12,7 @@ not implementation ownership:
 | `pyatb` | PyATB mapping and collection | required when PyATB bridge is enabled |
 | `composite` | local composite pack wiring | deterministic regression, not physics proof |
 | `experimental` | mock/fixture-only property packs | non-stable evidence |
-| `real_smoke` | four supplied ABACUS workspace smokes plus the external ATST process smoke | opt-in release evidence |
+| `real_smoke` | seven supplied ABACUS workspace smokes (PW + LCAO) plus the external PyATB and ATST process smokes | opt-in release evidence |
 | `benchmark` | normalized migration projections | opt-in migration evidence |
 
 Commands:
