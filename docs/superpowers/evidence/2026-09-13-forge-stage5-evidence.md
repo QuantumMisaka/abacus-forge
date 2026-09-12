@@ -121,7 +121,7 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 
 ## 4. Real-process evidence
 
-在当前环境未提供真实 ABACUS executable 或 prepared workspace。精确选择命令为：
+先保留未配置外部输入时的精确 skip 基线：
 
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
@@ -129,12 +129,70 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 5 skipped, 1352 deselected in 2.40s (without external smoke inputs)
 ```
 
-该结果是 `unproven`，不是 pass，也不是科学或稳定性证据。现有
-`tests/real_smoke/test_abacus_smoke.py` 已分别覆盖 typed SCF、Relax/cell-relax
-和 MD 的 machine-CLI execute/collect；待外部提供无历史 generated output 的
-workspace 与 executable 后再运行。`normal_end` 仅作为独立日志 observation，
-不会被转换为 scientific status。当前归因规则只接受前缀未变的新增后缀 marker；
-旧 marker 在截断、同尺寸改写或前缀改写中一律视为歧义并省略。
+随后在隔离 `/tmp` 构建目录编译了 ABACUS `abacus-develop` 当前提交
+`94576a80169de36e02e637edc2a0963fba9e1838` 的串行 PW 可执行文件
+`abacus_pw_ser`。配置为 `ENABLE_MPI=OFF`、`ENABLE_LCAO=OFF`、
+`ENABLE_OPENMP=OFF`、`USE_CUDA=OFF`，使用隔离依赖目录中的 OpenBLAS、LAPACK
+和 FFTW3；可执行文件 sha256 为
+`90c570c31c126d893d56c9679f9780e837d7619fc37972d04fcf01fbea88146c`。
+ABACUS 本身对 Si/PBE SCF、cell-relax 和 NVE MD 输入均返回零退出码并生成
+对应原生输出。
+
+构建复现命令（`build_dir` 与 `deps_dir` 可替换为任意内容等价的临时路径）为：
+
+```bash
+build_dir=$(mktemp -d /tmp/abacus-forge-real-XXXXXX)
+deps_dir=/tmp/abacus-forge-build-deps  # OpenBLAS 0.3.34 pthreads + FFTW3 3.3.11 nompi
+cmake -S /home/james/work/sidereus/workplace/abacus-develop -B "$build_dir" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$build_dir/install" \
+  -DENABLE_MPI=OFF -DENABLE_LCAO=OFF -DENABLE_ELPA=OFF \
+  -DENABLE_PEXSI=OFF -DENABLE_OPENMP=OFF -DUSE_CUDA=OFF \
+  -DBUILD_TESTING=OFF -DLAPACK_DIR="$deps_dir/lib" -DFFTW3_DIR="$deps_dir"
+cmake --build "$build_dir" -j2
+```
+
+本次工具链为 CMake 3.28.3、GNU C++ 13.3.0；依赖版本来自 conda-forge
+linux-64（`openblas=0.3.34`, `fftw=3.3.11`）。
+
+为避免把旧输出当作新证据，三个 Forge smoke source 都只包含输入和伪势，
+并使用 `suffix=ABACUS`：
+`/tmp/abacus-forge-scf-source-29xKKl`、
+`/tmp/abacus-forge-cell-relax-source-hTlmlT`、
+`/tmp/abacus-forge-md-clean-MpZSVu`。精确的组合选择命令为：
+
+三个 source 均由工作区 `paimon@5b5088160ff2e023aecf597c4e04586b5d35ed1a`
+中的 `deps/aiida-abacus/tests/test_data/pw_Si2/{INPUT,STRU,KPT}` 与
+`deps/aiida-abacus/tests/test_data/pseudos/Si.upf` 复制后生成；只修改了
+`INPUT` 的 calculation/profile 行（SCF、cell-relax 或 NVE MD），不复制任何
+原有 `OUT.*`。为让 `/tmp` 实例可核对，最终 source 文件 sha256 如下；复跑时
+路径可以不同，但应与这些 hash 相同：
+
+| source | `INPUT` | `STRU` | `KPT` | `Si.upf` |
+| --- | --- | --- | --- | --- |
+| SCF | `c874a7c8a3a8deca660e4cfcd1830309f88f7a1feee54bb72d40179c963a7bc0` | `6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e` | `d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7` | `39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282` |
+| cell-relax | `5227d39ce0f5e6472e9022e299c2c6261a0734c8c8a5a16145edcdfa702a1293` | 同上 | 同上 | 同上 |
+| MD | `2530be486fb1f5f8b23e921674a0bd2191a36b3aaa61382b3b588db926a2ca49` | 同上 | 同上 | 同上 |
+
+```bash
+ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/tmp/abacus-forge-scf-source-29xKKl \
+ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/tmp/abacus-forge-cell-relax-source-hTlmlT \
+ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=cell-relax \
+ABACUS_FORGE_MD_SMOKE_WORKSPACE=/tmp/abacus-forge-md-clean-MpZSVu \
+ABACUS_FORGE_ABACUS_EXECUTABLE=/tmp/abacus-forge-real-CpBJCH/abacus_pw_ser \
+ABACUS_FORGE_ATST_EXECUTABLE=/home/james/apps/miniforge3/envs/atst-dev/bin/atst \
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q \
+  -p no:cacheprovider --run-real-smoke -m real_smoke tests/real_smoke
+5 passed in 51.30s
+```
+
+这五项包括 legacy/typed SCF、typed cell-relax、typed MD 和 ATST process smoke；
+它们证明的是 Forge 的进程调用、workspace containment、原生 parser facts、
+audit event 和 artifact refs。它们不构成科学验证、收敛判断、NEB 真实执行或
+稳定能力晋升。`normal_end` 仍只是独立日志 observation，不会被转换为
+scientific status；当前归因规则只接受前缀未变的新增后缀 marker，旧 marker 在
+截断、同尺寸改写或前缀改写中一律视为歧义并省略。
 
 `atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`。在
 `atst-dev` 环境用 `/home/james/apps/miniforge3/envs/atst-dev/bin/atst` 运行
@@ -152,8 +210,9 @@ in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unprov
   postprocess/export、事实型观察和 artifact 引用。
 - 科学验证与接受判断、跨 operation 编排、重试/续算、资源选择、平台/调度和
   Paimon v3 thin adapter 均在 Forge 外部。
-- 当前 clean package、离线契约、architecture 和 benchmark 门禁已形成候选证据；
-  real ABACUS/PyATB/ATST workspace 与上层 Paimon v1.2 全链路 parity 尚未齐全。
+- 当前 clean package、离线契约、architecture、benchmark，以及 ABACUS/ATST
+  real-process smoke 已形成候选证据；PyATB real process、真实 NEB workflow 和
+  上层 Paimon v1.2 全链路 parity 尚未齐全。
 - 因此本记录不能宣称 Stage 5“证据齐全”，不能把 capability 改为 `stable`，也
   不能宣称 Forge 已是 Paimon v1.3 stable backend。后续由外部上层提供真实输入、
   benchmark harness 和独立发布决定。

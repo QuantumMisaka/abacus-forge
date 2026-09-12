@@ -24,7 +24,10 @@
 - typed `prepare`/`modify`/`execute`/`collect`，独立 `postprocess`/`export`，PyATB 与可选 atst-tools 边界已实现并保持 `experimental`；PBE 是默认输入策略。
 - normal-end observation 已独立于 execution/collection status，并有日志来源、artifact 和 API/CLI/legacy 边界回归；最终归因加固后的 owning gate 为 `306 passed`，全量离线 gate 为 `1346 passed, 11 skipped`。
 - architecture/contracts/workspace gate 为 `344 passed`；benchmark opt-in 为 `6 passed`；未配置外部输入时 real-smoke 选择为 `5 skipped`（其中包含独立的 ATST 进程 smoke）。
-- 候选分支已有 serial-PW ABACUS、PyATB 和 atst-tools 的历史/局部兼容记录；这些记录证明的是进程、解析和 artifact 事实，不是科学正确性或稳定 maturity。
+- 候选分支已有 serial-PW ABACUS、PyATB 和 atst-tools 的兼容记录；本轮已在
+  隔离 `/tmp` 环境补齐 ABACUS serial-PW 的 SCF、cell-relax、MD 以及 ATST
+  process smoke。所有这些记录证明的是进程、解析和 artifact 事实，不是科学正确性或
+  stable maturity。
 - 既有 integration plan 记录过 clean wheel/fresh-venv 与 legacy runtime absence 证据；Stage 5 必须在最终候选提交上重新确认或明确其提交范围，不能仅引用不相容的旧代码状态。
 
 ## Gates and tasks
@@ -59,15 +62,17 @@ hash and import/process output in the unified evidence record.
 
 ### Task 3: Run opt-in real process smoke gates
 
-**Status:** partial/unproven: the ATST process smoke passes with the explicitly supplied
-2.2.4 executable, while ABACUS/PyATB real execution workspaces remain unavailable.
+**Status:** partial/unproven: the isolated ABACUS serial-PW SCF/cell-relax/MD and ATST
+process smoke now pass; PyATB real execution and a real NEB workflow remain unproven.
 
 **Files:** `tests/real_smoke/` and `docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md`。
 **Behavior:** 以 machine CLI 为主，使用人类提供的、无历史 generated output 的 prepared workspace，验证 Forge operation 的 process invocation、workspace containment、native parser facts、event 和 artifact refs。API parity 不在 real-smoke 中另造一条运行面，由离线 owning tests 覆盖。没有输入时精确 skip；输入无效时 fail。
 **Dependencies:** Task 2；ABACUS executable and prepared workspaces supplied outside Forge. PyATB/ATST executable evidence is separately opt-in.
 **Verification:** SCF、Relax/cell-relax、MD、必要的 PyATB/ATST machine-CLI smoke commands with exact pass/skip output；API/CLI 等价性引用离线 owning tests。`normal_end` 只作为日志 observation 检查，不转换为 scientific status。
 
-- [x] 按能力分别运行现有 real-smoke 选择；当前无外部输入时记录为 `unproven`，不把一次 serial-PW run 当作物理正确性、收敛性或 capability promotion。
+- [x] 按能力分别运行现有 real-smoke 选择；未配置外部输入时精确记录为 `5 skipped`，
+  配置隔离 serial-PW ABACUS 与 ATST 后为 `5 passed in 51.30s`；不把该结果当作
+  物理正确性、收敛性或 capability promotion。
 - [x] 对 atst-tools 使用已确认版本（当前外部仓库记录为 2.2.4）运行 `tests/real_smoke/test_atst_smoke.py`，覆盖 `neb make`、`run --dry-run`、`neb summary/post` 的 machine-process envelope、状态和 artifact containment；不启动 ABACUS/Slurm，不把 atst 的 NEB 编排复制到 Forge。真实 NEB workflow 仍为 `unproven`。
 - [x] 未提供 `ABACUS_FORGE_ATST_EXECUTABLE` 时精确 skip；提供 atst 2.2.4 executable 时为 `1 passed`（精确耗时见统一证据记录），不将该结果写成真实 NEB 或科学证据。
 - [x] 对 generated-output freshness、symlink/path containment、stdout/stderr 和 artifact provenance 保留失败证据。
@@ -98,7 +103,9 @@ merge, push, or maturity promotion.
 
 - [x] 明确 Forge 合并与发布是独立决定；本计划不自动 merge/push。
 - [x] 若需要 Paimon v3，另建独立 adapter/repository，消费 Forge facts 并拥有 ATP、资源/平台、编排、科学标准和 v1.2 parity；不得在 Forge 追加厚适配层。
-- [x] 将缺失的真实 ABACUS/PyATB/ATST workspace、上层 Agent benchmark 或 clean-env 证据列为 `unproven`，而不是以 skip 充数。
+- [x] 将仍缺失的真实 PyATB/NEB workflow、上层 Agent benchmark 或相关外部引擎
+  clean-env 证据列为 `unproven`，而不是以 skip 充数；Forge 自身 clean package gate
+  已完成，取得的 ABACUS/ATST process evidence 绑定在统一 evidence record 中。
 
 ## Non-goals and boundary rulings
 
