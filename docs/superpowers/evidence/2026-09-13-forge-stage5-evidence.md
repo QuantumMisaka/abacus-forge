@@ -3,9 +3,9 @@
 **状态：** provisional / candidate evidence；不构成稳定能力或 Paimon v1.3
 backend 发布决定。
 
-**代码候选提交：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
-及其回归测试）。Stage 5 ATST smoke harness follow-ups：`c11fc6e`、`7458110`；这些提交仅
-增加测试/门禁文档，不改变生产代码候选。
+**代码候选提交：** `e32fda1`（包含生产代码归因修复、回归测试，以及已复审的
+ATST adapter 死状态清理；后者不改变行为或公共契约）。Stage 5 ATST smoke harness
+follow-ups：`c11fc6e`、`7458110`；这些提交仅增加测试/门禁文档，不改变生产代码候选。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
 `5806d1c`、`5930607`、`939f666` 及当前文档校正均不改变候选代码。
@@ -42,16 +42,16 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1346 passed, 11 skipped in 104.24s (0:01:44)
+1346 passed, 11 skipped in 103.32s (0:01:43)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
   tests/test_architecture.py tests/test_contracts.py tests/test_workspace.py
-344 passed in 10.14s
+344 passed in 8.20s
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-benchmark -m benchmark
-6 passed, 1351 deselected in 3.31s
+6 passed, 1351 deselected in 3.64s
 
 git diff --check
 passed (no output)
@@ -137,7 +137,7 @@ workspace 与 executable 后再运行。`normal_end` 仅作为独立日志 obser
 
 `atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`。在
 `atst-dev` 环境用 `/home/james/apps/miniforge3/envs/atst-dev/bin/atst` 运行
-`tests/real_smoke/test_atst_smoke.py` 的结果为 `1 passed in 16.59s`；该门禁只
+`tests/real_smoke/test_atst_smoke.py` 的结果为 `1 passed in 15.14s`；该门禁只
 覆盖 `neb make`、`run --dry-run`、`neb summary/post` 的进程/API 与 Forge 产物
 containment，不启动 ABACUS。没有提供 ATST executable 时，精确选择为 `1 skipped
 in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unproven`。Forge
