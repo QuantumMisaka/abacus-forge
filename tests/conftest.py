@@ -91,7 +91,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         relative_parts = Path(str(item.fspath)).parts
         if "real_smoke" in relative_parts:
             if not config.getoption("--run-real-smoke"):
-                item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real ABACUS smoke tests"))
+                item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real process smoke tests"))
             else:
                 required_env = _REAL_SMOKE_ENV_BY_TEST.get(
                     item.name,
