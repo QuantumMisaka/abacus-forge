@@ -3,9 +3,10 @@
 **状态：** provisional / candidate evidence；不构成稳定能力或 Paimon v1.3
 backend 发布决定。
 
-**代码候选提交：** `e32fda1`（包含生产代码归因修复、回归测试，以及已复审的
-ATST adapter 死状态清理；后者不改变行为或公共契约）。Stage 5 ATST smoke harness
-follow-ups：`c11fc6e`、`7458110`；这些提交仅增加测试/门禁文档，不改变生产代码候选。
+**代码候选提交：** `7b8d4c9`（包含生产代码归因修复、回归测试、已复审的
+ATST adapter 死状态清理，以及 typed PyATB real-process smoke harness；后两项不改变
+既有业务契约）。Stage 5 ATST smoke harness follow-ups：`c11fc6e`、`7458110`；这些提交
+仅增加测试/门禁文档，不改变生产代码候选。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
 `5806d1c`、`5930607`、`939f666` 及后续文档校正均不改变候选代码；`e32fda1` 是之后
@@ -43,7 +44,7 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1346 passed, 11 skipped in 103.32s (0:01:43)
+1346 passed, 12 skipped in 118.96s (0:01:58)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
@@ -126,7 +127,7 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
-5 skipped, 1352 deselected in 2.40s (without external smoke inputs)
+6 skipped, 1352 deselected in 2.14s (without external smoke inputs)
 ```
 
 随后在隔离 `/tmp` 构建目录编译了 ABACUS `abacus-develop` 当前提交
@@ -181,18 +182,62 @@ ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=cell-relax \
 ABACUS_FORGE_MD_SMOKE_WORKSPACE=/tmp/abacus-forge-md-clean-MpZSVu \
 ABACUS_FORGE_ABACUS_EXECUTABLE=/tmp/abacus-forge-real-CpBJCH/abacus_pw_ser \
 ABACUS_FORGE_ATST_EXECUTABLE=/home/james/apps/miniforge3/envs/atst-dev/bin/atst \
+ABACUS_FORGE_PYATB_SMOKE_WORKSPACE=/tmp/abacus-forge-pyatb-clean-titgjN \
+ABACUS_FORGE_PYATB_EXECUTABLE=/home/james/apps/miniforge3/envs/abacus-env/bin/pyatb \
+ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY=15.5241312077 \
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   /home/james/apps/miniforge3/envs/paimon/bin/python -m pytest -q \
-  -p no:cacheprovider --run-real-smoke -m real_smoke tests/real_smoke
-5 passed in 51.30s
+  -p no:cacheprovider --run-real-smoke -m real_smoke
+6 passed, 1352 deselected in 54.69s
 ```
 
-这五项包括 legacy/typed SCF、typed cell-relax、typed MD 和 ATST process smoke；
-它们证明的是 Forge 的进程调用、workspace containment、原生 parser facts、
+这六项包括 legacy/typed SCF、typed cell-relax、typed MD、typed PyATB band 和 ATST
+process smoke；它们证明的是 Forge 的进程调用、workspace containment、原生 parser facts、
 audit event 和 artifact refs。它们不构成科学验证、收敛判断、NEB 真实执行或
 稳定能力晋升。`normal_end` 仍只是独立日志 observation，不会被转换为
 scientific status；当前归因规则只接受前缀未变的新增后缀 marker，旧 marker 在
 截断、同尺寸改写或前缀改写中一律视为歧义并省略。
+
+### Typed PyATB band process detail
+
+PyATB 真实进程 gate 绑定外部仓库 `pyatb@80f7c2d89aaa8a736e4145f67a6e1d30c783be2d`
+（工作区 `pyatb`，clean）和 `pyatb` 1.1.2 executable
+`/home/james/apps/miniforge3/envs/abacus-env/bin/pyatb`；运行环境为 Python
+3.12.13，executable sha256 为
+`6ef9dc93d784bffdb3e0340c2a2523f032b9636a61bac46b22d869d0706c8944`。调用方提供的
+source 是已结项 Paimon v1.2 工作区 `paimon@5b5088160ff2e023aecf597c4e04586b5d35ed1a`
+下历史 `deps/abacus-forge/runs/05101055.property_calculation_scf.0218/STRU` 与
+`OUT.ABACUS/{data-HR-sparse_SPIN0.csr,data-HR-sparse_SPIN1.csr,data-SR-sparse_SPIN0.csr,data-rR-sparse.csr}`；
+测试只复制这五个 source 文件到临时 Forge workspace，首次执行前确认没有
+`inputs/Out/Band_Structure` 生成物。它们的 sha256 如下（临时路径可变）：
+
+| source file | sha256 |
+| --- | --- |
+| `source/STRU` | `d837d5654265c5f69bb8d393a0cd8d16f83d1eeb775b3aa9f43c8e68f6341490` |
+| `source/data-HR-sparse_SPIN0.csr` | `78c473660cdef68588bb5933823e71c8ca1a3e3dafbf33b3ae1c5c4111f2052a` |
+| `source/data-HR-sparse_SPIN1.csr` | `369241953db0501ff5a3d4179167d48cf4cf774b1a7838e32f17ab104ad895fd` |
+| `source/data-SR-sparse_SPIN0.csr` | `69bd7000192312b3de95f3b6f91f8c309a4b07017dd48818575b487aa8a04a31` |
+| `source/data-rR-sparse.csr` | `7439a8d613835ac2143a20abf6a693f2b3c51daf639935db425a82584c56573e` |
+
+测试命令使用 `ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY=15.5241312077`、nspin=2、
+line-mode 十个高对称点、`line_segments=5`、`max_kpoint_num=4000` 和
+`handoff_mode=copy`，执行以下三个独立 operation：
+
+```text
+prepare  -> inputs/Input + inputs/KPT_band + copied source artifacts
+execute  -> one local pyatb process, returncode=0, execution=completed
+collect  -> band_info.dat + band_up.dat + band_dn.dat + band.pdf, collection=complete
+```
+
+本次 `collect` 返回一个有限的 parser `band_gap=0.0097`（eV）metric；结果与三个
+operation event 中的 artifact refs、workspace containment 和 `scientific=unassessed`
+一致。生成的核心输出 hash 为：`band_info.dat`
+`7010b0119352d4368bbd831875dcf3695976ab98d4723b81d254293a8c18c0ef`、
+`band_up.dat` `d8968d9cd34decb2a03e281a3a015a430bd23ca0729390c6225fa7163924c782`、
+`band_dn.dat` `0b2130388e299f02653e05ad3bd35add85c0ae188d3a618860802ab28e82ae31`、
+`band.pdf` `ace9872da79ea89be2b35bdeaa8ab3e6a4069d27baacb6b57afbbf8161c1a08c`。这证明
+的是 typed handoff、进程、parser 和 artifact/audit 兼容性；不证明 PyATB property
+计算、物理带隙正确性、NEB workflow 或稳定 maturity。
 
 `atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`。在
 `atst-dev` 环境用 `/home/james/apps/miniforge3/envs/atst-dev/bin/atst` 运行
@@ -210,9 +255,9 @@ in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unprov
   postprocess/export、事实型观察和 artifact 引用。
 - 科学验证与接受判断、跨 operation 编排、重试/续算、资源选择、平台/调度和
   Paimon v3 thin adapter 均在 Forge 外部。
-- 当前 clean package、离线契约、architecture、benchmark，以及 ABACUS/ATST
-  real-process smoke 已形成候选证据；PyATB real process、真实 NEB workflow 和
-  上层 Paimon v1.2 全链路 parity 尚未齐全。
+- 当前 clean package、离线契约、architecture、benchmark，以及 ABACUS/ATST/PyATB
+  real-process smoke 已形成候选证据；真实 NEB workflow 和上层 Paimon v1.2 全链路
+  parity 尚未齐全。
 - 因此本记录不能宣称 Stage 5“证据齐全”，不能把 capability 改为 `stable`，也
   不能宣称 Forge 已是 Paimon v1.3 stable backend。后续由外部上层提供真实输入、
   benchmark harness 和独立发布决定。

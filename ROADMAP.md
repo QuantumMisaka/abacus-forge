@@ -9,7 +9,7 @@
 - Stage 4 typed MD 基础操作已实现：`md` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；另有独立的 typed `postprocess` operation（见下文）；`md` 保持 `experimental` maturity，默认 profile 为 PBE/NVE，专属控制项继续位于 `parameters` map。
 - 2026-09-12 已为 typed `scf`、`relax`、`cell-relax` 和 `md` 收紧 calculation-profile 一致性：prepare/modify/已有 INPUT 的 execute/collect 现在按能力名校验，冲突请求在 admission 前返回 `request.schema`，外部 output-only collect 例外保留；`ForgeServices` 兼容 facade 及 legacy API/CLI 行为不变。该校验只表达输入/过程前置条件，不承担科学判断或任务编排，所有 capability 仍为 `experimental`。
 - 2026-09-12 typed execute 已保留独立的 `normal_end` 观察：仅从本次 stdout 或新建/实际内容变化的 contained `running_*.log` 归因，记录 workspace-relative source；旧日志、touch-only 或歧义来源不报告，且不改变 execution/scientific 状态。该事实已通过 API/CLI parity、边界回归和全量离线门禁，所有 capability 仍为 `experimental`。
-- 2026-09-13 Stage 5 候选证据已绑定当前代码/测试提交，离线门禁为 `1346 passed, 11 skipped`，clean wheel、架构、benchmark，以及隔离 serial-PW ABACUS 的 SCF/cell-relax/MD 与 ATST 2.2.4 process smoke（组合 `5 passed in 51.30s`）均归档于 [证据记录](docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md)；PyATB real process、完整 ATST NEB workflow 与 Paimon v1.2 全链路 parity 仍为 `unproven`，不晋升 stable。
+- 2026-09-13 Stage 5 候选证据已绑定当前代码/测试提交，离线门禁为 `1346 passed, 12 skipped`，clean wheel、架构、benchmark，以及隔离 serial-PW ABACUS 的 SCF/cell-relax/MD、PyATB band 和 ATST 2.2.4 process smoke（组合 `6 passed, 1352 deselected in 54.69s`）均归档于 [证据记录](docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md)；完整 ATST NEB workflow 与 Paimon v1.2 全链路 parity 仍为 `unproven`，不晋升 stable。
 - 已形成 `prepare -> modify -> execute -> collect -> export` 的最小执行闭环，`run` 作为兼容别名保留。
 - 输入三件套 `INPUT / STRU / KPT` 已具备 Python API，并逐步补齐 CLI 闭环。
 - `collect` 已覆盖基础能量、费米能级、带隙、力、应力、压力、virial、relax 结果与关键工件索引。
@@ -47,7 +47,7 @@
 - 将 `test/sai-nio-forge` 中验证过的 Slurm harness 继续保持在 Forge 外层；Forge 本体只吸收由 trace 暴露出的格式、artifact、diagnostics 补强。
 - 继续维护首批 relax/cell-relax 的 prepare、modify、execute、collect；正常结束、电子/离子收敛和解析完整性分别作为观察返回，执行与收集状态沿用冻结契约。
 - typed MD 当前交付单工作目录的准备、修改、一次本地执行、原生日志/`MD_dump` 事实收集以及独立 `postprocess`；`running_md.log` 的热力学事实与 `MD_dump` 的帧/步数事实分开投影，legacy synthetic dump 解析保持兼容。MD 后处理仍不负责 trajectory conversion、PDB/TUI、monitor、restart/resume、workflow 编排、调度、导出或科学判断；这些边界保持在 Forge 外。后续批次仍包括 PyATB properties 和更多 property-pack 的真实 smoke。
-- 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；nspin=4 handoff 已沿用 `matrix_hr/shared` 映射，PyATB properties、property/composite 聚合和 real-smoke 继续 deferred。
+- 2026-09-10 已落地 experimental `forge.pyatb-manifest/v1`：typed PyATB prepare/collect 提供有限 kind/spin、同 envelope artifact id、哈希/大小与 missing/unavailable/malformed 事实；nspin=4 handoff 已沿用 `matrix_hr/shared` 映射。2026-09-13 已补齐 typed PyATB band 的真实 machine-process smoke；PyATB properties 和 property/composite 聚合继续 deferred。
 - 继续固化 SCF->NSCF artifact handoff 规则，扩展到其他 property family 时仍需独立设计和验证。
 - 当前 manifest 已覆盖 nspin=1/2/4 的 HR：nspin=1/4 为 `shared`，nspin=2 按请求顺序为 `up/down`，SR 为 `shared`，供给的 rR 为 `shared`；未供给 rR 时不创建 `matrix_rr` entry。后续若扩展到 PyATB properties、更多布局或真实运行门禁，须在独立 SPEC/PLAN 中增加映射与验证；当前 manifest 不推断这些额外语义。
 - 将 property pack 的 mock/fixture 覆盖推进到真实 ABACUS smoke：当前已完成 `convergence`、`spin-density`、`workfunc`、`charge-diff` 的本地 serial-PW 兼容性 smoke；`vacancy` 可继续做独立事实门禁，`bec` 需先完成独立 SPEC/PLAN，不把隐式 SCF→NSCF 编排下沉到 Forge。
@@ -56,7 +56,7 @@
 - 2026-09-09 已通过 Forge wheel 在全新 Python 3.13 venv 中的安装/import/console-entry-point 检查，且未安装或导入 `abacus-agent-tools`、`abacustest`、AiiDA 或 `atst-tools`；这只覆盖 Forge 自身的 clean package gate，不替代 ATST 进程隔离与真实 NEB workflow 门禁。
 - 2026-09-10 已落地实验性的 `forge.property-manifest/v1` legacy diagnostics projection：`charge-density`、`spin-density` 和 `charge-diff` post 记录明确选中的 cube source、派生 cube、metrics report 以及 missing/escaped/unavailable 事实；artifact id、哈希和大小复用同一结果的 artifact projection。该增量不新增 typed property capability，不做目录扫描、科学验收、workflow 编排或调度。
 - cube family 的 potential/ELF/Bader 输出、更多 property 语义、跨 operation 聚合和真实运行证据仍须各自独立 SPEC/PLAN，不从当前 manifest 推断。
-- 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录；2026-09-11 已在隔离临时 workspace 用当前可用的 serial PyATB 完成 HR/SR-only Bands 输入兼容性运行（exit 0，产出 `band_info.dat`、`band_up.dat`、`band_dn.dat`、`band.pdf`），这只证明输入/进程兼容性，不构成科学验证或稳定晋级证据；typed `pyatb-band` 继续保持 experimental。
+- 在独立仓内重建可复现的真实 ABACUS/PyATB smoke 证据，不依赖已结项 PAIMON 的外部 trace 目录；2026-09-13 已将 Paimon v1.2 历史 HR/SR/rR/STRU source 绑定到 typed machine-process harness，在隔离临时 workspace 完成 `prepare -> execute -> collect`（PyATB 1.1.2，exit 0，产出 `band_info.dat`、`band_up.dat`、`band_dn.dat`、`band.pdf`），这只证明输入/进程兼容性，不构成科学验证或稳定晋级证据；typed `pyatb-band` 继续保持 experimental。
 
 ## 中期方向
 - 进一步补齐更多 ABACUS 输出指标解析。
@@ -73,7 +73,7 @@
 - `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
 - typed `export` 已作为独立实验性 operation 落地；本 capability 不把 postprocess 结果隐式导出，也不改写 legacy export。replace/merge、binary/archive 和多 operation 聚合仍需单独设计和验证。
-- PyATB properties 和 property/composite 聚合仍需单独设计和验证；nspin=4 handoff 已支持，但现有 PyATB sequence/helper 不构成 typed `pyatb-band` capability 的替代实现或真实运行证据。
+- PyATB properties 和 property/composite 聚合仍需单独设计和验证；nspin=4 handoff 已支持，typed `pyatb-band` band process smoke 已有证据，但现有 PyATB sequence/helper 不构成该 capability 的替代实现，真实 NEB workflow 也仍未验证。
 - workflow/orchestration、monitor、重试/恢复和科学判断由 Forge 外部的调用方负责；typed postprocess 只返回 parser facts，不生成 band gap/acceptance 等科学结论。
 - atst-tools 只作为可选 NEB engine adapter：其图像/链路编排与执行语义由 atst-tools 负责，Forge 不把它变成核心依赖，也不承接 Slurm/站点启动或上层编排。
 - 不在 Forge core 中引入平台化 UI 或任务管理逻辑；本地 TUI 若实现，只作为 Python API/结构化 CLI envelope 之上的可选薄壳。

@@ -289,8 +289,11 @@ experimental，不进入 Paimon v1.3 稳定面；顺序、重试、artifact hand
 `missing` 记录缺失、越界或不可读取的位置。manifest 使用同一结果中的 artifact id、
 SHA-256 和大小；ABACUS 默认的 `inputs/OUT.<suffix>/` 只作为没有实际文件时的
 canonical expected path，兼容 glob 找到的变体仍保留实际相对路径。该索引不新增 typed
-property capability，不做科学验收、workflow 编排、重试或调度；其他 property pack、
-PyATB properties 和真实 ABACUS smoke 仍保持实验性/独立推进。
+property capability，不做科学验收、workflow 编排、重试或调度；其他 property pack 和
+PyATB properties 仍保持实验性/独立推进。typed PyATB band 的真实进程 smoke 只证明
+输入、进程、parser 与 artifact/audit 兼容性，证据与边界见
+[`tests/real_smoke/README.md`](tests/real_smoke/README.md) 和
+[`Stage 5 evidence`](docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md)。
 
 最小 manifest 形态如下（具体 entry 会带同一结果的 artifact 事实）：
 
@@ -983,7 +986,7 @@ runs/<run_id>/
       <operation-id>.json
 ```
 
-`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess、typed `pyatb-band` handoff 与 typed export 已落地但仍为 `experimental`，其离线测试和 API/CLI parity 不等同于真实 ABACUS 科学结果或稳定发布保证；binary/archive、replace/merge、多 operation 聚合、PyATB properties、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍需独立设计或验证。
+`reports/forge-workspace.json` 保存 workspace 相对位置和按发生顺序追加的事件索引；每个 typed operation 事件文件保存事件 ID、操作名和 `forge.operation-outcome/v1` payload，其中嵌入未改变的 `forge.result/v1` envelope。事件记录用于审计和跨操作发现，事件索引中的 `path_rel` 可在 workspace 根目录下解析并应保持有效。已有的根目录 `meta.json` 以及 unit/结果 API 产生的 `forge-unit.json`、`forge-result.json` 仍是兼容输出。typed band/DOS postprocess、typed `pyatb-band` handoff 与 typed export 已落地但仍为 `experimental`，其离线测试、API/CLI parity 和 PyATB band process smoke 不等同于真实 ABACUS/PyATB 科学结果或稳定发布保证；binary/archive、replace/merge、多 operation 聚合、PyATB properties、property/composite 聚合和其它 capability-specific 真实操作/解析验收仍需独立设计或验证。
 
 事件文件是不可变审计事实；manifest 是可重建的发现索引。若事件文件已原子写入而 manifest 更新在崩溃中未完成，下一次带 workspace 锁的 manifest 初始化或追加会扫描并确定性地补入有效未索引事件。该机制不声称跨事件文件与 manifest 的多文件原子性。typed export 只读取这些历史 event，不改变 source event。
 
@@ -992,7 +995,7 @@ runs/<run_id>/
 - 不内置云平台提交、追踪、下载能力
 - 不引入 AiiDA 语义或工作流编排语义到 Forge 核心
 - 对于 phonon / elastic 等厚工作流，其实现必须基于解耦的单元模块，且其输入/计算/输出必须可解耦
-- binary/archive 或 replace/merge 形式的 export、多 operation 聚合、PyATB properties、property/composite 聚合不在本批次；nspin=4 handoff 已支持，但其 property 计算与真实运行验证仍需独立推进
+- binary/archive 或 replace/merge 形式的 export、多 operation 聚合、PyATB properties、property/composite 聚合不在本批次；nspin=4 handoff 已支持，typed `pyatb-band` 的 band process smoke 已有证据，但 property 计算与真实 NEB workflow 仍需独立推进
 - 调度、workflow/orchestration、重试/恢复和科学判断由 Forge 外部的调用方负责
 
 ## 贡献

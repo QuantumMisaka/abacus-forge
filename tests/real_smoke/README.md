@@ -87,11 +87,48 @@ The gate checks parser facts only. It does not judge trajectory quality,
 physical temperature/energy correctness, convergence, scheduling, or workflow
 orchestration.
 
-The four ABACUS smoke tests and one ATST process smoke are evidence gates, not scientific validation. They prove
+The ABACUS, PyATB and ATST process smokes are evidence gates, not scientific validation. They prove
 only the selected Forge execution/collection integration and do not replace
 convergence studies, platform validation, workflow/scheduler checks, or the
 Paimon v1.2 benchmark. All capabilities remain experimental until their own
 real gates and the other Stage 4 release conditions are satisfied.
+
+The typed PyATB band process smoke is an additional opt-in gate. It consumes a
+caller-provided source directory with this layout and copies it into an isolated
+temporary Forge workspace before running:
+
+```text
+<workspace>/source/STRU
+<workspace>/source/data-HR-sparse_SPIN0.csr
+<workspace>/source/data-HR-sparse_SPIN1.csr
+<workspace>/source/data-SR-sparse_SPIN0.csr
+<workspace>/source/data-rR-sparse.csr       # optional for the request, present in this gate
+```
+
+The source must not already contain generated PyATB files below
+`inputs/Out/Band_Structure/` (for example `band_info.dat`, `band_up.dat`,
+`band_dn.dat`, `band.pdf`, or `band.png`). Set the executable and the explicit
+Fermi energy, then run:
+
+```bash
+export ABACUS_FORGE_PYATB_SMOKE_WORKSPACE=/absolute/path/to/pyatb-source-root
+export ABACUS_FORGE_PYATB_EXECUTABLE=/absolute/path/to/pyatb
+export ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY=15.5241312077
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_pyatb_smoke.py
+```
+
+The gate executes one typed `prepare`, one local PyATB process through typed
+`execute`, and one explicit `collect`. It checks the generated handoff, native
+band artifacts, parser-reported `band_gap`, operation events, artifact refs,
+workspace containment, and `scientific=unassessed`. The command selected by the
+execute operation is checked in the compatibility `forge-result.json`; the
+frozen result envelope is not widened for this smoke. The reported band gap is
+an observed parser metric, not a scientific acceptance decision. A missing
+workspace, executable, or Fermi energy skips only when unset; an invalid value
+fails the gate. This is process/parser/artifact compatibility evidence, not a
+PyATB property or NEB workflow result.
 
 The ATST-tools NEB process smoke is an additional opt-in gate. It uses the
 explicitly selected ATST 2.2.4 executable and does not start ABACUS:
