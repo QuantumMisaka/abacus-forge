@@ -330,6 +330,12 @@ def _normal_end_source(
                     append_marker = _stream_append_marker(resolved, previous[2], previous[5])
                     if append_marker is not None:
                         marker = append_marker
+                    elif previous[6]:
+                        # A prior marker plus a changed prefix is an
+                        # unresolvable rewrite, even when the new full file
+                        # still contains a marker.  Do not attribute it to
+                        # this invocation.
+                        marker = False
                 if previous is not None and stat.st_size <= previous[2] and previous[6] and marker:
                     marker = False
                 if marker:
