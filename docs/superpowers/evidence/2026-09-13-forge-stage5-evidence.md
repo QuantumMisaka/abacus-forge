@@ -41,7 +41,7 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1346 passed, 10 skipped in 112.66s (0:01:52)
+1347 passed, 11 skipped (full offline rerun after adding the ATST process smoke)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
@@ -124,7 +124,8 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
-4 skipped, 1352 deselected in 2.43s
+5 skipped, 1352 deselected (without external smoke inputs; the extra selected test is
+the ATST gate)
 ```
 
 该结果是 `unproven`，不是 pass，也不是科学或稳定性证据。现有
@@ -134,9 +135,13 @@ workspace 与 executable 后再运行。`normal_end` 仅作为独立日志 obser
 不会被转换为 scientific status。当前归因规则只接受前缀未变的新增后缀 marker；
 旧 marker 在截断、同尺寸改写或前缀改写中一律视为歧义并省略。
 
-`atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`；Forge 的本地
-adapter/process contract smoke 已有历史记录，但真实 NEB workflow、版本/API 锁定
-和环境隔离仍为 `unproven`。Forge 不启动 Slurm，也不复制 atst 的链路编排。
+`atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`。在
+`atst-dev` 环境用 `/home/james/apps/miniforge3/envs/atst-dev/bin/atst` 运行
+`tests/real_smoke/test_atst_smoke.py` 的结果为 `1 passed in 20.89s`；该门禁只
+覆盖 `neb make`、`run --dry-run`、`neb summary/post` 的进程/API 与 Forge 产物
+containment，不启动 ABACUS。没有提供 ATST executable 时，精确选择为 `1 skipped
+in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unproven`。Forge
+不启动 Slurm，也不复制 atst 的链路编排。
 
 ## 5. 发布判断与未决条件
 

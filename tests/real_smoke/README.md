@@ -92,3 +92,18 @@ only the selected Forge execution/collection integration and do not replace
 convergence studies, platform validation, workflow/scheduler checks, or the
 Paimon v1.2 benchmark. All capabilities remain experimental until their own
 real gates and the other Stage 4 release conditions are satisfied.
+
+The ATST-tools NEB process smoke is an additional opt-in gate. It uses the
+explicitly selected ATST 2.2.4 executable and does not start ABACUS:
+
+```bash
+export ABACUS_FORGE_ATST_EXECUTABLE=/absolute/path/to/atst
+conda run -n atst-dev env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_atst_smoke.py
+```
+
+This test runs `atst neb make`, `atst run --dry-run`, and `atst neb summary/post`
+through Forge's machine CLI, checking only process envelopes, status, contained
+summary/CIF artifacts, and audit containment. It is process/API compatibility
+evidence, not a real NEB execution, scientific validation, or maturity proof.

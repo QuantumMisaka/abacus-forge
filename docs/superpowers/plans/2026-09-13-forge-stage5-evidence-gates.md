@@ -59,8 +59,8 @@ hash and import/process output in the unified evidence record.
 
 ### Task 3: Run opt-in real process smoke gates
 
-**Status:** partial/unproven: the selection and freshness contracts are verified, but this
-environment has no supplied real executable/workspace.
+**Status:** partial/unproven: the ATST process smoke passes with the explicitly supplied
+2.2.4 executable, while ABACUS/PyATB real execution workspaces remain unavailable.
 
 **Files:** `tests/real_smoke/` and `docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md`。
 **Behavior:** 以 machine CLI 为主，使用人类提供的、无历史 generated output 的 prepared workspace，验证 Forge operation 的 process invocation、workspace containment、native parser facts、event 和 artifact refs。API parity 不在 real-smoke 中另造一条运行面，由离线 owning tests 覆盖。没有输入时精确 skip；输入无效时 fail。
@@ -68,7 +68,8 @@ environment has no supplied real executable/workspace.
 **Verification:** SCF、Relax/cell-relax、MD、必要的 PyATB/ATST machine-CLI smoke commands with exact pass/skip output；API/CLI 等价性引用离线 owning tests。`normal_end` 只作为日志 observation 检查，不转换为 scientific status。
 
 - [x] 按能力分别运行现有 real-smoke 选择；当前无外部输入时记录为 `unproven`，不把一次 serial-PW run 当作物理正确性、收敛性或 capability promotion。
-- [x] 对 atst-tools 使用已确认版本（当前外部仓库记录为 2.2.4）核对安装/API/process boundary smoke；不启动 Slurm，不把 atst 的 NEB 编排复制到 Forge。真实 NEB workflow 仍为 `unproven`。
+- [x] 对 atst-tools 使用已确认版本（当前外部仓库记录为 2.2.4）运行 `tests/real_smoke/test_atst_smoke.py`，覆盖 `neb make`、`run --dry-run`、`neb summary/post` 的 machine-process envelope、状态和 artifact containment；不启动 ABACUS/Slurm，不把 atst 的 NEB 编排复制到 Forge。真实 NEB workflow 仍为 `unproven`。
+- [x] 未提供 `ABACUS_FORGE_ATST_EXECUTABLE` 时精确 skip；提供 atst 2.2.4 executable 时记录 `1 passed in 20.89s`，不将该结果写成真实 NEB 或科学证据。
 - [x] 对 generated-output freshness、symlink/path containment、stdout/stderr 和 artifact provenance 保留失败证据。
 
 ### Task 4: Establish Paimon v1.2 migration/benchmark evidence outside Forge policy
