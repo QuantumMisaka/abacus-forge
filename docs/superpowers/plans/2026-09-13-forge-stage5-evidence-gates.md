@@ -22,7 +22,7 @@
 以下是本计划的起点，不重复伪造为待完成工作；正式证据仍须按统一文件格式绑定最终候选 commit：
 
 - typed `prepare`/`modify`/`execute`/`collect`，独立 `postprocess`/`export`，PyATB 与可选 atst-tools 边界已实现并保持 `experimental`；PBE 是默认输入策略。
-- normal-end observation 已独立于 execution/collection status，并有日志来源、artifact 和 API/CLI/legacy 边界回归；归因加固后的 owning gate 为 `305 passed`，全量离线 gate 为 `1345 passed, 10 skipped`。
+- normal-end observation 已独立于 execution/collection status，并有日志来源、artifact 和 API/CLI/legacy 边界回归；最终归因加固后的 owning gate 为 `306 passed`，全量离线 gate 为 `1346 passed, 10 skipped`。
 - architecture/contracts/workspace gate 为 `344 passed`；benchmark opt-in 为 `6 passed`；未配置外部输入时 real-smoke 选择为 `4 skipped`。
 - 候选分支已有 serial-PW ABACUS、PyATB 和 atst-tools 的历史/局部兼容记录；这些记录证明的是进程、解析和 artifact 事实，不是科学正确性或稳定 maturity。
 - 既有 integration plan 记录过 clean wheel/fresh-venv 与 legacy runtime absence 证据；Stage 5 必须在最终候选提交上重新确认或明确其提交范围，不能仅引用不相容的旧代码状态。

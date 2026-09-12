@@ -128,17 +128,21 @@ Implementation and review were completed in the candidate worktree:
 - `68f690f` added a streaming unchanged-prefix check so an old marker is not
   reused when a later invocation only appends non-marker text. `cea1afc` also
   snapshots prior marker presence and fails closed for truncated or same-size
-  rewrites that could retain that old marker. The regressions cover both stale
-  append and stale truncation while preserving marker replacement behavior.
+  rewrites that could retain that old marker. `0c9dcba` added a regression for
+  a growing log whose old marker survives a changed-prefix rewrite; `5e56e93`
+  makes that rewrite fail closed, while `9c21f51` keeps the positive case where
+  the previous log had no marker and the new log supplies one. The regressions
+  cover stale append, truncation, and changed-prefix rewrite.
 - `a0718ce` documents the typed `normal_end` observation and its attribution
   boundary in `README.md` and `ROADMAP.md` without changing legacy usage.
-- Owning service/result/CLI suite after the attribution hardening: `305 passed
-  in 59.16s`.
-- Focused normal-end regression suite after the hardening: `12 passed`.
-- Full offline gate after the attribution hardening: `1345 passed, 10 skipped
-  in 97.64s`.
-- An independent review first found the stale append attribution bug; the RED
-  regression and the follow-up hardening commits `68f690f` and `cea1afc` close
-  it. A second RED regression covers truncation. The follow-up review is still
-  required against the exact post-fix range before integration.
+- Owning service/result/CLI suite after the final attribution hardening: `306
+  passed in 71.69s`.
+- Focused normal-end regression suite after the final hardening: `13 passed`.
+- Full offline gate after the final attribution hardening: `1346 passed, 10
+  skipped in 112.66s`.
+- Independent review first found stale append attribution and then a changed-
+  prefix rewrite attribution bug; RED regressions and the hardening commits
+  `68f690f`, `cea1afc`, and `5e56e93` close those cases. A second RED regression
+  covers truncation. The final follow-up review is still required against the
+  exact post-fix range before integration.
 - `git diff --check` is clean for the post-fix code/test range.

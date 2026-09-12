@@ -3,13 +3,11 @@
 **状态：** provisional / candidate evidence；不构成稳定能力或 Paimon v1.3
 backend 发布决定。
 
-**代码候选提交：** `cea1afc1a998320d78c4a3f39fe712274dbad175`
+**候选 HEAD：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
+及其回归测试）。
 
-**回归测试提交：** `3c0344bb0115d75d7b97052cc9cda3c1dfc7ac00`（仅增加 stale-log
-回归，不改变生产契约）。
-
-**证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续仅有
-文档校正，不改变上述代码候选。
+**证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
+`5806d1c`、`5930607` 为文档校正，不改变候选代码。
 
 **规范源：**
 `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html`
@@ -43,16 +41,16 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1345 passed, 10 skipped in 106.92s (0:01:46)
+1346 passed, 10 skipped in 112.66s (0:01:52)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
   tests/test_architecture.py tests/test_contracts.py tests/test_workspace.py
-344 passed in 7.77s
+344 passed in 10.14s
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-benchmark -m benchmark
-6 passed, 1347 deselected in 3.21s
+6 passed, 1350 deselected in 3.59s
 
 git diff --check
 passed (no output)
@@ -98,7 +96,7 @@ python -m venv "$stage5_tmp/venv"
 
 ```text
 abacus_forge-0.1.0-py3-none-any.whl
-sha256=23f37ca2da1c01a3a20b0a4b0b2df5876f0654e52c538ebb3f36b8d7f85ba385
+sha256=1310f9a036d58a932a60d259007cbbde119f331537a26ea33489cc5b370a4be2
 ```
 
 安装后的检查结果：
@@ -126,14 +124,15 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
-4 skipped, 1351 deselected in 2.15s
+4 skipped, 1352 deselected in 2.43s
 ```
 
 该结果是 `unproven`，不是 pass，也不是科学或稳定性证据。现有
 `tests/real_smoke/test_abacus_smoke.py` 已分别覆盖 typed SCF、Relax/cell-relax
 和 MD 的 machine-CLI execute/collect；待外部提供无历史 generated output 的
 workspace 与 executable 后再运行。`normal_end` 仅作为独立日志 observation，
-不会被转换为 scientific status。
+不会被转换为 scientific status。当前归因规则只接受前缀未变的新增后缀 marker；
+旧 marker 在截断、同尺寸改写或前缀改写中一律视为歧义并省略。
 
 `atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`；Forge 的本地
 adapter/process contract smoke 已有历史记录，但真实 NEB workflow、版本/API 锁定
