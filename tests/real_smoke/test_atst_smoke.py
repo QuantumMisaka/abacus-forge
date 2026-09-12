@@ -56,9 +56,21 @@ def test_atst_neb_machine_process_smoke(tmp_path: Path) -> None:
             pytest.fail(f"ABACUS_FORGE_ATST_EXECUTABLE is not executable: {configured}")
         executable = Path(found).resolve()
 
-    # Forge invokes the configured ATST adapter by its stable CLI name. Put
-    # the explicitly selected executable first so this gate tests that binary.
-    env = {"PATH": str(executable.parent) + os.pathsep + os.environ.get("PATH", "")}
+    # Bind the stable CLI name to the explicitly selected file in isolation.
+    selected = tmp_path / "atst-bin" / "atst"
+    selected.parent.mkdir()
+    try:
+        selected.symlink_to(executable)
+    except OSError:
+        shutil.copy2(executable, selected)
+        selected.chmod(selected.stat().st_mode | 0o111)
+    selected_realpath = selected.resolve()
+    env = {"PATH": str(selected.parent)}
+
+    def assert_selected(command: object) -> None:
+        assert isinstance(command, list)
+        assert command[0] == str(selected)
+        assert Path(command[0]).resolve() == selected_realpath
     init = Atoms("H", positions=[[0.0, 0.0, 0.0]], cell=[8.0, 8.0, 8.0], pbc=True)
     final = init.copy()
     final.positions[0, 0] = 0.5
@@ -97,6 +109,7 @@ def test_atst_neb_machine_process_smoke(tmp_path: Path) -> None:
     prepared = _json_document(prepare)
     assert prepare.returncode == 0
     assert prepared["envelope"]["status"]["execution"] == "completed"
+    assert_selected(prepared["envelope"]["diagnostics"]["command"])
     _assert_contained_artifacts(tmp_path, prepared)
     assert (tmp_path / "inputs/init_neb_chain.traj").is_file()
 
@@ -126,6 +139,7 @@ def test_atst_neb_machine_process_smoke(tmp_path: Path) -> None:
     execution = _json_document(executed)
     assert executed.returncode == 0
     assert execution["envelope"]["status"]["execution"] == "skipped"
+    assert_selected(execution["envelope"]["diagnostics"]["command"])
     _assert_contained_artifacts(tmp_path, execution)
 
     postprocessed = run_cli(
@@ -143,6 +157,8 @@ def test_atst_neb_machine_process_smoke(tmp_path: Path) -> None:
     assert postprocessed.returncode == 0
     assert post["envelope"]["status"]["execution"] == "completed"
     assert post["envelope"]["status"]["collection"] == "complete"
+    assert_selected(post["envelope"]["diagnostics"]["summary_command"])
+    assert_selected(post["envelope"]["diagnostics"]["postprocess_command"])
     paths = _assert_contained_artifacts(tmp_path, post)
     assert "reports/atst/neb-summary.json" in paths
     assert "outputs/atst/neb-ts.cif" in paths

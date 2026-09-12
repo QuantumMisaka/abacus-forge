@@ -73,7 +73,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--run-real-smoke",
         action="store_true",
         default=False,
-        help="run tests marked real_smoke against the supplied ABACUS workspace",
+        help="run tests marked real_smoke against supplied external engine/workspace inputs",
     )
     parser.addoption(
         "--run-benchmark",

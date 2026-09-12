@@ -87,7 +87,7 @@ The gate checks parser facts only. It does not judge trajectory quality,
 physical temperature/energy correctness, convergence, scheduling, or workflow
 orchestration.
 
-All four smoke tests are evidence gates, not scientific validation. They prove
+The four ABACUS smoke tests and one ATST process smoke are evidence gates, not scientific validation. They prove
 only the selected Forge execution/collection integration and do not replace
 convergence studies, platform validation, workflow/scheduler checks, or the
 Paimon v1.2 benchmark. All capabilities remain experimental until their own

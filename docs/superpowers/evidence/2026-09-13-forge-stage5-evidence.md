@@ -4,7 +4,8 @@
 backend 发布决定。
 
 **代码候选提交：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
-及其回归测试）。
+及其回归测试）。Stage 5 ATST smoke harness follow-up：`c11fc6e`；该提交仅
+增加测试/门禁文档，不改变生产代码候选。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
 `5806d1c`、`5930607`、`939f666` 及当前文档校正均不改变候选代码。
@@ -41,7 +42,7 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1347 passed, 11 skipped (full offline rerun after adding the ATST process smoke)
+1346 passed, 11 skipped in 104.24s (0:01:44)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
@@ -124,8 +125,7 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
-5 skipped, 1352 deselected (without external smoke inputs; the extra selected test is
-the ATST gate)
+5 skipped, 1352 deselected in 2.40s (without external smoke inputs)
 ```
 
 该结果是 `unproven`，不是 pass，也不是科学或稳定性证据。现有

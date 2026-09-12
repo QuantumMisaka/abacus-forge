@@ -46,7 +46,7 @@ markers = [
     "pyatb: optional PyATB bridge contracts",
     "composite: local composite task-pack contracts",
     "experimental: mock/fixture-only property-pack contracts",
-    "real_smoke: opt-in execution against a supplied real ABACUS workspace",
+    "real_smoke: opt-in process execution against supplied external engine/workspace inputs",
     "benchmark: opt-in compatibility benchmark projections",
 ]
 filterwarnings = [
