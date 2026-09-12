@@ -408,7 +408,7 @@ rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" \
 
     <section id="rollout">
       <h2>迁移与发布</h2>
-      <p>截至 2026-09-10 状态更新：Stage 3 已合并至 <code>a800b64</code>，Stage 4 已分别落地 relax/cell-relax、typed MD、独立 typed MD postprocess、band/DOS postprocess、typed PyATB handoff、typed export，以及可选 atst-tools NEB adapter；上述能力均保持 <code>experimental</code>，稳定发布仍需各自的 compat、benchmark、clean-environment 与 real-smoke 证据。typed PyATB handoff 已支持 nspin=1/2/4（HR 路由数为 1/2/1，nspin=4 使用 <code>matrix_hr/shared</code>）；后续仍需完成 PyATB properties、property/composite 聚合与真实运行证据，各批次继续独立提供 PLAN 和验证证据。</p>
+      <p>当前候选状态：Stage 3 已合并，Stage 4 已分别落地 relax/cell-relax、typed MD、独立 typed MD postprocess、band/DOS postprocess、typed PyATB handoff、typed export，以及可选 atst-tools NEB adapter；上述能力均保持 <code>experimental</code>，稳定发布仍需各自的 compat、benchmark、clean-environment 与 real-smoke 证据。typed PyATB handoff 已支持 nspin=1/2/4（HR 路由数为 1/2/1，nspin=4 使用 <code>matrix_hr/shared</code>）；后续仍需完成 PyATB properties、property/composite 聚合与真实运行证据，各批次继续独立提供 PLAN 和验证证据。</p>
       <ol>
         <li><strong>Stage 0 — Contract freeze：</strong>本 SPEC 已批准；锁定 operation admission/event/artifact refs、outcome/error envelope 与 exit class、公共 API/CLI 双稳定面、execution/collection 状态、JSON stdout 与旧兼容边界。</li>
         <li><strong>Stage 1 — Request/API：</strong>新增 per-operation request、UUIDv4 event mapping、artifact-ref validator 与稳定 Python API；不改变旧 API/CLI，补齐 operation/observation matrix 和 API contract tests。</li>

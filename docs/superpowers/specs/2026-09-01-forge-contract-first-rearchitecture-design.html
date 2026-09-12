@@ -46,7 +46,7 @@
   <main>
     <section id="summary">
       <h2>摘要</h2>
-      <p>ABACUS-Forge 是 Paimon v1.3 的协议无关 ABACUS 单元操作基座，也是人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）可直接消费的 CLI/Python 快捷消费面。当前实现已经摆脱 AiiDA 运行时依赖，具备输入准备、局部修改、本地执行、结果收集与部分 task pack；但其公共请求、结果、artifact、workspace 和状态语义尚未收敛，不能直接视为稳定的 v1.3 后端协议。</p>
+      <p>ABACUS-Forge 是 Paimon v1.3 的协议无关 ABACUS 单元操作基座，也是人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）可直接消费的 CLI/Python 快捷消费面。当前实现已经摆脱 AiiDA 运行时依赖，typed operation 的请求、结果、artifact、workspace 和状态语义已收敛并可供实验性消费；但完整真实运行、迁移 parity 和发布证据尚未齐全，不能直接视为稳定的 v1.3 后端协议。</p>
       <p>本设计采用<strong>契约优先、渐进替换</strong>：保留已验证的结构、输入、执行和解析实现；先建立版本化的协议无关 contracts 与 workspace manifest，再将现有 API、CLI、sequence 与 task pack 逐步迁移到这些 contracts。Paimon ATP Tool 保持在 Forge 外部，以薄 adapter 将 Forge 事实映射为 <code>@tool_io</code>、result evidence 与平台报告。</p>
       <div class="decision"><p><strong>职责结论：</strong>Forge 只忠实完成 <code>prepare / modify / execute / collect / export</code> 等 ABACUS 单元操作，返回执行事实、解析观察和产物引用。科学判断、任务编排、重试/续算以及平台和调度选择全部由人类或 Agent/上层 workflow 负责。Forge 不重写科学算法，也不重新引入 AiiDA、ATP/MCP、调度器、平台状态或 TUI 逻辑。</p><p><strong>默认输入策略：</strong>ABACUS prepare profile 显式写入 <code>dft_functional=pbe</code> 作为默认；调用方可以通过 typed request 或参数覆盖选择其他泛函。该默认属于输入生成策略，不表达科学接受判断。</p></div>
     </section>
