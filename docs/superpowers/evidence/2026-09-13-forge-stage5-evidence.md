@@ -3,7 +3,10 @@
 **状态：** provisional / candidate evidence；不构成稳定能力或 Paimon v1.3
 backend 发布决定。
 
-**候选提交：** `368447432a3b8cc86ee7321268ad30c764373d10`
+**代码候选提交：** `cea1afc1a998320d78c4a3f39fe712274dbad175`
+
+**回归测试提交：** `3c0344bb0115d75d7b97052cc9cda3c1dfc7ac00`（仅增加 stale-log
+回归，不改变生产契约）。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续仅有
 文档校正，不改变上述代码候选。
@@ -40,7 +43,7 @@ SPEC/PLAN 和真实操作证据后，才能由上层评估是否消费。
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider
-1343 passed, 10 skipped in 97.32s
+1345 passed, 10 skipped in 106.92s (0:01:46)
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider \
@@ -55,13 +58,12 @@ git diff --check
 passed (no output)
 ```
 
-本证据/计划提交自身的 `git diff --check` 通过，placeholder scan（`TODO`、`TBD`、
-`FIXME`、`<unknown>`）无匹配。
+本证据/计划提交自身的 `git diff --check` 通过，placeholder scan 无匹配。
 
 `benchmark` 当前是既有 fixture/collection 事实矩阵；它不是全链路执行等价、
 科学正确性或稳定 maturity 证据。
 
-候选提交的 discovery/import 检查输出为：
+代码候选提交的 discovery/import 检查输出为：
 
 ```text
 0.1.0
@@ -72,12 +74,31 @@ architecture gate 同时覆盖生产 import 边界和禁止运行时依赖的 AS
 
 ## 3. Clean package and dependency isolation
 
-在临时 Python 3.13 venv 中安装 `hatchling`，从当前候选提交构建 wheel，再安装
-wheel 及 `pyproject.toml` 声明依赖。构建结果：
+环境：Linux 6.18.33.2-microsoft-standard-WSL2 x86_64、Python 3.13.13；以下是实际
+执行的最小重现命令（`stage5_tmp` 是临时目录）：
+
+```bash
+stage5_tmp=$(mktemp -d /tmp/forge-stage5-build-XXXXXX)
+python -m venv "$stage5_tmp/venv"
+"$stage5_tmp/venv/bin/python" -m pip install --quiet hatchling
+"$stage5_tmp/venv/bin/python" -m pip wheel --no-deps --no-build-isolation \
+  --wheel-dir "$stage5_tmp/wheels" .
+"$stage5_tmp/venv/bin/python" -m pip install --no-deps \
+  "$stage5_tmp/wheels/abacus_forge-0.1.0-py3-none-any.whl"
+"$stage5_tmp/venv/bin/python" -m pip install ase dpdata matplotlib numpy pymatgen
+
+"$stage5_tmp/venv/bin/abacus-forge" schema scf execute \
+  | "$stage5_tmp/venv/bin/python" -c \
+  'import json,sys; d=json.load(sys.stdin); print("schema_ok", d["schema_version"], d["capability"], d["operation"])'
+"$stage5_tmp/venv/bin/python" -c \
+  'from abacus_forge.machine_cli import decode_operation_request; r=decode_operation_request("execute", {"schema_version":"forge.request/v1","operation":"execute","operation_id":"123e4567-e89b-42d3-a456-426614174123","workspace_rel":"fixture","dry_run":True}); print("decode_ok", type(r).__name__, r.operation, r.workspace_rel, r.dry_run)'
+```
+
+随后执行 `import`、console、schema 和最小 typed decoder 探针。构建结果：
 
 ```text
 abacus_forge-0.1.0-py3-none-any.whl
-sha256=c6cbbfe874bc9072a6ca012193741bae0848985f6048ddcca17e937fc1adcb80
+sha256=23f37ca2da1c01a3a20b0a4b0b2df5876f0654e52c538ebb3f36b8d7f85ba385
 ```
 
 安装后的检查结果：
@@ -87,9 +108,11 @@ import_ok 0.1.0
 capabilities ['scf', 'relax', 'cell-relax', 'atst-neb', 'md', 'band', 'dos', 'pyatb-band', 'export']
 cli_ok forge.capabilities/v1 9
 forbidden_absent {'abacus_agent_tools': True, 'abacustest': True, 'aiida': True, 'atst_tools': True}
+schema_ok forge.schema-discovery/v1 scf execute
+decode_ok ScfExecuteRequest execute fixture True
 ```
 
-该 gate 证明的是当前 wheel 的安装、import、console entry point、discovery 和
+该 gate 证明的是当前代码候选 wheel 的安装、import、console entry point、discovery 和
 legacy runtime isolation；不证明 ABACUS/PyATB/ATST 的真实运行，也不包含任何
 科学接受判断。
 
@@ -103,7 +126,7 @@ architecture/AST forbidden-import gate 覆盖，避免把可选外部工具误�
 ```text
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
-4 skipped, 1349 deselected in 2.14s
+4 skipped, 1351 deselected in 2.15s
 ```
 
 该结果是 `unproven`，不是 pass，也不是科学或稳定性证据。现有

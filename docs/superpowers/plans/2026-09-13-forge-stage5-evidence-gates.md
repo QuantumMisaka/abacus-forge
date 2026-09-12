@@ -22,7 +22,7 @@
 以下是本计划的起点，不重复伪造为待完成工作；正式证据仍须按统一文件格式绑定最终候选 commit：
 
 - typed `prepare`/`modify`/`execute`/`collect`，独立 `postprocess`/`export`，PyATB 与可选 atst-tools 边界已实现并保持 `experimental`；PBE 是默认输入策略。
-- normal-end observation 已独立于 execution/collection status，并有日志来源、artifact 和 API/CLI/legacy 边界回归；最近 owning gate 为 `220 passed`，全量离线 gate 为 `1343 passed, 10 skipped`。
+- normal-end observation 已独立于 execution/collection status，并有日志来源、artifact 和 API/CLI/legacy 边界回归；归因加固后的 owning gate 为 `305 passed`，全量离线 gate 为 `1345 passed, 10 skipped`。
 - architecture/contracts/workspace gate 为 `344 passed`；benchmark opt-in 为 `6 passed`；未配置外部输入时 real-smoke 选择为 `4 skipped`。
 - 候选分支已有 serial-PW ABACUS、PyATB 和 atst-tools 的历史/局部兼容记录；这些记录证明的是进程、解析和 artifact 事实，不是科学正确性或稳定 maturity。
 - 既有 integration plan 记录过 clean wheel/fresh-venv 与 legacy runtime absence 证据；Stage 5 必须在最终候选提交上重新确认或明确其提交范围，不能仅引用不相容的旧代码状态。
@@ -31,59 +31,73 @@
 
 ### Task 1: Freeze the evidence manifest
 
+**Status:** done for the current typed/discovery surface; see the unified evidence record.
+
 **Files:** `docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md` and this plan.
 **Behavior:** 为每个 capability/operation 记录当前 descriptor、maturity、输入输出 artifact 角色和适用 engine；记录证据对应的 exact commit。只核对已存在的 contract，不新增 contract。
 **Dependencies:** 当前候选分支和两份批准 SPEC。
 **Verification:** capability/schema/discovery、architecture/forbidden-import、全量离线 pytest；结果包含 exact counts、skip 分类和 `git diff --check`。
 
-- [ ] 只冻结当前九个 typed/discovery capability：`scf`、`relax`、`cell-relax`、`md`、`band`、`dos`、`pyatb-band`、`export`、`atst-neb`；确认其实际 descriptor 与实现一致。
-- [ ] 明确所有能力在独立发布决策前仍为 `experimental`；不以 fixture 或 benchmark 单独晋升。
-- [ ] 将 property packs 明确标记为 deferred/experimental，不纳入本次 stable manifest 或 Paimon v1.3 稳定面。
-- [ ] 检查结果 envelope 只表达 execution/collection 与 observations/artifacts；不得出现科学接受、任务关系或平台状态。
+- [x] 只冻结当前九个 typed/discovery capability：`scf`、`relax`、`cell-relax`、`md`、`band`、`dos`、`pyatb-band`、`export`、`atst-neb`；确认其实际 descriptor 与实现一致。
+- [x] 明确所有能力在独立发布决策前仍为 `experimental`；不以 fixture 或 benchmark 单独晋升。
+- [x] 将 property packs 明确标记为 deferred/experimental，不纳入本次 stable manifest 或 Paimon v1.3 稳定面。
+- [x] 检查结果 envelope 只表达 execution/collection 与 observations/artifacts；不得出现科学接受、任务关系或平台状态。
 
 ### Task 2: Re-run clean package and dependency-isolation gate
+
+**Status:** done for the current code candidate in a fresh Python 3.13 venv; see the wheel
+hash and import/process output in the unified evidence record.
 
 **Files:** packaging/test documentation and the gate harness only。
 **Behavior:** 在全新 Python 环境构建并安装最终候选 wheel，验证 `import abacus_forge`、console entry point、capability/schema discovery 和最小 typed operation 解码；环境不安装 `abacus-agent-tools`、`abacustest`、AiiDA、ATP/MCP、atst-tools 或 scheduler。
 **Dependencies:** Task 1 的候选 commit；可用 build backend 和 Python 版本。
 **Verification:** fresh-venv install/import/process 命令成功；`pip show`/import probe 证明禁止运行时包不存在；源码 AST/依赖扫描通过。若缺 build backend，记录阻塞原因并提供可复现的环境准备方式，不声称 gate 通过。
 
-- [ ] 将 wheel hash、Python/platform、安装命令和 import/process 输出写入证据记录。
-- [ ] 确认 atst-tools 只可作为显式外部进程/可选 adapter 使用，不进入 Forge core 安装依赖。
-- [ ] 确认 clean gate 只证明安装和边界，不证明 ABACUS 运行或科学结果。
+- [x] 将 wheel hash、Python/platform、安装命令和 import/process 输出写入证据记录。
+- [x] 确认 atst-tools 只可作为显式外部进程/可选 adapter 使用，不进入 Forge core 安装依赖。
+- [x] 确认 clean gate 只证明安装和边界，不证明 ABACUS 运行或科学结果。
 
 ### Task 3: Run opt-in real process smoke gates
+
+**Status:** partial/unproven: the selection and freshness contracts are verified, but this
+environment has no supplied real executable/workspace.
 
 **Files:** `tests/real_smoke/` and `docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md`。
 **Behavior:** 以 machine CLI 为主，使用人类提供的、无历史 generated output 的 prepared workspace，验证 Forge operation 的 process invocation、workspace containment、native parser facts、event 和 artifact refs。API parity 不在 real-smoke 中另造一条运行面，由离线 owning tests 覆盖。没有输入时精确 skip；输入无效时 fail。
 **Dependencies:** Task 2；ABACUS executable and prepared workspaces supplied outside Forge. PyATB/ATST executable evidence is separately opt-in.
 **Verification:** SCF、Relax/cell-relax、MD、必要的 PyATB/ATST machine-CLI smoke commands with exact pass/skip output；API/CLI 等价性引用离线 owning tests。`normal_end` 只作为日志 observation 检查，不转换为 scientific status。
 
-- [ ] 按能力分别运行现有 real-smoke；不把一次 serial-PW run 当作物理正确性、收敛性或 capability promotion。
-- [ ] 对 atst-tools 使用已确认版本（当前外部仓库记录为 2.2.4）做安装/API/process boundary smoke；不启动 Slurm，不把 atst 的 NEB 编排复制到 Forge。
-- [ ] 对 generated-output freshness、symlink/path containment、stdout/stderr 和 artifact provenance 保留失败证据。
+- [x] 按能力分别运行现有 real-smoke 选择；当前无外部输入时记录为 `unproven`，不把一次 serial-PW run 当作物理正确性、收敛性或 capability promotion。
+- [x] 对 atst-tools 使用已确认版本（当前外部仓库记录为 2.2.4）核对安装/API/process boundary smoke；不启动 Slurm，不把 atst 的 NEB 编排复制到 Forge。真实 NEB workflow 仍为 `unproven`。
+- [x] 对 generated-output freshness、symlink/path containment、stdout/stderr 和 artifact provenance 保留失败证据。
 
 ### Task 4: Establish Paimon v1.2 migration/benchmark evidence outside Forge policy
+
+**Status:** partial/unproven: the existing six-case fixture/collection matrix passes, while
+full process parity belongs to the external adapter acceptance harness.
 
 **Files:** Forge benchmark harness/evidence docs and the external Paimon adapter acceptance workspace。
 **Behavior:** 对相同输入和明确 operation 交接，比较 v1.2 既有实现与 Forge 的可观察事实、artifact handoff、CLI/API envelope 和上层 Agent 可消费结果。Paimon adapter 是 Forge 外部的上层依赖与 handoff consumer，不是 Forge 内待完成的实现；比较只用于迁移工程证据，Forge 不接收 scientific policy 或 workflow object。
 **Dependencies:** Tasks 1–3；由上层提供 Paimon v1.2 reference runner/fixtures 和 acceptance harness。
 **Verification:** benchmark 必须显式 opt-in；报告 compare scope、expected differences、环境和失败归因。不能以 benchmark 通过替代 real-smoke、clean-env 或人类/Agent 的科学验收。
 
-- [ ] 保持默认 pytest 不运行 benchmark；记录当前 `6 passed` 事实矩阵仅覆盖已有 fixture/collection 兼容范围。
+- [x] 保持默认 pytest 不运行 benchmark；记录当前 `6 passed` 事实矩阵仅覆盖已有 fixture/collection 兼容范围。
 - [ ] 为需要的 prepare/execute parity 补上真实输入和 process evidence；不能把 collect-only matrix 扩写成全链路等价。
-- [ ] 将“是否进入 Paimon v1.3 稳定面”的决定留给上层维护者，不在 Forge descriptor 中自动改变 maturity；若 adapter 尚未在外部仓库具备证据，记录为上层 handoff unproven，不把它写成 Forge 缺陷或 Forge 待开发任务。
+- [x] 将“是否进入 Paimon v1.3 稳定面”的决定留给上层维护者，不在 Forge descriptor 中自动改变 maturity；若 adapter 尚未在外部仓库具备证据，记录为上层 handoff unproven，不把它写成 Forge 缺陷或 Forge 待开发任务。
 
 ### Task 5: Make the release decision and hand off
+
+**Status:** pending an external release/integration decision; this plan does not authorize
+merge, push, or maturity promotion.
 
 **Files:** `ROADMAP.md`、发布/集成 evidence record；未来 Paimon v3 仓库由其维护者负责。
 **Behavior:** 只有各自所需证据齐全且审查通过，才可由维护者决定某一 capability 的 maturity；否则保持 `experimental`，同时发布可用的事实型 CLI/API。发布决定按 capability 分开，不要求一次性把所有 property pack 变成稳定能力。
 **Dependencies:** Tasks 1–4 and independent review of the exact candidate diff.
 **Verification:** full offline + architecture/import + clean package + applicable real-smoke + benchmark outputs are attached; boundary review confirms no scientific judgment, orchestration or scheduling has moved into Forge.
 
-- [ ] 明确 Forge 合并与发布是独立决定；本计划不自动 merge/push。
-- [ ] 若需要 Paimon v3，另建独立 adapter/repository，消费 Forge facts 并拥有 ATP、资源/平台、编排、科学标准和 v1.2 parity；不得在 Forge 追加厚适配层。
-- [ ] 将缺失的真实 ABACUS/PyATB/ATST workspace、上层 Agent benchmark 或 clean-env 证据列为 `unproven`，而不是以 skip 充数。
+- [x] 明确 Forge 合并与发布是独立决定；本计划不自动 merge/push。
+- [x] 若需要 Paimon v3，另建独立 adapter/repository，消费 Forge facts 并拥有 ATP、资源/平台、编排、科学标准和 v1.2 parity；不得在 Forge 追加厚适配层。
+- [x] 将缺失的真实 ABACUS/PyATB/ATST workspace、上层 Agent benchmark 或 clean-env 证据列为 `unproven`，而不是以 skip 充数。
 
 ## Non-goals and boundary rulings
 

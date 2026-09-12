@@ -22,11 +22,13 @@ markers in output attributable to the current `LocalRunner` invocation:
 captured `outputs/stdout.log` first, then a newly created or changed contained
 `OUT.ABACUS/running_*.log` under the workspace. Never inspect an unchanged
 pre-existing log as execute evidence; never infer `normal_end=False` from a
-missing marker. Carry the result through a non-serialized runner sidecar and
-add it only at the typed ABACUS execute envelope/observation boundary. Legacy
-`RunResult`/`run()` serialization, the result schema key set, status values,
-collection, scientific state, workflow, scheduling and retry behavior remain
-unchanged.
+missing marker. For an existing log that grows without changing its prefix,
+only the appended bytes may establish a marker; a truncated or same-size log
+that already had a marker is ambiguous and is omitted. Carry the result through
+a non-serialized runner sidecar and add it only at the typed ABACUS execute
+envelope/observation boundary. Legacy `RunResult`/`run()` serialization, the
+result schema key set, status values, collection, scientific state, workflow,
+scheduling and retry behavior remain unchanged.
 
 **Verification:** TDD regressions for stdout marker, changed running-log
 marker, absent marker, stale marker, escaped/symlink log, nonzero process with
@@ -41,6 +43,10 @@ suites, full offline gate, independent review, and diff hygiene.
 - Missing, unreadable, unchanged, ambiguous, or escaped logs leave the
   observation unavailable (omitted); they do not change `execution` or
   `scientific` status.
+- A changed existing log is accepted only when its marker can be attributed to
+  the changed content: append-only updates are scanned after the unchanged
+  prefix, while stale markers surviving truncation or same-size rewrites are
+  treated as ambiguous.
 - A nonzero/timeout/signal process may still carry a positive marker if the
   marker was actually observed; `returncode`, `termination`, and
   `normal_end` remain independent facts.
@@ -96,7 +102,8 @@ suites, full offline gate, independent review, and diff hygiene.
   touches of an old log are also ignored.
 - [x] Legacy RunResult/result serialization and status/scientific semantics are
   unchanged.
-- [x] Owning/full verification and independent review pass.
+- [x] Owning/full verification after the attribution hardening passes.
+- [ ] Independent follow-up review of the exact post-fix range is still pending.
 
 ## Verification record
 
@@ -118,12 +125,20 @@ Implementation and review were completed in the candidate worktree:
   same-size rewrites are detected while touch-only stale logs remain ignored;
   `db3b3c2` made the private fingerprint type explicit and its regression uses
   equal-size before/after content.
+- `68f690f` added a streaming unchanged-prefix check so an old marker is not
+  reused when a later invocation only appends non-marker text. `cea1afc` also
+  snapshots prior marker presence and fails closed for truncated or same-size
+  rewrites that could retain that old marker. The regressions cover both stale
+  append and stale truncation while preserving marker replacement behavior.
 - `a0718ce` documents the typed `normal_end` observation and its attribution
   boundary in `README.md` and `ROADMAP.md` without changing legacy usage.
-- Owning service/result/CLI suite after the final repair: `220 passed in
-  60.25s`.
-- Full offline gate after the final repair: `1343 passed, 10 skipped in
-  98.63s`.
-- Independent final review of `8c14a39..db3b3c2`: PASS; no Critical,
-  Important or Minor findings.
-- `git diff --check 8c14a39..db3b3c2`: clean.
+- Owning service/result/CLI suite after the attribution hardening: `305 passed
+  in 59.16s`.
+- Focused normal-end regression suite after the hardening: `12 passed`.
+- Full offline gate after the attribution hardening: `1345 passed, 10 skipped
+  in 97.64s`.
+- An independent review first found the stale append attribution bug; the RED
+  regression and the follow-up hardening commits `68f690f` and `cea1afc` close
+  it. A second RED regression covers truncation. The follow-up review is still
+  required against the exact post-fix range before integration.
+- `git diff --check` is clean for the post-fix code/test range.
