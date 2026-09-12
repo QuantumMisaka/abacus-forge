@@ -620,7 +620,7 @@ def test_typed_execute_reports_changed_native_running_log_and_ignores_stale_log(
     _write_prepared_inputs(workspace)
     running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
     running_log.parent.mkdir(parents=True, exist_ok=True)
-    running_log.write_text("NORMAL END\n", encoding="utf-8")
+    running_log.write_text("previous invocation incomplete\n", encoding="utf-8")
     executable = tmp_path / "runner.py"
     executable.write_text(
         f"#!{sys.executable}\n"
