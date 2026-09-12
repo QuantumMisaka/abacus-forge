@@ -103,7 +103,8 @@ suites, full offline gate, independent review, and diff hygiene.
 - [x] Legacy RunResult/result serialization and status/scientific semantics are
   unchanged.
 - [x] Owning/full verification after the attribution hardening passes.
-- [ ] Independent follow-up review of the exact post-fix range is still pending.
+- [x] Independent follow-up review of exact range `b6d83ef..939f666` passes with no
+  Critical, Important, or Minor findings.
 
 ## Verification record
 
@@ -143,6 +144,6 @@ Implementation and review were completed in the candidate worktree:
 - Independent review first found stale append attribution and then a changed-
   prefix rewrite attribution bug; RED regressions and the hardening commits
   `68f690f`, `cea1afc`, and `5e56e93` close those cases. A second RED regression
-  covers truncation. The final follow-up review is still required against the
-  exact post-fix range before integration.
+  covers truncation. Final follow-up review of `b6d83ef..939f666` passes with no
+  Critical, Important, or Minor findings.
 - `git diff --check` is clean for the post-fix code/test range.

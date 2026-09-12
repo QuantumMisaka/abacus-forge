@@ -3,11 +3,11 @@
 **状态：** provisional / candidate evidence；不构成稳定能力或 Paimon v1.3
 backend 发布决定。
 
-**候选 HEAD：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
+**代码候选提交：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
 及其回归测试）。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
-`5806d1c`、`5930607` 为文档校正，不改变候选代码。
+`5806d1c`、`5930607`、`939f666` 及当前文档校正均不改变候选代码。
 
 **规范源：**
 `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html`
