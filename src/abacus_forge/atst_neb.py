@@ -250,16 +250,12 @@ class AtstNebPostprocessService:
                 if request.write_latest: prefixes.append(workspace.root / "outputs/atst/neb-latest")
                 if request.write_neb_init_chain: prefixes.append(workspace.root / "outputs/atst/neb-init-chain.traj")
                 if request.plot: prefixes.append(self._context.path(workspace, request.plot_label or "outputs/atst/nebplots_chain", "plot_label"))
-                changed_outputs: dict[Path, list[Path]] = {item.resolve(): [] for item in prefixes}
                 for candidate in sorted(workspace.root.rglob("*")):
                     key = candidate.resolve()
                     changed = candidate.is_file() and key not in {item.resolve() for item in log_paths} and (key not in post_before or (candidate.stat().st_size, candidate.stat().st_mtime_ns) != post_before[key])
                     if changed and any(self._context.matches_prefix(key, item.resolve()) for item in prefixes):
                         rel = candidate.relative_to(workspace.root).as_posix()
                         entries.append((f"atst-{hashlib.sha256(rel.encode()).hexdigest()[:12]}", rel, "output"))
-                        for item in prefixes:
-                            if self._context.matches_prefix(key, item.resolve()):
-                                changed_outputs[item.resolve()].append(key)
                 artifacts = self._context.artifacts(workspace, entries)
                 required = [self._context.suffixed(prefix, ".cif")]
                 if request.write_latest: required += [workspace.root / "outputs/atst/neb-latest.traj", workspace.root / "outputs/atst/neb-latest.extxyz"]
