@@ -1,4 +1,4 @@
-# Real ABACUS smoke
+# Real process smoke gates
 
 The smoke gate consumes a prepared Forge workspace and never edits the source
 workspace. The workspace must contain valid `inputs/INPUT`, `inputs/STRU`,
