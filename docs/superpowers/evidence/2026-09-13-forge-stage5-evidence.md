@@ -4,7 +4,7 @@
 backend 发布决定。
 
 **代码候选提交：** `9c21f51efc8cb3f6f17a2e2e6919550b72be4037`（包含生产代码归因修复
-及其回归测试）。Stage 5 ATST smoke harness follow-up：`c11fc6e`；该提交仅
+及其回归测试）。Stage 5 ATST smoke harness follow-ups：`c11fc6e`、`7458110`；这些提交仅
 增加测试/门禁文档，不改变生产代码候选。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
@@ -51,7 +51,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-benchmark -m benchmark
-6 passed, 1350 deselected in 3.59s
+6 passed, 1351 deselected in 3.31s
 
 git diff --check
 passed (no output)
@@ -137,7 +137,7 @@ workspace 与 executable 后再运行。`normal_end` 仅作为独立日志 obser
 
 `atst-tools` 外部仓当前记录为 `main@9318177`、版本 `2.2.4`。在
 `atst-dev` 环境用 `/home/james/apps/miniforge3/envs/atst-dev/bin/atst` 运行
-`tests/real_smoke/test_atst_smoke.py` 的结果为 `1 passed in 20.89s`；该门禁只
+`tests/real_smoke/test_atst_smoke.py` 的结果为 `1 passed in 16.59s`；该门禁只
 覆盖 `neb make`、`run --dry-run`、`neb summary/post` 的进程/API 与 Forge 产物
 containment，不启动 ABACUS。没有提供 ATST executable 时，精确选择为 `1 skipped
 in 0.02s`。真实 NEB workflow、版本/API 锁定和环境隔离仍为 `unproven`。Forge
