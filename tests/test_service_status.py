@@ -675,6 +675,35 @@ def test_typed_execute_omits_old_normal_end_when_log_only_appends_without_marker
     assert "normal_end" not in result.envelope.diagnostics
 
 
+def test_typed_execute_omits_old_normal_end_when_growing_log_rewrites_prefix(
+    tmp_path: Path,
+) -> None:
+    workspace = Workspace(tmp_path / "scf").ensure_layout()
+    _write_prepared_inputs(workspace)
+    running_log = workspace.outputs_dir / "OUT.ABACUS" / "running_scf.log"
+    running_log.parent.mkdir(parents=True, exist_ok=True)
+    running_log.write_text("AAA\nNORMAL END\n", encoding="utf-8")
+    executable = tmp_path / "runner.py"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "from pathlib import Path\n"
+        "Path('../outputs/OUT.ABACUS/running_scf.log').write_text('BBB\\nNORMAL END\\ncrashed\\n', encoding='utf-8')\n"
+        "raise SystemExit(7)\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    result = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=LocalRunner(executable=str(executable)),
+    ).execute_scf(
+        _request(ScfExecuteRequest, "scf", "123e4567-e89b-42d3-a456-426614174048")
+    )
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.diagnostics["failure_class"] == "nonzero_exit"
+    assert "normal_end" not in result.envelope.diagnostics
+
+
 def test_typed_execute_omits_old_normal_end_when_log_is_truncated(
     tmp_path: Path,
 ) -> None:
