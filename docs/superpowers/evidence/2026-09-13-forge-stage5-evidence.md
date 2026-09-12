@@ -98,7 +98,7 @@ python -m venv "$stage5_tmp/venv"
 
 ```text
 abacus_forge-0.1.0-py3-none-any.whl
-sha256=1310f9a036d58a932a60d259007cbbde119f331537a26ea33489cc5b370a4be2
+sha256=185b7d06b0a7d74d82b22c1b2328b8896947a42499562ab8136643304fe952ed
 ```
 
 安装后的检查结果：
