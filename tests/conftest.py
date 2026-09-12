@@ -19,19 +19,31 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_perturbation.py": ("core",),
     "test_dos_data.py": ("core",),
     "test_dos_postprocess.py": ("core",),
+    "test_cube.py": ("core",),
     "test_api.py": ("integration",),
     "test_tasks.py": ("integration",),
     "test_units.py": ("integration",),
     "test_cli.py": ("cli",),
     "test_cli_process.py": ("cli",),
     "test_machine_cli.py": ("cli",),
+    "test_export_machine_cli.py": ("cli",),
+    "test_export_services.py": ("integration",),
+    "test_md_machine_cli.py": ("cli",),
     "test_result_contract.py": ("integration",),
     "test_service_status.py": ("integration",),
+    "test_typed_calculation_guards.py": ("integration",),
+    "test_md_contracts.py": ("integration",),
+    "test_md_services.py": ("integration",),
+    "test_md_postprocess_contracts.py": ("integration",),
+    "test_md_postprocess_algorithms.py": ("core",),
+    "test_md_postprocess_services.py": ("integration",),
+    "test_md_postprocess_machine_cli.py": ("cli",),
     "test_atst_neb.py": ("integration",),
     "test_collect_abacus_reference.py": ("compat",),
     "test_pyatb.py": ("pyatb",),
     "test_composite.py": ("composite",),
     "test_maturation_packs.py": ("experimental",),
+    "test_property_manifest.py": ("experimental",),
     "test_architecture.py": ("core",),
 }
 
@@ -40,10 +52,24 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
         "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",
     ),
+    "test_typed_scf_machine_execute_and_collect": (
+        "ABACUS_FORGE_REAL_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
+    "test_typed_md_machine_execute_and_collect": (
+        "ABACUS_FORGE_MD_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
     "test_typed_relax_machine_execute_and_collect": (
         "ABACUS_FORGE_RELAX_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",
     ),
+    "test_typed_pyatb_band_machine_process_smoke": (
+        "ABACUS_FORGE_PYATB_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_PYATB_EXECUTABLE",
+        "ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY",
+    ),
+    "test_atst_neb_machine_process_smoke": ("ABACUS_FORGE_ATST_EXECUTABLE",),
 }
 
 
@@ -52,7 +78,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--run-real-smoke",
         action="store_true",
         default=False,
-        help="run tests marked real_smoke against the supplied ABACUS workspace",
+        help="run tests marked real_smoke against supplied external engine/workspace inputs",
     )
     parser.addoption(
         "--run-benchmark",
@@ -70,7 +96,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         relative_parts = Path(str(item.fspath)).parts
         if "real_smoke" in relative_parts:
             if not config.getoption("--run-real-smoke"):
-                item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real ABACUS smoke tests"))
+                item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real process smoke tests"))
             else:
                 required_env = _REAL_SMOKE_ENV_BY_TEST.get(
                     item.name,

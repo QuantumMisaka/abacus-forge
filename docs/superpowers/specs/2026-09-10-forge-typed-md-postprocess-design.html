@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABACUS-Forge typed MD postprocess 设计</title>
+  <style>
+    :root { --ink:#20242b; --muted:#5e6875; --line:#d9dee5; --wash:#f4f7fa; --accent:#246b9c; --warn:#9a641c; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1060px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+    h1,h2,h3 { line-height:1.25; } h1 { margin-bottom:.3rem; }
+    h2 { margin-top:2.2rem; border-bottom:1px solid var(--line); padding-bottom:.35rem; }
+    h3 { margin-top:1.5rem; }
+    code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    code { background:var(--wash); padding:.08rem .25rem; border-radius:3px; }
+    pre { overflow:auto; background:#111820; color:#edf3f7; padding:1rem; border-radius:6px; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid var(--line); padding:.55rem .65rem; text-align:left; vertical-align:top; }
+    th { background:var(--wash); } .meta { color:var(--muted); }
+    .decision { border-left:4px solid var(--accent); padding:.65rem .85rem; background:var(--wash); border-radius:0 4px 4px 0; }
+    .warning { border-left-color:var(--warn); } footer { color:var(--muted); margin-top:2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ABACUS-Forge typed <code>md.postprocess</code></h1>
+  <p class="meta"><strong>日期：</strong>2026-09-11　<strong>状态：</strong>Approved for this implementation thread</p>
+  <p class="meta"><strong>负责人：</strong>QuantumMisaka / Codex</p>
+  <p class="meta"><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
+
+  <section id="summary">
+    <h2>摘要</h2>
+    <p>Forge 当前的 typed MD 只覆盖 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>。Paimon v1.2 已经消费上游明确交接的 MD 轨迹，执行 RDF、漂移校正 MSD/扩散、VACF/振动态密度和键长/键角分析；abacuscopilot 也提供 MD_dump 的可视化转换。缺少一个 Forge 内可被 API 和 Agent-first CLI 直接调用的、显式轨迹后处理单元。</p>
+    <div class="decision">
+      <p><strong>核心决策：</strong>新增实验性 <code>md.postprocess</code>。它只读取调用方给出的 workspace-relative exact trajectory，按显式分析列表生成事实数据和 artifact；不寻找“最近轨迹”、不自动把 <code>MD_dump</code> 转换为轨迹、不启动 ABACUS、不把结果解释成科学接受结论。</p>
+    </div>
+    <p>本设计沿用 Forge 的 postprocess service、workspace admission、artifact/event 和 facts-only status 语义。Paimon 的兼容别名由上层 adapter 映射；Forge typed contract 只冻结 canonical 分析名称和最小可复现采样字段，算法参数保留在 JSON-safe <code>parameters</code> map 中，避免把每个分析选项永久锁进顶层 schema。</p>
+  </section>
+
+  <section id="context">
+    <h2>依据与边界</h2>
+    <ul>
+      <li><code>app-tools/toolbox/ABACUS/abacus_basic_md_postprocess.py</code> 要求显式 <code>traj_file</code>，规范模式为 <code>rdf</code>、<code>msd_diffusion</code>、<code>vacf_vdos</code>、<code>bond_length</code>、<code>bond_angle</code>；上游 MD Tool 正式交接 <code>trajectory_file</code>。</li>
+      <li><code>abacus-agent-tools</code> 的 MD 模块返回 <code>md_traj_file</code>，其公开 wrapper 将其适配为轨迹输出；Forge 不直接依赖该仓库，只复用可观察的输入/输出边界。</li>
+      <li><code>abacuscopilot</code> 的 MD_dump/PDB 逻辑是人类可视化 convenience；本切片不把 TUI、PDB writer 或目录自动发现变成 Forge 协议。</li>
+      <li>上位 SPEC 已规定 postprocess 是独立 typed operation，结果只返回执行/收集事实、解析观察和 artifacts；科学验证、任务编排、重试/恢复、平台和调度全部在 Forge 外。</li>
+    </ul>
+  </section>
+
+  <section id="scope">
+    <h2>目标与非目标</h2>
+    <h3>目标</h3>
+    <ul>
+      <li>为 capability <code>md</code> 增加一个独立的 typed <code>postprocess</code> request、Python service、machine CLI route 和 discovery/schema 描述。</li>
+      <li>读取一次显式轨迹并共享帧采样，支持五个 canonical mode：<code>rdf</code>、<code>msd_diffusion</code>、<code>vacf_vdos</code>、<code>bond_length</code>、<code>bond_angle</code>。</li>
+      <li>返回 JSON-safe 分析结果、确定性数据文件、可选图文件、trajectory provenance、hash/size artifact 和 append-only operation event。</li>
+      <li>让 API 与 CLI 在隔离 workspace 中产生等价的 envelope、status、diagnostics、artifact refs 和输出内容。</li>
+    </ul>
+    <h3>非目标</h3>
+    <ul>
+      <li>不自动扫描 workspace 或上游 task，不接受外部绝对路径，不隐式串联 MD <code>execute</code>/<code>collect</code>。</li>
+      <li>不在本切片解析 ABACUS 原生 <code>MD_dump</code>、生成 PDB/XYZ 轨迹或实现 TUI；需要这些转换时由人类/Agent 或上层 adapter 先完成并传入 exact trajectory。</li>
+      <li>不加入 Nernst–Einstein 电导、restart/resume、monitor、workflow、scheduler、Slurm、平台 job ID、DeePMD 或科学 acceptance policy。</li>
+      <li>不修改已有四个 typed MD operation、legacy <code>run_md</code>、legacy CLI、通用 result schema 或 ArtifactRecord 字段。</li>
+    </ul>
+  </section>
+
+  <section id="request">
+    <h2>Typed request</h2>
+    <p>请求继续使用 <code>forge.request/v1</code>，显式声明 <code>capability="md"</code> 和 <code>operation="postprocess"</code>：</p>
+    <pre>{
+  "schema_version": "forge.request/v1",
+  "capability": "md",
+  "operation": "postprocess",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174123",
+  "workspace_rel": "runs/Si_md",
+  "trajectory_path_rel": "outputs/md.traj",
+  "analysis": ["msd_diffusion", "vacf_vdos", "bond_length"],
+  "output_dir_rel": "outputs/md-postprocess",
+  "start": 0,
+  "end": null,
+  "stride": 1,
+  "parameters": {
+    "timestep": 1.0,
+    "selection": {"pairs": ["O-H"]},
+    "save_data": true,
+    "save_plot": true
+  }
+}</pre>
+    <table>
+      <thead><tr><th>字段</th><th>约束</th><th>语义</th></tr></thead>
+      <tbody>
+        <tr><td><code>trajectory_path_rel</code></td><td>非空 canonical workspace-relative 文件</td><td>调用方明确交接的 exact trajectory；不能是目录、绝对路径或外部 symlink</td></tr>
+        <tr><td><code>analysis</code></td><td>非空、去重后的 canonical 名称数组</td><td>决定共享帧视图上运行哪些独立分析</td></tr>
+        <tr><td><code>output_dir_rel</code></td><td>canonical workspace-relative 目录，默认 <code>outputs/md-postprocess</code></td><td>后处理产物根目录；不得与 trajectory 或 Forge audit 路径重叠</td></tr>
+        <tr><td><code>start/end/stride</code></td><td>start≥0、stride≥1、end 为正整数或 null；end 为 exclusive</td><td>一次性帧采样范围；实际 frame_count 和 clamped end 作为事实返回</td></tr>
+        <tr><td><code>parameters</code></td><td>JSON-safe object；首批识别 timestep、selection、elements、rmax、nbins、save_data、save_plot</td><td>分析专属参数的开放扩展面；不识别的键不得改变当前算法行为，需在 diagnostics 记录</td></tr>
+      </tbody>
+    </table>
+    <p><code>timestep</code> 仅在 MSD 或 VACF 模式出现时要求为有限正数，并表示采样帧视图中相邻两帧的时间间隔；<code>stride</code> 不会被 Forge 隐式乘入该值，调用方应交接与采样视图相符的时间间隔。RDF 要求每个采样帧有非零 cell/PBC；元素对、键/角选择和帧数不足均在服务调用算法前校验。Paimon 的 <code>msd</code>、<code>vacf</code>、<code>bond</code> 兼容别名由上层 adapter 映射，不进入 Forge canonical request。</p>
+  </section>
+
+  <section id="algorithms">
+    <h2>分析内核与产物</h2>
+    <ul>
+      <li><strong>trajectory reader：</strong>使用 ASE 的显式文件读取；保留 dependency-light XYZ fallback。fallback 只接受完整质量表中的真实元素，未知化学符号 fail-closed；所有采样帧必须保持原子数和元素顺序一致，数值必须 finite。</li>
+      <li><strong>RDF：</strong>按显式元素对、<code>rmax</code>、<code>nbins</code> 计算每帧距离分布并聚合；输出 <code>rdf_&lt;A&gt;_&lt;B&gt;.txt</code>，可选 <code>.png</code>。Forge 只返回数值和参与帧数，不输出配位/结构判断。</li>
+      <li><strong>MSD：</strong>使用周期 unwrap 与质量加权 Kabsch 刚体漂移校正，返回时间序列、方向分量、Einstein slope 和 reported diffusion metric；不判断扩散是否“合理”。</li>
+      <li><strong>VACF/VDOS：</strong>优先使用轨迹速度，否则按采样位置差分；返回归一化 VACF、频率和 FFT DOS，输出数据文件与可选图。</li>
+      <li><strong>键长/键角：</strong>按显式元素对/三元组或 1-based atom indices 选择，使用 minimum-image 几何；分别输出长度/角度数据与可选图。</li>
+      <li><strong>结果文件：</strong>始终生成 <code>trajectory_source.json</code> 与 <code>analysis.json</code>；analysis.json 为 <code>forge.md-postprocess/v1</code>，保存 canonical modes、sampling 和 JSON-safe results。模式数据/图片只在对应参数开启且实际生成成功时出现；绘图导入或渲染失败只记录有限诊断并省略失败图片，使服务按缺失产物返回 <code>partial</code>/<code>missing_output</code>。</li>
+    </ul>
+    <p>算法模块不接触 workspace/event/runner；service 负责路径受理、输出目录、持久化和 artifact。分析输出是解析/数值事实，MetricRecord 的 <code>kind</code> 只使用 <code>reported</code> 或 <code>runtime</code>，不生成科学 policy。</p>
+  </section>
+
+  <section id="architecture">
+    <h2>架构与数据流</h2>
+    <pre>MdPostprocessRequest
+  │
+  ├─ validate request + contained trajectory/output paths
+  ├─ admit operation_id (Workspace.operation_guard)
+  ├─ require exact trajectory file
+  ├─ load/sample once → pure md_postprocess algorithms
+  ├─ write trajectory_source.json + analysis.json + mode artifacts
+  ├─ build input/provenance/output ArtifactRecord (hash/size)
+  └─ ServiceContext.persist → artifact_refs + one postprocess event</pre>
+    <ul>
+      <li>service 以一个窄的 <code>MdPostprocessService.postprocess(request)</code> 暴露能力；machine CLI 只做 decode、route、render，不复制算法。</li>
+      <li>所有输出必须在同一 workspace root；trajectory 是 <code>input</code>，source manifest 是 <code>provenance_manifest</code>，analysis/data/image/report 是 <code>output</code>。通用 <code>ArtifactRecord</code> 与 artifact-ref 单点注入保持不变。</li>
+      <li>postprocess 事件的 operation 是 <code>postprocess</code>，不覆盖或修改上游 execute/collect event；本操作的 <code>execution=not_run</code>、<code>scientific=unassessed</code>，collection 按产物完整性为 complete/partial/missing_output。</li>
+      <li>输出文件名由 canonical modes 和固定 basename 生成，不接受用户拼接任意 output name；parameters 中未来新增模式必须先扩展算法/输出映射和测试。</li>
+    </ul>
+  </section>
+
+  <section id="errors">
+    <h2>错误与退出语义</h2>
+    <table>
+      <thead><tr><th>情形</th><th>Forge class / exit</th><th>语义</th></tr></thead>
+      <tbody>
+        <tr><td>缺字段、未知顶层字段、非法 mode、采样/参数类型错误</td><td><code>request.schema</code> / 2</td><td>不读 trajectory、不写领域文件、不 admission</td></tr>
+        <tr><td>路径非 canonical、越界、symlink escape、输出与输入/审计路径冲突</td><td><code>request.path</code> / 2</td><td>不写领域文件</td></tr>
+        <tr><td>admission 后 exact trajectory 缺失、不可读、格式非法、帧范围为空或分析所需事实缺失</td><td><code>precondition.missing</code> / 3</td><td>保留 admission tombstone；不伪造 analysis artifact</td></tr>
+        <tr><td>分析内核运行异常且不属于请求/路径/输入缺失</td><td><code>internal.failure</code> / 5</td><td>保留既有错误边界；不回写上游 event</td></tr>
+        <tr><td>analysis/report/event/hash 持久化失败</td><td><code>persistence.failure</code> / 5</td><td>不自动重试；使用新 operation_id 重新调用</td></tr>
+        <tr><td>重复 operation_id</td><td><code>operation.conflict</code> / 2</td><td>不读取或改写 trajectory/已有输出</td></tr>
+      </tbody>
+    </table>
+    <p>分析数值为 finite JSON；NaN/Infinity、不可序列化值和输出越界 fail-closed。错误 envelope 的 stderr 只写可行动诊断，stdout 仍为单 JSON 文档。</p>
+  </section>
+
+  <section id="testing">
+    <h2>验收与门禁</h2>
+    <ul>
+      <li><strong>contract/discovery：</strong>request round-trip、strict unknown fields、canonical paths、mode/parameter validation；md descriptor 增加 postprocess，schema 的 dataclass/wire/static properties 一致。</li>
+      <li><strong>algorithm：</strong>XYZ/ASE reader、sampling end/stride、周期 unwrap、Kabsch drift、MSD slope、VACF peak、RDF 元素对、键长/键角解析夹具；所有结果 JSON round-trip 且 finite。</li>
+      <li><strong>service：</strong>exact trajectory、containment/symlink、输出冲突、缺失/坏轨迹、部分输出、artifact hash/size、manifest、status、observation 和单 event；不启动 runner、不读 latest、不调用 collect。</li>
+      <li><strong>parity：</strong>隔离 workspace 的 Python API 与 request-file/stdin machine CLI 输出等价；文本/pretty 只改变渲染；stderr 无 prompt。</li>
+      <li><strong>兼容/架构：</strong>既有 MD 四 operation、legacy MD task、band/DOS postprocess、完整离线 pytest、forbidden-import/discovery gate 与 <code>git diff --check</code>。不把 fake trajectory 作为真实 ABACUS/科学证据。</li>
+    </ul>
+  </section>
+
+  <section id="rollout">
+    <h2>兼容与发布</h2>
+    <p>本切片将 <code>md</code> descriptor 的 operation 从四个扩展为五个，但不改变既有四个请求的字段、默认 PBE/NVE profile 或 legacy 行为。新 capability 保持 <code>experimental</code>；Paimon v1.3 adapter 只有在独立 benchmark、clean environment、真实 ABACUS smoke 和科学解释层确认后才选择消费它。</p>
+    <p>回滚只需移除新 request/algorithm/service/registry/docs，既有 MD operation 和通用 postprocess 保持不变。原始 <code>MD_dump</code> 解析、轨迹转换、PDB 输出、更多统计（例如电导）另行设计，不通过隐式兼容扩张进入本切片。</p>
+  </section>
+
+  <section id="risks">
+    <h2>风险与 Ruling</h2>
+    <div class="decision warning">
+      <p><strong>Ruling：</strong>选择完整五模式的显式轨迹后处理，而不是只做 MD_dump 摘要或另建五个工具入口。理由是 Paimon v1.2 已有统一入口、canonical modes 和算法测试，Forge 上层 SPEC 已允许独立 postprocess；共享 reader/service 可避免重复入口。若判断错误，代价被限制在一个 experimental capability，可独立回滚，不影响四个 MD operation 或 legacy API/CLI。</p>
+      <p><strong>Ruling：</strong>轨迹转换与 PDB 可视化暂留上层。理由是 Forge 的消费边界是 unit operation，abacus-agent-tools 已能交接 trajectory，abacuscopilot 的 PDB/TUI 是人类 convenience；把它们下沉会引入格式和交互契约。若后续 Agent 需要 raw <code>MD_dump</code>，另起显式 converter 设计。</p>
+      <p><strong>Ruling：</strong>分析专属可变参数放入 <code>parameters</code>，仅 source、mode、sampling、output 作为 typed 顶层字段。理由是防止为每个算法选项永久扩大 schema，同时保留可复现的核心边界；未识别参数必须记录且不得静默改变当前结果。</p>
+    </div>
+    <p><strong>当前无阻塞开放问题：</strong>真实 ABACUS MD 轨迹和 Paimon v1.3 benchmark 证据不在本离线实现切片内，作为后续 release gate；不影响先完成协议、算法和 API/CLI parity。</p>
+  </section>
+</main>
+<footer>本文件是 Forge typed MD postprocess 的设计规范；实现不得超出本文件与上位 Forge SPEC 的边界。</footer>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABACUS-Forge typed PyATB artifact manifest 设计</title>
+  <style>
+    :root { color-scheme: light; --ink:#17202a; --muted:#52606d; --line:#cbd2d9; --paper:#fff; --wash:#f5f7f8; --accent:#146c5b; --note:#8a5a00; }
+    @media (prefers-color-scheme: dark) { :root { color-scheme:dark; --ink:#e6edf3; --muted:#9aa7b4; --line:#3d4751; --paper:#161b22; --wash:#0d1117; --accent:#4cc38a; --note:#d4a72c; } }
+    * { box-sizing:border-box; } body { margin:0; background:var(--wash); color:var(--ink); font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header, nav, main, footer { width:min(100% - 2rem, 980px); margin-inline:auto; }
+    header { padding:3rem 0 1.5rem; border-bottom:3px solid var(--accent); } h1 { margin:0 0 .75rem; font-size:2.45rem; line-height:1.1; } h2 { margin:0 0 .75rem; font-size:1.35rem; } h3 { font-size:1rem; }
+    nav { padding:1.25rem 0; } nav ol { padding-left:1.25rem; } main { background:var(--paper); border:1px solid var(--line); } section { padding:1.5rem; border-top:1px solid var(--line); } section:first-child { border-top:0; }
+    p, ul, ol { margin:.5rem 0 1rem; } a { color:var(--accent); } code, pre { background:var(--wash); } code { padding:.1rem .3rem; } pre { overflow-x:auto; padding:1rem; border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; } th, td { padding:.65rem; border:1px solid var(--line); text-align:left; vertical-align:top; } th { background:var(--wash); }
+    .decision { border-left:4px solid var(--accent); padding:.5rem .75rem; background:var(--wash); border-radius:0 4px 4px 0; } .open { border-left-color:var(--note); } footer { padding:1.5rem 0 3rem; color:var(--muted); }
+    @media (min-width:900px) { body { display:grid; grid-template-columns:230px 1fr; grid-template-areas:"header header" "nav main" "footer footer"; column-gap:2rem; max-width:1200px; margin-inline:auto; padding-inline:1rem; } header{grid-area:header;} nav{grid-area:nav; position:sticky; top:1rem; align-self:start;} main{grid-area:main;} footer{grid-area:footer;} header,nav,main,footer{width:auto; margin-inline:0;} }
+    @media (max-width:640px) { h1{font-size:2rem;} section{padding:1rem;} }
+    @media print { body{background:#fff;font-size:11pt;} body,header,nav,main,footer{display:block;width:100%;max-width:none;} nav{display:none;} main{border:0;} section{break-inside:avoid;} a{color:inherit;text-decoration:none;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ABACUS-Forge typed PyATB artifact manifest</h1>
+    <p><strong>状态：</strong>Approved</p>
+    <p><strong>负责人：</strong>QuantumMisaka / Codex</p>
+    <p><strong>更新：</strong>2026-09-10</p>
+    <p><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
+  </header>
+
+  <nav aria-label="文档目录">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#summary">摘要</a></li>
+      <li><a href="#goals">目标与非目标</a></li>
+      <li><a href="#requirements">需求与验收</a></li>
+      <li><a href="#decisions">设计决策</a></li>
+      <li><a href="#architecture">架构与数据流</a></li>
+      <li><a href="#errors">错误处理</a></li>
+      <li><a href="#testing">测试</a></li>
+      <li><a href="#rollout">兼容与发布</a></li>
+      <li><a href="#risks">风险与开放项</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <h2>摘要</h2>
+      <p>typed <code>pyatb-band</code> 已经能够在显式 workspace 中完成 <code>prepare</code>、<code>execute</code> 和 <code>collect</code>，但当前结果中的 <code>ArtifactRecord</code> 只有通用 role，prepare 的 <code>pyatb_handoff</code> 与 collect 的显式文件列表也没有统一的 PyATB 产物语义。Agent 因而可以拿到文件，却不能稳定知道某个文件是 HR、SR、band data、band plot 还是运行输入。</p>
+      <p>本设计新增 capability 专属的 <code>pyatb_manifest/v1</code> 诊断对象。它嵌入现有 <code>forge.result/v1</code> envelope 的 diagnostics，不改变通用 result、<code>ArtifactRecord</code>、事件、旧 API 或 legacy CLI。manifest 只描述 Forge 已经实际处理或调用方明确声明的文件，返回路径、语义 kind、可确定的 spin、媒体类型、哈希和当前 envelope 内的 artifact id。</p>
+      <p><strong>后续契约修正（2026-09-11）：</strong>typed Bands 的必需矩阵输入是 HR/SR，rR 为可选 handoff。供给 rR 时继续记录 <code>matrix_rr/shared</code>；省略或显式置空时，prepare 不生成 rR 路由，manifest 也不生成 <code>matrix_rr</code> 或可选 rR 的 missing entry。</p>
+      <div class="decision"><p><strong>核心结论：</strong>先固化 PyATB 产物映射，再考虑 typed <code>export</code> 或真实 smoke；不把这个切片扩展成 SCF→PyATB workflow、属性计算或科学判定。</p></div>
+    </section>
+
+    <section id="goals">
+      <h2>目标与非目标</h2>
+      <h3>目标</h3>
+      <ul>
+        <li>为 typed <code>pyatb-band</code> 的输入 handoff 和显式输出提供一个稳定、可解析的 <code>forge.pyatb-manifest/v1</code> 语义层。</li>
+        <li>让 Python API 与 Agent-first CLI 在隔离 workspace 中产生等价 manifest、artifact id、路径和收集事实。</li>
+        <li>保留 workspace containment、link/copy provenance、缺失/越界/解析不完整事实，并使 manifest 与现有 artifact refs 一一对应。</li>
+        <li>让未知文件保持可见但不被猜测；无法从请求或文件名确定 spin 时写 <code>unknown</code>。</li>
+      </ul>
+      <h3>非目标</h3>
+      <ul>
+        <li>不修改通用 <code>forge.result/v1</code>、<code>ArtifactRecord</code> 字段或 <code>forge.operation-outcome/v1</code>。</li>
+        <li>不扫描 sibling SCF workspace，不从日志推导矩阵、Fermi 或任务关系，不读取“最近一次”结果。</li>
+        <li>不加入 PyATB properties、SCF→NSCF/PyATB 编排、typed <code>export</code>、重试/恢复、调度或平台语义。</li>
+        <li>不生成科学接受、拒绝、收敛或质量结论；<code>band_gap</code> 仍只是 reported parser fact。</li>
+        <li>不改变 <code>prepare_pyatb_band</code>、<code>run_pyatb</code>、<code>collect_pyatb</code>、<code>run_band_sequence</code> 等 legacy helper。</li>
+      </ul>
+    </section>
+
+    <section id="requirements">
+      <h2>需求与验收</h2>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>ID</th><th>需求</th><th>验收信号</th></tr></thead>
+        <tbody>
+          <tr><td>M1</td><td>成功的 typed <code>prepare</code>/<code>collect</code> diagnostics 必须包含 <code>pyatb_manifest</code>；其 <code>schema_version</code> 固定为 <code>forge.pyatb-manifest/v1</code>，并包含 <code>inputs</code>、<code>outputs</code>、<code>missing</code> 三个数组。失败 envelope 不伪造 manifest。</td><td>typed API 与 machine CLI 对同一 fixture 的 manifest 可 JSON round-trip；旧 envelope 字段和 legacy 输出不变。</td></tr>
+          <tr><td>M2</td><td>输入 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>artifact_id</code>、<code>sha256</code>（目标文件哈希）；来自显式 handoff 的 entry 还记录 <code>source_path_rel</code>、<code>handoff_mode</code>、<code>source_sha256</code>。</td><td>prepare 的 STRU、HR、SR、供给时的 rR、Input、KPT_band 均能映射，artifact id 能在同一 envelope 的 artifacts 中找到；未供给的 rR 不进入 inputs 或 missing。</td></tr>
+          <tr><td>M3</td><td>输出 entry 至少记录 <code>path_rel</code>、<code>kind</code>、<code>spin</code>、<code>media_type</code>、<code>artifact_id</code>、<code>sha256</code> 和 <code>size_bytes</code>。不存在、越界或不可访问的路径进入 <code>missing</code> 并带 reason；哈希读取失败属于不可访问，使用既有 collector 新增的 <code>unavailable_output_paths_rel</code> 事实；存在但 parser malformed 的真实文件仍可作为 output artifact，解析不完整继续由既有 diagnostics 表达，不伪造不存在的 artifact。</td><td>collect 覆盖 band_info、band data、PNG/PDF、<code>Out/input.json</code> 及未知显式路径；partial/missing 状态与现有 diagnostics 保持一致，并区分 unavailable 与 parser malformed。</td></tr>
+          <tr><td>M4</td><td>kind 只使用有限的 PyATB 语义集合：<code>structure</code>、<code>matrix_hr</code>、<code>matrix_sr</code>、<code>matrix_rr</code>、<code>pyatb_input</code>、<code>kpoint_path</code>、<code>band_info</code>、<code>band_data</code>、<code>band_plot</code>、<code>run_input</code>、<code>other</code>。spin 只可为 <code>up</code>、<code>down</code>、<code>shared</code>、<code>total</code>、<code>unknown</code>。</td><td>映射表和未知/歧义文件测试钉死；不根据文件内容或科学常识猜测 spin。</td></tr>
+          <tr><td>M5</td><td>artifact id 是当前 envelope 内的本地 id，不是跨 operation 的 <code>ArtifactRef</code>；manifest 不引入 operation/task/调度关系。</td><td>prepare 与 collect 各自独立产生 manifest；execute 不读取或修改先前 manifest/event，也不把上游结果隐式拼入自身 envelope。</td></tr>
+          <tr><td>M6</td><td>所有 manifest 路径遵守现有 workspace-relative containment；manifest 生成失败沿用现有 persistence/internal error 映射。</td><td>路径越界、外部 symlink、文件消失、哈希读取失败和事件持久化失败均有回归，且不改变既有 exit class。</td></tr>
+          <tr><td>M7</td><td>manifest 仅在 typed <code>pyatb-band</code> 面出现；legacy helper、旧 <code>forge-unit.json</code> 字段和旧 CLI 默认输出保持兼容。</td><td>legacy PyATB suite 与完整离线 suite 通过，兼容 diff 只包含新增 typed diagnostics/tests/docs。</td></tr>
+        </tbody>
+      </table></div>
+      <p>entry 的字段约束按数组语义执行：<code>inputs</code>/<code>outputs</code> 中代表已处理文件的 entry 必须带同 envelope 的 <code>artifact_id</code>、<code>sha256</code>、<code>size_bytes</code>；<code>missing</code> entry 必须带 <code>reason</code> 且不得带 artifact id。值对象可以保留稀疏构造能力以表示 missing，但 builder 不得产生违反上述语义的 wire entry；<code>reason</code> 只出现在 <code>missing</code> 数组。</p>
+    </section>
+
+    <section id="decisions">
+      <h2>设计决策与替代方案</h2>
+      <div class="decision">
+        <p><strong>D1：使用 capability 专属 diagnostics manifest。</strong>现有 <code>ArtifactRecord</code> 已能承载通用 role、media type、hash 和 size；直接给它增加 PyATB kind/spin/source 字段会扩大所有 capability 的 v1 契约。将语义放在 <code>pyatb_manifest</code> 可让 Agent 获得稳定信息，同时把变更限制在 PyATB。</p>
+        <p><strong>D2：只索引显式输入和显式输出。</strong>prepare 使用已有 handoff 记录；collect 使用请求中的默认/可选路径。Forge 不目录扫描，未知但显式声明的文件以 <code>other</code> 保留，避免因命名差异丢失事实。</p>
+        <p><strong>D3：spin 只做可证明映射。</strong>HR/SR/rR 的 spin 来自 prepare 的请求语义：HR 在 nspin=1/4 时为 shared、nspin=2 时按请求顺序分别为 up/down，SR 为 shared，供给的 rR 为 shared；collect 的 <code>band_up.dat</code>/<code>band_dn.dat</code> 可按稳定 basename 映射，<code>band.dat</code>、图片和 <code>band_info.dat</code> 默认为 unknown，除非请求或已有明确 metadata 证明，否则不写 total。</p>
+        <p><strong>D4：manifest 不建立跨 operation 引用。</strong><code>artifact_id</code> 只指向同一 envelope 的 <code>ArtifactRecord.id</code>；跨 operation 的 <code>ArtifactRef</code>、来源 operation 和编排关系仍由上层处理。</p>
+      </div>
+      <p>替代方案：扩展通用 <code>ArtifactRecord</code> 被否决（影响面过大）；新增独立 manifest 文件被暂缓（会引入多文件一致性和新的持久化协议）；自动扫描标准输出被否决（会重新引入隐式目录语义）。</p>
+    </section>
+
+    <section id="architecture">
+      <h2>架构与数据流</h2>
+      <p>manifest 是结果 envelope 的一个 capability-specific diagnostics projection，不是新的执行状态机：</p>
+      <pre>typed request
+  ├─ prepare helper ── explicit handoff records ──┐
+  └─ collect helper ── declared output records ───┤
+                                                    ▼
+                          pyatb_manifest/v1 + generic ArtifactRecord
+                                                    ▼
+                         existing ServiceContext.persist → event</pre>
+      <ul>
+        <li><strong>prepare：</strong>从实际 handoff role 和生成文件路径构造输入 entries；把 source/destination hashes、link/copy provenance 和当前 envelope artifact id 对齐。rR 仅在显式供给时出现；<code>forge-unit.json.metadata.pyatb_handoff</code> 保持已有字段，manifest 不替换它。</li>
+        <li><strong>collect：</strong>只处理 request 明确的 <code>band_info_path_rel</code>、data/picture paths；现有 artifact records 先生成，再由相同 path 映射得到 manifest entry。已知 <code>.dat</code> band 文件使用 <code>text/plain</code>，PNG/PDF/JSON 使用对应固定 MIME，其他文件使用 <code>application/octet-stream</code>；哈希读取失败单独记录为 <code>unavailable_output_paths_rel</code>，parser malformed 文件仍保留为真实 output artifact；band gap parser 的结果仍走现有 <code>MetricRecord(kind="reported")</code>。</li>
+        <li><strong>服务/API/CLI：</strong>服务层调用同一 helper，machine CLI 只负责解码、路由和渲染；manifest 不改变 admission、event、status 或 artifact-ref 单点持久化。</li>
+      </ul>
+      <h3>映射表</h3>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>路径/来源</th><th>kind</th><th>spin</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>inputs/STRU</code></td><td>structure</td><td>shared</td><td>显式 structure handoff</td></tr>
+          <tr><td>HR / SR / 可选 rR handoff</td><td>matrix_hr / matrix_sr / matrix_rr</td><td>HR：nspin=1/4 为 shared，nspin=2 按请求顺序为 up/down；SR 为 shared；供给的 rR 为 shared</td><td>不读取 sibling SCF；未供给 rR 不建 entry</td></tr>
+          <tr><td><code>inputs/Input</code> / <code>inputs/KPT_band</code></td><td>pyatb_input / kpoint_path</td><td>shared</td><td>Forge 生成的输入</td></tr>
+          <tr><td><code>band_info.dat</code></td><td>band_info</td><td>unknown</td><td>reported parser fact 的来源文件</td></tr>
+          <tr><td><code>band_up.dat</code> / <code>band_dn.dat</code>（及 down 变体）</td><td>band_data</td><td>up / down</td><td>仅按稳定 basename 映射</td></tr>
+          <tr><td><code>band.dat</code>、<code>band.png</code>、<code>band.pdf</code>、<code>Out/input.json</code></td><td>band_data / band_plot / run_input</td><td>unknown</td><td>不猜测 total</td></tr>
+          <tr><td>其他显式输出</td><td>other</td><td>unknown</td><td>保留 artifact，不添加领域解释</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="errors">
+      <h2>错误处理</h2>
+      <ul>
+        <li>manifest 是对已有结果的投影；路径、请求、文件读取和持久化继续使用现有 <code>request.invalid</code>、<code>request.path</code>、<code>precondition.missing</code>、<code>persistence.failure</code>、<code>internal.failure</code> 映射。</li>
+        <li>缺失、外部 resolved symlink、非普通文件和哈希读取失败不创建伪造 entry，进入 <code>missing</code>；其中哈希读取失败通过 <code>unavailable_output_paths_rel</code> 映射为 <code>reason="unavailable"</code>。存在但 parser malformed 的文件保留真实 output artifact，并保留现有 collection diagnostics/status。</li>
+        <li>manifest 不改变 <code>execution</code>、<code>collection</code>、<code>scientific</code> 或 process exit；尤其不把 band gap、文件齐全或 plot 存在转成接受结论。</li>
+        <li>artifact id 不存在、manifest 与 envelope 不一致或 manifest 序列化失败属于内部/持久化问题，由既有 service persistence gate 报告；不自动重试、不回收 admission。</li>
+      </ul>
+    </section>
+
+    <section id="testing">
+      <h2>测试与门禁</h2>
+      <ul>
+        <li><strong>契约：</strong>manifest schema/version、kind/spin 枚举、JSON round-trip、unknown-path fallback、artifact id 对齐。</li>
+        <li><strong>prepare：</strong>spin-1/2/4 handoff、可选 rR、link/copy、hash/provenance、generated Input/KPT 和无部分写入。</li>
+        <li><strong>collect：</strong>标准 band_info/data/plot/run-input、up/down basename、unknown 文件、missing/partial/escaped/unavailable/malformed，及 reported-only band gap。</li>
+        <li><strong>parity：</strong>同一隔离 fixture 经 Python API 与 machine CLI 产生等价 diagnostics、artifacts、refs、状态和 exit class；CLI stdout 仍为单 JSON envelope。</li>
+        <li><strong>兼容/架构：</strong>legacy PyATB tests、完整离线 pytest、architecture/forbidden-import/discovery gates、<code>git diff --check</code>。真实 PyATB/ABACUS smoke 不在本切片声称。</li>
+      </ul>
+      <p>实现前的 PLAN 必须将每个测试分为 RED→GREEN，并明确只改 typed PyATB 文件和必要文档；不得顺便引入 typed export、PyATB properties 或属性 selector。</p>
+    </section>
+
+    <section id="rollout">
+      <h2>兼容与发布</h2>
+      <p>manifest 只在 experimental <code>pyatb-band</code> typed service 的 diagnostics 中出现；旧 API、旧 CLI、旧文件消费者和通用 result schema 不需要迁移。已有消费者可忽略未知 diagnostics 字段；需要语义映射的 Agent 读取 <code>schema_version</code> 后再消费。</p>
+      <p>本切片不提升 capability maturity，不构成真实计算或科学结果证据。后续 typed export 必须另行设计并显式消费 artifact refs；real-smoke 必须在独立门禁中验证实际 PyATB/ABACUS 进程与产物。</p>
+    </section>
+
+    <section id="risks">
+      <h2>风险与开放项</h2>
+      <div class="decision">
+        <p><strong>已知风险：</strong>不同 PyATB 版本可能使用额外文件名或输出布局；本设计通过显式路径和 <code>other/unknown</code> 保留事实，不宣称未知文件的领域语义。未来扩展映射必须带独立证据和版本化变更。</p>
+        <p><strong>决策已收敛：</strong>接受“capability 专属 diagnostics manifest、通用 ArtifactRecord 不变、未知文件不猜测”的公共边界。批准来源为本线程已确认沿既定方向推进的执行授权；实现已按本 SPEC 与 PLAN 完成。</p>
+      </div>
+      <p><strong>依据：</strong>当前 typed PyATB plan、Forge 两份批准 SPEC、现有 <code>ArtifactRecord</code>/<code>ServiceContext.persist</code> 实现，以及 abacus-agent-tools、abacuslab 和本地 PyATB 的输入/输出审计。</p>
+    </section>
+  </main>
+
+  <footer>本文件是已批准 SPEC；实现与验证按关联 PLAN 执行。本切片不改变通用 result、ArtifactRecord 或 legacy helper。</footer>
+</body>
+</html>

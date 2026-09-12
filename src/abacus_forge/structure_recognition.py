@@ -93,15 +93,55 @@ def detect_structure_format(path: str | Path, text: str | None = None) -> str:
 def detect_vacuum_info(atoms: Atoms, vacuum_detect_thr: float = 6.0) -> tuple[dict[int, float], list[bool], np.ndarray]:
     """Detect vacuum thickness along each crystal axis."""
 
-    centered = atoms.copy()
-    centered.center()
-    cell = np.array(centered.get_cell())
-    lengths = np.linalg.norm(cell, axis=1)
-    positions = centered.get_positions()
-    spans = np.array([positions[:, axis].max() - positions[:, axis].min() for axis in range(3)])
-    vacuum_axes = [bool(spans[idx] <= (lengths[idx] - vacuum_detect_thr)) for idx in range(3)]
-    vacuum_map = {idx: float(lengths[idx] - spans[idx]) for idx, is_vacuum in enumerate(vacuum_axes) if is_vacuum}
-    return vacuum_map, vacuum_axes, lengths
+    cell = np.asarray(atoms.get_cell(), dtype=float)
+    heights = _cell_face_heights(cell)
+    no_vacuum = ({}, [False, False, False], heights)
+    if len(atoms) == 0 or not bool(np.all(atoms.get_pbc())) or not bool(np.all(heights > 0.0)):
+        return no_vacuum
+
+    scaled_positions = atoms.get_scaled_positions(wrap=False)
+    fractional_gaps = np.asarray(
+        [_largest_wrapped_gap(scaled_positions[:, axis]) for axis in range(3)],
+        dtype=float,
+    )
+    vacuum_gaps = fractional_gaps * heights
+    vacuum_axes = [bool(gap >= vacuum_detect_thr) for gap in vacuum_gaps]
+    vacuum_map = {
+        axis: float(vacuum_gaps[axis])
+        for axis, is_vacuum in enumerate(vacuum_axes)
+        if is_vacuum
+    }
+    return vacuum_map, vacuum_axes, heights
+
+
+def _cell_face_heights(cell: np.ndarray) -> np.ndarray:
+    """Return cell heights normal to the opposing faces."""
+
+    volume = abs(float(np.linalg.det(cell)))
+    face_areas = np.asarray(
+        [
+            np.linalg.norm(np.cross(cell[1], cell[2])),
+            np.linalg.norm(np.cross(cell[2], cell[0])),
+            np.linalg.norm(np.cross(cell[0], cell[1])),
+        ],
+        dtype=float,
+    )
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.divide(
+            volume,
+            face_areas,
+            out=np.zeros(3, dtype=float),
+            where=face_areas > 0.0,
+        )
+
+
+def _largest_wrapped_gap(values: np.ndarray) -> float:
+    """Return the largest circular gap between fractional coordinates."""
+
+    ordered = np.sort(np.mod(np.asarray(values, dtype=float), 1.0))
+    if len(ordered) <= 1:
+        return 1.0
+    return float(np.max(np.diff(np.r_[ordered, ordered[0] + 1.0])))
 
 
 def get_structure_metadata(

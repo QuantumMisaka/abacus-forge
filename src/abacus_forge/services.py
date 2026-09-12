@@ -1,17 +1,25 @@
-"""Typed, factual SCF services over the legacy Forge primitives."""
+"""Typed ABACUS services over event-free workspace primitives."""
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
-from typing import Callable, Protocol, TypeVar, runtime_checkable
+from dataclasses import replace
+import hashlib
+from typing import Callable, Protocol, runtime_checkable
 
-from abacus_forge.api import UnitModifySpec, UnitSpec, collect, modify_unit, prepare_unit, execute, suppress_legacy_events
+from abacus_forge.collection import collect_contained as collect
+from abacus_forge.preparation import prepare_with_assets
+from abacus_forge.modify import modify_input
+from abacus_forge.compatibility_records import unit_manifest, modification_record
+from abacus_forge.service_support import (
+    ServiceContext, _with_workspace, _prepare_artifacts, _input_snapshot,
+)
+from abacus_forge import collection_results
+from abacus_forge import md_results
 from abacus_forge.contracts import (
-    ArtifactRecord, ArtifactRef,
+    ArtifactRecord,
     ForgeErrorEnvelope,
     ForgeResultEnvelope,
-    Observation,
     OperationOutcome,
     OperationStatus,
     ScfCollectRequest,
@@ -19,7 +27,7 @@ from abacus_forge.contracts import (
     ScfModifyRequest,
     ScfPrepareRequest,
 )
-from abacus_forge.input_io import read_input
+from abacus_forge.input_io import input_calculation_values, read_input, serialized_calculation_values
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -27,21 +35,17 @@ from abacus_forge.relax_contracts import (
     RelaxPrepareRequest,
 )
 from abacus_forge.relax_results import collection_envelope, collection_observations
-from abacus_forge.runner import LocalRunner
-from abacus_forge.errors import (
-    ForgeInternalError,
-    ForgePathError,
-    ForgePersistenceError,
-    ForgePreconditionError,
-    ForgeRequestError,
-    ForgeSchemaError,
-    normalize_error_message,
-    OperationConflictError,
+from abacus_forge.md_contracts import (
+    MdCollectRequest,
+    MdExecuteRequest,
+    MdModifyRequest,
+    MdPrepareRequest,
 )
+from abacus_forge.runner import LocalRunner
+from abacus_forge.errors import ForgePreconditionError, ForgeSchemaError
 from abacus_forge.workspace import Workspace
 
 
-RequestT = TypeVar("RequestT")
 ServiceResult = OperationOutcome | ForgeErrorEnvelope
 RunnerFactory = Callable[..., object]
 
@@ -66,14 +70,8 @@ class CollectService(Protocol):
     def collect(self, request: ScfCollectRequest) -> ServiceResult: ...
 
 
-class _ScfServiceContext:
-    """Private shared context for typed ABACUS operation services.
-
-    The historical name is retained because it is private but appears in a
-    few downstream debugging traces.  ``request_type`` and ``task_resolver``
-    are supplied by each operation adapter, so the mechanics stay shared by
-    SCF and Relax without allowing a Relax request to fall through to SCF.
-    """
+class _AbacusServiceContext(ServiceContext):
+    """ABACUS capability matching and INPUT calculation preconditions."""
 
     def __init__(
         self,
@@ -82,32 +80,9 @@ class _ScfServiceContext:
         runner_factory: RunnerFactory = LocalRunner,
         validate_input_calculation: bool = False,
     ) -> None:
-        self.workspace_root = Path(workspace_root).resolve()
+        super().__init__(workspace_root=workspace_root)
         self.runner_factory = runner_factory
         self.validate_input_calculation = validate_input_calculation
-
-    def workspace(self, workspace_rel: str) -> Workspace:
-        candidate = (self.workspace_root / workspace_rel).resolve()
-        try:
-            candidate.relative_to(self.workspace_root)
-        except ValueError as error:
-            raise ForgePathError("workspace_rel must remain under workspace_root") from error
-        return Workspace(candidate)
-
-    @staticmethod
-    def workspace_path(workspace: Workspace, path_rel: str, field_name: str) -> Path:
-        candidate = (workspace.root / path_rel).resolve()
-        try:
-            candidate.relative_to(workspace.root)
-        except ValueError as error:
-            raise ForgePathError(f"{field_name} must remain under workspace_rel") from error
-        return candidate
-
-    @staticmethod
-    def require_file(candidate: Path, path_rel: str, field_name: str) -> Path:
-        if not candidate.is_file():
-            raise ForgePreconditionError(f"{field_name} file not found: {path_rel}")
-        return candidate
 
     @staticmethod
     def task_for(request: object) -> str:
@@ -115,6 +90,8 @@ class _ScfServiceContext:
             request,
             (RelaxPrepareRequest, RelaxModifyRequest, RelaxExecuteRequest, RelaxCollectRequest),
         ):
+            return request.capability
+        if isinstance(request, (MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest)):
             return request.capability
         return "scf"
 
@@ -130,17 +107,27 @@ class _ScfServiceContext:
             ScfCollectRequest: RelaxCollectRequest,
         }
         excluded_type = relax_types.get(request_type)
-        return excluded_type is None or not isinstance(request, excluded_type)
+        md_types = {
+            ScfPrepareRequest: MdPrepareRequest,
+            ScfModifyRequest: MdModifyRequest,
+            ScfExecuteRequest: MdExecuteRequest,
+            ScfCollectRequest: MdCollectRequest,
+        }
+        md_excluded_type = md_types.get(request_type)
+        return (
+            (excluded_type is None or not isinstance(request, excluded_type))
+            and (md_excluded_type is None or not isinstance(request, md_excluded_type))
+        )
 
     def require_matching_calculation(self, workspace: Workspace, task: str) -> None:
         """Require an existing INPUT to select the requested ABACUS phase."""
         input_path = self.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
         self.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
         try:
-            calculation = read_input(input_path).get("calculation")
+            calculations = input_calculation_values(input_path)
         except (OSError, ValueError) as error:
             raise ForgePreconditionError("inputs/INPUT calculation cannot be read") from error
-        if calculation != task:
+        if len(calculations) != 1 or calculations[0] != task:
             raise ForgePreconditionError(
                 f"inputs/INPUT calculation must match capability {task!r}"
             )
@@ -152,84 +139,67 @@ class _ScfServiceContext:
             return
         self.require_matching_calculation(workspace, task)
 
-    def persist(
-        self,
-        workspace: Workspace,
-        request: RequestT,
-        envelope: ForgeResultEnvelope,
-        *,
-        owner_token: str,
-        extra_observations: tuple[Observation, ...] = (),
-    ) -> OperationOutcome:
-        # Artifact references are operation-scoped and are injected once, at
-        # the boundary where the serializable outcome is assembled.
-        envelope = _with_artifact_refs(envelope, request.operation_id)  # type: ignore[attr-defined]
-        outcome = OperationOutcome(
-            operation_id=request.operation_id,  # type: ignore[attr-defined]
-            envelope=envelope,
-            observations=tuple(
-                {
-                    observation.name: observation
-                    for observation in (*_observations(envelope), *extra_observations)
-                }.values()
-            ),
-        )
-        workspace.append_claimed_v1_operation_event(
-            request.operation_id, envelope.operation, outcome.to_dict(), owner_token=owner_token  # type: ignore[attr-defined]
-        )
-        return outcome
-
-    @staticmethod
-    def error(error_class: str, message: str, request: object) -> ForgeErrorEnvelope:
-        operation_id = getattr(request, "operation_id", None)
-        workspace_rel = getattr(request, "workspace_rel", None)
-        if not isinstance(operation_id, str):
-            operation_id = None
-        if not isinstance(workspace_rel, str):
-            workspace_rel = None
-        return ForgeErrorEnvelope(
-            error_class=error_class,
-            message=normalize_error_message(error_class, message),
-            affected_fields=("request",),
-            operation_id=operation_id,
-            workspace_rel=workspace_rel,
-        )
-
-    def error_from_exception(self, error: Exception, request: object) -> ForgeErrorEnvelope:
-        if isinstance(error, OperationConflictError):
-            error_class = "operation.conflict"
-        elif isinstance(error, ForgeSchemaError):
-            error_class = "request.schema"
-        elif isinstance(error, ForgePathError):
-            error_class = "request.path"
-        elif isinstance(error, ForgePersistenceError):
-            error_class = "persistence.failure"
-        elif isinstance(error, ForgePreconditionError):
-            error_class = "precondition.missing"
-        elif isinstance(error, ForgeInternalError):
-            error_class = "internal.failure"
-        elif isinstance(error, ForgeRequestError):
-            error_class = "request.invalid"
+    def validate_request_calculation(self, request: object, task: str) -> None:
+        """Reject typed requests that try to cross capability profiles."""
+        if not self.validate_input_calculation:
+            return
+        if isinstance(request, (ScfPrepareRequest, RelaxPrepareRequest, MdPrepareRequest)):
+            values = request.parameters
+            field_name = "parameters"
+        elif isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)):
+            values = request.input_updates
+            field_name = "input_updates"
+            if "calculation" in request.remove_parameters:
+                raise ForgeSchemaError("remove_parameters cannot include calculation")
         else:
-            error_class = "internal.failure"
-        affected = {
-            "operation.conflict": ("operation_id",),
-            "request.path": ("workspace_rel",),
-            "persistence.failure": ("workspace_rel",),
-            "precondition.missing": ("request",),
-        }.get(error_class, ("request",))
-        result = self.error(error_class, str(error), request)
-        return ForgeErrorEnvelope(
-            error_class=result.error_class,
-            message=result.message,
-            affected_fields=affected,
-            operation_id=result.operation_id,
-            workspace_rel=result.workspace_rel,
-        )
+            return
+        if "calculation" in values and values["calculation"] != task:
+            raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
+        if any(
+            not str(key)
+            or str(key).strip() != str(key)
+            or any(char.isspace() for char in str(key))
+            or "#" in str(key)
+            for key in values
+        ):
+            raise ForgeSchemaError(f"{field_name} contains an invalid INPUT parameter name")
+        if isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)) and any(
+            not str(key)
+            or str(key).strip() != str(key)
+            or any(char.isspace() for char in str(key))
+            or "#" in str(key)
+            for key in request.remove_parameters
+        ):
+            raise ForgeSchemaError("remove_parameters contains an invalid INPUT parameter name")
+        calculations = serialized_calculation_values(values)
+        if calculations and (
+            "calculation" not in values
+            or values["calculation"] != task
+            or len(calculations) != 1
+            or calculations[0] != task
+        ):
+            raise ForgeSchemaError(f"{field_name} calculation must match capability {task!r}")
+
+    def validate_modify_serialization(self, workspace: Workspace, request: object, task: str) -> None:
+        """Validate the complete INPUT text that a strict modify would write."""
+        if not self.validate_input_calculation:
+            return
+        input_path = self.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
+        self.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
+        try:
+            values = read_input(input_path)
+        except (OSError, ValueError) as error:
+            raise ForgePreconditionError("inputs/INPUT calculation cannot be read") from error
+        values.update(dict(request.input_updates))  # type: ignore[attr-defined]
+        for key in request.remove_parameters:  # type: ignore[attr-defined]
+            values.pop(str(key), None)
+        calculations = serialized_calculation_values(values)
+        if len(calculations) != 1 or calculations[0] != task:
+            raise ForgeSchemaError(f"serialized INPUT calculation must match capability {task!r}")
 
 
 class _PrepareService:
-    def __init__(self, context: _ScfServiceContext, request_type: type[object]) -> None:
+    def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
         self._context = context
         self._request_type = request_type
 
@@ -240,6 +210,8 @@ class _PrepareService:
             )
         try:
             typed_request = request  # type: ignore[assignment]
+            task = self._context.task_for(typed_request)
+            self._context.validate_request_calculation(typed_request, task)
             workspace = self._context.workspace(typed_request.workspace_rel)  # type: ignore[attr-defined]
             # Resolve and validate containment before admission.  Existence and
             # file type are operation preconditions and must be checked after
@@ -251,16 +223,27 @@ class _PrepareService:
                 self._context.require_file(
                     structure_path, typed_request.structure_path_rel, "structure_path_rel"  # type: ignore[attr-defined]
                 )
-                with suppress_legacy_events():
-                    result = prepare_unit(
-                        UnitSpec(
-                            task=self._context.task_for(typed_request),
-                            workdir=workspace.root,
-                            structure=structure_path,
-                            structure_format=typed_request.structure_format,  # type: ignore[attr-defined]
-                            parameters=dict(typed_request.parameters),  # type: ignore[attr-defined]
-                        )
-                    )
+                _, materialization = prepare_with_assets(
+                    workspace,
+                    task=task,
+                    structure=structure_path,
+                    structure_format=typed_request.structure_format,  # type: ignore[attr-defined]
+                    parameters=dict(typed_request.parameters),  # type: ignore[attr-defined]
+                    metadata={"unit": "default"},
+                    pseudo_sources=dict(typed_request.pseudo_sources),  # type: ignore[attr-defined]
+                    orbital_sources=dict(typed_request.orbital_sources),  # type: ignore[attr-defined]
+                    asset_mode=typed_request.asset_mode,  # type: ignore[attr-defined]
+                )
+                asset_provenance = [record.to_dict() for record in materialization]
+                manifest_metadata = (
+                    {"asset_materialization": asset_provenance}
+                    if asset_provenance
+                    else None
+                )
+                workspace.write_json(
+                    "forge-unit.json",
+                    unit_manifest(task=task, metadata=manifest_metadata),
+                )
                 envelope = ForgeResultEnvelope(
                     operation="prepare",
                     workspace_rel=typed_request.workspace_rel,  # type: ignore[attr-defined]
@@ -269,9 +252,10 @@ class _PrepareService:
                     ),
                     artifacts=_prepare_artifacts(workspace),
                     diagnostics={
-                        "task": result.task,
-                        "unit": result.unit,
+                        "task": task,
+                        "unit": "default",
                         "prepare_manifest": "forge-unit.json",
+                        "asset_materialization": asset_provenance,
                     },
                 )
                 return self._context.persist(
@@ -282,12 +266,12 @@ class _PrepareService:
 
 
 class ScfPrepareService(_PrepareService):
-    def __init__(self, context: _ScfServiceContext) -> None:
+    def __init__(self, context: _AbacusServiceContext) -> None:
         super().__init__(context, ScfPrepareRequest)
 
 
 class _ModifyService:
-    def __init__(self, context: _ScfServiceContext, request_type: type[object]) -> None:
+    def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
         self._context = context
         self._request_type = request_type
 
@@ -298,20 +282,36 @@ class _ModifyService:
             )
         try:
             typed_request = request  # type: ignore[assignment]
+            task = self._context.task_for(typed_request)
+            self._context.validate_request_calculation(typed_request, task)
             workspace = self._context.workspace(typed_request.workspace_rel)  # type: ignore[attr-defined]
             with workspace.operation_guard(typed_request.operation_id, typed_request.operation) as owner_token:  # type: ignore[attr-defined]
                 input_path = self._context.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
                 self._context.require_file(input_path, "inputs/INPUT", "inputs/INPUT")
+                if self._context.validate_input_calculation:
+                    self._context.validate_collect_calculation(workspace, task)
+                self._context.validate_modify_serialization(workspace, typed_request, task)
                 before = _input_snapshot(workspace)
-                with suppress_legacy_events():
-                    result = modify_unit(
-                        UnitModifySpec(
-                            task=self._context.task_for(typed_request),
-                            workdir=workspace.root,
-                            input_updates=dict(typed_request.input_updates),  # type: ignore[attr-defined]
-                            remove_parameters=typed_request.remove_parameters,  # type: ignore[attr-defined]
-                        )
+                updates = dict(typed_request.input_updates)  # type: ignore[attr-defined]
+                removed = typed_request.remove_parameters  # type: ignore[attr-defined]
+                modified_files: list[str] = []
+                changes: dict[str, object] = {}
+                if updates or removed:
+                    modify_input(
+                        input_path, updates=updates, remove_keys=removed,
+                        destination=input_path,
                     )
+                    modified_files.append("INPUT")
+                    changes["INPUT"] = {
+                        "updates": updates, "removed": [str(key) for key in removed or ()],
+                    }
+                workspace.write_json(
+                    "forge-result.json",
+                    {"step": "modify", **modification_record(
+                        workspace=workspace.root, task=task,
+                        modified_files=modified_files, changes=changes,
+                    )},
+                )
                 after = _input_snapshot(workspace)
                 artifacts = tuple(
                     ArtifactRecord(
@@ -320,7 +320,7 @@ class _ModifyService:
                         role="input",
                         stage="modify",
                     )
-                    for name in result.modified_files
+                    for name in modified_files
                     if (workspace.inputs_dir / name).is_file()
                 )
                 envelope = ForgeResultEnvelope(
@@ -331,10 +331,10 @@ class _ModifyService:
                     ),
                     artifacts=artifacts,
                     diagnostics={
-                        "task": result.task,
-                        "unit": result.unit,
-                        "modified_files": result.modified_files,
-                        "changes": result.changes,
+                        "task": task,
+                        "unit": "default",
+                        "modified_files": modified_files,
+                        "changes": changes,
                         "input_snapshot_before": before,
                         "input_snapshot_after": after,
                     },
@@ -347,12 +347,12 @@ class _ModifyService:
 
 
 class ScfModifyService(_ModifyService):
-    def __init__(self, context: _ScfServiceContext) -> None:
+    def __init__(self, context: _AbacusServiceContext) -> None:
         super().__init__(context, ScfModifyRequest)
 
 
 class _ExecuteService:
-    def __init__(self, context: _ScfServiceContext, request_type: type[object]) -> None:
+    def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
         self._context = context
         self._request_type = request_type
 
@@ -435,6 +435,40 @@ class _ExecuteService:
                         },
                     )
                     envelope = _with_workspace(runner_result.to_envelope(), typed_request.workspace_rel)  # type: ignore[attr-defined]
+                    if getattr(runner_result, "normal_end", None) is True:
+                        source = getattr(runner_result, "normal_end_source", None)
+                        if isinstance(source, Path):
+                            artifacts = envelope.artifacts
+                            try:
+                                resolved_source = source.resolve(strict=True)
+                                if source.is_symlink() or not resolved_source.is_file():
+                                    raise ValueError("normal-end source is not a file")
+                                source_rel = resolved_source.relative_to(workspace.root.resolve()).as_posix()
+                                if not any(artifact.path_rel == source_rel for artifact in artifacts):
+                                    digest = hashlib.sha256()
+                                    size_bytes = 0
+                                    with resolved_source.open("rb") as stream:
+                                        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                                            digest.update(chunk)
+                                            size_bytes += len(chunk)
+                                    artifacts = artifacts + (ArtifactRecord(
+                                        id="abacus_running_log",
+                                        path_rel=source_rel,
+                                        role="output",
+                                        stage="execute",
+                                        sha256=digest.hexdigest(),
+                                        size_bytes=size_bytes,
+                                    ),)
+                            except (OSError, RuntimeError, ValueError, UnicodeError):
+                                source_rel = None
+                            if source_rel is not None:
+                                diagnostics = dict(envelope.to_dict()["diagnostics"])
+                                diagnostics.update({"normal_end": True, "normal_end_source": source_rel})
+                                envelope = replace(
+                                    envelope,
+                                    artifacts=artifacts,
+                                    diagnostics=diagnostics,
+                                )
                 return self._context.persist(
                     workspace, typed_request, envelope, owner_token=owner_token  # type: ignore[arg-type]
                 )
@@ -443,12 +477,12 @@ class _ExecuteService:
 
 
 class ScfExecuteService(_ExecuteService):
-    def __init__(self, context: _ScfServiceContext) -> None:
+    def __init__(self, context: _AbacusServiceContext) -> None:
         super().__init__(context, ScfExecuteRequest)
 
 
 class _CollectService:
-    def __init__(self, context: _ScfServiceContext, request_type: type[object]) -> None:
+    def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
         self._context = context
         self._request_type = request_type
 
@@ -468,9 +502,12 @@ class _CollectService:
                 if isinstance(typed_request, RelaxCollectRequest):
                     envelope = collection_envelope(result, typed_request.workspace_rel)
                     extra_observations = collection_observations(result)
+                elif isinstance(typed_request, MdCollectRequest):
+                    envelope = md_results.collection_envelope(result, typed_request.workspace_rel)
+                    extra_observations = md_results.collection_observations(result)
                 else:
-                    envelope = _with_workspace(result.to_envelope(), typed_request.workspace_rel)
-                    extra_observations = ()
+                    envelope = collection_results.collection_envelope(result, typed_request.workspace_rel)
+                    extra_observations = collection_results.collection_observations(result)
                 return self._context.persist(
                     workspace,
                     typed_request,
@@ -483,19 +520,54 @@ class _CollectService:
 
 
 class ScfCollectService(_CollectService):
-    def __init__(self, context: _ScfServiceContext) -> None:
+    def __init__(self, context: _AbacusServiceContext) -> None:
         super().__init__(context, ScfCollectRequest)
 
 
-class ScfServiceSet:
+class _ScfServiceSet:
     """Per-operation SCF services sharing one private execution context."""
 
-    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
-        context = _ScfServiceContext(workspace_root=workspace_root, runner_factory=runner_factory)
+    def __init__(
+        self,
+        *,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+        validate_input_calculation: bool = True,
+    ) -> None:
+        context = _AbacusServiceContext(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=validate_input_calculation,
+        )
         self.prepare: PrepareService = ScfPrepareService(context)
         self.modify: ModifyService = ScfModifyService(context)
         self.execute: ExecuteService = ScfExecuteService(context)
         self.collect: CollectService = ScfCollectService(context)
+
+    @classmethod
+    def default(
+        cls,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+        *,
+        validate_input_calculation: bool = True,
+    ) -> "ScfServiceSet":
+        return cls(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=validate_input_calculation,
+        )
+
+
+class ScfServiceSet(_ScfServiceSet):
+    """Per-operation SCF services with strict typed profile matching."""
+
+    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
+        super().__init__(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=True,
+        )
 
     @classmethod
     def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> "ScfServiceSet":
@@ -511,7 +583,7 @@ class RelaxServiceSet:
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
     ) -> None:
-        context = _ScfServiceContext(
+        context = _AbacusServiceContext(
             workspace_root=workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=True,
@@ -530,6 +602,34 @@ class RelaxServiceSet:
         return cls(workspace_root=workspace_root, runner_factory=runner_factory)
 
 
+class MdServiceSet:
+    """Per-operation molecular-dynamics services with MD input validation."""
+
+    def __init__(
+        self,
+        *,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+    ) -> None:
+        context = _AbacusServiceContext(
+            workspace_root=workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=True,
+        )
+        self.prepare: PrepareService = _PrepareService(context, MdPrepareRequest)
+        self.modify: ModifyService = _ModifyService(context, MdModifyRequest)
+        self.execute: ExecuteService = _ExecuteService(context, MdExecuteRequest)
+        self.collect: CollectService = _CollectService(context, MdCollectRequest)
+
+    @classmethod
+    def default(
+        cls,
+        workspace_root: str | Path = ".",
+        runner_factory: RunnerFactory = LocalRunner,
+    ) -> "MdServiceSet":
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+
+
 class ForgeServices:
     """Source-compatible facade delegating to :class:`ScfServiceSet`."""
 
@@ -540,7 +640,11 @@ class ForgeServices:
             runner_factory: RunnerFactory = LocalRunner
         else:
             runner_factory = lambda **_: self.runner
-        self._service_set = ScfServiceSet.default(workspace_root=self.workspace_root, runner_factory=runner_factory)
+        self._service_set = _ScfServiceSet(
+            workspace_root=self.workspace_root,
+            runner_factory=runner_factory,
+            validate_input_calculation=False,
+        )
 
     @classmethod
     def default(
@@ -559,107 +663,3 @@ class ForgeServices:
 
     def collect_scf(self, request: ScfCollectRequest) -> ServiceResult:
         return self._service_set.collect.collect(request)
-
-
-def _with_workspace(envelope: ForgeResultEnvelope, workspace_rel: str) -> ForgeResultEnvelope:
-    diagnostics = dict(envelope.to_dict()["diagnostics"])  # type: ignore[arg-type]
-    return ForgeResultEnvelope(
-        operation=envelope.operation,
-        workspace_rel=workspace_rel,
-        status=envelope.status,
-        artifacts=envelope.artifacts,
-        metrics=envelope.metrics,
-        checks=envelope.checks,
-        warnings=envelope.warnings,
-        diagnostics=diagnostics,
-    )
-
-
-def _observations(envelope: ForgeResultEnvelope) -> tuple[Observation, ...]:
-    """Expose engine/parser facts without deriving scientific conclusions."""
-    observations: list[Observation] = []
-    seen: set[str] = set()
-
-    def add(observation: Observation) -> None:
-        if observation.name not in seen:
-            seen.add(observation.name)
-            observations.append(observation)
-
-    for metric in envelope.metrics:
-        source = "runtime" if metric.kind == "runtime" or metric.name in {"returncode", "omp_threads"} else "parser"
-        add(Observation(name=metric.name, value=metric.value, source=source))
-    for check in envelope.checks:
-        add(Observation(name=check.name, value=check.status, source="parser"))
-    diagnostics = envelope.to_dict()["diagnostics"]
-    if isinstance(diagnostics, dict):
-        for name in ("failure_class", "dry_run", "normal_end", "converged", "termination"):
-            if name in diagnostics:
-                source = "runtime" if name in {"failure_class", "dry_run", "termination"} else "parser"
-                add(Observation(name=name, value=diagnostics[name], source=source))
-    return tuple(observations)
-
-
-def _manifest_artifact(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
-    path = workspace.root / "forge-unit.json"
-    if not path.is_file():
-        return ()
-    return (
-        ArtifactRecord(
-            id="provenance_manifest",
-            path_rel="forge-unit.json",
-            role="provenance_manifest",
-            stage="prepare",
-            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-            size_bytes=path.stat().st_size,
-        ),
-    )
-
-
-def _prepare_artifacts(workspace: Workspace) -> tuple[ArtifactRecord, ...]:
-    records = list(_manifest_artifact(workspace))
-    if workspace.inputs_dir.is_dir():
-        for path, resolved in _contained_files(workspace, workspace.inputs_dir):
-            relative = path.relative_to(workspace.root.resolve()).as_posix()
-            records.append(ArtifactRecord(
-                id=f"input-{path.relative_to(workspace.inputs_dir).as_posix().replace('/', '-').lower()}",
-                path_rel=relative, role="input", stage="prepare",
-                sha256=hashlib.sha256(resolved.read_bytes()).hexdigest(), size_bytes=resolved.stat().st_size,
-            ))
-    return tuple(records)
-
-
-def _input_snapshot(workspace: Workspace) -> dict[str, object]:
-    snapshot: dict[str, object] = {}
-    if workspace.inputs_dir.is_dir():
-        for path, resolved in _contained_files(workspace, workspace.inputs_dir):
-            rel = path.relative_to(workspace.inputs_dir).as_posix()
-            snapshot[rel] = {
-                "sha256": hashlib.sha256(resolved.read_bytes()).hexdigest(),
-                "size_bytes": resolved.stat().st_size,
-            }
-    return snapshot
-
-
-def _contained_files(workspace: Workspace, directory: Path) -> tuple[tuple[Path, Path], ...]:
-    """Return files whose resolved targets remain inside the workspace."""
-    root = workspace.root.resolve()
-    contained: list[tuple[Path, Path]] = []
-    for path in sorted(directory.rglob("*")):
-        try:
-            resolved = path.resolve()
-            resolved.relative_to(root)
-        except (OSError, RuntimeError, ValueError) as error:
-            raise ForgePathError(f"artifact path escapes workspace: {path}") from error
-        if resolved.is_file():
-            contained.append((path, resolved))
-    return tuple(contained)
-
-
-def _with_artifact_refs(envelope: ForgeResultEnvelope, operation_id: str) -> ForgeResultEnvelope:
-    diagnostics = dict(envelope.to_dict()["diagnostics"])  # type: ignore[arg-type]
-    diagnostics["artifact_refs"] = [ArtifactRef(operation_id, artifact.id).to_dict() for artifact in envelope.artifacts]
-    return ForgeResultEnvelope(
-        operation=envelope.operation, workspace_rel=envelope.workspace_rel, status=envelope.status,
-        artifacts=envelope.artifacts, metrics=envelope.metrics, checks=envelope.checks,
-        warnings=envelope.warnings, diagnostics=diagnostics,
-    )

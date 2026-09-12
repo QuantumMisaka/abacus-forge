@@ -10,6 +10,7 @@
 | 根目录 `AGENTS.md` | 人类与 AI 开发者 | 边界、验证、文档路由和开发约束 | 否；只指向规范源 |
 | `specs/*.html` | 维护者、评审者 | 公共 API/schema、持久化 workspace、迁移和跨仓边界的规范源 | 是，批准后 |
 | `plans/*.md` | 实施者 | 从 SPEC 推导出的可执行任务、测试和提交检查点 | 否 |
+| `evidence/*.md` | 维护者、发布评审者 | 绑定候选提交的门禁命令、环境、结果与未决证据 | 否 |
 | `../archive/` | 回溯者 | 已结项或已取代的历史材料 | 否 |
 
 重构规范由两份已批准的本地 SPEC 共同构成：[契约优先重构 SPEC](./specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 定义产品边界与 contract-first 总体迁移；[Service/Status 细化 SPEC](./specs/2026-09-02-forge-service-status-migration-design.html) 冻结 operation identity、执行/收集状态、v1 CLI/error 协议与兼容迁移。后者仅在其细化范围内优先；未覆盖的边界仍以 2026-09-01 SPEC 为准。

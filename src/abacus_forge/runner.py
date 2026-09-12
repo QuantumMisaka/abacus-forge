@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import re
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -63,10 +65,13 @@ class LocalRunner:
         env: dict[str, str] | None = None,
     ) -> str:
         candidate = Path(program)
-        if candidate.parent != Path():
+        # Inspect the original spelling so an explicit directory component
+        # (including ``./name``) never falls through to PATH lookup.
+        has_directory = os.sep in program or (os.altsep is not None and os.altsep in program)
+        if has_directory:
             # Directory-qualified paths are relative to the caller's cwd.  Use
             # lexical anchoring so a symlink remains visible as argv[0].
-            resolved = Path(os.path.abspath(os.fspath(candidate)))
+            resolved = candidate if candidate.is_absolute() else Path.cwd() / candidate
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
             raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
@@ -76,7 +81,7 @@ class LocalRunner:
         # does not reinterpret a relative PATH under ``cwd=inputs_dir``.
         search_cwd = Path.cwd()
         search_path = (env or os.environ).get("PATH", os.defpath)
-        if all(not entry or Path(entry).is_absolute() for entry in search_path.split(os.pathsep)):
+        if all(entry and Path(entry).is_absolute() for entry in search_path.split(os.pathsep)):
             resolved = shutil.which(program, path=search_path)
             if resolved is not None:
                 return resolved
@@ -84,7 +89,7 @@ class LocalRunner:
             directory = Path(entry) if entry else Path(".")
             if not directory.is_absolute():
                 directory = search_cwd / directory
-            resolved = Path(os.path.abspath(os.fspath(directory / program)))
+            resolved = directory / program
             if resolved.exists() and resolved.is_file() and os.access(resolved, os.X_OK):
                 return str(resolved)
         raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
@@ -116,6 +121,7 @@ class LocalRunner:
 
     def run(self, workspace: Workspace, check: bool = False) -> RunResult:
         workspace.ensure_layout()
+        running_log_snapshot = _running_log_snapshot(workspace)
         command = self.build_command(workspace)
         stdout_path = workspace.outputs_dir / "stdout.log"
         stderr_path = workspace.outputs_dir / "stderr.log"
@@ -181,6 +187,7 @@ class LocalRunner:
 
         stdout_path.write_text(stdout, encoding="utf-8")
         stderr_path.write_text(stderr, encoding="utf-8")
+        normal_end_source = _normal_end_source(workspace, stdout, running_log_snapshot)
         diagnostics.update(
             {
                 "failure_class": failure_class,
@@ -207,12 +214,135 @@ class LocalRunner:
             stderr_path=stderr_path,
             omp_threads=self.omp_threads,
             diagnostics=diagnostics,
+            normal_end=True if normal_end_source is not None else None,
+            normal_end_source=normal_end_source,
         )
 
     def _run_environment(self) -> dict[str, str]:
         env = {"OMP_NUM_THREADS": str(self.omp_threads)}
         env.update({str(key): str(value) for key, value in self.env_overrides.items()})
         return env
+
+
+_NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)
+
+_LogFingerprint = tuple[int, int, int, int, int, str, bool]
+
+
+def _stream_digest_and_marker(path: Path) -> tuple[str, bool]:
+    digest = hashlib.sha256()
+    marker = False
+    tail = ""
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+            text = tail + chunk.decode("utf-8", errors="ignore")
+            marker = marker or _NORMAL_END_MARKER.search(text) is not None
+            tail = text[-64:]
+    return digest.hexdigest(), marker
+
+
+def _stream_append_marker(path: Path, prefix_size: int, prefix_digest: str) -> bool | None:
+    """Return a marker found after an unchanged prefix, or ``None`` if it changed."""
+    digest = hashlib.sha256()
+    consumed = 0
+    tail = ""
+    with path.open("rb") as stream:
+        while consumed < prefix_size:
+            chunk = stream.read(min(1024 * 1024, prefix_size - consumed))
+            if not chunk:
+                return None
+            digest.update(chunk)
+            consumed += len(chunk)
+            tail = (tail + chunk.decode("utf-8", errors="ignore"))[-64:]
+        if digest.hexdigest() != prefix_digest:
+            return None
+
+        marker = False
+        while True:
+            chunk = stream.read(1024 * 1024)
+            if not chunk:
+                break
+            text = tail + chunk.decode("utf-8", errors="ignore")
+            boundary = len(tail)
+            marker = marker or any(match.end() > boundary for match in _NORMAL_END_MARKER.finditer(text))
+            tail = text[-64:]
+        return marker
+
+
+def _running_log_snapshot(workspace: Workspace) -> dict[Path, _LogFingerprint]:
+    """Snapshot contained native logs with stat metadata and a streaming digest."""
+    root = workspace.root.resolve()
+    snapshot: dict[Path, _LogFingerprint] = {}
+    directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("running_*.log")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+                resolved.relative_to(root)
+                stat = resolved.stat()
+                digest, marker = _stream_digest_and_marker(resolved)
+                snapshot[resolved] = (
+                    stat.st_dev,
+                    stat.st_ino,
+                    stat.st_size,
+                    stat.st_mtime_ns,
+                    stat.st_ctime_ns,
+                    digest,
+                    marker,
+                )
+            except (OSError, ValueError, RuntimeError):
+                continue
+    return snapshot
+
+
+def _normal_end_source(
+    workspace: Workspace, stdout: str, before: dict[Path, _LogFingerprint]
+) -> Path | None:
+    """Find a positive marker attributable to this LocalRunner invocation."""
+    if _NORMAL_END_MARKER.search(stdout):
+        return workspace.outputs_dir / "stdout.log"
+    root = workspace.root.resolve()
+    directories = (workspace.outputs_dir / "OUT.ABACUS", workspace.inputs_dir / "OUT.ABACUS")
+    matches: list[Path] = []
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("running_*.log")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+                resolved.relative_to(root)
+                stat = resolved.stat()
+                fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+                previous = before.get(resolved)
+                if previous is not None and previous[:5] == fingerprint[:5]:
+                    continue
+                digest, marker = _stream_digest_and_marker(resolved)
+                if previous is not None and previous[5] == digest:
+                    continue
+                if previous is not None and stat.st_size > previous[2]:
+                    append_marker = _stream_append_marker(resolved, previous[2], previous[5])
+                    if append_marker is not None:
+                        marker = append_marker
+                    elif previous[6]:
+                        # A prior marker plus a changed prefix is an
+                        # unresolvable rewrite, even when the new full file
+                        # still contains a marker.  Do not attribute it to
+                        # this invocation.
+                        marker = False
+                if previous is not None and stat.st_size <= previous[2] and previous[6] and marker:
+                    marker = False
+                if marker:
+                    matches.append(resolved)
+            except (OSError, ValueError, RuntimeError, UnicodeError):
+                continue
+    return matches[0] if len(matches) == 1 else None
 
 
 def run_many(

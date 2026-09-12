@@ -1,4 +1,4 @@
-# Real ABACUS smoke
+# Real process smoke gates
 
 The smoke gate consumes a prepared Forge workspace and never edits the source
 workspace. The workspace must contain valid `inputs/INPUT`, `inputs/STRU`,
@@ -9,6 +9,28 @@ export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/absolute/path/to/prepared-forge-worksp
 export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
 conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 ```
+
+The legacy SCF smoke above is intentionally a separate compatibility evidence
+surface: it calls the legacy Python `execute_unit`/`collect_unit` API and only
+checks the legacy result objects. The typed SCF smoke uses the machine CLI
+(`operation execute --stdin` followed by `operation collect --stdin`) with
+distinct UUIDv4 operation IDs, and checks the serialized operation envelope,
+facts, audit events, manifest references, and contained artifact paths. Only
+the typed test proves the typed machine path; neither test makes a scientific
+acceptance decision.
+
+To select only the typed SCF machine smoke:
+
+```bash
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_scf
+```
+
+On a checkout without the two external environment values, the focused local
+selection is skipped (`1 skipped, 2 deselected` without `--run-real-smoke`),
+and no real execution evidence is claimed. Supplying an invalid workspace or
+executable fails the test rather than turning the missing input into a pass.
 
 The typed Relax path is a separate, experimental machine-CLI smoke. It copies
 the prepared source into a temporary workspace, runs one `execute` request and
@@ -32,5 +54,93 @@ environment values skip with a precise reason. An invalid supplied workspace,
 capability, or executable fails the test. No real Relax workspace is bundled
 with Forge, so this test remains unproven until those values are supplied.
 
-This gate proves Forge execution and collection integration only. It does not
-replace convergence studies, platform validation, or the Paimon v1.2 benchmark.
+The typed MD path is a separate, experimental machine-CLI smoke. It copies a
+prepared `calculation=md` workspace, runs one typed `execute` and one typed
+`collect`, and checks the native `running_md.log` parser facts (the final
+thermodynamic scalars), status, audit events, manifest references, and
+contained artifacts. `MD_dump` facts remain a separate parser projection. Set
+the MD-specific workspace together with the shared executable:
+
+```bash
+export ABACUS_FORGE_MD_SMOKE_WORKSPACE=/absolute/path/to/prepared-md-workspace
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_abacus_smoke.py -k typed_md
+```
+
+The typed MD gate has its own workspace variable and does not require the SCF
+or Relax workspace variables. Missing MD-specific values skip with a precise
+reason; an invalid supplied workspace, executable, or non-MD `INPUT` fails.
+The supplied source must not already contain generated `running_md.log` or
+`MD_dump` files in collector-visible output areas, including the native
+`inputs/OUT.*` layout; this prevents an old run from being mistaken for
+evidence from the new execute call. The typed SCF and
+Relax gates apply the same freshness rule to their `running_*.log` files,
+including logs under `reports/`, and to the Forge fallback `out.log`. Relax
+also rejects existing final-structure outputs (`STRU_FINAL`,
+`STRU_FINAL.cif`, `STRU_ION_D`, `STRU_NOW`, `STRU_NOW.cif`, `STRU.cif`, or
+`STRU`) in collector-visible output locations, including `inputs/OUT.*`.
+Explicit non-generated `inputs/OUT.*` restart or handoff assets remain the
+caller's responsibility and are not rejected by this evidence-only guard.
+The gate checks parser facts only. It does not judge trajectory quality,
+physical temperature/energy correctness, convergence, scheduling, or workflow
+orchestration.
+
+The ABACUS, PyATB and ATST process smokes are evidence gates, not scientific validation. They prove
+only the selected Forge execution/collection integration and do not replace
+convergence studies, platform validation, workflow/scheduler checks, or the
+Paimon v1.2 benchmark. All capabilities remain experimental until their own
+real gates and the other Stage 4 release conditions are satisfied.
+
+The typed PyATB band process smoke is an additional opt-in gate. It consumes a
+caller-provided source directory with this layout and copies it into an isolated
+temporary Forge workspace before running:
+
+```text
+<workspace>/source/STRU
+<workspace>/source/data-HR-sparse_SPIN0.csr
+<workspace>/source/data-HR-sparse_SPIN1.csr
+<workspace>/source/data-SR-sparse_SPIN0.csr
+<workspace>/source/data-rR-sparse.csr       # optional for the request, present in this gate
+```
+
+The source must not already contain generated PyATB files below
+`inputs/Out/Band_Structure/` (for example `band_info.dat`, `band_up.dat`,
+`band_dn.dat`, `band.pdf`, or `band.png`). Set the executable and the explicit
+Fermi energy, then run:
+
+```bash
+export ABACUS_FORGE_PYATB_SMOKE_WORKSPACE=/absolute/path/to/pyatb-source-root
+export ABACUS_FORGE_PYATB_EXECUTABLE=/absolute/path/to/pyatb
+export ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY=15.5241312077
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_pyatb_smoke.py
+```
+
+The gate executes one typed `prepare`, one local PyATB process through typed
+`execute`, and one explicit `collect`. It checks the generated handoff, native
+band artifacts, parser-reported `band_gap`, operation events, artifact refs,
+workspace containment, and `scientific=unassessed`. The command selected by the
+execute operation is checked in the compatibility `forge-result.json`; the
+frozen result envelope is not widened for this smoke. The reported band gap is
+an observed parser metric, not a scientific acceptance decision. A missing
+workspace, executable, or Fermi energy skips only when unset; an invalid value
+fails the gate. This is process/parser/artifact compatibility evidence, not a
+PyATB property or NEB workflow result.
+
+The ATST-tools NEB process smoke is an additional opt-in gate. It uses the
+explicitly selected ATST 2.2.4 executable and does not start ABACUS:
+
+```bash
+export ABACUS_FORGE_ATST_EXECUTABLE=/absolute/path/to/atst
+conda run -n atst-dev env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_atst_smoke.py
+```
+
+This test runs `atst neb make`, `atst run --dry-run`, and `atst neb summary/post`
+through Forge's machine CLI, checking only process envelopes, status, contained
+summary/CIF artifacts, and audit containment. It is process/API compatibility
+evidence, not a real NEB execution, scientific validation, or maturity proof.

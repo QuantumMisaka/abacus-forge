@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABACUS-Forge typed PyATB nspin=4 交接设计</title>
+  <style>
+    :root { color-scheme: light; --ink:#17202a; --muted:#52606d; --line:#cbd2d9; --paper:#fff; --wash:#f5f7f8; --accent:#146c5b; --note:#8a5a00; }
+    @media (prefers-color-scheme: dark) { :root { color-scheme:dark; --ink:#e6edf3; --muted:#9aa7b4; --line:#3d4751; --paper:#161b22; --wash:#0d1117; --accent:#4cc38a; --note:#d4a72c; } }
+    * { box-sizing:border-box; } body { margin:0; background:var(--wash); color:var(--ink); font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header, nav, main, footer { width:min(100% - 2rem, 980px); margin-inline:auto; }
+    header { padding:3rem 0 1.5rem; border-bottom:3px solid var(--accent); } h1 { margin:0 0 .75rem; font-size:2.45rem; line-height:1.1; } h2 { margin:0 0 .75rem; font-size:1.35rem; } h3 { font-size:1rem; }
+    nav { padding:1.25rem 0; } nav ol { padding-left:1.25rem; } main { background:var(--paper); border:1px solid var(--line); } section { padding:1.5rem; border-top:1px solid var(--line); } section:first-child { border-top:0; }
+    p, ul, ol { margin:.5rem 0 1rem; } a { color:var(--accent); } code, pre { background:var(--wash); } code { padding:.1rem .3rem; } pre { overflow-x:auto; padding:1rem; border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; } th, td { padding:.65rem; border:1px solid var(--line); text-align:left; vertical-align:top; } th { background:var(--wash); }
+    .decision { border-left:4px solid var(--accent); padding:.5rem .75rem; background:var(--wash); border-radius:0 4px 4px 0; } .open { border-left-color:var(--note); } footer { padding:1.5rem 0 3rem; color:var(--muted); }
+    @media (min-width:900px) { body { display:grid; grid-template-columns:230px 1fr; grid-template-areas:"header header" "nav main" "footer footer"; column-gap:2rem; max-width:1200px; margin-inline:auto; padding-inline:1rem; } header{grid-area:header;} nav{grid-area:nav; position:sticky; top:1rem; align-self:start;} main{grid-area:main;} footer{grid-area:footer;} header,nav,main,footer{width:auto; margin-inline:0;} }
+    @media (max-width:640px) { h1{font-size:2rem;} section{padding:1rem;} }
+    @media print { body{background:#fff;font-size:11pt;} body,header,nav,main,footer{display:block;width:100%;max-width:none;} nav{display:none;} main{border:0;} section{break-inside:avoid;} a{color:inherit;text-decoration:none;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ABACUS-Forge typed PyATB nspin=4 交接设计</h1>
+    <p><strong>状态：</strong>Approved</p>
+    <p><strong>负责人：</strong>QuantumMisaka / Codex</p>
+    <p><strong>更新：</strong>2026-09-10</p>
+    <p><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
+    <p><strong>直接依据：</strong>本地 <code>pyatb</code> revision <code>80f7c2d</code> 的 <code>operate_HR_route</code> 与 <code>abacus_read_xr.py</code>。</p>
+  </header>
+
+  <nav aria-label="文档目录">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#summary">摘要</a></li>
+      <li><a href="#goals">目标与非目标</a></li>
+      <li><a href="#requirements">需求与验收</a></li>
+      <li><a href="#decisions">设计决策</a></li>
+      <li><a href="#architecture">架构与数据流</a></li>
+      <li><a href="#errors">错误处理</a></li>
+      <li><a href="#testing">测试</a></li>
+      <li><a href="#rollout">兼容与发布</a></li>
+      <li><a href="#risks">风险与开放项</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <h2>摘要</h2>
+      <p>typed <code>pyatb-band</code> 已经能接收显式的 ABACUS STRU、HR、SR 和可选 rR 文件并生成 PyATB 输入。在本切片形成时，请求契约把 HR 文件数直接限制为 <code>nspin</code>，因此无法表达 PyATB 已有的非共线 <code>nspin=4</code>；发现文档当时也如实公布了实现的 <code>1|2</code> 范围。</p>
+      <p>本切片把 <code>nspin=4</code> 作为一个最小的 typed handoff 扩展：请求允许 <code>1|2|4</code>；HR 路由数按 PyATB 的实际规则映射为 <code>1|2|1</code>；单个 nspin=4 复数 HR 在 manifest 中使用已有的 <code>spin="shared"</code>。Forge 只交接文件、写入输入并记录事实，不读取矩阵内容、不执行属性计算、不解释自旋纹理。</p>
+      <p><strong>后续契约修正（2026-09-11）：</strong>Bands 只要求 HR/SR；<code>rr_path_rel</code> 默认序列化为 <code>null</code>，也可在请求中省略。调用方提供 rR 时仍按 workspace-relative 文件严格交接并记录 <code>matrix_rr/shared</code>；未提供时不生成 <code>rR_route</code>，也不产生对应 manifest entry。</p>
+      <div class="decision"><p><strong>核心结论：</strong>这是一项 capability 内的输入契约修正，不是新的 PyATB property capability；保持 <code>forge.pyatb-manifest/v1</code>、通用 result、事件和 legacy helper 不变。</p></div>
+    </section>
+
+    <section id="goals">
+      <h2>目标与非目标</h2>
+      <h3>目标</h3>
+      <ul>
+        <li>让 typed <code>pyatb-band</code> 正确表达 PyATB 已支持的 <code>nspin=4</code> 单 HR handoff。</li>
+        <li>让 request decoder、discovery schema、prepare 生成的 <code>Input</code> 与 manifest 对同一 cardinality 规则保持一致；discovery 用 JSON Schema 条件表达 HR 数量。</li>
+        <li>保持 nspin=1/2 的现有行为、请求字段和 artifact/provenance 语义兼容。</li>
+        <li>通过 API、machine CLI、manifest 和错误路径测试证明该边界，而不声称真实 PyATB 或科学结果。</li>
+      </ul>
+      <h3>非目标</h3>
+      <ul>
+        <li>不增加 PyATB property selector、Berry/transport/自旋纹理等计算能力，也不解析 HR/SR/rR 的数值内容。</li>
+        <li>不改变 <code>forge.pyatb-manifest/v1</code> 的 kind/spin 枚举、通用 <code>ArtifactRecord</code> 或 event/result schema。</li>
+        <li>不把 nspin=4 扩展到其他 capability，不添加 SCF→PyATB 编排、目录扫描、调度、重试/恢复或科学验收。</li>
+        <li>不修改 <code>prepare_pyatb_band</code>、<code>run_pyatb</code>、<code>collect_pyatb</code> 和 <code>run_band_sequence</code> legacy helper。</li>
+      </ul>
+    </section>
+
+    <section id="requirements">
+      <h2>需求与验收</h2>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>ID</th><th>需求</th><th>验收信号</th></tr></thead>
+        <tbody>
+          <tr><td>N1</td><td>typed prepare request 的 <code>nspin</code> 只接受整数 <code>1</code>、<code>2</code>、<code>4</code>；布尔值和其它整数继续拒绝。</td><td>构造、JSON round-trip、request decoder 与 discovery schema 的枚举一致为 <code>[1,2,4]</code>；schema 的 integer 类型也拒绝布尔值。</td></tr>
+          <tr><td>N2</td><td>HR 路径数量由 spin mode 决定：<code>nspin=1</code> 或 <code>4</code> 要求恰好一个 HR，<code>nspin=2</code> 要求恰好两个 HR；SR 始终一个，rR 可选且最多一个。</td><td>缺少或多余 HR 在任何文件写入前失败；discovery 用 <code>if/then/else</code> 公开同一条件；三种模式生成的 HR/SR route 数与请求一致，rR 仅在供给时出现。</td></tr>
+          <tr><td>N3</td><td>nspin=4 的 generated <code>Input</code> 写入 <code>nspin 4</code> 和一个 <code>HR_route</code>；HR、SR 保留显式 workspace-relative route，供给 rR 时再写入 <code>rR_route</code>。</td><td>prepare fixture 检查文本、路径 containment、link/copy provenance 和无部分写入；HR/SR-only 输入不含 <code>rR_route</code>。</td></tr>
+          <tr><td>N4</td><td>prepare manifest 对 nspin=4 的唯一 HR 使用现有 <code>kind=matrix_hr</code>、<code>spin=shared</code>；SR 为 shared，供给 rR 时其 <code>matrix_rr</code> 也为 shared，未供给时不创建该 entry。</td><td>manifest entry 与同一 envelope artifact id、hash、size 对齐；不新增 <code>spinor</code> 值或 schema 版本；未提供（省略或 null）的 rR 不进入 <code>inputs</code> 或 <code>missing</code>，已声明但缺失的 rR 仍按既有前置条件错误处理。</td></tr>
+          <tr><td>N5</td><td>API 与 machine CLI 继续调用同一 typed service；legacy PyATB 面的参数、输出和测试保持不变。</td><td>typed API/CLI parity、discovery、完整离线 suite 与 legacy PyATB regression 通过。</td></tr>
+          <tr><td>N6</td><td>Forge 只交付输入交接和可观察事实；不因 nspin=4 输出 scientific acceptance、property result、workflow relation 或 scheduler state。</td><td>测试只断言生成文件、manifest、artifact、状态和错误；文档明确 real-smoke/科学判断仍在外层。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="decisions">
+      <h2>设计决策</h2>
+      <div class="decision">
+        <p><strong>D1：按 PyATB 的 mode/cardinality 规则，而不是按数值 nspin 复用长度规则。</strong>本地 PyATB 的 <code>operate_HR_route</code> 明确规定 nspin=1/4 使用一个 HR、nspin=2 使用两个 HR；Forge 只需把这条既有事实反映到请求校验和输入渲染。</p>
+        <p><strong>D2：nspin=4 的 HR manifest 使用 <code>spin="shared"</code>。</strong>nspin=4 的单个 HR 不拆分成 up/down，沿用 manifest 已有的 shared 值；完整的非共线模式仍由请求和生成的 <code>Input</code> 中的 <code>nspin=4</code> 表达。新增 <code>spinor</code> 会扩大 v1 词汇，而本切片没有需要它的下游事实。</p>
+        <p><strong>D3：不新增 nspin-specific parser。</strong>Forge 不验证复数 HR 的内容格式；PyATB 进程负责读取和报告其输入错误。Forge 只验证显式文件存在、路径 containment、hash/provenance 与生成文本。</p>
+      </div>
+      <p>被否决的替代方案：继续把 HR 数量等同于 nspin（无法表达 nspin=4）；新增四个 HR 文件或新的 spin 枚举（与 PyATB 实际输入规则不符且扩大契约）；在 Forge 中解析复数矩阵并预判科学有效性（越过 facts-only 边界）。</p>
+    </section>
+
+    <section id="architecture">
+      <h2>架构与数据流</h2>
+      <pre>PyatbBandPrepareRequest(nspin=4, hr_paths_rel=[hr.csr])
+        │
+        ├─ contract: expected_hr_count(4) == 1
+        ├─ typed handoff: structure + HR + SR [+ optional rR]
+        ├─ generated Input: nspin=4, one HR_route, SR_route [+ rR_route]
+        └─ pyatb_manifest/v1: matrix_hr/shared + matrix_sr/shared [+ matrix_rr/shared when supplied]</pre>
+      <ul>
+        <li><strong>契约层：</strong>集中定义允许值和期望 HR 数量；discovery 通过同一允许值和显式 JSON Schema conditional 公布字段及 cardinality，避免 discovery、服务和 manifest 各自漂移。</li>
+        <li><strong>交接层：</strong>复用现有 typed staging、relative link/copy、hash 和 collision preflight；nspin=4 不读取 sibling workspace。</li>
+        <li><strong>渲染层：</strong>现有 route 列表渲染对一个 nspin=4 HR 已经足够，只需由契约允许其通过；不改变 Input 字段命名。</li>
+        <li><strong>结果层：</strong>现有 manifest builder 根据 handoff entries 记录实际供给的文件；单 HR nspin=4 自然落到 shared，rR 只有在供给时才落为 <code>matrix_rr/shared</code>，不改变持久化协议。</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>错误处理</h2>
+      <p>非法 nspin、HR cardinality、路径或重复 basename 继续使用现有 request/precondition/path 错误映射；machine CLI 仍返回既有 <code>request.invalid</code>/<code>request.schema</code> 与 exit class。缺失、越界、不可读源文件的具体错误语义不改变。nspin=4 的矩阵内容错误只会在上层实际启动 PyATB 时由该进程报告，Forge 不提前伪造科学或计算结论。</p>
+      <p>任何 preflight 失败都必须发生在首次 staging 前；已有目标文件不得被覆盖。服务 admission、事件持久化和 artifact ref 校验沿用现有通用机制。</p>
+    </section>
+
+    <section id="testing">
+      <h2>测试</h2>
+      <ul>
+        <li><strong>契约：</strong>nspin=1/2/4 round-trip；nspin=4 单 HR 接受；nspin=4 的 0 或 2 个 HR 拒绝；nspin=3、布尔值和未知字段拒绝；discovery schema 枚举与 decoder 一致，并对 nspin=2/其它已知模式公开 HR cardinality conditional。</li>
+        <li><strong>prepare：</strong>nspin=4 生成一个 HR route 和 <code>nspin 4</code>；manifest HR/SR 以及供给时的 rR 的 kind/spin、artifact refs、hash/size 和 provenance 正确；link/copy、containment、collision/no-partial-write 保持覆盖。</li>
+        <li><strong>service/parity：</strong>隔离 workspace 中 Python API 与 machine CLI 的 request、状态、artifacts、manifest 和 event 等价；不启动真实 PyATB。</li>
+        <li><strong>回归/门禁：</strong>现有 PyATB legacy、machine CLI、contracts、workspace、architecture suites；完整离线 pytest、<code>git diff --check</code>、clean wheel/import gate 按计划执行。</li>
+      </ul>
+      <p>测试证明的是 Forge 的输入交接与结构化事实，不证明 nspin=4 矩阵的科学正确性或 PyATB property 可用性；真实进程 smoke 另行作为发布门禁。</p>
+    </section>
+
+    <section id="rollout">
+      <h2>兼容与发布</h2>
+      <p>这是 experimental <code>pyatb-band</code> 的向后兼容扩展：旧的 nspin=1/2 请求 wire 形式和 legacy helper 不变，新增的 nspin=4 请求由同一 <code>forge.request/v1</code> 承载。manifest 仍为 <code>forge.pyatb-manifest/v1</code>；旧版本 decoder 可能拒绝 nspin=4，新请求须由 discovery 明确公布 nspin=4 的版本处理，不能按默认 nspin=1 静默执行。</p>
+      <p>本批次不提升成熟度，也不自动加入 Paimon v1.3 稳定面；实验性调用可按 discovery 和版本能力选择。进入稳定面仍需后续 compat、benchmark、clean-environment 与 real-smoke 证据，由上层决定是否消费。</p>
+    </section>
+
+    <section id="risks">
+      <h2>风险与开放项</h2>
+      <div class="decision">
+        <p><strong>风险：</strong>不同 PyATB 版本可能对 property 或结果文件有额外限制。本设计只依据本地 PyATB `80f7c2d` 的通用 ABACUS HR route 规则，未把某个 property 的兼容性推断到 Forge。</p>
+        <p><strong>开放项：</strong>无阻塞决策。真实 nspin=4 smoke 由后续验证计划补齐；若加入 PyATB property、spin texture 或更多输出布局等新能力，再另起 SPEC/PLAN，并由上层承担科学解释与编排。</p>
+      </div>
+      <p><strong>收敛依据：</strong>上位 SPEC 已把 PyATB properties、nspin 4 和真实运行证据列为独立批次；本设计只解除当前 typed handoff 与 PyATB 已有输入规则之间的事实不一致。</p>
+    </section>
+  </main>
+
+  <footer>本文件是 typed PyATB nspin=4 交接的批准 SPEC；实现与验证按关联 PLAN 执行。它不改变通用 result、manifest、事件或 legacy helper。</footer>
+</body>
+</html>

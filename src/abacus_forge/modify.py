@@ -99,7 +99,25 @@ def _remove_1based_indices(structure: AbacusStructure, indices: Iterable[int]) -
     for index in normalized:
         if index < 1 or index > len(atoms):
             raise ValueError(f"vacancy index {index} is out of range for {len(atoms)} atoms")
+    source_move_flags = atoms.info.get("abacus_move_flags")
+    source_labels = atoms.info.get("abacus_atom_labels")
+    retained_move_flags = None
+    if isinstance(source_move_flags, list) and len(source_move_flags) == len(atoms):
+        removed = {index - 1 for index in normalized}
+        retained_move_flags = [
+            list(flag)
+            for atom_index, flag in enumerate(source_move_flags)
+            if atom_index not in removed
+        ]
+    for index in normalized:
         del atoms[index - 1]
+    if retained_move_flags is not None:
+        atoms.info["abacus_move_flags"] = retained_move_flags
+    if isinstance(source_labels, list) and len(source_labels) == len(atoms) + len(normalized):
+        removed = {index - 1 for index in normalized}
+        atoms.info["abacus_atom_labels"] = [
+            label for atom_index, label in enumerate(source_labels) if atom_index not in removed
+        ]
     return AbacusStructure(atoms, source_format=structure.source_format)
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -11,7 +13,12 @@ import numpy as np
 
 @dataclass(slots=True)
 class CubeData:
-    """Minimal Gaussian cube payload with volumetric data."""
+    """Minimal single-field Gaussian cube payload with volumetric data.
+
+    Gaussian cube files with a negative atom count encode orbital metadata and
+    are deliberately rejected because this value object represents one scalar
+    volumetric field only.
+    """
 
     comments: list[str]
     natoms: int
@@ -20,6 +27,42 @@ class CubeData:
     atom_lines: list[str]
     data: np.ndarray
 
+    def __post_init__(self) -> None:
+        if isinstance(self.natoms, bool) or not isinstance(self.natoms, int):
+            raise ValueError("cube natoms must be an integer")
+        if self.natoms < 0:
+            raise ValueError("cube orbital datasets with negative natoms are not supported")
+        origin = np.asarray(self.origin, dtype=float)
+        if origin.shape != (3,) or not np.isfinite(origin).all():
+            raise ValueError("cube origin must contain three finite values")
+        if not isinstance(self.grid, (list, tuple)) or len(self.grid) != 3:
+            raise ValueError("cube grid must contain three axes")
+        normalized_grid: list[dict[str, object]] = []
+        shape: list[int] = []
+        for item in self.grid:
+            if not isinstance(item, Mapping) or "count" not in item or "vector" not in item:
+                raise ValueError("cube grid entries require count and vector")
+            count = item["count"]
+            if isinstance(count, bool) or not isinstance(count, int) or count == 0:
+                raise ValueError("cube grid counts must be non-zero integers")
+            vector = np.asarray(item["vector"], dtype=float)
+            if vector.shape != (3,) or not np.isfinite(vector).all() or np.linalg.norm(vector) <= 0:
+                raise ValueError("cube grid vectors must be finite and non-zero")
+            normalized_grid.append({"count": count, "vector": [float(value) for value in vector]})
+            shape.append(abs(count))
+        data = np.asarray(self.data, dtype=float)
+        if data.shape != tuple(shape):
+            raise ValueError(f"cube data shape mismatch: expected {tuple(shape)}, got {data.shape}")
+        if not np.isfinite(data).all():
+            raise ValueError("cube data must contain finite values")
+        if len(self.atom_lines) < abs(self.natoms):
+            raise ValueError("cube atom records are incomplete")
+        for line in self.atom_lines:
+            _validate_atom_line(line)
+        object.__setattr__(self, "origin", [float(value) for value in origin])
+        object.__setattr__(self, "grid", normalized_grid)
+        object.__setattr__(self, "data", data)
+
     @classmethod
     def from_file(cls, path: str | Path) -> "CubeData":
         lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -27,16 +70,24 @@ class CubeData:
             raise ValueError(f"cube file is too short: {path}")
         comments = [lines[0], lines[1]]
         origin_parts = lines[2].split()
-        natoms = int(float(origin_parts[0]))
+        if len(origin_parts) < 4:
+            raise ValueError("cube origin record is incomplete")
+        natoms = _integer_token(origin_parts[0], "cube natoms")
+        if natoms < 0:
+            raise ValueError("cube orbital datasets with negative natoms are not supported")
         origin = [float(value) for value in origin_parts[1:4]]
         grid = []
         shape = []
         for line in lines[3:6]:
             parts = line.split()
-            count = int(float(parts[0]))
+            if len(parts) < 4:
+                raise ValueError("cube grid record is incomplete")
+            count = _integer_token(parts[0], "cube grid count")
             shape.append(abs(count))
             grid.append({"count": count, "vector": [float(value) for value in parts[1:4]]})
         atom_line_count = abs(natoms)
+        if len(lines) < 6 + atom_line_count:
+            raise ValueError("cube atom records are incomplete")
         atom_lines = lines[6 : 6 + atom_line_count]
         values: list[float] = []
         for line in lines[6 + atom_line_count :]:
@@ -54,7 +105,10 @@ class CubeData:
         )
 
     def with_data(self, data: Iterable[float] | np.ndarray) -> "CubeData":
-        array = np.asarray(data, dtype=float).reshape(self.data.shape)
+        try:
+            array = np.asarray(data, dtype=float).reshape(self.data.shape)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"cube data shape mismatch: expected {self.data.shape}") from error
         return CubeData(
             comments=list(self.comments),
             natoms=self.natoms,
@@ -65,6 +119,8 @@ class CubeData:
         )
 
     def write(self, path: str | Path) -> Path:
+        if not np.isfinite(self.data).all():
+            raise ValueError("cube data must contain finite values")
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         lines = [
@@ -121,11 +177,47 @@ def planar_average(cube: str | Path | CubeData, *, axis: int) -> list[float]:
 def _require_same_grid(left: CubeData, right: CubeData) -> None:
     if left.data.shape != right.data.shape:
         raise ValueError(f"cube shape mismatch: {left.data.shape} != {right.data.shape}")
-    left_vectors = [item["vector"] for item in left.grid]
-    right_vectors = [item["vector"] for item in right.grid]
-    if not np.allclose(left_vectors, right_vectors):
+    if not np.allclose(left.origin, right.origin):
+        raise ValueError("cube origins do not match")
+    left_axes = [(item["count"], item["vector"]) for item in left.grid]
+    right_axes = [(item["count"], item["vector"]) for item in right.grid]
+    if [count for count, _ in left_axes] != [count for count, _ in right_axes]:
+        raise ValueError("cube grid counts or units do not match")
+    if not np.allclose([vector for _, vector in left_axes], [vector for _, vector in right_axes]):
         raise ValueError("cube grid vectors do not match")
 
 
 def _fmt(value: object) -> str:
-    return f"{float(value):.10g}"
+    converted = float(value)
+    if not math.isfinite(converted):
+        raise ValueError("cube values must be finite")
+    return f"{converted:.10g}"
+
+
+def _integer_token(value: str, label: str) -> int:
+    try:
+        converted = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} must be an integer") from error
+    if not math.isfinite(converted) or not converted.is_integer():
+        raise ValueError(f"{label} must be an integer")
+    integer = int(converted)
+    if label == "cube grid count" and integer == 0:
+        raise ValueError("cube grid counts must be non-zero integers")
+    return integer
+
+
+def _validate_atom_line(line: object) -> None:
+    if not isinstance(line, str):
+        raise ValueError("cube atom records must be text")
+    parts = line.split()
+    if len(parts) < 5:
+        raise ValueError("cube atom record requires atomic number, charge, and three coordinates")
+    _integer_token(parts[0], "cube atom number")
+    for label, token in zip(("charge", "x", "y", "z"), parts[1:5], strict=True):
+        try:
+            converted = float(token)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"cube atom {label} must be a finite number") from error
+        if not math.isfinite(converted):
+            raise ValueError(f"cube atom {label} must be a finite number")

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABACUS-Forge property/cube artifact manifest 设计</title>
+  <style>
+    :root { color-scheme: light; --ink:#17202a; --muted:#52606d; --line:#cbd2d9; --paper:#fff; --wash:#f5f7f8; --accent:#146c5b; --note:#8a5a00; }
+    @media (prefers-color-scheme: dark) { :root { color-scheme:dark; --ink:#e6edf3; --muted:#9aa7b4; --line:#3d4751; --paper:#161b22; --wash:#0d1117; --accent:#4cc38a; --note:#d4a72c; } }
+    * { box-sizing:border-box; } body { margin:0; background:var(--wash); color:var(--ink); font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header, nav, main, footer { width:min(100% - 2rem, 980px); margin-inline:auto; }
+    header { padding:3rem 0 1.5rem; border-bottom:3px solid var(--accent); } h1 { margin:0 0 .75rem; font-size:2.45rem; line-height:1.1; } h2 { margin:0 0 .75rem; font-size:1.35rem; } h3 { font-size:1rem; }
+    nav { padding:1.25rem 0; } nav ol { padding-left:1.25rem; } main { background:var(--paper); border:1px solid var(--line); } section { padding:1.5rem; border-top:1px solid var(--line); } section:first-child { border-top:0; }
+    p, ul, ol { margin:.5rem 0 1rem; } a { color:var(--accent); } code, pre { background:var(--wash); } code { padding:.1rem .3rem; } pre { overflow-x:auto; padding:1rem; border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; } th, td { padding:.65rem; border:1px solid var(--line); text-align:left; vertical-align:top; } th { background:var(--wash); }
+    .decision { border-left:4px solid var(--accent); padding:.5rem .75rem; background:var(--wash); border-radius:0 4px 4px 0; } .open { border-left-color:var(--note); } footer { padding:1.5rem 0 3rem; color:var(--muted); }
+    @media (min-width:900px) { body { display:grid; grid-template-columns:230px 1fr; grid-template-areas:"header header" "nav main" "footer footer"; column-gap:2rem; max-width:1200px; margin-inline:auto; padding-inline:1rem; } header{grid-area:header;} nav{grid-area:nav; position:sticky; top:1rem; align-self:start;} main{grid-area:main;} footer{grid-area:footer;} header,nav,main,footer{width:auto; margin-inline:0;} }
+    @media (max-width:640px) { h1{font-size:2rem;} section{padding:1rem;} }
+    @media print { body{background:#fff;font-size:11pt;} body,header,nav,main,footer{display:block;width:100%;max-width:none;} nav{display:none;} main{border:0;} section{break-inside:avoid;} a{color:inherit;text-decoration:none;} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ABACUS-Forge property/cube artifact manifest</h1>
+    <p><strong>状态：</strong>Draft for review</p>
+    <p><strong>负责人：</strong>QuantumMisaka / Codex</p>
+    <p><strong>更新：</strong>2026-09-11</p>
+    <p><strong>上位规范：</strong><code>2026-09-01-forge-contract-first-rearchitecture-design.html</code>、<code>2026-09-02-forge-service-status-migration-design.html</code></p>
+  </header>
+
+  <nav aria-label="文档目录">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#summary">摘要</a></li>
+      <li><a href="#goals">目标与非目标</a></li>
+      <li><a href="#requirements">需求与验收</a></li>
+      <li><a href="#decisions">设计决策与替代方案</a></li>
+      <li><a href="#architecture">架构与数据流</a></li>
+      <li><a href="#errors">错误处理</a></li>
+      <li><a href="#testing">测试</a></li>
+      <li><a href="#rollout">兼容与推进</a></li>
+      <li><a href="#risks">风险与开放项</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <h2>摘要</h2>
+      <p>Forge 当前的 <code>convergence</code>、cube、workfunc、vacancy、BEC 与 Bader property pack 仍是 legacy <code>TaskResult</code> 面。它们能完成本地输入生成、子目录执行和文本/cube 后处理，但 <code>TaskResult.artifacts</code> 只是“路径 → 绝对路径”映射，不能稳定表达某个 cube 是输入还是派生结果、属于哪个自旋通道、是否可读以及来源是什么。<code>abacus-agent-tools</code>、<code>abacus-test</code> 和 <code>abacuscopilot</code> 的现有实现也说明，cube 文件名和输出目录存在变体；仅凭目录扫描或文件名猜测不能形成可靠的机器事实。</p>
+      <p>本设计提出一个兼容性增量：在 legacy property 的 JSON 结果 <code>diagnostics</code> 中增加 capability-specific 的 <code>property_manifest</code>，首批覆盖 <code>charge-density</code>、<code>spin-density</code> 和 <code>charge-diff</code> 的 cube 输入、派生 cube 与报告文件。它不是新的 typed capability、不是新的事件或持久化状态机，也不改变旧的 <code>TaskResult</code> 字段和 CLI 语义。</p>
+      <div class="decision"><p><strong>拟议结论：</strong>让机器和人类都能拿到“实际处理了哪些文件以及文件事实”的稳定索引；科学结果的接受、任务编排、重试和平台调度仍由人类或 Agent 负责。</p></div>
+    </section>
+
+    <section id="goals">
+      <h2>目标与非目标</h2>
+      <h3>目标</h3>
+      <ul>
+        <li>为首批 cube property post 操作提供版本化、可 JSON 解析的 source/derived artifact 事实。</li>
+        <li>记录 workspace-relative 路径、有限的文件类型、来源/派生关系、自旋事实、哈希、大小和解析状态。</li>
+        <li>区分缺失、resolved symlink 越界和不可读取文件，不为不存在的文件伪造 artifact。</li>
+        <li>让 Python API 与旧 property CLI 使用同一 manifest builder，并保持既有返回字段和有效输入行为不变。</li>
+      </ul>
+      <h3>非目标</h3>
+      <ul>
+        <li>不新增或推广 typed <code>property</code> capability，不把 legacy pack 伪装成 Stage 4 稳定面。</li>
+        <li>不修改通用 <code>forge.result/v1</code>、<code>ArtifactRecord</code>、<code>TaskResult</code> 字段、事件/admission 或旧 CLI 的 <code>prepare|run|post</code> 语法。</li>
+        <li>不把目录扫描、latest 选择、文件名猜测、SCF→property workflow、重试/恢复或平台调度写入 Forge。</li>
+        <li>不输出科学接受/拒绝、收敛、质量或物理解释；manifest 只描述事实。</li>
+        <li>本切片不覆盖 workfunc、ELF、Bader、vacancy、BEC、nspin 4 或真实 ABACUS smoke；这些按各自证据另行推进。</li>
+      </ul>
+    </section>
+
+    <section id="requirements">
+      <h2>需求与验收</h2>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>ID</th><th>需求</th><th>验收信号</th></tr></thead>
+        <tbody>
+          <tr><td>R1</td><td>manifest 只作为 <code>diagnostics.property_manifest</code> 的新增字段，根对象的 schema version 固定为 <code>forge.property-manifest/v1</code>，包含 <code>task</code>、<code>inputs</code>、<code>outputs</code>、<code>missing</code> 三个数组。</td><td>旧 <code>TaskResult.to_dict()</code> 键与旧 CLI 输出保持不变；新增字段可被忽略的旧消费者不失败。</td></tr>
+          <tr><td>R2</td><td>present entry 至少包含 <code>path_rel</code>、<code>kind</code>、<code>role</code>、<code>origin</code>、<code>spin</code>、<code>artifact_id</code>、<code>sha256</code>、<code>size_bytes</code> 和 <code>media_type</code>；<code>parse_status</code> 若存在只能是 <code>ok|malformed</code>，首批成功解析的文件标记为 <code>ok</code>。首批不把 legacy parser 异常改造成结构化降级；未来若要产出 <code>malformed</code>，必须另行设计降级行为。</td><td>同一 workspace 内的 entry 与现有 envelope artifact path/hash/size 对齐；哈希和大小来自实际文件。</td></tr>
+          <tr><td>R3</td><td>首批 <code>kind</code> 只使用 <code>cube</code>、<code>report</code>、<code>text</code>、<code>other</code>；<code>role</code> 为 <code>input|output</code>；<code>origin</code> 为 <code>source|derived</code>；<code>spin</code> 为 <code>shared|up|down|unknown</code>。property 语义由 root <code>task</code>、显式 role 和 spin 表达，不根据文件名臆测新的科学种类；调用方显式交接的额外文件可用 <code>other</code> 保留，但未交接的文件不因 manifest 而被扫描。</td><td>charge/spin/charge-diff 的映射测试覆盖 shared、up、down 和 unknown；显式额外文件仍可见但不会被解释成新 property。</td></tr>
+          <tr><td>R4</td><td>missing entry 只包含路径、kind、role、origin、spin 和 <code>reason</code>；reason 固定为 <code>missing|escaped|unavailable</code>，不得带 artifact id、哈希或大小。首批中 legacy parser 抛错的文件沿用原异常行为，不伪造 manifest entry。</td><td>缺失文件、外部 resolved symlink、文件消失和哈希读取失败测试分别得到对应 reason；不存在的 artifact 不被伪造。</td></tr>
+          <tr><td>R5</td><td>对由输入数据实际派生的 <code>origin="derived"</code> 文件（首批为派生 <code>cube</code>）必须记录非空 <code>source_artifact_ids</code>；事实报告等只记录操作观察的 <code>report</code> 可以不带 source refs。所有 refs 只能引用同一结果中的 present entries；source entry 不需要反向引用。不得引入跨 operation 的 <code>ArtifactRef</code>、任务 DAG 或 provenance 数据库。</td><td>spin-density 的差 cube 引用两个 source cube；charge-diff 的差 cube 引用 full/subsystem1/subsystem2；degraded 情况下 metrics report 不伪造来源；引用不跨 workspace。</td></tr>
+          <tr><td>R6</td><td>manifest builder 接收 property post 已经选定的显式路径和语义，不新增目录扫描或 latest 规则；既有 legacy 选择逻辑在本切片保持兼容，manifest 只报告实际选择。无文件时只使用下表冻结的 canonical expected path，不复制 glob 变体。路径中的 <code>&lt;suffix&gt;</code> 取对应子任务 <code>inputs/INPUT</code> 的既有 <code>suffix</code> 值；缺失或空值使用 <code>ABACUS</code>，不安全值不被拼入越界路径。</td><td>同一 workspace、同一 legacy API 调用和同一 CLI 调用得到等价 manifest；无输入或越界路径时只记录事实并保留既有 status/diagnostics 边界。</td></tr>
+          <tr><td>R7</td><td>所有 manifest 路径都须通过既有 workspace containment；manifest 是 diagnostics 增量，投影失败不得把原本成功的 legacy post 变成异常、改变 status/exit 或自动重试。实现应保留原结果并记录可 JSON 化的 manifest warning。</td><td>路径安全、JSON finite、legacy 回归、投影失败回归和完整离线门禁通过；不产生网络、调度器或 sibling-repository import。</td></tr>
+        </tbody>
+      </table></div>
+      <pre>{
+  "schema_version": "forge.property-manifest/v1",
+  "task": "spin-density",
+  "inputs": [{
+    "path_rel": "spin-density/scf/inputs/OUT.ABACUS/SPIN1_CHG.cube",
+    "kind": "cube", "role": "input", "origin": "source", "spin": "up",
+    "artifact_id": "artifact-...", "sha256": "...", "size_bytes": 1234,
+    "media_type": "application/octet-stream", "parse_status": "ok"
+  }],
+  "outputs": [{
+    "path_rel": "reports/spin_density.cube",
+    "kind": "cube", "role": "output", "origin": "derived", "spin": "shared",
+    "artifact_id": "artifact-...", "sha256": "...", "size_bytes": 2345,
+    "media_type": "application/octet-stream", "parse_status": "ok",
+    "source_artifact_ids": ["artifact-...", "artifact-..."]
+  }],
+  "missing": []
+}</pre>
+    </section>
+
+    <section id="decisions">
+      <h2>设计决策与替代方案</h2>
+      <div class="decision">
+        <p><strong>D1：放在 legacy diagnostics，不新增 typed property capability。</strong>当前 property pack 的消费面仍是 <code>TaskResult</code> 和现有 CLI；直接改通用 ArtifactRecord 或一次性设计所有 property operation 会把尚未有真实证据的能力锁成公共契约。diagnostics 增量可以服务上层 Agent，同时保留迁移余地。</p>
+        <p><strong>D2：使用明确的 source/derived 文件事实。</strong>首批 post 函数继续负责兼容性选择，manifest builder 只接收选择结果、canonical expected path 和调用方确认的语义；它不自己扫描目录、不选择 latest、不从文件名推断新的 property。</p>
+        <p><strong>D3：kind 保持文件类型级别，task/role/spin 表达有限语义。</strong>cube 的 charge、potential、ELF 等科学种类不进入通用 kind 枚举；后续若某个 pack 需要更细语义，另起 capability-specific SPEC。</p>
+        <p><strong>D4：artifact id 只在当前结果内有效。</strong>manifest 与已有 envelope 使用同一路径事实和 artifact projection；跨 operation 的来源引用仍由人类/Agent 组合，不在这个 legacy 增量中建立 DAG。</p>
+      </div>
+      <p>替代方案：扩展通用 <code>ArtifactRecord</code> 被否决（影响全部 capability）；马上新增 typed <code>property</code> capability 被暂缓（输入、执行、collect、postprocess 及真实证据尚未分别冻结）；新增独立 manifest 文件被暂缓（会引入第二份持久化协议）。</p>
+    </section>
+
+    <section id="architecture">
+      <h2>架构与数据流</h2>
+      <pre>legacy property prepare/run/post
+             │
+             ├─ existing compatibility selection / cube arithmetic
+             │       └─ selected source + derived paths and parser facts
+             ▼
+     property_manifest builder (explicit facts only)
+             │
+             ├─ workspace containment + hash/size/media projection
+             └─ diagnostics["property_manifest"]
+             ▼
+       existing TaskResult.to_dict / legacy CLI JSON</pre>
+      <p><strong>首批 canonical expected paths（均相对于 Forge workspace root）：</strong></p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>pack / 事实</th><th>canonical expected path</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>charge-density source</td><td><code>charge-density/scf/inputs/OUT.&lt;suffix&gt;/SPIN1_CHG.cube</code></td><td>legacy post 未选到文件时的唯一 source missing 位置；不推断额外自旋通道。</td></tr>
+          <tr><td>spin-density up/down sources</td><td><code>spin-density/scf/inputs/OUT.&lt;suffix&gt;/SPIN1_CHG.cube</code><br><code>spin-density/scf/inputs/OUT.&lt;suffix&gt;/SPIN2_CHG.cube</code></td><td>分别映射为 <code>spin=up</code> 与 <code>spin=down</code>。</td></tr>
+          <tr><td>charge-diff source inputs</td><td><code>charge-diff/full/inputs/OUT.&lt;suffix&gt;/SPIN1_CHG.cube</code><br><code>charge-diff/subsystem1/inputs/OUT.&lt;suffix&gt;/SPIN1_CHG.cube</code><br><code>charge-diff/subsystem2/inputs/OUT.&lt;suffix&gt;/SPIN1_CHG.cube</code></td><td>三者分别是 full、subsystem1、subsystem2 的 source；本切片不隐式聚合 nspin 2/4。</td></tr>
+          <tr><td>spin-density derived output</td><td><code>reports/spin_density.cube</code></td><td>仅在 legacy subtraction 成功后作为 derived present entry。</td></tr>
+          <tr><td>charge-diff derived output</td><td><code>reports/charge_density_diff.cube</code></td><td>仅在 legacy subtraction 成功后作为 derived present entry。</td></tr>
+          <tr><td>metrics reports</td><td><code>reports/metrics_charge_density.json</code><br><code>reports/metrics_spin_density.json</code><br><code>reports/metrics_charge_diff.json</code></td><td>post 每次调用写出的事实报告，按实际存在情况记录为 <code>kind=report</code>、<code>origin=derived</code>；它们不强制带 source refs。</td></tr>
+        </tbody>
+      </table></div>
+      <p>canonical 只用于“没有实际选择结果”时生成 missing 事实；一旦 legacy glob 选到变体，present entry 使用实际 resolved path，builder 不复制、不重命名也不把变体改写成 canonical。Forge 的 LocalRunner 以子 workspace 的 <code>inputs/</code> 为进程 cwd，因此上表以 <code>inputs/OUT.&lt;suffix&gt;</code> 表达 ABACUS 的默认输出位置；测试或外部调用方将同一文件显式放在 <code>outputs/</code> 时，manifest 仍忠实记录实际路径。</p>
+      <ul>
+        <li><strong>charge-density：</strong>post 记录实际 charge cube 和 metrics report；没有文件时只记录表中 canonical expected source missing fact。兼容性 glob 找到的变体只记录其实际 resolved path。</li>
+        <li><strong>spin-density：</strong>按 post 已确认的 SPIN1/SPIN2 文件记录 up/down source；差 cube 是 shared derived output，并引用两个 source artifact。</li>
+        <li><strong>charge-diff：</strong>full、subsystem1、subsystem2 是 source inputs；差 cube 是 derived output；manifest 不解释差分的科学含义。</li>
+        <li><strong>Artifact 对齐：</strong>manifest 不另建 artifact identity；实现应复用现有路径 containment、哈希和 <code>ArtifactRecord</code> projection，避免双重注入或两个 hash 来源。</li>
+        <li><strong>层次边界：</strong>Forge 只交付文件和解析事实；Paimon/人类/Agent 决定是否继续执行、如何编排和是否接受科学结果。</li>
+      </ul>
+    </section>
+
+    <section id="errors">
+      <h2>错误处理</h2>
+      <ul>
+        <li>文件不存在、resolved target 越界或不是普通文件：进入 <code>missing</code>，reason 分别为 <code>missing</code>、<code>escaped</code> 或 <code>unavailable</code>；不读取越界文件。workspace 内声明但 resolved target 越界的 symlink 保留其 lexical workspace-relative <code>path_rel</code>，不记录外部 resolved target。</li>
+        <li>文件存在但读取/哈希失败：进入 <code>missing</code>，reason 为 <code>unavailable</code>；不制造 artifact id。</li>
+        <li>首批文件存在但 parser 发现结构不完整时，沿用当前 legacy parser 异常行为；manifest 不声称已经记录该文件。结构化 <code>parse_status="malformed"</code> 只有在后续计划明确捕获、降级和兼容策略后才能启用。</li>
+        <li>manifest 自身投影/序列化失败：保留原本的 legacy <code>TaskResult</code> 和 status/exit，并以 diagnostics warning 说明 manifest 未生成；不自动重试，不改变其它已有结果字段。</li>
+      </ul>
+    </section>
+
+    <section id="testing">
+      <h2>测试</h2>
+      <ul>
+        <li><strong>契约：</strong>根键、schema version、枚举、strict/round-trip、present/missing 互斥字段、finite hash/size 和 optional source refs。</li>
+        <li><strong>cube：</strong>首批三种 property 的 source/derived 映射、nspin 1/2、grid mismatch、finite/path/symlink 行为；使用当前 <code>CubeData</code> 单场边界，不解析负 <code>natoms</code> 轨道 cube。首批不改变 malformed parser 的 legacy 异常路径。</li>
+        <li><strong>兼容：</strong>现有 <code>tests/test_maturation_packs.py</code>、CLI property tests、legacy result tests 和 architecture gate；旧 JSON 断言只在新增 diagnostics 允许的地方增量更新。</li>
+        <li><strong>parity：</strong>同一隔离 fixture 通过同一 legacy Python property API 和现有 CLI 得到等价 manifest、路径、hash、status 和 diagnostics；不新增用户路径参数，不启动真实 ABACUS。</li>
+        <li><strong>最终门禁：</strong><code>conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider</code>、<code>git diff --check</code>；real-smoke/benchmark 仍单独 opt-in。</li>
+      </ul>
+    </section>
+
+    <section id="rollout">
+      <h2>兼容与推进</h2>
+      <p>配套 PLAN 已按 RED→GREEN 完成 manifest value object/builder、charge/spin/charge-diff post 投影、API/CLI/legacy 回归、文档与独立复核。实现只改 property 相关模块和必要测试/文档，不引入新的运行时依赖；本 SPEC 仍保持 Draft，批准与稳定发布是独立的人类决策。</p>
+      <p>第一批只把 manifest 作为 diagnostics 增量交付，成熟度仍为 <code>experimental</code>。workfunc/ELF/Bader 等输出形态、Bader 外部进程和真实 ABACUS smoke 在后续独立计划中处理。manifest 本身不构成科学验证或 Paimon v1.3 稳定能力证明。</p>
+    </section>
+
+    <section id="risks">
+      <h2>风险与开放项</h2>
+      <div class="decision open">
+        <p><strong>已知风险：</strong>不同 ABACUS/abacustest 版本可能使用不同 cube 文件名、输出目录或 z-fastest 标记；本设计只记录 post 实际选定的路径，并在没有选定文件时使用上表 canonical expected path，不扩张自动发现规则。</p>
+        <p><strong>需要用户确认的唯一公共决策：</strong>是否把“legacy property pack + diagnostics.property_manifest 增量、首批 charge/spin/charge-diff、上表 canonical 路径、通用 ArtifactRecord 与旧 CLI 不变”的形态提升为批准的规范。当前实现和复核记录只证明 provisional experimental 行为；若不接受，应在继续扩大能力前改写本 SPEC。</p>
+      </div>
+      <p><strong>参考快照：</strong>Forge <code>3466b1a</code>；abacus-agent-tools <code>0627377</code>；abacus-test <code>1c9acbc</code>；abacuslab <code>d641692</code>；abacuscopilot <code>91b9456</code>。PyATB manifest 设计只作为 diagnostics 组织方式先例，不直接套用其 property 语义。</p>
+    </section>
+  </main>
+
+  <footer>本文件仍是 Draft for review；配套 PLAN 已完成 provisional 实现与复核，但在获得显式人类确认前不将其视为规范性或稳定契约。Forge 不因本设计承担科学判定、任务编排或平台调度。</footer>
+</body>
+</html>

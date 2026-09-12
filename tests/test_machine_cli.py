@@ -22,6 +22,12 @@ from abacus_forge.contracts import (
     AtstNebExecuteRequest,
     AtstNebPostprocessRequest,
 )
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
+from abacus_forge import BandPostprocessRequest, DosPostprocessRequest
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.machine_cli import decode_atst_neb_request, decode_scf_request, exit_code_for, run_machine_cli
 from abacus_forge.errors import (
@@ -129,6 +135,13 @@ class _AllRecordingServices:
         self.collect = _RecordingOperationService(self, "collect")
 
 
+class _AllRecordingPostprocessServices:
+    def __init__(self, results: dict[str, object]) -> None:
+        self.results = results
+        self.calls: list[tuple[str, object]] = []
+        self.postprocess = _RecordingOperationService(self, "postprocess")
+
+
 def _atst_payload(operation: str, operation_id: str = OPERATION_ID) -> dict[str, object]:
     payload: dict[str, object] = {
         "schema_version": "forge.request/v1",
@@ -188,7 +201,9 @@ def test_discovery_documents_are_json_safe_and_deterministic() -> None:
 
 def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
-    assert [descriptor["name"] for descriptor in descriptors] == ["scf", "relax", "cell-relax", "atst-neb"]
+    assert [descriptor["name"] for descriptor in descriptors] == [
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
+    ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"
         assert descriptor["engine"] == "abacus"
@@ -198,6 +213,56 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[3]["engine"] == "atst-tools"
     assert descriptors[3]["operations"] == ["prepare", "execute", "postprocess"]
     assert descriptors[3]["artifact_roles"] == ["input", "output"]
+    assert descriptors[4]["maturity"] == "experimental"
+    assert descriptors[4]["engine"] == "abacus"
+    assert descriptors[4]["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
+    assert descriptors[4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    assert descriptors[5:-1] == [
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "band",
+            "maturity": "experimental",
+            "engine": "abacus",
+            "operations": ["postprocess"],
+            "inputs": {"postprocess": ["band_files"]},
+            "artifact_roles": ["input", "output"],
+            "optional_dependencies": [],
+        },
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "dos",
+            "maturity": "experimental",
+            "engine": "abacus",
+            "operations": ["postprocess"],
+            "inputs": {"postprocess": ["dos_files", "pdos", "tdos"]},
+            "artifact_roles": ["input", "output"],
+            "optional_dependencies": [],
+        },
+        {
+            "schema_version": "forge.capability/v1",
+            "name": "pyatb-band",
+            "maturity": "experimental",
+            "engine": "pyatb",
+            "operations": ["prepare", "execute", "collect"],
+            "inputs": {
+                "prepare": ["structure", "hr", "sr", "fermi_energy", "line_kpoints"],
+                "execute": ["prepared_workspace"],
+                "collect": ["workspace_outputs"],
+            },
+            "artifact_roles": ["input", "provenance_manifest", "output"],
+            "optional_dependencies": ["pyatb"],
+        },
+    ]
+    assert descriptors[-1] == {
+        "schema_version": "forge.capability/v1",
+        "name": "export",
+        "maturity": "experimental",
+        "engine": "forge",
+        "operations": ["export"],
+        "inputs": {"export": ["source_artifact_refs"]},
+        "artifact_roles": ["output"],
+        "optional_dependencies": [],
+    }
 
 
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
@@ -367,7 +432,7 @@ def test_machine_json_reader_accepts_trailing_whitespace() -> None:
 
 @pytest.mark.parametrize(
     ("capability", "operation"),
-    [("md", "execute"), ("relax", "postprocess"), ("pyatb", "prepare")],
+    [("unknown", "execute"), ("relax", "postprocess"), ("pyatb", "prepare")],
 )
 def test_machine_schema_unknown_selector_is_one_request_invalid_document(
     capability: str, operation: str
@@ -479,6 +544,109 @@ def test_decode_scf_request_uses_strict_typed_decoder() -> None:
         decode_scf_request("postprocess", _request())
     with pytest.raises(ForgePathError):
         decode_scf_request("collect", {**_request(), "workspace_rel": "../escape"})
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "payload_extra"),
+    [
+        ("band", BandPostprocessRequest, {"source_paths_rel": ["BANDS_1.dat"]}),
+        ("dos", DosPostprocessRequest, {"dos_paths_rel": ["DOS1_smearing.dat"]}),
+    ],
+)
+def test_decode_operation_request_routes_explicit_postprocess_capabilities(
+    capability: str, request_type: type[object], payload_extra: dict[str, object]
+) -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "capability": capability,
+        "operation": "postprocess",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        **payload_extra,
+    }
+    request = _decode_operation_request("postprocess", payload)
+    assert isinstance(request, request_type)
+    assert request.to_dict() == payload | {
+        "output_dir_rel": "outputs",
+        "plot_emin": -10.0,
+        "plot_emax": 10.0,
+        "save_data": True,
+        "save_plot": True,
+        **(
+            {
+                "pdos_path_rel": None,
+                "tdos_path_rel": None,
+                "include_tdos": True,
+                "include_pdos": True,
+                "pdos_mode": "species",
+                "pdos_atom_indices": [],
+                "suffix": None,
+            }
+            if capability == "dos"
+            else {}
+        ),
+    }
+
+
+def test_machine_dispatches_explicit_postprocess_to_injected_service() -> None:
+    for capability, request_type, extra in (
+        ("band", BandPostprocessRequest, {"source_paths_rel": ["BANDS_1.dat"]}),
+        ("dos", DosPostprocessRequest, {"dos_paths_rel": ["DOS1_smearing.dat"]}),
+    ):
+        result = _outcome_for("postprocess", OPERATION_ID)
+        services = _AllRecordingPostprocessServices({"postprocess": result})
+        payload = {
+            "schema_version": "forge.request/v1",
+            "capability": capability,
+            "operation": "postprocess",
+            "operation_id": OPERATION_ID,
+            "workspace_rel": ".",
+            **extra,
+        }
+        code, output, diagnostics = _invoke(
+            ["operation", "postprocess", "--stdin"],
+            request_text=json.dumps(payload),
+            services=services,
+        )
+        assert code == 0
+        assert diagnostics == ""
+        assert json.loads(output) == result.to_dict()
+        assert len(services.calls) == 1
+        assert isinstance(services.calls[0][1], request_type)
+
+
+def test_machine_rejects_postprocess_without_capability_or_with_unsupported_operation_before_service() -> None:
+    services = _AllRecordingPostprocessServices({"postprocess": _outcome_for("postprocess", OPERATION_ID)})
+    capabilityless = {
+        "schema_version": "forge.request/v1",
+        "operation": "postprocess",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "source_paths_rel": ["BANDS_1.dat"],
+    }
+    code, output, _ = _invoke(
+        ["operation", "postprocess", "--stdin"],
+        request_text=json.dumps(capabilityless),
+        services=services,
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    unsupported = {
+        "schema_version": "forge.request/v1",
+        "operation": "export",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "source_artifact_refs": [{"operation_id": OPERATION_ID, "artifact_id": "artifact"}],
+        "destination_path_rel": "exports/result.json",
+    }
+    code, output, _ = _invoke(
+        ["operation", "export", "--stdin"],
+        request_text=json.dumps(unsupported),
+        services=services,
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    assert services.calls == []
 @pytest.mark.parametrize(
     ("operation", "request_type"),
     [("prepare", AtstNebPrepareRequest), ("execute", AtstNebExecuteRequest), ("postprocess", AtstNebPostprocessRequest)],
@@ -547,7 +715,7 @@ def test_decode_operation_request_routes_relax_capabilities_to_typed_requests(
 @pytest.mark.parametrize(
     ("payload_update", "error_type"),
     [
-        ({"capability": "md"}, ForgeRequestError),
+        ({"capability": "unknown"}, ForgeRequestError),
         ({"capability": None}, ForgeRequestError),
         ({"capability": 1}, ForgeRequestError),
         ({"capability": "scf"}, ForgeSchemaError),
@@ -607,3 +775,204 @@ def test_machine_default_services_dispatch_relax_execute(capability: str, tmp_pa
     assert json.loads(output)["envelope"]["status"]["execution"] == "skipped"
     assert json.loads(output)["envelope"]["diagnostics"]["task"] == capability
     assert diagnostics == ""
+
+
+def _pyatb_prepare_payload() -> dict[str, object]:
+    return {
+        "schema_version": "forge.request/v1",
+        "capability": "pyatb-band",
+        "operation": "prepare",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+        "structure_path_rel": "inputs/STRU",
+        "hr_paths_rel": ["inputs/HR.dat"],
+        "sr_path_rel": "inputs/SR.dat",
+        "rr_path_rel": "inputs/rR.dat",
+        "fermi_energy": 1.25,
+        "line_kpoints": [
+            {"coords": [0, 0, 0], "label": "G"},
+            {"coords": [0.5, 0, 0], "label": "X"},
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_type", "payload"),
+    [
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        (
+            "execute",
+            PyatbBandExecuteRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "execute",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+        (
+            "collect",
+            PyatbBandCollectRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "collect",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+    ],
+)
+def test_decode_operation_request_routes_typed_pyatb_band_requests(
+    operation: str, request_type: type[object], payload: dict[str, object]
+) -> None:
+    request = _decode_operation_request(operation, payload)
+    assert isinstance(request, request_type)
+    assert request.to_dict()["capability"] == "pyatb-band"  # type: ignore[union-attr]
+
+
+def test_decode_operation_request_accepts_pyatb_band_nspin4_without_defaulting_to_one() -> None:
+    payload = {**_pyatb_prepare_payload(), "nspin": 4}
+
+    request = _decode_operation_request("prepare", payload)
+
+    assert isinstance(request, PyatbBandPrepareRequest)
+    assert request.nspin == 4
+    assert request.hr_paths_rel == ("inputs/HR.dat",)
+
+
+@pytest.mark.parametrize(
+    ("nspin", "hr_paths_rel"),
+    [
+        (1, ["inputs/HR.dat"]),
+        (2, ["inputs/HR-up.dat", "inputs/HR-down.dat"]),
+        (4, ["inputs/HR.dat"]),
+    ],
+)
+@pytest.mark.parametrize("rr_mode", ["omitted", "null"])
+def test_decode_operation_request_accepts_omitted_or_null_pyatb_rr_for_each_nspin(
+    nspin: int,
+    hr_paths_rel: list[str],
+    rr_mode: str,
+) -> None:
+    payload = _pyatb_prepare_payload()
+    payload["nspin"] = nspin
+    payload["hr_paths_rel"] = hr_paths_rel
+    if rr_mode == "omitted":
+        payload.pop("rr_path_rel")
+    else:
+        payload["rr_path_rel"] = None
+
+    request = _decode_operation_request("prepare", payload)
+
+    assert isinstance(request, PyatbBandPrepareRequest)
+    assert request.nspin == nspin
+    assert request.rr_path_rel is None
+    assert request.to_dict()["rr_path_rel"] is None
+
+
+def test_machine_pyatb_band_unknown_selectors_are_invalid_without_service() -> None:
+    payload = _pyatb_prepare_payload()
+    with pytest.raises(ForgeRequestError):
+        _decode_operation_request("prepare", {**payload, "capability": "pyatb"})
+    with pytest.raises(ForgeRequestError):
+        _decode_operation_request("modify", payload)
+
+
+def test_pyatb_band_discovery_descriptor_and_schemas_match_wire_fields() -> None:
+    descriptors = capabilities_document()["capabilities"]
+    descriptor = next(item for item in descriptors if item["name"] == "pyatb-band")
+    assert descriptor["maturity"] == "experimental"
+    assert descriptor["engine"] == "pyatb"
+    assert descriptor["operations"] == ["prepare", "execute", "collect"]
+    assert descriptor["artifact_roles"] == ["input", "provenance_manifest", "output"]
+    for operation, request_type, payload in (
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        ("execute", PyatbBandExecuteRequest, {"operation_id": OPERATION_ID, "workspace_rel": "job"}),
+        ("collect", PyatbBandCollectRequest, {"operation_id": OPERATION_ID, "workspace_rel": "job"}),
+    ):
+        request_values = {key: value for key, value in payload.items() if key not in {"schema_version", "capability", "operation"}}
+        request = request_type(**request_values)
+        schema = request_schema_document("pyatb-band", operation)["request_schema"]
+        assert schema["additionalProperties"] is False
+        assert set(schema["properties"]) == set(request.to_dict())
+        assert set(schema["required"]) == (
+            {"schema_version", "capability", "operation", "operation_id", "workspace_rel"}
+            | ({"structure_path_rel", "hr_paths_rel", "sr_path_rel", "fermi_energy", "line_kpoints"} if operation == "prepare" else set())
+        )
+        assert schema["properties"]["schema_version"]["const"] == "forge.request/v1"
+        if operation == "prepare":
+            assert schema["properties"]["rr_path_rel"]["type"] == ["string", "null"]
+            assert schema["properties"]["rr_path_rel"]["default"] is None
+
+
+def test_pyatb_band_prepare_schema_advertises_spinor_nspin4_mode() -> None:
+    schema = request_schema_document("pyatb-band", "prepare")["request_schema"]
+
+    assert schema["properties"]["nspin"]["type"] == "integer"
+    assert schema["properties"]["nspin"]["enum"] == [1, 2, 4]
+    assert len(schema["allOf"]) == 1
+    conditional = schema["allOf"][0]
+    assert conditional["if"]["properties"]["nspin"]["const"] == 2
+    assert conditional["then"]["properties"]["hr_paths_rel"] == {
+        "minItems": 2,
+        "maxItems": 2,
+    }
+    assert conditional["else"]["properties"]["hr_paths_rel"] == {
+        "minItems": 1,
+        "maxItems": 1,
+    }
+
+
+def test_machine_process_pyatb_schema_and_capability_discovery_are_single_documents() -> None:
+    for argv in (("capabilities",), ("schema", "pyatb-band", "prepare"), ("schema", "pyatb-band", "collect")):
+        code, output, diagnostics = _invoke(list(argv))
+        assert code == 0
+        assert diagnostics == ""
+        assert isinstance(json.loads(output), dict)
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_type", "payload"),
+    [
+        ("prepare", PyatbBandPrepareRequest, _pyatb_prepare_payload()),
+        (
+            "execute",
+            PyatbBandExecuteRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "execute",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+        (
+            "collect",
+            PyatbBandCollectRequest,
+            {
+                "schema_version": "forge.request/v1",
+                "capability": "pyatb-band",
+                "operation": "collect",
+                "operation_id": OPERATION_ID,
+                "workspace_rel": "job",
+            },
+        ),
+    ],
+)
+def test_machine_dispatches_typed_pyatb_band_to_injected_operation_service(
+    operation: str, request_type: type[object], payload: dict[str, object]
+) -> None:
+    result = _outcome_for(operation, OPERATION_ID)
+    services = _AllRecordingServices({operation: result})
+    code, output, diagnostics = _invoke(
+        ["operation", operation, "--stdin"],
+        request_text=json.dumps(payload),
+        services=services,
+    )
+    assert code == 0
+    assert diagnostics == ""
+    assert json.loads(output) == result.to_dict()
+    assert len(services.calls) == 1
+    assert isinstance(services.calls[0][1], request_type)

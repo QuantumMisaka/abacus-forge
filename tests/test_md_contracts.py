@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from abacus_forge.md_contracts import (
+    MdCollectRequest,
+    MdExecuteRequest,
+    MdModifyRequest,
+    MdPrepareRequest,
+)
+
+
+OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
+
+
+@pytest.mark.parametrize(
+    ("request_type", "operation", "extra"),
+    [
+        (MdPrepareRequest, "prepare", {"structure_path_rel": "source.STRU"}),
+        (MdModifyRequest, "modify", {}),
+        (MdExecuteRequest, "execute", {}),
+        (MdCollectRequest, "collect", {}),
+    ],
+)
+def test_md_requests_are_typed_and_round_trip(request_type, operation, extra):
+    request = request_type(operation_id=OPERATION_ID, workspace_rel="md", capability="md", **extra)
+
+    assert request.operation == operation
+    assert request.capability == "md"
+    assert request_type.from_dict(request.to_dict()) == request
+    assert json.loads(json.dumps(request.to_dict(), allow_nan=False))["capability"] == "md"
+
+
+def test_md_prepare_accepts_only_md_calculation_when_explicit():
+    request = MdPrepareRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="md",
+        capability="md",
+        structure_path_rel="source.STRU",
+        parameters={"calculation": "md", "md_nstep": 10},
+    )
+    assert request.parameters["calculation"] == "md"
+
+    with pytest.raises(ValueError, match="calculation"):
+        MdPrepareRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="md",
+            capability="md",
+            structure_path_rel="source.STRU",
+            parameters={"calculation": "scf"},
+        )
+
+
+def test_md_prepare_preserves_asset_maps_and_json_parameters():
+    request = MdPrepareRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="md",
+        capability="md",
+        structure_path_rel="source.STRU",
+        parameters={"calculation": "md", "md_type": "nvt", "thermostat": {"target": 300}},
+        pseudo_sources={"Si": "assets/Si.upf"},
+        orbital_sources={"Si": "assets/Si.orb"},
+        asset_mode="link",
+    )
+
+    restored = MdPrepareRequest.from_dict(request.to_dict())
+    assert restored.parameters == request.parameters
+    assert restored.pseudo_sources == request.pseudo_sources
+    assert restored.orbital_sources == request.orbital_sources
+    assert restored.asset_mode == "link"
+
+
+def test_md_modify_allows_same_calculation_but_rejects_other_values_or_removal():
+    request = MdModifyRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="md",
+        capability="md",
+        input_updates={"calculation": "md"},
+    )
+    assert request.input_updates["calculation"] == "md"
+
+    for value in ("scf", 1, None):
+        with pytest.raises(ValueError, match="calculation"):
+            MdModifyRequest(
+                operation_id=OPERATION_ID,
+                workspace_rel="md",
+                capability="md",
+                input_updates={"calculation": value},
+            )
+
+    with pytest.raises(ValueError, match="calculation"):
+        MdModifyRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="md",
+            capability="md",
+            remove_parameters=("calculation",),
+        )
+
+
+@pytest.mark.parametrize("request_type", [MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest])
+def test_md_requests_reject_other_capabilities(request_type):
+    extra = {"structure_path_rel": "source.STRU"} if request_type is MdPrepareRequest else {}
+    with pytest.raises(ValueError, match="capability"):
+        request_type(operation_id=OPERATION_ID, workspace_rel="md", capability="scf", **extra)
+
+
+@pytest.mark.parametrize("request_type", [MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest])
+def test_md_requests_reject_unknown_serialized_fields(request_type):
+    extra = {"structure_path_rel": "source.STRU"} if request_type is MdPrepareRequest else {}
+    request = request_type(operation_id=OPERATION_ID, workspace_rel="md", capability="md", **extra)
+
+    with pytest.raises(ValueError, match="unknown"):
+        request_type.from_dict({**request.to_dict(), "unknown": True})

@@ -1,0 +1,4 @@
+INPUT_PARAMETERS
+calculation relax
+basis_type pw
+ecutwfc 20

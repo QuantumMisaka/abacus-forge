@@ -194,7 +194,7 @@
         <li>本阶段不实现 ATP/MCP、AsterFire Tool、<code>tool_data</code>、task_id、AiiDA、Slurm、Bohrium、DPDispatcher、数据库或恢复型 workflow。</li>
         <li>不进行科学解释、研究建议、任务编排、重试/续算、平台调度或用户决策；Forge 只交付执行/收集事实与解析观察。</li>
         <li>不让 TUI、prompt、TTY 判断、数字 Task-ID 或目录命名成为能力协议；允许 TUI 作为 API/CLI 之上的交互适配器，但不承载执行/收集语义、科学判断或独立状态机。</li>
-        <li>本阶段不重写 ABACUS 输入解析、结构变换、日志解析和 PyATB 数学实现。</li>
+        <li>复用已有 ABACUS 输入、结构、日志和 PyATB 实现；对已复现的格式、单位、数据丢失和解析完整性缺陷作有回归证据的修复。</li>
         <li>本阶段不把 property pack、复杂 MD 或 PyATB 的科学判定写入 Forge；它们只提供已实现的单元操作和解析产物。</li>
         <li>本阶段不移除旧 public API、旧 CLI 或兼容文件。</li>
       </ul>
@@ -242,6 +242,7 @@
       <ul>
         <li><strong>execution：</strong>进程正常结束且返回码为零为 <code>completed</code>；非零退出、超时、缺 executable、信号终止或 runner 异常为 <code>failed</code>；显式 dry-run 或显式跳过为 <code>skipped</code>。<code>normal_end</code> 是独立 observation，不得被隐式吞并。其中「缺 executable」若在进程启动前发现（尚无任何执行事实），按设计决策中的失败类别映射表返回 error envelope；<code>failed</code> 只描述进程确已启动后的结果 envelope。</li>
         <li><strong>collection：</strong>所有 requested artifacts 存在且解析完成为 <code>complete</code>；部分结果或解析降级为 <code>partial</code>；关键输出不存在为 <code>missing_output</code>；尚未收集为 <code>not_collected</code>。</li>
+        <li><strong>SCF collect：</strong>所需数据为 workspace 内的非空输出日志与可解析的有限总能量；没有日志为 <code>missing_output</code>，缺能量、解析错误或来源选择歧义为 <code>partial</code>，数据齐全为 <code>complete</code>。收敛标志只作观察，缺少可选 time/report JSON 不影响完整性。审计 manifest、events、claims 和锁不作为领域输出 artifact，路径别名遵循同一规则。</li>
         <li>旧字段 <code>normal_end</code>、<code>converge</code>、<code>relax_converge</code> 只作为兼容输入和 observations 来源；任何接受、拒绝或科学解释都由上层产生。</li>
       </ul>
       <p><strong>兼容边界：</strong>当前 contract foundation 中的泛型 <code>ForgeRequest</code> 仍只接受五个核心 operation（<code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、<code>export</code>），本阶段不得静默扩大其旧构造器语义。<code>postprocess</code> 是新 service 层的独立 typed request 与事件 operation；其 request registry、序列化形态和兼容映射必须在实现 PLAN 中明确，不能把它偷偷塞回旧 <code>ForgeRequest</code> 或把旧 <code>collect</code> 事件改写成后处理事件。</p>
@@ -255,10 +256,11 @@
         <p><strong>单 workspace 一致性：</strong>v1 service 在 admission、领域副作用与 event commit 外层持有 workspace operation lock；不同 operation ID 也不得并发修改同一 workspace。该锁只保护本地文件与审计一致性，不负责跨 workspace 编排、排队、资源调度或恢复。</p>
         <p>workspace event 的 <code>id</code> 等于 request ID；已存在的 v1 旧 event 保持历史兼容，新 event 不再生成第二个关联 ID。artifact 的 <code>id</code> 只在生产 result 内唯一；跨 operation 输入使用 <code>{operation_id, artifact_id}</code> 引用，不允许绝对路径或隐式“最近一次结果”。</p>
         <p><strong>边界：</strong>artifact 必须位于其 workspace root 内。外部已执行目录可被作为 collect request 的 workspace root 显式收集；跨 workspace 消费须在 prepare 中以显式 source reference materialize/link 并记录 provenance，不允许 collect/postprocess 偷读外部路径。这保留单 workspace 原子性，而不把 DAG 变成 Forge 核心协议。</p>
+        <p><strong>typed prepare 资产闭包（2026-09-09 收敛）：</strong><code>ScfPrepareRequest</code> 及其 Relax 子类可选携带 <code>pseudo_sources</code> 与 <code>orbital_sources</code>，均为“元素符号 → 源文件路径”显式映射，并可携带 <code>asset_mode</code>（<code>copy</code> 或 <code>link</code>，默认 <code>copy</code>）。映射只覆盖请求中列出的元素，不做目录扫描、文件名猜测或静默替换；未列出的元素保留 STRU 已有引用，但 Forge 不宣称其资产已备齐。相对源路径相对于该 operation 的 workspace root 解析，绝对源路径允许作为显式外部输入。源文件必须是存在的普通文件；缺失返回 <code>precondition.missing</code>/3。落盘目标是 <code>inputs/</code> 下的源文件 basename；basename 必须能作为单个 STRU 文件名 token（不得含空白字符或以 <code>#</code> 开头）；不同源争用同一 basename、映射未知元素或字段不合法返回请求错误，不得覆盖既有不同内容。默认 <code>copy</code> 使用文件复制并记录源/目标相对路径、SHA-256 和选择来源；<code>link</code> 仅允许 workspace 内源并使用相对链接，显式外部源在 <code>link</code> 模式下拒绝，不自动降级为复制。资产闭包只负责文件与 STRU 引用，不选择泛函、赝势或轨道质量，也不做科学判定。</p>
       </div>
       <div class="decision">
         <p><strong>冻结契约：outcome/error envelope 与 exit class。</strong>service 成功受理并交付事实时返回 <code>OperationOutcome</code>（<code>forge.operation-outcome/v1</code>），其中包含 <code>operation_id</code>、不变的 <code>ForgeResultEnvelope</code>（<code>forge.result/v1</code>）和 typed observations；预期的请求、前置条件或 Forge 自身失败返回 <code>ForgeErrorEnvelope</code>（<code>forge.error/v1</code>）。error envelope 必有 <code>error.class</code>、<code>message</code>、<code>affected_fields</code> 与 <code>operation_id</code>；只有 request 尚不能解析出它或 workspace 时，相应字段才可为 null。v1 机器路径 CLI 默认在 stdout 输出其中恰一个 JSON 文档：<code>0</code> 表示 service 已交付执行/收集事实，<code>2</code> 表示 request/schema/path/conflict，<code>3</code> 表示 environment/precondition，<code>4</code> 表示受控外部进程已启动但失败，<code>5</code> 表示 Forge internal/persistence failure。stderr 仅含诊断，API 不通过 subprocess 重走 CLI。</p>
-        <p><strong>稳定错误类：</strong><code>error.class</code> 只取 <code>request.invalid</code>、<code>request.schema</code>、<code>request.path</code>、<code>operation.conflict</code>、<code>precondition.missing</code>、<code>persistence.failure</code>、<code>internal.failure</code>。实现以类型化内部异常映射，不解析异常 message。可识别的 executable/输入资产缺失属于 precondition；runner 在尚不能证明进程启动时抛出的其他意外异常属于 internal；进程已启动后的非零、超时、信号或 runner 失败进入 outcome 的 execution facts。</p>
+        <p><strong>稳定错误类：</strong><code>error.class</code> 只取 <code>request.invalid</code>、<code>request.schema</code>、<code>request.path</code>、<code>operation.conflict</code>、<code>precondition.missing</code>、<code>persistence.failure</code>、<code>internal.failure</code>。实现以类型化内部异常映射，不解析异常 message。可识别的 executable/输入资产缺失属于 precondition；typed prepare 的显式 PP/ORB 源文件缺失同样属于 <code>precondition.missing</code>；映射未知元素、basename 冲突和非法资产模式属于 request/schema 或 request/invalid；runner 在尚不能证明进程启动时抛出的其他意外异常属于 internal；进程已启动后的非零、超时、信号或 runner 失败进入 outcome 的 execution facts。</p>
         <p><strong>排除：</strong>以异常文本、returncode 原样透传或 stdout 人类文本让 Agent 推断失败类别；这些做法无法形成跨语言稳定协议。</p>
         <p><strong>失败类别 → envelope × exit class 映射（2026-09-03 审查修订冻结）：</strong>判据是受控外部进程是否已启动并产生执行事实——已启动则交付结果 envelope（即使 <code>execution=failed</code>），未启动则交付 error envelope。</p>
         <div class="table-wrap"><table>
@@ -275,7 +277,7 @@
         <p><strong>结果关联与兼容：</strong><code>ForgeResultEnvelope</code> 不新增 <code>operation_id</code> 或 observations 字段，其序列化 key set 保持冻结；新 Python API 与 v1 机器 CLI 由外层 <code>OperationOutcome</code> 同时携带 ID、result 与 observations，持久化 event 的 <code>id</code> 仍等于该 ID。error envelope 自描述并携带 <code>operation_id</code>。legacy CLI/API 继续直接使用旧 result，不被静默包裹。</p>
       </div>
       <div class="decision">
-        <p><strong>冻结契约：双 CLI 面而非静默改写 legacy。</strong>新增 <code>abacus-forge operation &lt;prepare|modify|execute|collect|postprocess|export&gt; --request FILE</code> 与 <code>--stdin</code>（二者互斥），以及 <code>schema</code>/<code>capabilities</code> discovery；该 v1 命令面默认 JSON，<code>--format=text</code>/<code>--pretty</code> 只渲染同一 envelope。既有 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、task pack 与 <code>--json</code> 是 legacy surface，默认输出、参数和行为不变，直到另行版本化废弃。新稳定 Python API 直接暴露同一 typed service；旧 <code>UnitSpec</code>/result API 仅向新 service 做适配。</p>
+        <p><strong>冻结契约：双 CLI 面而非静默改写 legacy。</strong>新增 <code>abacus-forge operation &lt;prepare|modify|execute|collect|postprocess|export&gt; --request FILE</code> 与 <code>--stdin</code>（二者互斥），以及 <code>schema</code>/<code>capabilities</code> discovery；该 v1 命令面默认 JSON，<code>--format=text</code>/<code>--pretty</code> 只渲染同一 envelope。既有 <code>prepare</code>、<code>modify</code>、<code>execute</code>、<code>collect</code>、task pack 与 <code>--json</code> 是 legacy surface，默认输出、参数和行为不变，直到另行版本化废弃。新稳定 Python API 直接暴露同一 typed service；旧 <code>UnitSpec</code>/result API 保持兼容适配，并与 service 共享下层操作基元。</p>
       </div>
       <div class="decision">
         <p><strong>决策 1：状态只记录执行/收集事实。</strong>服务返回执行状态、收集状态、observations/checks、metrics 与 artifact refs；不维护科学 policy registry，不接受 <code>policy_id</code>，也不在 <code>OperationStatus</code> 中推导科学结论。observations 以 typed <code>Observation</code> 记录（name/value/source，source ∈ log/file/parser/runtime），由 <code>OperationOutcome</code> 在 Python API、v1 机器 CLI 与 operation event payload 中同形交付；它不进入内嵌 <code>forge.result/v1</code> 的冻结 key set。</p>
@@ -290,7 +292,7 @@
         <p><strong>排除：</strong>把 task、plot、workflow、scheduler 或平台资源策略塞进 LocalRunner/engine。</p>
       </div>
       <div class="decision">
-        <p><strong>决策 4：兼容 shim 优先。</strong>旧 <code>UnitSpec</code> 仍可调用，新增 typed request 先映射到既有 prepare/modify/execute/collect 实现，再逐步收敛内部模块。旧文件和旧 API 的废弃必须另有版本窗口。</p>
+        <p><strong>决策 4：兼容 shim 优先。</strong>旧 <code>UnitSpec</code> 仍可调用；typed service 与 legacy adapter 复用下层 prepare/modify/collect 基元，typed service 不构造旧 spec、不反向调用 legacy API，也不依赖事件抑制开关。旧文件和旧 API 的废弃必须另有版本窗口。</p>
         <p><strong>排除：</strong>一次性重写全部 task pack；这会同时改变物理行为、文件布局和迁移归因。</p>
       </div>
       <div class="decision">
@@ -337,12 +339,12 @@ Paimon Tool adapter ──┤
         <li><strong>public API：</strong>稳定 Python 入口，直接调用 service 并返回 typed envelope；不通过 subprocess 回调 CLI。</li>
         <li><strong>CLI：</strong>request 解码、service 调用、JSON/text renderer 与 exit mapping；不得携带第二套 operation 逻辑。</li>
         <li><strong>services：</strong>接收 typed request，调用 core/engine/runner/collector，产生 execution/collection envelope 和事件。</li>
-        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；不依赖 runner、平台或 scheduler。</li>
+        <li><strong>core：</strong>INPUT/STRU/KPT、结构和资产归一化；保留 STRU 的赝势/轨道引用、质量、已有共线磁矩与移动标志，赝势/轨道显式映射只覆盖指定元素；写出原生 Bohr 晶格单位，未支持的坐标模式明确拒绝。原胞/常规胞标准化保留元素资源引用和元素内一致的质量、共线磁矩；无法安全映射的非均一原子属性与移动约束明确拒绝，不静默合并。周期真空识别按周期间隙和晶胞几何处理。不依赖 runner、平台或 scheduler。</li>
         <li><strong>runner：</strong>只执行明确 command，返回 returncode、termination、timeout、stdout/stderr 和 runtime diagnostics。</li>
         <li><strong>engine adapter：</strong>ABACUS/PyATB 特定 command、输入检查和原始输出；可选的 atst-tools 适配器只委托 NEB 图像/链路编排及并行执行语义的 prepare/execute/postprocess，并返回原始事实，不决定上层 workflow 状态、站点启动或 Slurm 调度。ATST 使用的后端和模型（包括 DeePMD）由 atst-tools 与调用方的配置负责，Forge 将其视为不透明配置，不选择、安装、配置或进行科学评估。</li>
         <li><strong>collector/postprocessor：</strong>从 artifact 提取 <code>normal_end</code>、convergence、指标和 parser observations；不把观察转换为科学接受状态。</li>
         <li><strong>packs：</strong>以具名 capability 暴露 SCF、relax、band、DOS、PyATB、property 以及可选的 atst-tools NEB 入口；每项声明 maturity、supported operations、artifact、engine 和可选依赖。</li>
-        <li><strong>compat：</strong>把 <code>UnitSpec</code>、旧 result 对象和旧文件投影到新 service；新代码不得反向依赖旧 God Object。</li>
+        <li><strong>compat：</strong>保留 <code>UnitSpec</code>、旧 result 对象、旧文件与旧 task/sequence 分发；与 typed service 共享下层基元，分别维护既有输出和事件语义。通用路径、错误与持久化支持不依赖具体 capability；ATST 不复用 SCF 私有上下文。</li>
       </ul>
       <h3>最小接口形态</h3>
       <p>实现计划必须把下列逻辑接口固化为 Python protocol 或等价的窄接口；具体 dataclass 字段以执行计划为准，但不得重新引入宽泛 <code>UnitSpec</code>：</p>
@@ -406,7 +408,7 @@ rg -n "abacus-agent-tools|abacustest|aiida|ATP|MCP|Bohrium|DPDispatcher|slurm" \
 
     <section id="rollout">
       <h2>迁移与发布</h2>
-      <p>2026-09-09 收口：Stage 3 已合并至 <code>a800b64</code>，Stage 4 首批 relax/cell-relax 与可选 atst-tools NEB adapter 已按独立 PLAN 合入 <code>main</code>（<code>ee471b6</code>）；当前这些能力均保持 <code>experimental</code>，稳定发布仍需各自的 compat、benchmark、clean-environment 与 real-smoke 证据。后续批次仍包括 MD、独立 postprocess/export 与 PyATB；各批次继续独立提供 PLAN 和验证证据。</p>
+      <p>当前候选状态：Stage 3 已合并，Stage 4 已分别落地 relax/cell-relax、typed MD、独立 typed MD postprocess、band/DOS postprocess、typed PyATB handoff、typed export，以及可选 atst-tools NEB adapter；上述能力均保持 <code>experimental</code>，稳定发布仍需各自的 compat、benchmark、clean-environment 与 real-smoke 证据。typed PyATB handoff 已支持 nspin=1/2/4（HR 路由数为 1/2/1，nspin=4 使用 <code>matrix_hr/shared</code>）；后续仍需完成 PyATB properties、property/composite 聚合与真实运行证据，各批次继续独立提供 PLAN 和验证证据。</p>
       <ol>
         <li><strong>Stage 0 — Contract freeze：</strong>本 SPEC 已批准；锁定 operation admission/event/artifact refs、outcome/error envelope 与 exit class、公共 API/CLI 双稳定面、execution/collection 状态、JSON stdout 与旧兼容边界。</li>
         <li><strong>Stage 1 — Request/API：</strong>新增 per-operation request、UUIDv4 event mapping、artifact-ref validator 与稳定 Python API；不改变旧 API/CLI，补齐 operation/observation matrix 和 API contract tests。</li>

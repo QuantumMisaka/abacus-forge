@@ -34,8 +34,21 @@ from abacus_forge.errors import (
     normalize_error_message,
     OperationConflictError,
 )
-from abacus_forge.services import ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
+from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
+from abacus_forge.md_postprocess_services import MdPostprocessServiceSet
+from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.pyatb_contracts import (
+    PyatbBandCollectRequest,
+    PyatbBandExecuteRequest,
+    PyatbBandPrepareRequest,
+)
+from abacus_forge.export_contracts import ExportRequest
+from abacus_forge.export_services import ExportServiceSet
+from abacus_forge.postprocess_services import PostprocessServiceSet
 from abacus_forge.atst_neb import AtstNebServiceSet
+from abacus_forge.pyatb_services import PyatbBandServiceSet
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -61,11 +74,32 @@ _RELAX_DECODERS = {
     "execute": RelaxExecuteRequest.from_dict,
     "collect": RelaxCollectRequest.from_dict,
 }
+_MD_DECODERS = {
+    "prepare": MdPrepareRequest.from_dict,
+    "modify": MdModifyRequest.from_dict,
+    "execute": MdExecuteRequest.from_dict,
+    "collect": MdCollectRequest.from_dict,
+    "postprocess": MdPostprocessRequest.from_dict,
+}
+_POSTPROCESS_DECODERS = {
+    "band": {"postprocess": BandPostprocessRequest.from_dict},
+    "dos": {"postprocess": DosPostprocessRequest.from_dict},
+}
+_PYATB_BAND_DECODERS = {
+    "prepare": PyatbBandPrepareRequest.from_dict,
+    "execute": PyatbBandExecuteRequest.from_dict,
+    "collect": PyatbBandCollectRequest.from_dict,
+}
+_EXPORT_DECODERS = {"export": ExportRequest.from_dict}
 _CAPABILITY_DECODERS = {
     "scf": _SCF_DECODERS,
     "relax": _RELAX_DECODERS,
     "cell-relax": _RELAX_DECODERS,
     "atst-neb": _ATST_NEB_DECODERS,
+    "md": _MD_DECODERS,
+    **_POSTPROCESS_DECODERS,
+    "pyatb-band": _PYATB_BAND_DECODERS,
+    "export": _EXPORT_DECODERS,
 }
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,
@@ -73,6 +107,7 @@ _RELAX_REQUEST_TYPES = (
     RelaxExecuteRequest,
     RelaxCollectRequest,
 )
+_MD_REQUEST_TYPES = (MdPrepareRequest, MdModifyRequest, MdExecuteRequest, MdCollectRequest)
 _MACHINE_OPERATIONS = ("prepare", "modify", "execute", "collect", "postprocess", "export")
 _ERROR_EXIT_CODES = {
     "request.invalid": 2,
@@ -298,7 +333,16 @@ def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelo
 
 
 def _dispatch(operation: str, request: object, services: object) -> ServiceResult:
-    service = getattr(services, operation)
+    service: object
+    if operation == "postprocess" and isinstance(services, PostprocessServiceSet):
+        if isinstance(request, BandPostprocessRequest):
+            service = services.band
+        elif isinstance(request, DosPostprocessRequest):
+            service = services.dos
+        else:
+            service = services
+    else:
+        service = getattr(services, operation)
     method = getattr(service, operation)
     return method(request)
 
@@ -384,8 +428,10 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | RelaxServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | PyatbBandServiceSet | ExportServiceSet | None = None,
     atst_services: AtstNebServiceSet | None = None,
+    pyatb_services: PyatbBandServiceSet | None = None,
+    export_services: ExportServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
     parser = build_machine_parser()
@@ -435,8 +481,18 @@ def run_machine_cli(
             service_set = services
         elif isinstance(request, (AtstNebPrepareRequest, AtstNebExecuteRequest, AtstNebPostprocessRequest)):
             service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, (BandPostprocessRequest, DosPostprocessRequest)):
+            service_set = PostprocessServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, MdPostprocessRequest):
+            service_set = MdPostprocessServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, (PyatbBandPrepareRequest, PyatbBandExecuteRequest, PyatbBandCollectRequest)):
+            service_set = pyatb_services if pyatb_services is not None else PyatbBandServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, ExportRequest):
+            service_set = export_services if export_services is not None else ExportServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):
             service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, _MD_REQUEST_TYPES):
+            service_set = MdServiceSet.default(workspace_root=Path(cwd))
         else:
             service_set = ScfServiceSet.default(workspace_root=Path(cwd))
         result = _dispatch(args.operation, request, service_set)
