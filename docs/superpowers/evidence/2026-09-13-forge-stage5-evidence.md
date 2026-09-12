@@ -8,7 +8,8 @@ ATST adapter 死状态清理；后者不改变行为或公共契约）。Stage 5
 follow-ups：`c11fc6e`、`7458110`；这些提交仅增加测试/门禁文档，不改变生产代码候选。
 
 **证据文档基线提交：** `87eda1fe6b3e59da73965d4dee92cf2e876d5054`；后续
-`5806d1c`、`5930607`、`939f666` 及当前文档校正均不改变候选代码。
+`5806d1c`、`5930607`、`939f666` 及后续文档校正均不改变候选代码；`e32fda1` 是之后
+单独复审的行为保持型 adapter 清理。
 
 **规范源：**
 `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html`
