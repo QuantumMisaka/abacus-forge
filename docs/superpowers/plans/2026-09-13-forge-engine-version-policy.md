@@ -42,7 +42,16 @@
 
 ### C/D
 
-阶段 1 的 exact installable package、fresh extra、native/abacuslite 四 capability 双轨矩阵以及 Paimon 工具矩阵/运行时依赖清零仍未执行；它们不由本轮离线通过推断完成。
+阶段 1 的 exact installable package、fresh extra、完整 native/abacuslite 发布矩阵以及 Paimon 工具矩阵/运行时依赖清零仍未执行；选定 real numeric smoke 不等于这些门禁完成。
+
+### C 阶段 native real-smoke 证据（2026-09-13）
+
+已复核 native 轨道的真实进程门禁，完整运行身份、构建 setup、输入源、命令和
+结果见 [Engine/Version Policy review evidence](../evidence/2026-09-13-forge-engine-version-policy-review.md#10-native-real-smoke-双轨复核-2026-09-13)。
+
+- develop `94576a80169de36e02e637edc2a0963fba9e1838`：`7 passed in 135.09s`。
+- LTS `f71921fe848659deac8db319cd4311b55b5ad480`：`6 passed, 1 failed in 134.69s`；fresh diagnostics 显示 v3.10.1 的 typed cell-relax 同时生成 `STRU_ION_D`、`STRU_NOW.cif`、`STRU.cif` 三个 contained final 候选，`final_structure_selection_ambiguous=true`，因此按既有歧义规则为 `partial`。
+- [ ] 这组结果仅是 native real-smoke；不能勾选 optional `abacuslite` 四 capability 真实 parity，也不能把 known partial 改写为通过。
 
 ## A. Native 兼容增量
 
@@ -75,7 +84,8 @@
 
 - [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
 - [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
-- [ ] 显式复跑 native/abacuslite × LTS/develop × 四 capability 同源 parity；记录实际 PW/LCAO、nspin、源码版本、完整 executable hash、构建偏离、输入身份、命令与输出。未运行组合不得宣布支持。
+- [ ] 完整 native/abacuslite 发布矩阵仍未执行；`tests/real_smoke/test_abacuslite_dual_track.py` 已提供 capability-specific typed numerical smoke，并在 `ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 时强制 develop/LTS × 四 capability 和 provenance 字段。当前已运行的选定案例见 review evidence 第 11 节，不能替代完整矩阵。
+- [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
 
 ## D. 外部迁移交接
@@ -86,4 +96,4 @@ Paimon 工具覆盖矩阵、旧依赖清零、Agent Benchmark 与生产 E2E 由 
 
 可选 backend 未通过时继续以 native 为默认，不提交自动 fallback；调用方可使用新 operation ID 显式选择 native。已写 admission/event 不删除或改写。若可行性调查要求改变公共事实、final 候选或 error schema，先回到 SPEC；内部模块布局、fixture 和容差细化由实施者依据证据完成。
 
-当前已完成 A 与离线 B 的代码、回归和默认离线门禁；C 的可安装 extra/双轨证据与 D 的外部迁移仍未执行，不能由本轮通过推断为已交付。
+当前已完成 A、离线 B、native real-smoke 复核和选定 optional numerical smoke；C 的 exact extra、完整发布矩阵与 D 的外部迁移仍未验收，不能由本轮通过推断为已交付。

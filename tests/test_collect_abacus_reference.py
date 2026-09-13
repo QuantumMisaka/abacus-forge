@@ -173,6 +173,23 @@ def test_collect_sidecar_marks_stress_pressure_as_derived(tmp_path: Path) -> Non
     assert "pressure" in result.derived_metrics
 
 
+def test_collect_accepts_lowercase_total_stress_marker(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "lowercase").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text(
+        "outputs/OUT.ABACUS/running_scf.log",
+        "TOTAL ENERGY = -4.2 eV\n"
+        "#TOTAL-STRESS (kbar)#\n"
+        "1 2 3\n4 5 6\n7 8 9\n"
+        "SCF CONVERGED\n",
+    )
+
+    result = collect(workspace)
+
+    assert result.metrics["stress"] == pytest.approx([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+    assert result.metrics["pressure"] == pytest.approx(5.0)
+
+
 def test_collect_sidecar_tracks_output_fallback_and_time_json_override(tmp_path: Path) -> None:
     workspace = Workspace(tmp_path / "fallback").ensure_layout()
     workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")

@@ -357,7 +357,7 @@ def _stress_metrics(content: str, *, volume: float | None) -> dict[str, Any]:
     stresses: list[list[float]] = []
     lines = content.splitlines()
     for index, line in enumerate(lines):
-        if "TOTAL-STRESS (KBAR)" not in line:
+        if "TOTAL-STRESS (KBAR)" not in line.upper():
             continue
         values = _parse_stress_block(lines, start=index + 1)
         if values:

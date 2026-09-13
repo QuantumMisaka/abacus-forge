@@ -82,6 +82,10 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
         "ABACUS_FORGE_PYATB_SMOKE_FERMI_ENERGY",
     ),
     "test_atst_neb_machine_process_smoke": ("ABACUS_FORGE_ATST_EXECUTABLE",),
+    "test_native_and_abacuslite_collect_real_output_parity": (
+        "ABACUS_FORGE_ABACUSLITE_DUAL_TRACK_MATRIX",
+        "ABACUS_FORGE_ABACUSLITE_PATH",
+    ),
 }
 
 

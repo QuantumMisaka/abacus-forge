@@ -199,3 +199,158 @@ in 3.50s`；owning command `749 passed in 25.26s`；默认全量
 这组证据完成 PLAN 阶段 0 的 canonical checkout parity 与调用隔离门禁；它仍是
 源码 checkout 的离线 fixture 验证，不等价于阶段 1 的可安装 exact package、真实
 ABACUS native/abacuslite 双轨运行，也不构成 Paimon v1.3 迁移或稳定能力发布判断。
+
+## 10. Native real-smoke 双轨复核（2026-09-13）
+
+本节只记录 Forge native collector 的真实 ABACUS 进程门禁；它不运行
+optional `abacuslite` parser，也不把 native real-smoke 结果当作
+`native/abacuslite` 双轨 parity 或可安装 extra 的证据。
+
+### 固定输入与构建身份
+
+| 轨道 | ABACUS commit/version | executable | SHA256 |
+| --- | --- | --- | --- |
+| develop | `94576a80169de36e02e637edc2a0963fba9e1838` / v3.11.0-beta8+56 | `/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus` | `7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5` |
+| LTS | `f71921fe848659deac8db319cd4311b55b5ad480` / v3.10.1 | `/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus` | `51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f` |
+
+两轨均使用 `abacus-packages/smoke-sources/` 下固定源目录，覆盖 PW SCF、PW
+cell-relax、PW MD、Si LCAO SCF、Fe LCAO nspin=2 和 Si LCAO sparse-matrix
+生成；源目录仅含输入与 PP/ORB，没有历史生成输出。每次测试通过对应轨道的
+`toolchain/install/setup` 注入 `PATH`、`LD_LIBRARY_PATH` 和运行时线程设置。
+
+构建与运行资源的复现入口为：
+
+```bash
+source /home/james/work/sidereus/workplace/abacus-develop/toolchain/install/setup
+# 或 source /home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/source/toolchain/install/setup
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus-packages/<track>/build-mpi-lcao/install/bin/abacus
+export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/pw-scf
+export ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/pw-cell-relax
+export ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=cell-relax
+export ABACUS_FORGE_MD_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/pw-md
+export ABACUS_FORGE_LCAO_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/lcao-scf-si
+export ABACUS_FORGE_LCAO_NSPIN2_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/lcao-scf-fe-nspin2
+export ABACUS_FORGE_LCAO_MATRICES_SMOKE_WORKSPACE=/home/james/work/sidereus/workplace/abacus-packages/smoke-sources/lcao-scf-si-matrices
+conda run -n paimon python -m pytest -q -p no:cacheprovider \
+  --run-real-smoke tests/real_smoke/test_abacus_smoke.py
+```
+
+实际复核结果：develop 为 `7 passed in 135.09s`；LTS 为 `6 passed, 1 failed in
+134.69s`。随后对同一 LTS `pw-cell-relax` source 做 fresh diagnostics：ABACUS
+进程返回 `0`，typed collection 的 `status.collection` 为 `partial`；原始
+diagnostics 的 `final_structure_candidates` 为 `STRU_ION_D`、`STRU_NOW.cif`、
+`STRU.cif` 三个 contained 输出，`final_structure_selection_ambiguous=true`，
+`final_structure_path=null`。因此 partial 的直接原因是既有 final-candidate 歧义
+规则，而不是“缺少 STRU_FINAL”；stderr 只有 ABACUS 的运行时信息，未发现执行或
+解析异常。该差异保留为版本策略输入，不改写为通过，也不将其归因于 optional
+parser。
+
+这组证据证明 native real-smoke 的进程、workspace containment、native parser
+facts、audit 和 artifact 行为。它不证明 optional `abacuslite` 在真实 ABACUS
+输出上的 parity；C 阶段的 `abacuslite` exact package、四 capability 双轨
+parity 和缺包失败仍未完成。
+
+## 11. Native/abacuslite real dual-track harness（2026-09-13）
+
+候选 worktree 新增
+`tests/real_smoke/test_abacuslite_dual_track.py`。它不改变 parser 或 collector
+契约：每个矩阵项只执行一次指定 ABACUS executable，把同一份新输出复制到两个
+workspace，分别用 `collect_contained(parser_backend="native")` 与
+`collect_contained(parser_backend="abacuslite", output_version=...)` 收集，再按
+`scf`、`relax`/`cell-relax`、`md` 选择各自的 typed result envelope。比较包括状态、
+metric 名称/单位/kind、数值与嵌套数组形状（保留原子与帧顺序）、source artifact
+相对路径、artifact role/stage/hash/size、checks、warnings 和归一化后的共同
+diagnostics；`parser.actual_backend` 则分别断言 native/abacuslite。比较容差固定为
+total/Fermi energy `5e-3 eV`、force（含全帧序列）`1e-3 eV/Å`、stress（含全帧
+序列）`1e-3 kbar`。native-only 的 `native_final_energy_markers` 与重复的
+`legacy_metrics` 不作为第二套事实比较。
+
+真实环境通过以下变量显式提供；矩阵缺失时普通开发运行只得到精确 skip，矩阵一旦
+提供但 executable、workspace、package path 或结果不合法则失败：
+
+```bash
+export ABACUS_FORGE_ABACUSLITE_PATH=/absolute/path/to/interfaces/ASE_interface
+export ABACUS_FORGE_ABACUSLITE_LD_LIBRARY_PATH=/absolute/path/to/toolchain/lib
+export ABACUS_FORGE_ABACUSLITE_DUAL_TRACK_MATRIX='[
+  {"capability":"scf", "version":"v3.11.0-beta8+56",
+   "executable":"/absolute/path/to/abacus", "workspace":"/absolute/path/to/source"},
+  {"capability":"relax", "version":"v3.10.1",
+   "executable":"/absolute/path/to/abacus", "workspace":"/absolute/path/to/source"},
+  {"capability":"cell-relax", "version":"v3.11.0-beta8+56",
+   "executable":"/absolute/path/to/abacus", "workspace":"/absolute/path/to/source"},
+  {"capability":"md", "version":"v3.10.1",
+   "executable":"/absolute/path/to/abacus", "workspace":"/absolute/path/to/source"}
+]'
+ # 发布候选另外设置 ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1；此时每项还必须
+ # 提供 track/basis/nspin/executable_sha256/input_identity，并覆盖 develop/LTS ×
+ # scf/relax/cell-relax/md 八个 track/capability 单元。
+conda run -n paimon python -m pytest -q -p no:cacheprovider \
+  --run-real-smoke tests/real_smoke/test_abacuslite_dual_track.py
+```
+
+当前可复现的 strict typed smoke 结果为：develop PW-SCF `1 passed in 5.24s`；
+develop PW-MD `1 passed in 27.07s`；develop PW `relax`（通过 matrix 显式声明
+`input_calculation=relax` 并改写输入）与 `cell-relax` 共 `2 passed in 22.19s`；
+LTS PW `relax`、`cell-relax`、`md` 分别为 `1 passed in 15.72s`、`1 passed in
+4.71s`、`1 passed in 32.02s`。另有前述 owner 手工运行的 develop/LTS PW 与
+Si/Fe LCAO optional parser 结果，但它们没有被一个完整 release matrix 命令统一
+执行，故只作为 checkout/path smoke 输入，不勾选发布 parity。
+
+这组 harness 证据绑定指定 executable hash 和输入资源，并把 LTS v3.10.1 的
+final-candidate 歧义作为正向状态事实保留；它证明指定 checkout/path 下已运行
+案例的 typed numerical smoke，不证明 canonical `abacuslite` 已作为可安装 exact
+package 发布，也不证明八个 release track/capability 单元已经全部执行。发布候选
+必须设置 `ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1`，提供完整 provenance
+字段并将 skip 视为失败。
+
+## 12. Package/installability gate（2026-09-13）
+
+canonical checkout 的包元数据为 `abacuslite` `1.0.0`，源码提交仍绑定
+`94576a80169de36e02e637edc2a0963fba9e1838`，构建出的 source wheel
+`abacuslite-1.0.0-py3-none-any.whl` SHA-256 为
+`fae147b2e4c11a30e3d05b25064adfc79f474cf998d62493b8735172157bf98b`。当前
+`pip index versions abacuslite` 返回 `No matching distribution found`，因此不能把
+该 checkout 或 wheel 写成已经存在的公开发布版本。遵循 SPEC，候选当前不声明
+`abacuslite` extra，也不写 git direct reference；待实际 `abacuslite==版本号` 发布
+后再新增 exact extra 并重新核验。这不是公开发布授权。
+
+候选 Forge wheel `abacus_forge-0.1.0-py3-none-any.whl` 构建 SHA-256 为
+`ca32015d1cf0c86f475dfe302ee5b962a9a2a64ce75780f908e8514d3ef8d554`。其
+`METADATA` 的默认 `Requires-Dist` 仍只有现有 `ase`、`dpdata`、`matplotlib`、
+`numpy`、`pymatgen`，没有 `abacuslite`。
+
+在新建 venv 中用上述两个 wheel（`--no-deps`）安装，导入版本为 Forge `0.1.0`
+与 abacuslite `1.0.0`；向真实 develop LCAO SCF 输出执行
+`collect_contained(parser_backend="abacuslite", output_version="v3.11.0-beta8+56")`
+返回 `actual_backend=abacuslite` 与电子能 `-229.9410912111 eV`。另建只安装 Forge
+wheel 的 native-only venv，对同一请求返回
+`ParserPreconditionError: abacuslite package is required for parser_backend=abacuslite`，
+证明显式选择与缺包失败边界。该 venv 使用已审计 `paimon` site-packages 提供 Forge
+默认依赖，属于 wheel/import/collect gate，不替代依赖完全冷启动的发布安装验收。
+
+因此阶段 1 的公开 exact release package、带依赖的 fresh-extra 四 capability
+安装验收仍未完成；候选不得据此宣布 optional backend 已发布。若上游提供可安装的
+canonical release，需把 extra 改为该实际 `abacuslite==版本号`，再复跑安装与完整矩阵。
+
+## 13. Review-fix verification（2026-09-13）
+
+本轮审查修复后的当前 worktree 验证如下：
+
+```text
+focused parser/collector/CLI/PyATB + dual-harness admission: 151 passed, 1 skipped in 5.43s
+owning suites: 750 passed in 25.01s
+default offline suite: 1392 passed, 31 skipped in 103.12s
+git diff --check: passed
+compileall src tests: passed
+```
+
+`abacus-forge-0.1.0` clean wheel 的当前 SHA-256、isolated import/source-wheel
+collect 和 Forge-only 缺包失败结果见第 12 节；Paimon adapter 的
+`conda run -n abacus-env env PYTHONPATH=. pytest -q tests/test_forge_adapter.py`
+为 `10 passed in 0.14s`。使用真实候选 Forge machine CLI 对 `capability=relax` 与
+`capability=md` 的空 workspace collect 均返回 exit 0、`collection=missing_output`，
+证明 adapter 已将 capability 传入 typed dispatch。
+
+这些数字不改变第 11/12 节的边界：完整 release dual-track matrix、已发布
+`abacuslite==...` exact extra、fresh dependency install、Paimon 旧依赖清零、已有
+Agent Benchmark parity 和生产 E2E 仍未完成。
