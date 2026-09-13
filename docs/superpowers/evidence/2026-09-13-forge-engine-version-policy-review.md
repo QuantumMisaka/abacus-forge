@@ -348,7 +348,7 @@ compileall src tests: passed
 `abacus-forge-0.1.0` clean wheel 的当前 SHA-256、isolated import/source-wheel
 collect 和 Forge-only 缺包失败结果见第 12 节；Paimon adapter 的
 `conda run -n abacus-env env PYTHONPATH=. pytest -q tests/test_forge_adapter.py`
-为 `11 passed in 0.08s`。使用真实候选 Forge machine CLI 对 `capability=scf`、
+为 `15 passed in 0.09s`。使用真实候选 Forge machine CLI 对 `capability=scf`、
 `capability=relax` 与 `capability=md` 的空 workspace collect 均返回 exit 0、
 `collection=missing_output`；SCF 遵守默认 schema 省略 capability，另外两个请求
 携带 capability 并完成 typed dispatch。
