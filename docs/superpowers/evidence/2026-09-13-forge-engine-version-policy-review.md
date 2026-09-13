@@ -292,16 +292,31 @@ conda run -n paimon python -m pytest -q -p no:cacheprovider \
 develop PW-MD `1 passed in 27.07s`；develop PW `relax`（通过 matrix 显式声明
 `input_calculation=relax` 并改写输入）与 `cell-relax` 共 `2 passed in 22.19s`；
 LTS PW `relax`、`cell-relax`、`md` 分别为 `1 passed in 15.72s`、`1 passed in
-4.71s`、`1 passed in 32.02s`。另有前述 owner 手工运行的 develop/LTS PW 与
-Si/Fe LCAO optional parser 结果，但它们没有被一个完整 release matrix 命令统一
-执行，故只作为 checkout/path smoke 输入，不勾选发布 parity。
+4.71s`、`1 passed in 32.02s`。这些先行 smoke 后又由同一发布门禁统一复核。
+
+完整 release matrix 在候选提交 `118ea73` 上执行，命令为：
+
+```bash
+source /home/james/work/sidereus/workplace/abacus-develop/toolchain/install/setup
+conda run -n paimon python /tmp/run-forge-release-matrix-20260913.py
+```
+
+该脚本设置 `ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1`，使用矩阵文件
+`/tmp/forge-release-matrix-20260913.json`（SHA-256
+`794cc84b6b3be58e98a054db46145985e93d385efda965ca008c38b0dc4eabb4`），并绑定
+develop executable `7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5`、
+LTS executable `51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f`。
+结果为 `1 passed in 83.72s`；该单测内部执行并比较 develop/LTS ×
+`scf`/`relax`/`cell-relax`/`md` 八个单元，所有 typed parity、artifact、source、
+provenance 和版本断言均通过。此前 harness 的失败是错误访问不存在的
+`RunResult.stderr/stdout` 字段，已在 `118ea73` 改为读取受控日志路径后重跑通过。
 
 这组 harness 证据绑定指定 executable hash 和输入资源，并把 LTS v3.10.1 的
-final-candidate 歧义作为正向状态事实保留；它证明指定 checkout/path 下已运行
-案例的 typed numerical smoke，不证明 canonical `abacuslite` 已作为可安装 exact
-package 发布，也不证明八个 release track/capability 单元已经全部执行。发布候选
-必须设置 `ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1`，提供完整 provenance
-字段并将 skip 视为失败。
+final-candidate 歧义作为正向状态事实保留；它证明指定 checkout/path 下八个 release
+track/capability 单元已完成 typed numerical parity。它仍不证明 canonical
+`abacuslite` 已作为可安装 exact package 发布。发布候选必须继续设置
+`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1`，提供完整 provenance 字段并将
+skip 视为失败。
 
 ## 12. Package/installability gate（2026-09-13）
 
@@ -353,6 +368,6 @@ collect 和 Forge-only 缺包失败结果见第 12 节；Paimon adapter 的
 `collection=missing_output`；SCF 遵守默认 schema 省略 capability，另外两个请求
 携带 capability 并完成 typed dispatch。
 
-这些数字不改变第 11/12 节的边界：完整 release dual-track matrix、已发布
-`abacuslite==...` exact extra、fresh dependency install、Paimon 旧依赖清零、已有
-Agent Benchmark parity 和生产 E2E 仍未完成。
+这些数字更新了第 11 节的状态：完整 release dual-track matrix 已通过；第 12 节的
+已发布 `abacuslite==...` exact extra、fresh dependency install，以及 Paimon 旧依赖
+清零、已有 Agent Benchmark parity 和生产 E2E 仍未完成。

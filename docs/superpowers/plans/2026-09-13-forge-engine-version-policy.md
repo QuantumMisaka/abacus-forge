@@ -4,7 +4,7 @@
 
 **Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-13 收口版本。
 
-**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已完成并集成 A 与离线 B；真实计算、可安装 extra、双轨发布和外部迁移仍不在本轮已验收结果内。
+**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已完成并集成 A/B；选定 real smoke 与完整双轨候选证据已记录，exact installable extra 与外部迁移仍未验收。
 
 **Architecture:** 复用 collection 来源选择、共同事实提取与 typed 投影；只替换主日志电子标量/力/应力读取层。配置置于 service 实例，CLI 调用同一 service；error schema、final 候选、legacy surface 和 workspace 审计保持原契约。
 
@@ -42,7 +42,7 @@
 
 ### C/D
 
-阶段 1 的 exact installable package、fresh extra、完整 native/abacuslite 发布矩阵以及 Paimon 工具矩阵/运行时依赖清零仍未执行；选定 real numeric smoke 不等于这些门禁完成。
+阶段 1 的 exact installable package、fresh extra 和 Paimon 工具矩阵/运行时依赖清零仍未验收；完整 native/abacuslite 发布矩阵已执行并通过候选门禁。矩阵通过不等于 exact extra 或外部迁移完成。
 
 ### C 阶段 native real-smoke 证据（2026-09-13）
 
@@ -84,7 +84,7 @@
 
 - [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
 - [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
-- [ ] 完整 native/abacuslite 发布矩阵仍未执行；`tests/real_smoke/test_abacuslite_dual_track.py` 已提供 capability-specific typed numerical smoke，并在 `ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 时强制 develop/LTS × 四 capability 和 provenance 字段。当前已运行的选定案例见 review evidence 第 11 节，不能替代完整矩阵。
+- [x] 完整 native/abacuslite 发布矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。
 - [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
 
@@ -96,4 +96,4 @@ Paimon 工具覆盖矩阵、旧依赖清零、Agent Benchmark 与生产 E2E 由 
 
 可选 backend 未通过时继续以 native 为默认，不提交自动 fallback；调用方可使用新 operation ID 显式选择 native。已写 admission/event 不删除或改写。若可行性调查要求改变公共事实、final 候选或 error schema，先回到 SPEC；内部模块布局、fixture 和容差细化由实施者依据证据完成。
 
-当前已完成 A、离线 B、native real-smoke 复核和选定 optional numerical smoke；C 的 exact extra、完整发布矩阵与 D 的外部迁移仍未验收，不能由本轮通过推断为已交付。
+当前已完成 A、离线 B、native real-smoke 复核和完整 optional numerical release matrix；C 的 exact extra/fresh dependency install 与 D 的外部迁移仍未验收，不能由本轮通过推断为已交付。
