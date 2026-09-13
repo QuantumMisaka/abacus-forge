@@ -338,8 +338,9 @@ canonical release，需把 extra 改为该实际 `abacuslite==版本号`，再�
 
 ```text
 focused parser/collector/CLI/PyATB + dual-harness admission: 151 passed, 1 skipped in 5.43s
+release-gate regression tests: 2 passed, 1 skipped in 0.58s
 owning suites: 750 passed in 25.01s
-default offline suite: 1392 passed, 31 skipped in 103.12s
+default offline suite: 1394 passed, 31 skipped in 106.79s
 git diff --check: passed
 compileall src tests: passed
 ```
@@ -347,9 +348,10 @@ compileall src tests: passed
 `abacus-forge-0.1.0` clean wheel 的当前 SHA-256、isolated import/source-wheel
 collect 和 Forge-only 缺包失败结果见第 12 节；Paimon adapter 的
 `conda run -n abacus-env env PYTHONPATH=. pytest -q tests/test_forge_adapter.py`
-为 `10 passed in 0.14s`。使用真实候选 Forge machine CLI 对 `capability=relax` 与
-`capability=md` 的空 workspace collect 均返回 exit 0、`collection=missing_output`，
-证明 adapter 已将 capability 传入 typed dispatch。
+为 `11 passed in 0.08s`。使用真实候选 Forge machine CLI 对 `capability=scf`、
+`capability=relax` 与 `capability=md` 的空 workspace collect 均返回 exit 0、
+`collection=missing_output`；SCF 遵守默认 schema 省略 capability，另外两个请求
+携带 capability 并完成 typed dispatch。
 
 这些数字不改变第 11/12 节的边界：完整 release dual-track matrix、已发布
 `abacuslite==...` exact extra、fresh dependency install、Paimon 旧依赖清零、已有
