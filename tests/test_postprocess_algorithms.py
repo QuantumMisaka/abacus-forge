@@ -93,6 +93,30 @@ def test_process_band_files_explicitly_shifts_energy_columns_and_records_axis(tm
     assert rows[1][2] == "-1.3"
 
 
+def test_process_band_files_plots_one_path_column_with_multiple_bands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "BANDS_one_prefix.dat"
+    source.write_text("0.0 -1.0 0.5\n0.5 -0.8 0.7\n", encoding="utf-8")
+    calls: list[tuple[list[float], list[float]]] = []
+
+    import matplotlib.axes
+
+    def capture_plot(self, x_values, y_values, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+        calls.append((list(x_values), list(y_values)))
+        return []
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "plot", capture_plot)
+    process_band_files(
+        [source],
+        tmp_path / "output",
+        plot_emin=-2.0,
+        plot_emax=2.0,
+        save_data=False,
+        save_plot=True,
+    )
+
+    assert calls[:2] == [([0.0, 0.5], [-1.0, -0.8]), ([0.0, 0.5], [0.5, 0.7])]
+
+
 def test_process_band_files_raises_typed_parse_error_without_numeric_rows(tmp_path: Path) -> None:
     source = tmp_path / "BANDS_bad.dat"
     source.write_text("# no numeric rows\nnot a table\n", encoding="utf-8")
@@ -163,6 +187,36 @@ def test_process_dos_files_explicitly_shifts_energy_and_records_axis(tmp_path: P
     assert result.diagnostics["energy_axis"] == "fermi_relative"
     assert result.diagnostics["fermi_reference_ev"] == 0.5
     assert "-0.500000" in (tmp_path / "output/DOS.dat").read_text()
+
+
+def test_process_dos_files_shifts_summary_energy_bounds_with_axis(tmp_path: Path) -> None:
+    sources = tmp_path / "sources"
+    write_sample_dos_family_artifacts(sources)
+
+    result = process_dos_files(
+        [sources / "DOS1_smearing.dat"],
+        sources / "PDOS",
+        sources / "TDOS",
+        tmp_path / "output",
+        include_tdos=True,
+        include_pdos=True,
+        pdos_mode="species",
+        pdos_atom_indices=(),
+        plot_emin=-3.0,
+        plot_emax=3.0,
+        save_data=True,
+        save_plot=False,
+        suffix=None,
+        energy_axis="fermi_relative",
+        fermi_reference_ev=0.5,
+    )
+
+    total_summary = result.summary["total_dos"]
+    projected_summary = result.summary["projected_dos"]
+    assert total_summary["energy_min"] == -10.5
+    assert total_summary["energy_max"] == 4.5
+    assert projected_summary["energy_min"] == -1.5
+    assert projected_summary["energy_max"] == 0.5
 
 
 def test_process_dos_files_uses_explicit_order_and_reports_missing_optional_family(tmp_path: Path) -> None:

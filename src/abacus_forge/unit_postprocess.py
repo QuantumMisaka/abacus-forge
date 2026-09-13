@@ -268,8 +268,10 @@ def _plot_band_data(
             ]
         if not rows:
             continue
-        x_values = [row[1] if len(row) >= 3 else row[0] for row in rows]
-        first_band_column = 2 if len(rows[0]) >= 3 else 1
+        prefix = _band_energy_prefix(rows)
+        x_column = prefix - 1
+        x_values = [row[x_column] for row in rows]
+        first_band_column = prefix
         max_columns = max(len(row) for row in rows)
         for column in range(first_band_column, max_columns):
             y_values = [row[column] for row in rows if len(row) > column]

@@ -38,7 +38,8 @@
 - [x] 版本正规化覆盖 `v3.10.1`、裸 `v3.9.0`、3.9 develop `.x`/预发布与 `v3.11.0-beta8+56`；import 延迟到合法 collect admission 后，禁止 calculator/global switch/executable 探测。
 - [x] 错误顺序的离线回归覆盖无效配置、caller/log 冲突、unsupported log、optional 缺包、无主日志不 dispatch、缺值不 fallback，以及 API/CLI 的既有 error schema/exit 映射。
 - [x] canonical checkout 的四 capability 完整/截断/非收敛/缺辅助文件/output-only/歧义/越界/重复调用 parity、同进程交替版本与并发只读验证已在 `tests/benchmark/test_abacuslite_canonical_parity.py` 固化；指定 checkout 的 15 项 benchmark 通过。
-- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1399 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
+- [x] Band/DOS 的显式 `energy_axis`/`fermi_reference_ev` 贯穿 typed postprocess；一列 k-path 多能带绘图、能带前缀列、DOS/PDOS 相对轴 summary 均有回归。
+- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1401 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
 
 ### C/D
 

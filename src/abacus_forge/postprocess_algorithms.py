@@ -214,8 +214,8 @@ def process_dos_files(
             _assert_contained_output(base, path)
 
     summary: dict[str, JSONValue] = {
-        "total_dos": _dos_summary(total_dos) if total_dos is not None else None,
-        "projected_dos": _pdos_summary(projected_dos) if projected_dos is not None and projected_dos.projected_dos else None,
+        "total_dos": _dos_summary(total_dos, energy_reference=reference) if total_dos is not None else None,
+        "projected_dos": _pdos_summary(projected_dos, energy_reference=reference) if projected_dos is not None and projected_dos.projected_dos else None,
         "pdos_mode": pdos_mode,
         "energy_axis": energy_axis,
         "fermi_reference_ev": reference,
@@ -411,14 +411,25 @@ def _read_typed_dos_table(path: Path) -> tuple[list[float], list[float]]:
     return [row[0] for row in rows], [row[1] for row in rows]
 
 
-def _dos_summary(data: DOSData) -> dict[str, JSONValue]:
+def _dos_summary(data: DOSData, *, energy_reference: float | None = None) -> dict[str, JSONValue]:
     summary = dict(data.summary())
+    if energy_reference is not None:
+        for key in ("energy_min", "energy_max"):
+            value = summary.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                summary[key] = float(value) - energy_reference
     summary["dos_files"] = [path.name for path in data.paths]
     return _json_safe(summary)
 
 
-def _pdos_summary(data: PDOSData) -> dict[str, JSONValue]:
+def _pdos_summary(data: PDOSData, *, energy_reference: float | None = None) -> dict[str, JSONValue]:
     summary = dict(data.summary())
+    if data.energy is not None and len(data.energy):
+        energy = np.asarray(data.energy, dtype=float)
+        if energy_reference is not None:
+            energy = energy - energy_reference
+        summary["energy_min"] = float(np.min(energy))
+        summary["energy_max"] = float(np.max(energy))
     summary["pdos_file"] = data.pdos_path.name if data.pdos_path is not None else None
     summary["tdos_file"] = data.tdos_path.name if data.tdos_path is not None else None
     return _json_safe(summary)
