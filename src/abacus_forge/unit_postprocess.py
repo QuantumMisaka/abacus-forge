@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import math
 from pathlib import Path
 from typing import Any
 
@@ -232,11 +233,15 @@ def _write_band_table(
         for path in band_data.paths:
             label = path if include_source_paths else path.name
             handle.write(f"# {label}\n")
-            for row in _read_numeric_rows(path):
+            rows = _read_numeric_rows(path)
+            prefix = _band_energy_prefix(rows)
+            for row in rows:
                 if energy_reference is not None:
-                    prefix = 2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1
                     row = row[:prefix] + [value - energy_reference for value in row[prefix:]]
-                handle.write(" ".join(f"{value:g}" for value in row) + "\n")
+                # Keep enough significant digits for a downstream parity
+                # comparison; the default ``g`` precision silently rounded
+                # ABACUS's eight-decimal band tables to six significant digits.
+                handle.write(" ".join(f"{value:.12g}" for value in row) + "\n")
 
 
 def _plot_band_data(
@@ -256,9 +261,9 @@ def _plot_band_data(
     for file_index, path in enumerate(band_data.paths):
         rows = _read_numeric_rows(path)
         if energy_reference is not None:
+            prefix = _band_energy_prefix(rows)
             rows = [
-                row[: (2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1)]
-                + [value - energy_reference for value in row[(2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1):]]
+                row[:prefix] + [value - energy_reference for value in row[prefix:]]
                 for row in rows
             ]
         if not rows:
@@ -292,6 +297,32 @@ def _read_numeric_rows(path: Path) -> list[list[float]]:
         except ValueError:
             continue
     return rows
+
+
+def _band_energy_prefix(rows: list[list[float]]) -> int:
+    """Return the number of non-energy prefix columns for all rows.
+
+    ABACUS band tables either use one path-distance prefix or a one-based
+    k-point index followed by path distance.  The shape is a property of the
+    complete table; checking each row independently would misclassify every
+    row after the first one because only the first path distance is zero.
+    """
+
+    if not rows or any(len(row) < 3 for row in rows):
+        return 1
+    indices = [row[0] for row in rows]
+    if not all(
+        math.isfinite(value)
+        and value >= 1
+        and math.isclose(value, round(value), rel_tol=0.0, abs_tol=1e-12)
+        for value in indices
+    ):
+        return 1
+    if not math.isclose(indices[0], 1.0, rel_tol=0.0, abs_tol=1e-12):
+        return 1
+    if not math.isclose(rows[0][1], 0.0, rel_tol=0.0, abs_tol=1e-12):
+        return 1
+    return 2
 
 
 def _write_band_metrics(workspace: Workspace, summary: dict[str, Any], diagnostics: dict[str, Any], *, artifact_paths: dict[str, str]) -> None:

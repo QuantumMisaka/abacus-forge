@@ -82,8 +82,15 @@ def test_process_band_files_explicitly_shifts_energy_columns_and_records_axis(tm
 
     assert result.diagnostics["energy_axis"] == "fermi_relative"
     assert result.diagnostics["fermi_reference_ev"] == 0.5
-    assert "-1.5" in (tmp_path / "output/band.dat").read_text()
-    assert "0.5" in (tmp_path / "output/band.dat").read_text()
+    rows = [
+        line.split()
+        for line in (tmp_path / "output/band.dat").read_text().splitlines()
+        if line and not line.startswith("#")
+    ]
+    assert rows[0][:2] == ["1", "0"]
+    assert rows[0][2] == "-1.5"
+    assert rows[1][:2] == ["2", "0.5"]
+    assert rows[1][2] == "-1.3"
 
 
 def test_process_band_files_raises_typed_parse_error_without_numeric_rows(tmp_path: Path) -> None:
