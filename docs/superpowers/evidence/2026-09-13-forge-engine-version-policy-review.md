@@ -125,7 +125,7 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 
 ## 8. 实施分支验证（2026-09-13）
 
-随后按 [实施 PLAN](../plans/2026-09-13-forge-engine-version-policy.md) 在隔离 worktree `codex/forge-engine-version-policy` 推进 A 与离线 B。实现包含 native PyATB 双命名/relax marker 兼容、typed service/CLI parser 配置、版本局部分发、abacuslite optional adapter、共同事实白名单与派生投影；legacy facade、request/schema、final 候选和 workspace 事件边界保持不变。
+随后按 [实施 PLAN](../plans/2026-09-13-forge-engine-version-policy.md) 在隔离 worktree `forge-mainline-integration` 推进 A 与离线 B。实现包含 native PyATB 双命名/relax marker 兼容、typed service/CLI parser 配置、版本局部分发、abacuslite optional adapter、共同事实白名单与派生投影；legacy facade、request/schema、final 候选和 workspace 事件边界保持不变。
 
 当前工作态验证（`conda` 环境 `paimon`，canonical benchmark 加入前的实现基线）：
 
@@ -159,7 +159,7 @@ not change the Stage 1 or external migration boundary described below.
 
 ## 9. Canonical abacuslite Stage 0 parity（2026-09-13）
 
-证据绑定：Forge 隔离分支 `codex/forge-engine-version-policy`，canonical
+证据绑定：Forge 隔离分支 `forge-mainline-integration`，canonical
 `abacus-develop` checkout `94576a80169de36e02e637edc2a0963fba9e1838`，源码路径
 `interfaces/ASE_interface/abacuslite`。测试直接调用该 checkout 的
 `legacyio`/`latestio` 底层 reader 作为 oracle，再调用 Forge 的
