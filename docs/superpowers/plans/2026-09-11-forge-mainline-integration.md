@@ -48,3 +48,19 @@
 ## Completion record (2026-09-11)
 
 The isolated integration branch is complete and review-ready at `09c935c` (merge `7f80804` plus the verification-plan record and close-out evidence). Focused, full offline, architecture, clean-archive, wheel/fresh-venv, discovery, and diff-hygiene gates passed; independent whole-branch review of `b6d83ef..7de2d47` returned no Critical/Important/Minor findings, and the final docs-only close-out was re-archived successfully. `main` and the remote remain untouched. This record does not promote experimental capabilities or claim real ABACUS/PyATB/scientific acceptance.
+
+## Candidate follow-up: Engine/Version Policy (2026-09-13)
+
+The integration branch was fast-forwarded from `da1d4df` to candidate commit
+`b7874d8` (`feat: add version-aware abacuslite collection backend`). This keeps
+the earlier integration history intact and adds the approved Engine/Version
+Policy SPEC/PLAN, native compatibility increment, typed parser configuration,
+and the Stage 0 canonical checkout parity gate. The candidate branch remains
+isolated; the original `main` worktree and remote were not modified.
+
+The canonical gate is recorded in
+`docs/superpowers/evidence/2026-09-13-forge-engine-version-policy-review.md`:
+the pinned `abacus-develop` checkout passes 15 focused parity/isolation cases,
+while the full offline suite remains `1391 passed, 30 skipped`. Installable
+optional extras, real native/abacuslite dual-track execution, and Paimon v1.3
+migration remain release gates rather than claims of this candidate.
