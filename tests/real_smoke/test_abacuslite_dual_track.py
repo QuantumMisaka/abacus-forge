@@ -300,7 +300,10 @@ def test_native_and_abacuslite_collect_real_output_parity(tmp_path: Path) -> Non
             workdir=native_root,
             executable=str(executable_path),
         ))
-        assert executed.returncode == 0, executed.stderr or executed.stdout
+        if executed.returncode != 0:
+            stderr = executed.stderr_path.read_text(encoding="utf-8", errors="replace") if executed.stderr_path.exists() else ""
+            stdout = executed.stdout_path.read_text(encoding="utf-8", errors="replace") if executed.stdout_path.exists() else ""
+            pytest.fail(stderr or stdout or f"ABACUS execution failed with return code {executed.returncode}")
         shutil.copytree(native_root, optional_root, symlinks=False)
 
         native_result = collect_contained(native_root, parser_backend="native")
