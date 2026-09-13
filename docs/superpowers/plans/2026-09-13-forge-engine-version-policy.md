@@ -38,7 +38,7 @@
 - [x] 版本正规化覆盖 `v3.10.1`、裸 `v3.9.0`、3.9 develop `.x`/预发布与 `v3.11.0-beta8+56`；import 延迟到合法 collect admission 后，禁止 calculator/global switch/executable 探测。
 - [x] 错误顺序的离线回归覆盖无效配置、caller/log 冲突、unsupported log、optional 缺包、无主日志不 dispatch、缺值不 fallback，以及 API/CLI 的既有 error schema/exit 映射。
 - [x] canonical checkout 的四 capability 完整/截断/非收敛/缺辅助文件/output-only/歧义/越界/重复调用 parity、同进程交替版本与并发只读验证已在 `tests/benchmark/test_abacuslite_canonical_parity.py` 固化；指定 checkout 的 15 项 benchmark 通过。
-- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；默认回归实际为 `1391 passed, 30 skipped`（`abacus-env`，156 个已有 ASE 弃用警告）。真实发布 parser package/双轨 parity 仍是未完成证据项。
+- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1395 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
 
 ### C/D
 
@@ -84,6 +84,7 @@
 
 - [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
 - [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
+- [x] package-contract regression 要求未来声明的 `abacuslite` extra 只能包含单一精确 `abacuslite==<version>`，并禁止进入默认依赖；在没有公开 release 时保持不声明 extra（`tests/test_package_contract.py`）。
 - [x] 完整 native/abacuslite 发布矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。
 - [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
