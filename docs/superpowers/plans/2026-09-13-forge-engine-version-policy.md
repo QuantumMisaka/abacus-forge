@@ -2,7 +2,7 @@
 
 **Goal:** 保持 native 默认和既有 typed collection 行为，先交付版本兼容增量，再验证可选 abacuslite 后端。
 
-**Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-13 收口版本。
+**Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-14 Stage 0 状态版本。
 
 **Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已完成并集成 A/B；选定 real smoke 与完整双轨候选证据已记录，exact installable extra 与外部迁移仍未验收。
 
@@ -38,7 +38,7 @@
 - [x] 版本正规化覆盖 `v3.10.1`、裸 `v3.9.0`、3.9 develop `.x`/预发布与 `v3.11.0-beta8+56`；import 延迟到合法 collect admission 后，禁止 calculator/global switch/executable 探测。
 - [x] 错误顺序的离线回归覆盖无效配置、caller/log 冲突、unsupported log、optional 缺包、无主日志不 dispatch、缺值不 fallback，以及 API/CLI 的既有 error schema/exit 映射。
 - [x] canonical checkout 的四 capability 完整/截断/非收敛/缺辅助文件/output-only/歧义/越界/重复调用 parity、同进程交替版本与并发只读验证已在 `tests/benchmark/test_abacuslite_canonical_parity.py` 固化；指定 checkout 的 15 项 benchmark 通过。
-- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1395 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
+- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1399 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
 
 ### C/D
 
