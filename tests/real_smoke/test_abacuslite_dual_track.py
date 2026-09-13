@@ -7,6 +7,7 @@ the test selection and reject skips in its CI policy.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from collections.abc import Mapping
@@ -43,7 +44,10 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 def _matrix() -> list[dict[str, object]]:
     raw = os.environ.get(_MATRIX_ENV)
     if not raw:
-        pytest.skip(f"set {_MATRIX_ENV} to run native/abacuslite real parity")
+        message = f"set {_MATRIX_ENV} to run native/abacuslite real parity"
+        if os.environ.get(_REQUIRE_FULL_MATRIX_ENV) == "1":
+            pytest.fail(f"release gate requires {_MATRIX_ENV}; {message}")
+        pytest.skip(message)
     try:
         value = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -98,6 +102,15 @@ def _assert_release_matrix(cases: list[dict[str, object]]) -> None:
                 pytest.fail(f"release matrix case {index} requires non-empty {field}")
         if not _SHA256.fullmatch(str(case["executable_sha256"])):
             pytest.fail(f"release matrix case {index} requires a lowercase executable SHA-256")
+        executable = Path(str(case["executable"])).expanduser().resolve()
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            pytest.fail(f"release matrix case {index} executable is not executable: {executable}")
+        actual_hash = _sha256_file(executable)
+        if actual_hash != str(case["executable_sha256"]):
+            pytest.fail(
+                f"release matrix case {index} executable SHA-256 mismatch: "
+                f"expected {case['executable_sha256']}, observed {actual_hash}"
+            )
     observed = {(str(case["track"]), str(case["capability"])) for case in cases}
     required = {(track, capability) for track in _TRACKS for capability in _CAPABILITIES}
     missing = sorted(required - observed)
@@ -105,6 +118,14 @@ def _assert_release_matrix(cases: list[dict[str, object]]) -> None:
         pytest.fail(
             f"release matrix is incomplete; missing track/capability cells: {missing}"
         )
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _shape(value: object) -> tuple[object, ...]:

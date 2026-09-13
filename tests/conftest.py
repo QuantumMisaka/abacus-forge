@@ -88,6 +88,9 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_DUAL_TRACK_TEST_NAME = "test_native_and_abacuslite_collect_real_output_parity"
+_DUAL_TRACK_RELEASE_GATE_ENV = "ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX"
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
@@ -105,13 +108,17 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    dual_track_release_gate = os.environ.get(_DUAL_TRACK_RELEASE_GATE_ENV) == "1"
     for item in items:
         filename = Path(str(item.fspath)).name
         for marker_name in _FILE_MARKERS.get(filename, ()):
             item.add_marker(getattr(pytest.mark, marker_name))
         relative_parts = Path(str(item.fspath)).parts
         if "real_smoke" in relative_parts:
-            if not config.getoption("--run-real-smoke"):
+            is_dual_track_release_gate = (
+                dual_track_release_gate and item.name == _DUAL_TRACK_TEST_NAME
+            )
+            if not config.getoption("--run-real-smoke") and not is_dual_track_release_gate:
                 item.add_marker(pytest.mark.skip(reason="pass --run-real-smoke to run real process smoke tests"))
             else:
                 required_env = _REAL_SMOKE_ENV_BY_TEST.get(
@@ -122,7 +129,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
                     ),
                 )
                 missing_env = tuple(name for name in required_env if not os.environ.get(name))
-                if missing_env:
+                if missing_env and not is_dual_track_release_gate:
                     item.add_marker(
                         pytest.mark.skip(
                             reason="set " + " and ".join(missing_env)
