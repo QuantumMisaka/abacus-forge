@@ -85,6 +85,10 @@ class LocalRunner:
             resolved = shutil.which(program, path=search_path)
             if resolved is not None:
                 return resolved
+            # An absolute PATH is an authoritative runtime binding.  Do not
+            # reinterpret it with a lexical fallback: tests and deployments
+            # may deliberately intercept ``shutil.which`` to prove that the
+            # launcher is unavailable before process start.
             raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         for entry in search_path.split(os.pathsep):
             directory = Path(entry) if entry else Path(".")
