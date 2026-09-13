@@ -119,6 +119,9 @@ class ServiceContext:
             "persistence.failure": ("workspace_rel",),
             "precondition.missing": ("request",),
         }.get(error_class, ("request",))
+        configured_fields = getattr(error, "affected_fields", None)
+        if isinstance(configured_fields, tuple) and all(isinstance(item, str) for item in configured_fields):
+            affected = configured_fields
         result = self.error(error_class, str(error), request)
         return ForgeErrorEnvelope(
             error_class=result.error_class,

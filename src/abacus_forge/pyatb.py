@@ -185,11 +185,12 @@ def _render_pyatb_band_input(
         "fermi_energy": fermi_energy,
         "HR_route": matrix_routes["HR_route"],
         "SR_route": matrix_routes["SR_route"],
-        "rR_route": matrix_routes["rR_route"],
         "HR_unit": "Ry",
-        "rR_unit": "Bohr",
         "max_kpoint_num": max_kpoint_num,
     }
+    if matrix_routes.get("rR_route"):
+        input_parameters["rR_route"] = matrix_routes["rR_route"]
+        input_parameters["rR_unit"] = "Bohr"
     rows = ["INPUT_PARAMETERS", "{"]
     rows.extend(f"    {key}  {value}" for key, value in input_parameters.items())
     rows.extend(["}", "", "LATTICE", "{", "    lattice_constant  1.8897162", "    lattice_constant_unit  Bohr", "    lattice_vector"])
@@ -214,19 +215,27 @@ def _render_pyatb_band_input(
 
 
 def _matrix_routes(out_dir: Path, *, nspin: int) -> dict[str, Any]:
-    hr0 = out_dir / "data-HR-sparse_SPIN0.csr"
-    sr0 = out_dir / "data-SR-sparse_SPIN0.csr"
-    rr = out_dir / "data-rR-sparse.csr"
+    hr0 = _first_matrix(out_dir, "hrs1_nao.csr", "data-HR-sparse_SPIN0.csr")
+    sr0 = _first_matrix(out_dir, "sr_nao.csr", "data-SR-sparse_SPIN0.csr")
+    rr = _first_matrix(out_dir, "rr.csr", "data-rR-sparse.csr", required=False)
     hr_routes = [f"{out_dir.name}/{hr0.name}"]
     sr_routes = [f"{out_dir.name}/{sr0.name}"]
-    required = [hr0, sr0, rr]
+    required = [hr0, sr0]
+    if rr is not None:
+        required.append(rr)
     if nspin == 2:
-        hr1 = out_dir / "data-HR-sparse_SPIN1.csr"
-        sr1 = out_dir / "data-SR-sparse_SPIN1.csr"
+        hr1 = _first_matrix(out_dir, "hrs2_nao.csr", "data-HR-sparse_SPIN1.csr")
+        sr1 = _first_matrix(out_dir, "sr_nao.csr", "data-SR-sparse_SPIN1.csr")
+        # Spin-polarized HR channels are a pair; retain the path in the
+        # preflight list even when it is absent so prepare reports it missing.
+        required.append(hr1)
         if hr1.exists():
             hr_routes.append(f"{out_dir.name}/{hr1.name}")
-            required.append(hr1)
-            if sr1.exists():
+            # SR is shared by both spin channels in both naming schemes.
+            # Retain the old SPIN1 fallback only when explicitly present and
+            # the shared source was not selected (the resolver normally picks
+            # sr_nao/data-SPIN0 first).
+            if sr1 != sr0 and sr1.exists():
                 sr_routes.append(f"{out_dir.name}/{sr1.name}")
                 required.append(sr1)
             else:
@@ -236,9 +245,21 @@ def _matrix_routes(out_dir: Path, *, nspin: int) -> dict[str, Any]:
         "routes": {
             "HR_route": " ".join(hr_routes),
             "SR_route": " ".join(sr_routes),
-            "rR_route": f"{out_dir.name}/{rr.name}",
+            "rR_route": f"{out_dir.name}/{rr.name}" if rr is not None else "",
         },
     }
+
+
+def _first_matrix(out_dir: Path, *names: str, required: bool = True) -> Path | None:
+    """Resolve the standard new name first, then the historical name."""
+    for name in names:
+        path = out_dir / name
+        if path.exists():
+            return path
+    if not required:
+        return None
+    # Keep the existing error shape for required matrix inputs.
+    return out_dir / names[-1]
 
 
 def _find_abacus_out_dir(workspace: Workspace, *, suffix: str) -> Path | None:

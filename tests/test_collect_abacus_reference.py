@@ -427,3 +427,25 @@ def test_collect_extracts_native_abacus_and_md_metrics(tmp_path: Path) -> None:
     assert result.metrics["converge"] is True
     assert result.metrics["md_steps"] == 2
     assert result.metrics["md_last_temperature"] == 305
+
+
+def test_collect_parses_native_step_of_relaxation_marker(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "native-relax-step").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation relax\n")
+    workspace.write_text("outputs/stdout.log", "STEP OF RELAXATION : 7\nSCF CONVERGED\nNORMAL END\n")
+    workspace.write_text("outputs/stderr.log", "")
+
+    result = collect(workspace)
+
+    assert result.metrics["relax_steps"] == 7
+
+
+def test_collect_omits_relax_steps_without_marker(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "native-no-relax-step").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/stdout.log", "SCF CONVERGED\nNORMAL END\n")
+    workspace.write_text("outputs/stderr.log", "")
+
+    result = collect(workspace)
+
+    assert "relax_steps" not in result.metrics

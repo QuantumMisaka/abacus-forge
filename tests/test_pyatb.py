@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 
 from ase import Atoms
+import pytest
 
 from abacus_forge.api import prepare
 from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band
+from abacus_forge.pyatb_manifest import classify_pyatb_output
 from abacus_forge.tasks import run_band_sequence
 from abacus_forge.workspace import Workspace
 from tests.support.fake_executables import write_fake_abacus_with_matrix, write_fake_pyatb
@@ -110,6 +112,87 @@ def test_prepare_pyatb_band_reuses_spin0_overlap_for_spin_polarized_abacus(tmp_p
     text = (pyatb.inputs_dir / "Input").read_text(encoding="utf-8")
     assert "HR_route  OUT.ABACUS/data-HR-sparse_SPIN0.csr OUT.ABACUS/data-HR-sparse_SPIN1.csr" in text
     assert "SR_route  OUT.ABACUS/data-SR-sparse_SPIN0.csr OUT.ABACUS/data-SR-sparse_SPIN0.csr" in text
+
+
+@pytest.mark.parametrize("nspin", (1, 4))
+def test_prepare_pyatb_band_accepts_new_shared_matrix_names(tmp_path: Path, nspin: int) -> None:
+    scf = prepare(
+        tmp_path / f"scf-{nspin}", task="scf",
+        structure=Atoms(symbols=["Si"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": nspin},
+    )
+    scf.write_text("outputs/stdout.log", "FERMI ENERGY = 3.2\nSCF CONVERGED\n")
+    for name in ("hrs1_nao.csr", "sr_nao.csr", "rr.csr"):
+        scf.write_text(f"inputs/OUT.ABACUS/{name}", name)
+
+    pyatb = prepare_pyatb_band(
+        tmp_path / f"pyatb-{nspin}", scf_workspace=scf,
+        line_kpoints=[{"coords": [0.0, 0.0, 0.0], "label": "G"}],
+    )
+    text = (pyatb.inputs_dir / "Input").read_text(encoding="utf-8")
+    assert "HR_route  OUT.ABACUS/hrs1_nao.csr" in text
+    assert "SR_route  OUT.ABACUS/sr_nao.csr" in text
+    assert "rR_route  OUT.ABACUS/rr.csr" in text
+
+
+def test_prepare_pyatb_band_accepts_new_spin_pair_names(tmp_path: Path) -> None:
+    scf = prepare(
+        tmp_path / "scf-spin-new", task="scf",
+        structure=Atoms(symbols=["Ni"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 2},
+    )
+    scf.write_text("outputs/stdout.log", "FERMI ENERGY = 7.7\nSCF CONVERGED\n")
+    for name in ("hrs1_nao.csr", "hrs2_nao.csr", "sr_nao.csr", "rr.csr"):
+        scf.write_text(f"inputs/OUT.ABACUS/{name}", name)
+    pyatb = prepare_pyatb_band(
+        tmp_path / "pyatb-spin-new", scf_workspace=scf,
+        line_kpoints=[{"coords": [0.0, 0.0, 0.0], "label": "G"}],
+    )
+    text = (pyatb.inputs_dir / "Input").read_text(encoding="utf-8")
+    assert "HR_route  OUT.ABACUS/hrs1_nao.csr OUT.ABACUS/hrs2_nao.csr" in text
+    assert "SR_route  OUT.ABACUS/sr_nao.csr" in text
+
+
+def test_prepare_pyatb_band_omits_missing_rr_route(tmp_path: Path) -> None:
+    scf = prepare(
+        tmp_path / "scf-no-rr", task="scf",
+        structure=Atoms(symbols=["Si"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 1},
+    )
+    scf.write_text("outputs/stdout.log", "FERMI ENERGY = 3.2\nSCF CONVERGED\n")
+    scf.write_text("inputs/OUT.ABACUS/hrs1_nao.csr", "hr")
+    scf.write_text("inputs/OUT.ABACUS/sr_nao.csr", "sr")
+    pyatb = prepare_pyatb_band(
+        tmp_path / "pyatb-no-rr", scf_workspace=scf,
+        line_kpoints=[{"coords": [0.0, 0.0, 0.0], "label": "G"}],
+    )
+    text = (pyatb.inputs_dir / "Input").read_text(encoding="utf-8")
+    assert "rR_route" not in text
+
+
+def test_prepare_pyatb_band_requires_paired_spin_hr_channels(tmp_path: Path) -> None:
+    scf = prepare(
+        tmp_path / "scf-spin-incomplete", task="scf",
+        structure=Atoms(symbols=["Ni"], positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True),
+        parameters={"basis_type": "lcao", "suffix": "ABACUS", "nspin": 2},
+    )
+    scf.write_text("outputs/stdout.log", "FERMI ENERGY = 7.7\nSCF CONVERGED\n")
+    scf.write_text("inputs/OUT.ABACUS/hrs1_nao.csr", "hr1")
+    scf.write_text("inputs/OUT.ABACUS/sr_nao.csr", "sr")
+    with pytest.raises(FileNotFoundError):
+        prepare_pyatb_band(
+            tmp_path / "pyatb-spin-incomplete", scf_workspace=scf,
+            line_kpoints=[{"coords": [0.0, 0.0, 0.0], "label": "G"}],
+        )
+
+
+@pytest.mark.parametrize(
+    ("name", "kind"),
+    (("hrs1_nao.csr", "matrix_hr"), ("hrs2_nao.csr", "matrix_hr"),
+     ("sr_nao.csr", "matrix_sr"), ("rr.csr", "matrix_rr")),
+)
+def test_manifest_classifies_new_pyatb_matrix_names(name: str, kind: str) -> None:
+    assert classify_pyatb_output(f"OUT.ABACUS/{name}")[0] == kind
 
 
 def test_run_band_sequence_with_pyatb_backend(tmp_path: Path) -> None:

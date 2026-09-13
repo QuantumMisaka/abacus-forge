@@ -25,6 +25,23 @@ conda run -n paimon python -m pytest -q --run-benchmark -m benchmark
 conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
 ```
 
+Engine/version policy Stage 0 parity uses the canonical `abacuslite` checkout
+as an explicit oracle. It is intentionally separate from the default suite and
+from real ABACUS execution:
+
+```bash
+export ABACUS_FORGE_CANONICAL_ABACUSLITE=/absolute/path/to/abacus-develop/interfaces/ASE_interface
+conda run -n paimon env PYTHONPATH=src \
+  python -m pytest -q --run-benchmark \
+  tests/benchmark/test_abacuslite_canonical_parity.py
+```
+
+The gate compares `legacyio`/`latestio` energy, Fermi, force and stress facts
+for SCF, relax, cell-relax and MD, and covers output-only, truncated and
+non-converged logs, containment, version isolation, concurrency and append-only
+audit behavior. A checkout fixture is not an installable package or a native /
+optional-parser dual-track release gate.
+
 The legacy SCF smoke and typed SCF machine smoke are separate evidence
 surfaces. The legacy test calls the compatibility Python API; the typed test
 calls only the machine CLI and is the evidence for the typed SCF operation

@@ -16,6 +16,8 @@ ATST adapter 死状态清理，以及 typed PyATB real-process smoke harness；�
 `docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html`
 与 `docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html`。
 
+**2026-09-13 归因校正：** 后文历史运行数字保留。当前 typed PyATB handoff 接受显式路径，不能由旧名称分类表推断它拒绝新名；typed Relax 已兼容唯一有效的 STRU_NOW/STRU_ION_D 等旧候选，不能仅凭没有 STRU_FINAL 解释 LTS partial。具体原因须核对原始 diagnostics 或后续 fresh evidence。现行政策见 [Engine/Version SPEC](../specs/2026-09-12-forge-engine-version-policy-design.html)。
+
 ## 1. 当前 typed capability manifest
 
 以下内容由候选提交的 `capabilities_document()` 直接输出；九项均保持

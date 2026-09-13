@@ -11,6 +11,16 @@ from abacus_forge.input_io import read_input, read_kpt
 from abacus_forge.result import CollectionResult
 from abacus_forge.structure import AbacusStructure
 from abacus_forge.workspace import Workspace
+from abacus_forge.parser_backend import (
+    ParserPreconditionError, ParserRequestError, ensure_abacuslite_available,
+    forge_backend_version, get_abacuslite_version, identify_output_version,
+    normalize_output_version, normalize_version_syntax, output_version_markers,
+    parse_abacuslite, validate_backend,
+)
+from abacus_forge.errors import ForgeRequestError
+
+
+_KBAR_TO_EV_PER_ANGSTROM3 = 3.398927420868445e-6 * 27.211396132 / 0.52917721092**3
 
 _OUTPUT_BANNER_MARKERS = (
     "Atomic-orbital Based Ab-initio",
@@ -36,9 +46,17 @@ def collect(
     return _collect_workspace(workspace, output_log=output_log, layout=layout)
 
 
-def collect_contained(workspace: Workspace) -> CollectionResult:
+def collect_contained(
+    workspace: Workspace,
+    *,
+    parser_backend: str = "native",
+    output_version: str | None = None,
+) -> CollectionResult:
     """Internal typed-service entry; legacy collect keeps its source behavior."""
-    return _collect_workspace(workspace, contained=True)
+    return _collect_workspace(
+        workspace, contained=True, parser_backend=parser_backend,
+        output_version=output_version,
+    )
 
 
 def _collect_workspace(
@@ -47,6 +65,8 @@ def _collect_workspace(
     output_log: str | Path | None = None,
     layout: str = "forge",
     contained: bool = False,
+    parser_backend: str = "native",
+    output_version: str | None = None,
 ) -> CollectionResult:
 
     ws = workspace if isinstance(workspace, Workspace) else Workspace(Path(workspace))
@@ -64,15 +84,90 @@ def _collect_workspace(
     structure_path = _input_path(ws, "STRU", layout=normalized_layout)
     structure_snapshot = _structure_snapshot(structure_path) if not contained or contained_source(ws.root, structure_path) else None
     final_structure_snapshot, final_structure_diagnostics = _final_structure_snapshot(artifacts)
+    parser = _parser_admission(
+        parser_backend=parser_backend,
+        output_version=output_version,
+        main_log_path=main_log_path,
+        main_log_text=main_log_text,
+        primary_log=log_selection["diagnostics"].get("log_strategy") == "selected-running-log",
+    )
+    parser["diagnostics"].setdefault("log_source_rel", None)
+    if main_log_path is not None:
+        try:
+            parser["diagnostics"]["log_source_rel"] = main_log_path.resolve().relative_to(ws.root.resolve()).as_posix()
+        except (OSError, RuntimeError, ValueError):
+            parser["diagnostics"]["log_source_rel"] = None
+    projection_volume = _snapshot_volume(final_structure_snapshot) or _snapshot_volume(structure_snapshot)
     metrics, diagnostics = collect_abacus_metrics(
         main_log_text=main_log_text,
         output_log_text=output_log_text,
         artifacts=artifacts,
         workspace_root=ws.root,
-        structure_volume=_snapshot_volume(final_structure_snapshot) or _snapshot_volume(structure_snapshot),
+        structure_volume=projection_volume,
         main_log_path=main_log_path,
         output_log_path=output_log_path,
+        include_native_numeric=parser_backend != "abacuslite",
     )
+    diagnostics["parser"] = parser["diagnostics"]
+    if parser["diagnostics"].get("actual_backend") == "abacuslite":
+        # The optional backend owns these primary-log fields.  Do not expose
+        # native values when its reader cannot provide one; a missing value is
+        # a partial fact, never a reason to silently switch readers.
+        for name in ("total_energy", "fermi_energy", "force", "forces", "stress", "stresses"):
+            if name not in parser["values"]:
+                metrics.pop(name, None)
+                diagnostics.get("_metric_origins", {}).pop(name, None)
+        if "total_energy" not in parser["values"]:
+            metrics.pop("energy_per_atom", None)
+            diagnostics.get("_metric_origins", {}).pop("energy_per_atom", None)
+    if parser["values"]:
+        # These are the sole fields owned by the selected optional parser.
+        # Shared convergence, artifacts and status facts remain native/common.
+        metrics.update(parser["values"])
+        diagnostics.setdefault("_metric_origins", {}).update(
+            {name: str(main_log_path) for name in parser["values"] if main_log_path is not None}
+        )
+        parser_values = parser["values"]
+        parser_origins = diagnostics.setdefault("_metric_origins", {})
+        parser_derived = set(diagnostics.get("_derived_metrics", ()))
+        parser_units = diagnostics.setdefault("_metric_units", {})
+        if "total_energy" in parser_values:
+            parser_units["total_energy"] = "eV"
+        if "fermi_energy" in parser_values:
+            parser_units["fermi_energy"] = "eV"
+        if "total_energy" in parser_values and "energy_per_atom" not in metrics and metrics.get("natom"):
+            try:
+                metrics["energy_per_atom"] = float(parser_values["total_energy"]) / int(metrics["natom"])
+                parser_origins["energy_per_atom"] = str(main_log_path)
+                parser_derived.add("energy_per_atom")
+            except (TypeError, ValueError, ZeroDivisionError):
+                pass
+        stress_frames = parser_values.get("stresses")
+        if stress_frames is None and parser_values.get("stress") is not None:
+            stress_frames = [parser_values["stress"]]
+        if isinstance(stress_frames, (list, tuple)):
+            pressures: list[float] = []
+            for frame in stress_frames:
+                if isinstance(frame, (list, tuple)) and len(frame) >= 9:
+                    pressures.append((float(frame[0]) + float(frame[4]) + float(frame[8])) / 3.0)
+            if pressures:
+                metrics["pressure"] = pressures[-1]
+                metrics["pressures"] = pressures
+                parser_origins["pressure"] = str(main_log_path)
+                parser_origins["pressures"] = str(main_log_path)
+                parser_derived.add("pressure")
+                if projection_volume is not None:
+                    virials = [
+                        [value * projection_volume * _KBAR_TO_EV_PER_ANGSTROM3 for value in frame]
+                        for frame in stress_frames
+                        if isinstance(frame, (list, tuple))
+                    ]
+                    if virials:
+                        metrics["virial"] = virials[-1]
+                        metrics["virials"] = virials
+                        parser_origins["virial"] = str(main_log_path)
+                        parser_origins["virials"] = str(main_log_path)
+        diagnostics["_derived_metrics"] = sorted(parser_derived)
     # The collector uses private diagnostic keys as a narrow hand-off for
     # parser provenance.  Consume them before returning the legacy result so
     # neither diagnostics nor wire serialization exposes the sidecar.
@@ -135,6 +230,76 @@ def _collect_workspace(
         derived_metrics=derived_metrics,
         metric_units=metric_units,
     )
+
+
+def _parser_admission(
+    *,
+    parser_backend: str,
+    output_version: str | None,
+    main_log_path: Path | None,
+    main_log_text: str | None,
+    primary_log: bool,
+) -> dict[str, Any]:
+    """Validate and, when applicable, dispatch one local parser backend."""
+    backend = validate_backend(parser_backend)
+    explicit = normalize_output_version(output_version) if output_version is not None else None
+    if backend == "abacuslite":
+        # Package availability is an admission precondition.  It is checked
+        # before version/output handling, including the no-log branch, while
+        # no numeric reader is dispatched unless a unique non-empty log exists.
+        ensure_abacuslite_available()
+    has_primary_log = primary_log and main_log_path is not None and bool((main_log_text or "").strip())
+    raw_markers = output_version_markers(main_log_text) if has_primary_log else []
+    log_raw = raw_markers[0] if len(raw_markers) == 1 else None
+    log_normalized: str | None = None
+    if log_raw is not None:
+        try:
+            log_normalized = normalize_version_syntax(log_raw)
+        except ForgeRequestError:
+            log_normalized = None
+    identified: Any = None
+    try:
+        identified = identify_output_version(main_log_text) if has_primary_log else None
+    except ForgeRequestError as error:
+        if explicit is not None and raw_markers:
+            raise ParserRequestError("output_version conflicts with running log version") from error
+        if backend == "abacuslite":
+            raise ParserPreconditionError(str(error)) from error
+        # Native collection keeps its historical tolerance for unknown or
+        # ambiguous producer markers; only a valid marker participates in a
+        # caller/log conflict check.
+        identified = None
+    if explicit is not None and identified is not None and explicit.normalized != identified.normalized:
+        raise ParserRequestError("output_version conflicts with running log version")
+    selected = identified or explicit
+    if backend == "native":
+        return {"values": {}, "diagnostics": {
+            "requested_backend": backend,
+            "actual_backend": "native" if has_primary_log else None,
+            "backend_version": forge_backend_version(),
+            "io_backend": None,
+            "output_version_raw": identified.raw if identified is not None else (log_raw or output_version),
+            "output_version_normalized": selected.normalized if selected else (log_normalized or None),
+            "version_source": "log" if (identified or log_raw) else ("caller" if explicit else "unknown"),
+        }}
+    if not has_primary_log:
+        return {"values": {}, "diagnostics": {
+            "requested_backend": backend, "actual_backend": None, "backend_version": None,
+            "io_backend": None, "output_version_raw": output_version,
+            "output_version_normalized": selected.normalized if selected else None,
+            "version_source": "unknown",
+        }}
+    if selected is None:
+        raise ParserPreconditionError("abacuslite output version is required for a contained running log")
+    backend_version = get_abacuslite_version(selected.io_backend)
+    values = parse_abacuslite(main_log_path, version=selected)
+    return {"values": values, "diagnostics": {
+        "requested_backend": backend, "actual_backend": backend,
+        "backend_version": backend_version, "io_backend": selected.io_backend,
+        "output_version_raw": identified.raw if identified is not None else output_version,
+        "output_version_normalized": selected.normalized,
+        "version_source": "log" if identified else "caller",
+    }}
 
 
 def _normalize_layout(workspace: Workspace, layout: str) -> str:

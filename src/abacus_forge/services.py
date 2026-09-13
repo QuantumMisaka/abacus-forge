@@ -42,7 +42,8 @@ from abacus_forge.md_contracts import (
     MdPrepareRequest,
 )
 from abacus_forge.runner import LocalRunner
-from abacus_forge.errors import ForgePreconditionError, ForgeSchemaError
+from abacus_forge.errors import ForgePreconditionError, ForgeRequestError, ForgeSchemaError
+from abacus_forge.parser_backend import normalize_output_version, validate_backend
 from abacus_forge.workspace import Workspace
 
 
@@ -79,10 +80,14 @@ class _AbacusServiceContext(ServiceContext):
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
         validate_input_calculation: bool = False,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> None:
         super().__init__(workspace_root=workspace_root)
         self.runner_factory = runner_factory
         self.validate_input_calculation = validate_input_calculation
+        self.parser_backend = parser_backend
+        self.output_version = output_version
 
     @staticmethod
     def task_for(request: object) -> str:
@@ -492,13 +497,26 @@ class _CollectService:
                 "request.invalid", f"expected {self._request_type.__name__}", None
             )
         try:
+            validate_backend(self._context.parser_backend)
+            if self._context.output_version is not None:
+                normalize_output_version(self._context.output_version)
+        except ForgeRequestError as error:
+            # Python configuration is invocation-level admission.  Validate
+            # before resolving the workspace or claiming an operation so an
+            # invalid parser selection cannot read output or write an event.
+            return self._context.error_from_exception(error, request)
+        try:
             typed_request = request  # type: ignore[assignment]
             workspace = self._context.workspace(typed_request.workspace_rel)  # type: ignore[attr-defined]
             with workspace.operation_guard(typed_request.operation_id, typed_request.operation) as owner_token:  # type: ignore[attr-defined]
                 task = self._context.task_for(typed_request)
                 if self._context.validate_input_calculation:
                     self._context.validate_collect_calculation(workspace, task)
-                result = collect(workspace)
+                result = collect(
+                    workspace,
+                    parser_backend=self._context.parser_backend,
+                    output_version=self._context.output_version,
+                )
                 if isinstance(typed_request, RelaxCollectRequest):
                     envelope = collection_envelope(result, typed_request.workspace_rel)
                     extra_observations = collection_observations(result)
@@ -533,11 +551,17 @@ class _ScfServiceSet:
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
         validate_input_calculation: bool = True,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> None:
+        self.parser_backend = parser_backend
+        self.output_version = output_version
         context = _AbacusServiceContext(
             workspace_root=workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=validate_input_calculation,
+            parser_backend=parser_backend,
+            output_version=output_version,
         )
         self.prepare: PrepareService = ScfPrepareService(context)
         self.modify: ModifyService = ScfModifyService(context)
@@ -562,16 +586,21 @@ class _ScfServiceSet:
 class ScfServiceSet(_ScfServiceSet):
     """Per-operation SCF services with strict typed profile matching."""
 
-    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> None:
+    def __init__(self, *, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner,
+                 parser_backend: str = "native", output_version: str | None = None) -> None:
         super().__init__(
             workspace_root=workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=True,
+            parser_backend=parser_backend,
+            output_version=output_version,
         )
 
     @classmethod
-    def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner) -> "ScfServiceSet":
-        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+    def default(cls, workspace_root: str | Path = ".", runner_factory: RunnerFactory = LocalRunner, *,
+                parser_backend: str = "native", output_version: str | None = None) -> "ScfServiceSet":
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory,
+                   parser_backend=parser_backend, output_version=output_version)
 
 
 class RelaxServiceSet:
@@ -582,11 +611,17 @@ class RelaxServiceSet:
         *,
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> None:
+        self.parser_backend = parser_backend
+        self.output_version = output_version
         context = _AbacusServiceContext(
             workspace_root=workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=True,
+            parser_backend=parser_backend,
+            output_version=output_version,
         )
         self.prepare: PrepareService = _PrepareService(context, RelaxPrepareRequest)
         self.modify: ModifyService = _ModifyService(context, RelaxModifyRequest)
@@ -598,8 +633,12 @@ class RelaxServiceSet:
         cls,
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
+        *,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> "RelaxServiceSet":
-        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory,
+                   parser_backend=parser_backend, output_version=output_version)
 
 
 class MdServiceSet:
@@ -610,11 +649,17 @@ class MdServiceSet:
         *,
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> None:
+        self.parser_backend = parser_backend
+        self.output_version = output_version
         context = _AbacusServiceContext(
             workspace_root=workspace_root,
             runner_factory=runner_factory,
             validate_input_calculation=True,
+            parser_backend=parser_backend,
+            output_version=output_version,
         )
         self.prepare: PrepareService = _PrepareService(context, MdPrepareRequest)
         self.modify: ModifyService = _ModifyService(context, MdModifyRequest)
@@ -626,8 +671,12 @@ class MdServiceSet:
         cls,
         workspace_root: str | Path = ".",
         runner_factory: RunnerFactory = LocalRunner,
+        *,
+        parser_backend: str = "native",
+        output_version: str | None = None,
     ) -> "MdServiceSet":
-        return cls(workspace_root=workspace_root, runner_factory=runner_factory)
+        return cls(workspace_root=workspace_root, runner_factory=runner_factory,
+                   parser_backend=parser_backend, output_version=output_version)
 
 
 class ForgeServices:

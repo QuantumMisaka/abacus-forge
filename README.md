@@ -87,6 +87,29 @@ typed MD 的 `collection=complete` 只表示存在唯一、contained 且可读�
 legacy `collect()` 继续读取历史 synthetic `MD_dump` 的兼容指标，但 typed MD 的
 `md_last_*` 热力学字段只来自原生 `running_md.log`。
 
+Typed ABACUS collect 默认使用 Forge native parser。需要显式试用内部可选的
+`abacuslite` parser 时，在 service 实例或 machine CLI 上逐次指定配置；它只影响
+`collect`，不会修改 request JSON/schema、进程环境或 legacy `collect()`：
+
+```python
+services = ScfServiceSet.default(
+    workspace_root="runs",
+    parser_backend="abacuslite",
+    output_version="v3.11.0-beta8+56",
+)
+outcome = services.collect.collect(request)
+```
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation collect \
+  --stdin --parser-backend abacuslite --output-version v3.11.0-beta8+56
+```
+
+`output_version` 只接受已支持的 producer 版本映射（例如 `v3.10.1`、裸
+`v3.9.0` 和 `v3.11.0-beta8+56`）。缺少可选包、唯一 contained running log 无版本或
+日志版本不受支持时，typed collect 返回既有 `precondition.missing`；无效配置和版本冲突
+返回 `request.invalid`。无唯一非空主 running log 时不调用可选 parser，沿用已有收集状态。
+
 `BandPostprocessRequest` 与 `DosPostprocessRequest` 提供独立的 typed band/DOS
 `postprocess` service。它们的成熟度为 `experimental`，要求调用方显式声明一个非空的
 workspace-relative source path 列表；不会隐式执行 `collect`、`export` 或上游 operation。

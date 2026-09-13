@@ -486,6 +486,103 @@ def test_machine_pretty_text_conflict_is_invalid_without_service_call() -> None:
     assert services.calls == []
 
 
+def test_machine_collect_passes_parser_configuration_to_scf_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected = _outcome()
+    services = _RecordingServices(expected)
+    calls: list[dict[str, object]] = []
+
+    def default(*, workspace_root: Path, parser_backend: str, output_version: str | None):
+        calls.append({
+            "workspace_root": workspace_root,
+            "parser_backend": parser_backend,
+            "output_version": output_version,
+        })
+        return services
+
+    monkeypatch.setattr(machine_cli.ScfServiceSet, "default", default)
+    code, output, diagnostics = _invoke(
+        [
+            "operation", "collect", "--stdin",
+            "--parser-backend", "abacuslite",
+            "--output-version", "v3.11.0-beta8+56",
+        ],
+        request_text=json.dumps(_request()),
+    )
+
+    assert code == 0
+    assert json.loads(output) == expected.to_dict()
+    assert diagnostics == ""
+    assert calls == [{
+        "workspace_root": Path("/tmp/forge-machine-test"),
+        "parser_backend": "abacuslite",
+        "output_version": "v3.11.0-beta8+56",
+    }]
+
+
+class _UnreadableInput:
+    def read(self) -> str:
+        raise AssertionError("request input must not be read")
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["operation", "prepare", "--stdin", "--parser-backend", "native"],
+        ["operation", "execute", "--stdin", "--output-version", "v3.10.1"],
+        ["operation", "postprocess", "--stdin", "--parser-backend", "abacuslite"],
+    ],
+)
+def test_machine_parser_options_are_invalid_before_non_collect_admission(argv: list[str]) -> None:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = run_machine_cli(
+        argv,
+        stdin=_UnreadableInput(),  # type: ignore[arg-type]
+        stdout=stdout,
+        stderr=stderr,
+        cwd=Path("/tmp/forge-machine-test"),
+    )
+    assert code == 2
+    assert json.loads(stdout.getvalue())["error"]["class"] == "request.invalid"
+    assert stderr.getvalue() == ""
+
+
+@pytest.mark.parametrize("version", ["", "nope", "v2.0.0", "v3.12.0"])
+def test_machine_invalid_output_version_is_rejected_before_request_read(version: str) -> None:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = run_machine_cli(
+        ["operation", "collect", "--stdin", "--output-version", version],
+        stdin=_UnreadableInput(),  # type: ignore[arg-type]
+        stdout=stdout,
+        stderr=stderr,
+        cwd=Path("/tmp/forge-machine-test"),
+    )
+    assert code == 2
+    assert json.loads(stdout.getvalue())["error"]["class"] == "request.invalid"
+    assert stderr.getvalue() == ""
+
+
+def test_machine_parser_options_are_invalid_for_pyatb_collect_before_service_dispatch() -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "capability": "pyatb-band",
+        "operation": "collect",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": "job",
+    }
+    services = _AllRecordingServices({"collect": _outcome()})
+    code, output, diagnostics = _invoke(
+        ["operation", "collect", "--stdin", "--parser-backend", "native"],
+        request_text=json.dumps(payload),
+        services=services,
+    )
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.invalid"
+    assert diagnostics == ""
+    assert services.calls == []
+
+
 def test_machine_error_envelope_rendering_preserves_context_and_exit() -> None:
     error = ForgeErrorEnvelope(
         "precondition.missing", "inputs/INPUT is missing", ("request",), OPERATION_ID, "."

@@ -26,6 +26,8 @@
 
 对 L3，SPEC 与 PLAN 都必须落在本目录。PLAN 不得发明或推翻 SPEC；发现设计冲突时停止扩大实现，回到设计澄清并更新 SPEC。
 
+2026-09-13 [Engine/Version Policy SPEC](./specs/2026-09-12-forge-engine-version-policy-design.html) 已完成设计收口，新增后端配置、错误优先级与解析分工，保留既有 final 候选兼容；[分阶段 PLAN](./plans/2026-09-13-forge-engine-version-policy.md) 的 A 与 Stage 0（含 canonical checkout parity）已在开发分支推进，C/D 的可安装 extra、真实双轨和外部迁移仍待验收。
+
 ## 日常门禁
 
 - 开始前：阅读 `AGENTS.md`、相关 README、最近 SPEC/PLAN 与拥有该行为的测试。

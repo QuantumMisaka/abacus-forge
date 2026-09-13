@@ -4,6 +4,9 @@
 当前可用接口、CLI 示例与 Python API 用法请参阅 [README.md](./README.md)；开发入口与边界请参阅 [AGENTS.md](./AGENTS.md)。
 
 ## 当前阶段
+
+2026-09-13 版本政策已[收口并形成实施计划](docs/superpowers/plans/2026-09-13-forge-engine-version-policy.md)；native 兼容增量与离线 Stage 0（含 canonical checkout 四 capability parity 和调用隔离矩阵）已在开发分支实现并通过门禁，可安装 extra、真实双轨发布证据和 Paimon 迁移仍待后续验收。下列历史记录中的“typed handoff 只认旧名”和“缺 STRU_FINAL 即 partial”归因已校正：显式 handoff 不受旧名白名单限制，Relax 保留既有旧候选兼容；LTS 个案原因待原始 diagnostics 核验，历史运行数字保留。
+
 - Stage 3 已合并：SCF 的 typed Python services 与 Agent-first CLI 共用请求、结果和错误语义，当前 maturity 为 experimental。
 - Stage 4 首批已实现：`relax` 与 `cell-relax` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；两个 capability 均保持 `experimental` maturity。
 - Stage 4 typed MD 基础操作已实现：`md` 通过四个 typed Python/Agent-first CLI operation（`prepare`、`modify`、`execute`、`collect`）复用同一请求、结果和错误边界；另有独立的 typed `postprocess` operation（见下文）；`md` 保持 `experimental` maturity，默认 profile 为 PBE/NVE，专属控制项继续位于 `parameters` map。

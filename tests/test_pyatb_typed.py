@@ -237,6 +237,91 @@ def test_typed_prepare_spin_four_has_one_shared_hr_route(tmp_path: Path) -> None
     assert input_text.count("rR_route") == 1
 
 
+@pytest.mark.parametrize("nspin", (1, 4))
+def test_typed_prepare_new_shared_matrix_names_preserves_handoff_roles_and_order(
+    tmp_path: Path, nspin: int
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "STRU").write_text(STRU, encoding="utf-8")
+    for name in ("hrs1_nao.csr", "sr_nao.csr", "rr.csr"):
+        (source / name).write_text(name, encoding="utf-8")
+
+    request = _prepare_request(
+        nspin=nspin,
+        hr_paths_rel=("source/hrs1_nao.csr",),
+        sr_path_rel="source/sr_nao.csr",
+        rr_path_rel="source/rr.csr",
+    )
+    _, handoff = prepare_typed_pyatb_band(tmp_path, request)
+
+    assert [record["role"] for record in handoff] == ["structure", "hr", "sr", "rR"]
+    assert [record["source"] for record in handoff] == [
+        "source/STRU",
+        "source/hrs1_nao.csr",
+        "source/sr_nao.csr",
+        "source/rr.csr",
+    ]
+    input_text = (tmp_path / "inputs/Input").read_text(encoding="utf-8")
+    assert f"nspin  {nspin}" in input_text
+    assert "HR_route  pyatb_sources/hrs1_nao.csr" in input_text
+    assert "SR_route  pyatb_sources/sr_nao.csr" in input_text
+    assert "rR_route  pyatb_sources/rr.csr" in input_text
+
+
+def test_typed_prepare_new_spin_pair_names_preserves_hr_order_and_shared_sr(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "STRU").write_text(STRU, encoding="utf-8")
+    for name in ("hrs1_nao.csr", "hrs2_nao.csr", "sr_nao.csr", "rr.csr"):
+        (source / name).write_text(name, encoding="utf-8")
+
+    request = _prepare_request(
+        nspin=2,
+        hr_paths_rel=("source/hrs1_nao.csr", "source/hrs2_nao.csr"),
+        sr_path_rel="source/sr_nao.csr",
+        rr_path_rel="source/rr.csr",
+    )
+    _, handoff = prepare_typed_pyatb_band(tmp_path, request)
+
+    assert [record["role"] for record in handoff] == [
+        "structure", "hr", "hr", "sr", "rR"
+    ]
+    assert [record["source"] for record in handoff[1:]] == [
+        "source/hrs1_nao.csr",
+        "source/hrs2_nao.csr",
+        "source/sr_nao.csr",
+        "source/rr.csr",
+    ]
+    input_text = (tmp_path / "inputs/Input").read_text(encoding="utf-8")
+    assert "nspin  2" in input_text
+    assert "HR_route  pyatb_sources/hrs1_nao.csr pyatb_sources/hrs2_nao.csr" in input_text
+    assert "SR_route  pyatb_sources/sr_nao.csr" in input_text
+    assert input_text.count("SR_route") == 1
+
+
+def test_typed_prepare_new_spin_pair_rejects_missing_second_hr_without_partial_write(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "STRU").write_text(STRU, encoding="utf-8")
+    for name in ("hrs1_nao.csr", "sr_nao.csr", "rr.csr"):
+        (source / name).write_text(name, encoding="utf-8")
+
+    request = _prepare_request(
+        nspin=2,
+        hr_paths_rel=("source/hrs1_nao.csr", "source/hrs2_nao.csr"),
+        sr_path_rel="source/sr_nao.csr",
+        rr_path_rel="source/rr.csr",
+    )
+    with pytest.raises(ForgePreconditionError, match="hrs2_nao.csr"):
+        prepare_typed_pyatb_band(tmp_path, request)
+    assert not (tmp_path / "inputs").exists()
+
+
 def test_typed_prepare_rejects_external_source_before_any_staging(tmp_path: Path) -> None:
     _sources(tmp_path)
     external = tmp_path.parent / "external-hr.csr"

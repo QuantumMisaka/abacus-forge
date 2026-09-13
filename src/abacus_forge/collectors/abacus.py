@@ -37,7 +37,10 @@ _METRIC_PATTERNS = {
     "nelec": re.compile(rf"(?:NELEC|electron\s+number)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
     "volume": re.compile(rf"(?:VOLUME|cell\s+volume)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
     "energy_per_atom": re.compile(rf"(?:ENERGY\s+PER\s+ATOM|E_PER_ATOM)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
-    "relax_steps": re.compile(r"(?:RELAX\s+STEPS?|ION\s+STEPS?)\s*[:=]\s*(\d+)", re.IGNORECASE),
+    "relax_steps": re.compile(
+        r"(?:RELAX\s+STEPS?|ION\s+STEPS?|STEP\s+OF\s+RELAXATION)\s*[:=]\s*(\d+)",
+        re.IGNORECASE,
+    ),
     "largest_gradient": re.compile(rf"(?:LARGEST\s+GRADIENT|largest\s+force)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
     "drho_last": re.compile(rf"(?:DRHO_LAST|final\s+drho|drho)\s*[:=]\s*({_NUMBER})", re.IGNORECASE),
 }
@@ -84,6 +87,33 @@ def _regex_metrics(content: str) -> dict[str, Any]:
     return metrics
 
 
+def _common_log_metrics(content: str) -> dict[str, Any]:
+    """Extract backend-independent log facts without native numeric parsing."""
+    metrics: dict[str, Any] = {}
+    # Keep this whitelist explicit.  Calling _regex_metrics and popping owned
+    # keys afterwards would still execute the native numeric readers.
+    common_fields = (
+        "band_gap", "scf_steps", "version", "natom", "nelec", "volume",
+        "relax_steps", "largest_gradient", "drho_last",
+    )
+    for key in common_fields:
+        match = _METRIC_PATTERNS[key].search(content)
+        if not match:
+            continue
+        value = match.group(1)
+        if key == "version":
+            metrics[key] = value
+        elif key in {"scf_steps", "natom", "relax_steps"}:
+            metrics[key] = int(value)
+        else:
+            metrics[key] = float(value)
+    positive_matches, negative_matches = _collect_convergence_matches(content)
+    metrics["converged"] = bool(positive_matches) and not negative_matches
+    metrics["converge"] = metrics["converged"]
+    metrics["normal_end"] = bool(re.search(r"\b(?:NORMAL\s+END|TOTAL\s+TIME)\b", content, re.IGNORECASE))
+    return metrics
+
+
 _REGISTRY.register(_regex_metrics)
 
 
@@ -96,12 +126,13 @@ def collect_abacus_metrics(
     structure_volume: float | None = None,
     main_log_path: Path | None = None,
     output_log_path: Path | None = None,
+    include_native_numeric: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Collect metrics and diagnostics from logs and artifacts."""
 
     main_content = main_log_text or ""
     output_content = output_log_text or ""
-    metrics = _REGISTRY.extract(main_content)
+    metrics = _REGISTRY.extract(main_content) if include_native_numeric else _common_log_metrics(main_content)
     metric_origins: dict[str, str] = {}
     derived_metrics: set[str] = set()
     main_source = str(main_log_path) if main_log_path is not None else None
@@ -120,10 +151,10 @@ def collect_abacus_metrics(
             return
 
     mark_main(metrics)
-    native_fermi = _NATIVE_FERMI.findall(main_content)
-    generic_fermi = _METRIC_PATTERNS["fermi_energy"].search(main_content)
+    native_fermi = _NATIVE_FERMI.findall(main_content) if include_native_numeric else []
+    generic_fermi = _METRIC_PATTERNS["fermi_energy"].search(main_content) if include_native_numeric else None
     native_fermi_used = bool(native_fermi and generic_fermi is None)
-    native_final = _NATIVE_FINAL_ETOT.findall(main_content)
+    native_final = _NATIVE_FINAL_ETOT.findall(main_content) if include_native_numeric else []
     if native_final:
         metrics["total_energy"] = float(native_final[-1])
         if main_source is not None:
@@ -144,8 +175,8 @@ def collect_abacus_metrics(
     metrics.update(native_md["metrics"])
     mark_main(native_md["metrics"])
     diagnostics.update(native_md["diagnostics"])
-    force_metrics = _force_metrics(main_content)
-    stress_metrics = _stress_metrics(main_content, volume=structure_volume)
+    force_metrics = _force_metrics(main_content) if include_native_numeric else {}
+    stress_metrics = _stress_metrics(main_content, volume=structure_volume) if include_native_numeric else {}
     metrics.update(force_metrics)
     metrics.update(stress_metrics)
     mark_main(force_metrics)

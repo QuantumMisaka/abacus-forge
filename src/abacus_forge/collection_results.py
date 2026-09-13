@@ -160,7 +160,8 @@ def _typed_metric_records(
     artifact_ids = _artifact_ids_by_contained_path(result, artifacts)
     native_md = result.diagnostics.get("native_md_block_complete") is True
     native_final_energy = bool(result.diagnostics.get("native_final_energy_markers"))
-    total_energy_unit = "eV" if native_final_energy else None
+    metric_units = result.metric_units
+    total_energy_unit = metric_units.get("total_energy") or ("eV" if native_final_energy else None)
     records: list[MetricRecord] = []
     for legacy in legacy_metrics:
         name = legacy.name

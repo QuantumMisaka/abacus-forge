@@ -35,6 +35,7 @@ from abacus_forge.errors import (
     OperationConflictError,
 )
 from abacus_forge.services import MdServiceSet, ScfServiceSet, ServiceResult, RelaxServiceSet
+from abacus_forge.parser_backend import normalize_output_version
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
 from abacus_forge.md_postprocess_services import MdPostprocessServiceSet
@@ -171,6 +172,14 @@ def build_machine_parser() -> argparse.ArgumentParser:
     sources.add_argument("--stdin", action="store_true")
     operation.add_argument("--format", choices=("json", "text"), default="json", dest="output_format")
     operation.add_argument("--pretty", action="store_true")
+    operation.add_argument(
+        "--parser-backend", choices=("native", "abacuslite"), default=None,
+        help="typed ABACUS collect parser backend (default: native)",
+    )
+    operation.add_argument(
+        "--output-version", default=None,
+        help="producer version used by the abacuslite collect parser",
+    )
 
     capabilities = subparsers.add_parser("capabilities", add_help=False)
     capabilities.add_argument("-h", "--help", action=_HelpAction, help="show this help message and exit")
@@ -322,13 +331,15 @@ def _error_from_exception(error: Exception, payload: object) -> ForgeErrorEnvelo
     if isinstance(error, OperationConflictError):
         return _error("operation.conflict", str(error), payload, affected_fields=("operation_id",))
     if isinstance(error, ForgePreconditionError):
-        return _error("precondition.missing", str(error), payload, affected_fields=("request",))
+        affected = getattr(error, "affected_fields", ("request",))
+        return _error("precondition.missing", str(error), payload, affected_fields=affected)
     if isinstance(error, ForgePersistenceError):
         return _error("persistence.failure", str(error), payload, affected_fields=("workspace_rel",))
     if isinstance(error, ForgeInternalError):
         return _error("internal.failure", str(error), payload)
     if isinstance(error, ForgeRequestError):
-        return _error("request.invalid", str(error), payload)
+        affected = getattr(error, "affected_fields", ("request",))
+        return _error("request.invalid", str(error), payload, affected_fields=affected)
     return _error("internal.failure", "unexpected Forge machine adapter failure", payload)
 
 
@@ -467,10 +478,37 @@ def run_machine_cli(
         stdout.write(_render(result, output_format=args.output_format))
         return exit_code_for(result)
 
+    # These are invocation-level options for typed ABACUS collection only.
+    # Reject them before reading the request source so an invalid invocation
+    # cannot probe input/output or load an optional parser dependency.
+    if args.operation != "collect" and (
+        args.parser_backend is not None or args.output_version is not None
+    ):
+        result = _error(
+            "request.invalid",
+            "--parser-backend and --output-version are only valid for operation collect",
+            affected_fields=("parser_backend", "output_version"),
+        )
+        stdout.write(_render(result, output_format=args.output_format, pretty=args.pretty))
+        return exit_code_for(result)
+    if args.operation == "collect" and args.output_version is not None:
+        try:
+            normalize_output_version(args.output_version)
+        except ForgeRequestError as error:
+            result = _error_from_exception(error, None)
+            stdout.write(_render(result, output_format=args.output_format, pretty=args.pretty))
+            return exit_code_for(result)
+
     payload: object = None
     try:
         payload = _read_request(args, stdin=stdin, cwd=Path(cwd))
         request = decode_operation_request(args.operation, payload)
+        if args.operation == "collect" and (
+            args.parser_backend is not None or args.output_version is not None
+        ) and not isinstance(request, (ScfCollectRequest, RelaxCollectRequest, MdCollectRequest)):
+            raise ForgeRequestError(
+                "--parser-backend and --output-version are only valid for ABACUS collect capabilities"
+            )
     except (ForgeRequestError, ForgePathError, ForgeSchemaError) as error:
         result = _error_from_exception(error, payload)
         stdout.write(_render(result, output_format=args.output_format, pretty=args.pretty))
@@ -490,11 +528,23 @@ def run_machine_cli(
         elif isinstance(request, ExportRequest):
             service_set = export_services if export_services is not None else ExportServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):
-            service_set = RelaxServiceSet.default(workspace_root=Path(cwd))
+            service_set = RelaxServiceSet.default(
+                workspace_root=Path(cwd),
+                parser_backend=args.parser_backend or "native",
+                output_version=args.output_version,
+            )
         elif isinstance(request, _MD_REQUEST_TYPES):
-            service_set = MdServiceSet.default(workspace_root=Path(cwd))
+            service_set = MdServiceSet.default(
+                workspace_root=Path(cwd),
+                parser_backend=args.parser_backend or "native",
+                output_version=args.output_version,
+            )
         else:
-            service_set = ScfServiceSet.default(workspace_root=Path(cwd))
+            service_set = ScfServiceSet.default(
+                workspace_root=Path(cwd),
+                parser_backend=args.parser_backend or "native",
+                output_version=args.output_version,
+            )
         result = _dispatch(args.operation, request, service_set)
         if not isinstance(result, (OperationOutcome, ForgeErrorEnvelope)):
             raise TypeError("service returned an unsupported result")
