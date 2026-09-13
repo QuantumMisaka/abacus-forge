@@ -71,6 +71,21 @@ def test_process_band_files_counts_energy_columns_after_abacus_prefixes(tmp_path
     assert result.summary["num_bands"] == 2
 
 
+def test_process_band_files_explicitly_shifts_energy_columns_and_records_axis(tmp_path: Path) -> None:
+    source = tmp_path / "BANDS.dat"
+    source.write_text("1 0.0 -1.0 1.0\n2 0.5 -0.8 1.2\n", encoding="utf-8")
+
+    result = process_band_files(
+        [source], tmp_path / "output", plot_emin=-3.0, plot_emax=3.0,
+        save_data=True, save_plot=False, energy_axis="fermi_relative", fermi_reference_ev=0.5,
+    )
+
+    assert result.diagnostics["energy_axis"] == "fermi_relative"
+    assert result.diagnostics["fermi_reference_ev"] == 0.5
+    assert "-1.5" in (tmp_path / "output/band.dat").read_text()
+    assert "0.5" in (tmp_path / "output/band.dat").read_text()
+
+
 def test_process_band_files_raises_typed_parse_error_without_numeric_rows(tmp_path: Path) -> None:
     source = tmp_path / "BANDS_bad.dat"
     source.write_text("# no numeric rows\nnot a table\n", encoding="utf-8")
@@ -127,6 +142,20 @@ def test_process_dos_files_raises_typed_parse_error_without_numeric_rows(tmp_pat
             save_plot=False,
             suffix=None,
         )
+
+
+def test_process_dos_files_explicitly_shifts_energy_and_records_axis(tmp_path: Path) -> None:
+    source = tmp_path / "DOS1_smearing.dat"
+    source.write_text("0.0 1.0\n1.0 2.0\n", encoding="utf-8")
+    result = process_dos_files(
+        [source], None, None, tmp_path / "output", include_tdos=True, include_pdos=False,
+        pdos_mode="species", pdos_atom_indices=(), plot_emin=-2.0, plot_emax=2.0,
+        save_data=True, save_plot=False, suffix=None,
+        energy_axis="fermi_relative", fermi_reference_ev=0.5,
+    )
+    assert result.diagnostics["energy_axis"] == "fermi_relative"
+    assert result.diagnostics["fermi_reference_ev"] == 0.5
+    assert "-0.500000" in (tmp_path / "output/DOS.dat").read_text()
 
 
 def test_process_dos_files_uses_explicit_order_and_reports_missing_optional_family(tmp_path: Path) -> None:

@@ -21,6 +21,7 @@ from abacus_forge.dos_postprocess import PDOSMode
 
 _POSTPROCESS_OPERATION = "postprocess"
 _PDOS_MODES = frozenset({"species", "species+shell", "species+orbital", "atom", "atoms"})
+_ENERGY_AXES = frozenset({"source", "fermi_relative"})
 
 
 def _canonical_file_path(value: object, field_name: str) -> str:
@@ -102,10 +103,20 @@ class _PostprocessRequest(OperationRef):
 
     capability: ClassVar[Literal["band", "dos"]]
     schema_version: str = REQUEST_SCHEMA_VERSION
+    energy_axis: Literal["source", "fermi_relative"] = "source"
+    fermi_reference_ev: float | None = None
 
     def __post_init__(self) -> None:
         OperationRef.__post_init__(self)
         _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
+        if self.energy_axis not in _ENERGY_AXES:
+            raise ValueError("energy_axis must be 'source' or 'fermi_relative'")
+        if self.energy_axis == "fermi_relative":
+            if self.fermi_reference_ev is None:
+                raise ValueError("fermi_reference_ev is required for fermi_relative energy_axis")
+            object.__setattr__(self, "fermi_reference_ev", _finite_number(self.fermi_reference_ev, "fermi_reference_ev"))
+        elif self.fermi_reference_ev is not None:
+            raise ValueError("fermi_reference_ev is only valid for fermi_relative energy_axis")
 
     def to_dict(self) -> dict[str, JSONValue]:
         return {
@@ -114,6 +125,8 @@ class _PostprocessRequest(OperationRef):
             "operation": self.operation,
             "operation_id": self.operation_id,
             "workspace_rel": self.workspace_rel,
+            "energy_axis": self.energy_axis,
+            "fermi_reference_ev": self.fermi_reference_ev,
         }
 
     @classmethod

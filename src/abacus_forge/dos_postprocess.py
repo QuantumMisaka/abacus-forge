@@ -40,6 +40,7 @@ def postprocess_dos_family(
     save_data: bool = True,
     save_plot: bool = True,
     suffix: str | None = None,
+    energy_reference: float | None = None,
 ) -> dict[str, str]:
     """Write requested DOS-family postprocess artifacts."""
 
@@ -47,26 +48,33 @@ def postprocess_dos_family(
     base = Path(output_dir)
     base.mkdir(parents=True, exist_ok=True)
     artifacts: dict[str, str] = {}
+    shifted = energy_reference is not None
     if total_dos is not None:
+        total_energy = _require_energy(total_dos)
+        if energy_reference is not None:
+            total_energy = total_energy - energy_reference
         if save_data:
             path = _output_path(base, "DOS", "dat", suffix)
-            write_dos_pdos([_require_dos_array(total_dos)], _require_energy(total_dos), ["DOS"], total_dos.efermi is not None, path)
+            write_dos_pdos([_require_dos_array(total_dos)], total_energy, ["DOS"], shifted, path)
             artifacts[path.name] = str(path)
         if save_plot:
             path = _output_path(base, "DOS", "png", suffix)
-            plot_dos_pdos([[_require_dos_array(total_dos)]], [["DOS"]], ["Density of States"], _require_energy(total_dos), plot_emin, plot_emax, total_dos.efermi is not None, path)
+            plot_dos_pdos([[_require_dos_array(total_dos)]], [["DOS"]], ["Density of States"], total_energy, plot_emin, plot_emax, shifted, path)
             artifacts[path.name] = str(path)
     if projected_dos is not None and projected_dos.projected_dos:
+        pdos_energy = _require_pdos_energy(projected_dos)
+        if energy_reference is not None:
+            pdos_energy = pdos_energy - energy_reference
         pdosdatas, labels, titles = build_pdos_groups(projected_dos, mode=pdos_mode, atom_indices=pdos_atom_indices)
         flat_data = [data for group in pdosdatas for data in group]
         flat_labels = [label for group in labels for label in group]
         if save_data:
             path = _output_path(base, "PDOS", "dat", suffix)
-            write_dos_pdos(flat_data, _require_pdos_energy(projected_dos), flat_labels, projected_dos.efermi is not None, path)
+            write_dos_pdos(flat_data, pdos_energy, flat_labels, shifted, path)
             artifacts[path.name] = str(path)
         if save_plot:
             path = _output_path(base, "PDOS", "png", suffix)
-            plot_dos_pdos(pdosdatas, labels, titles, _require_pdos_energy(projected_dos), plot_emin, plot_emax, projected_dos.efermi is not None, path)
+            plot_dos_pdos(pdosdatas, labels, titles, pdos_energy, plot_emin, plot_emax, shifted, path)
             artifacts[path.name] = str(path)
     return artifacts
 

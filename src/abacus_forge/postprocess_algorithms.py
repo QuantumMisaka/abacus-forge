@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -50,6 +50,9 @@ class PostprocessParseError(PostprocessAlgorithmError):
     """A supplied parser input could not provide usable numeric data."""
 
 
+EnergyAxis = Literal["source", "fermi_relative"]
+
+
 def process_band_files(
     source_paths: Sequence[Path],
     output_dir: Path,
@@ -58,9 +61,12 @@ def process_band_files(
     plot_emax: float,
     save_data: bool,
     save_plot: bool,
+    energy_axis: EnergyAxis = "source",
+    fermi_reference_ev: float | None = None,
 ) -> ExplicitPostprocessResult:
     paths = _required_source_paths(source_paths, "source_paths")
     _validate_plot_bounds(plot_emin, plot_emax)
+    reference = _validate_energy_axis(energy_axis, fermi_reference_ev)
 
     try:
         band_data = BandData.from_paths(list(paths))
@@ -78,24 +84,28 @@ def process_band_files(
         # time.  The optional flag keeps legacy source comments unchanged.
         from abacus_forge.unit_postprocess import _write_band_table
 
-        _write_band_table(band_data, data_path, include_source_paths=False)
+        _write_band_table(band_data, data_path, include_source_paths=False, energy_reference=reference)
         generated.append(data_path)
     if save_plot:
         plot_path = _contained_output_path(base, "band.png")
         from abacus_forge.unit_postprocess import _plot_band_data
 
         try:
-            _plot_band_data(band_data, plot_path, plot_emin=plot_emin, plot_emax=plot_emax)
+            _plot_band_data(band_data, plot_path, plot_emin=plot_emin, plot_emax=plot_emax, energy_reference=reference)
         except Exception as exc:
             raise PostprocessParseError(f"could not render band plot: {exc}") from exc
         generated.append(plot_path)
 
     summary = _band_summary(band_data)
+    summary["energy_axis"] = energy_axis
+    summary["fermi_reference_ev"] = reference
     diagnostics: dict[str, JSONValue] = {
         "source_files": [path.name for path in paths],
         "source_count": len(paths),
         "numeric_rows": len(band_data.rows),
         "generated_files": [path.name for path in generated],
+        "energy_axis": energy_axis,
+        "fermi_reference_ev": reference,
     }
     return ExplicitPostprocessResult(summary=summary, diagnostics=diagnostics, generated_paths=tuple(generated))
 
@@ -115,12 +125,15 @@ def process_dos_files(
     save_data: bool,
     save_plot: bool,
     suffix: str | None,
+    energy_axis: EnergyAxis = "source",
+    fermi_reference_ev: float | None = None,
 ) -> ExplicitPostprocessResult:
     paths = _required_source_paths(dos_paths, "dos_paths")
     pdos = _optional_source_path(pdos_path, "pdos_path")
     tdos = _optional_source_path(tdos_path, "tdos_path")
     _validate_plot_bounds(plot_emin, plot_emax)
     _validate_suffix(suffix)
+    reference = _validate_energy_axis(energy_axis, fermi_reference_ev)
 
     total_dos: DOSData | None = None
     projected_dos: PDOSData | None = None
@@ -186,6 +199,7 @@ def process_dos_files(
                 save_data=save_data,
                 save_plot=save_plot,
                 suffix=suffix,
+                energy_reference=reference,
             )
         except OSError:
             # Preserve destination and other output I/O failures for the
@@ -203,6 +217,8 @@ def process_dos_files(
         "total_dos": _dos_summary(total_dos) if total_dos is not None else None,
         "projected_dos": _pdos_summary(projected_dos) if projected_dos is not None and projected_dos.projected_dos else None,
         "pdos_mode": pdos_mode,
+        "energy_axis": energy_axis,
+        "fermi_reference_ev": reference,
     }
     diagnostics: dict[str, JSONValue] = {
         "source_files": {
@@ -213,6 +229,8 @@ def process_dos_files(
         "parsed_families": parsed_families,
         "missing_families": missing_families,
         "generated_files": [path.name for path in generated],
+        "energy_axis": energy_axis,
+        "fermi_reference_ev": reference,
     }
     return ExplicitPostprocessResult(summary=summary, diagnostics=diagnostics, generated_paths=tuple(generated))
 
@@ -285,6 +303,20 @@ def _validate_plot_bounds(plot_emin: float, plot_emax: float) -> None:
         raise PostprocessPreconditionError("plot_emax must be numeric")
     if not (float("-inf") < float(plot_emin) < float(plot_emax) < float("inf")):
         raise PostprocessPreconditionError("plot_emin must be finite and less than plot_emax")
+
+
+def _validate_energy_axis(energy_axis: str, fermi_reference_ev: float | None) -> float | None:
+    if energy_axis not in {"source", "fermi_relative"}:
+        raise PostprocessPreconditionError("energy_axis must be 'source' or 'fermi_relative'")
+    if energy_axis == "fermi_relative":
+        if fermi_reference_ev is None or isinstance(fermi_reference_ev, bool):
+            raise PostprocessPreconditionError("fermi_reference_ev is required for fermi_relative energy_axis")
+        if not math.isfinite(float(fermi_reference_ev)):
+            raise PostprocessPreconditionError("fermi_reference_ev must be finite")
+        return float(fermi_reference_ev)
+    if fermi_reference_ev is not None:
+        raise PostprocessPreconditionError("fermi_reference_ev is only valid for fermi_relative energy_axis")
+    return None
 
 
 def _validate_suffix(suffix: str | None) -> None:

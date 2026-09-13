@@ -332,6 +332,8 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "plot_emax": {"type": "number", "default": 10.0},
                 "save_data": {"type": "boolean", "default": True},
                 "save_plot": {"type": "boolean", "default": True},
+                "energy_axis": {"type": "string", "enum": ["source", "fermi_relative"], "default": "source"},
+                "fermi_reference_ev": {"type": ["number", "null"], "default": None},
             }
         )
     elif capability == "dos" and operation == "postprocess":
@@ -354,6 +356,8 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "save_data": {"type": "boolean", "default": True},
                 "save_plot": {"type": "boolean", "default": True},
                 "suffix": {"type": ["string", "null"], "minLength": 1, "pattern": r"^(?!\.{1,2}$)[^/\\]+$", "default": None},
+                "energy_axis": {"type": "string", "enum": ["source", "fermi_relative"], "default": "source"},
+                "fermi_reference_ev": {"type": ["number", "null"], "default": None},
             }
         )
     elif capability == "md" and operation == "postprocess":

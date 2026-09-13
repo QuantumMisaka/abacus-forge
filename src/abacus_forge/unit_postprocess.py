@@ -220,17 +220,33 @@ def _find_first_artifact(workspace: Workspace, pattern: str) -> Path | None:
     return matches[0] if matches else None
 
 
-def _write_band_table(band_data: BandData, destination: Path, *, include_source_paths: bool = True) -> None:
+def _write_band_table(
+    band_data: BandData,
+    destination: Path,
+    *,
+    include_source_paths: bool = True,
+    energy_reference: float | None = None,
+) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as handle:
         for path in band_data.paths:
             label = path if include_source_paths else path.name
             handle.write(f"# {label}\n")
             for row in _read_numeric_rows(path):
+                if energy_reference is not None:
+                    prefix = 2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1
+                    row = row[:prefix] + [value - energy_reference for value in row[prefix:]]
                 handle.write(" ".join(f"{value:g}" for value in row) + "\n")
 
 
-def _plot_band_data(band_data: BandData, destination: Path, *, plot_emin: float, plot_emax: float) -> None:
+def _plot_band_data(
+    band_data: BandData,
+    destination: Path,
+    *,
+    plot_emin: float,
+    plot_emax: float,
+    energy_reference: float | None = None,
+) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
@@ -239,6 +255,12 @@ def _plot_band_data(band_data: BandData, destination: Path, *, plot_emin: float,
     figure, axis = plt.subplots(figsize=(7, 5))
     for file_index, path in enumerate(band_data.paths):
         rows = _read_numeric_rows(path)
+        if energy_reference is not None:
+            rows = [
+                row[: (2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1)]
+                + [value - energy_reference for value in row[(2 if len(row) >= 3 and row[0].is_integer() and row[0] >= 1 and row[1] == 0.0 else 1):]]
+                for row in rows
+            ]
         if not rows:
             continue
         x_values = [row[1] if len(row) >= 3 else row[0] for row in rows]

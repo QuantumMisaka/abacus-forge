@@ -88,6 +88,8 @@ class BandPostprocessService:
                 "plot_emax": request.plot_emax,
                 "save_data": request.save_data,
                 "save_plot": request.save_plot,
+                "energy_axis": request.energy_axis,
+                "fermi_reference_ev": request.fermi_reference_ev,
             },
             capability="band",
         )
@@ -124,6 +126,8 @@ class DosPostprocessService:
                 "save_data": request.save_data,
                 "save_plot": request.save_plot,
                 "suffix": request.suffix,
+                "energy_axis": request.energy_axis,
+                "fermi_reference_ev": request.fermi_reference_ev,
                 "pdos_path": None,  # replaced with resolved paths below
                 "tdos_path": None,
             },

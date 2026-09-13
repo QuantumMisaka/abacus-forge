@@ -1012,6 +1012,24 @@ def test_postprocess_requests_round_trip_strictly_and_remain_immutable(request_t
         request_type.from_dict({**payload, "unknown": True})
 
 
+@pytest.mark.parametrize("request_type,base", [
+    (BandPostprocessRequest, {"source_paths_rel": ["BANDS_1.dat"]}),
+    (DosPostprocessRequest, {"dos_paths_rel": ["DOS1_smearing.dat"]}),
+])
+def test_postprocess_energy_axis_defaults_and_requires_finite_reference(request_type, base) -> None:
+    request = request_type(operation_id=OPERATION_ID, workspace_rel="job", **base)
+    assert request.energy_axis == "source"
+    assert request.fermi_reference_ev is None
+    payload = request.to_dict()
+    assert request_type.from_dict(json.loads(json.dumps(payload))) == request
+    with pytest.raises(ValueError, match="fermi_reference_ev"):
+        request_type(operation_id=OPERATION_ID, workspace_rel="job", energy_axis="fermi_relative", **base)
+    with pytest.raises(ValueError, match="energy_axis"):
+        request_type(operation_id=OPERATION_ID, workspace_rel="job", energy_axis="bad", **base)
+    with pytest.raises(ValueError, match="fermi_reference_ev"):
+        request_type(operation_id=OPERATION_ID, workspace_rel="job", energy_axis="source", fermi_reference_ev=1.0, **base)
+
+
 def test_postprocess_request_registries_are_separate_from_legacy_scf() -> None:
     expected = {
         "band": {"postprocess": BandPostprocessRequest},

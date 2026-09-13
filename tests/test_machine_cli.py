@@ -667,8 +667,10 @@ def test_decode_operation_request_routes_explicit_postprocess_capabilities(
         "output_dir_rel": "outputs",
         "plot_emin": -10.0,
         "plot_emax": 10.0,
-        "save_data": True,
-        "save_plot": True,
+            "save_data": True,
+            "save_plot": True,
+            "energy_axis": "source",
+            "fermi_reference_ev": None,
         **(
             {
                 "pdos_path_rel": None,
