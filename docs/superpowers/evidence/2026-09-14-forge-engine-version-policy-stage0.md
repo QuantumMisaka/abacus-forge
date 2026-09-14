@@ -2,7 +2,7 @@
 
 日期：2026-09-14
 
-Forge candidate：`cf5b2774283254c91d00f94bdee690bbfc3c9ae8`
+Forge candidate：`cb988adf13dd8199aced31db463121b571652943`
 
 Canonical source checkout：`abacus-develop` `94576a80169de36e02e637edc2a0963fba9e1838`
 
@@ -19,8 +19,8 @@ python -m pytest -q --run-benchmark -m benchmark \
 tests/benchmark/test_abacuslite_canonical_parity.py
 ```
 
-输出为 `15 passed in 1.40s`，原始 stdout transcript SHA256 为
-`8771e4a2ec7c6106652ff29a9e81f71055f63fc0f95e6749778d89ba55292922`。
+输出为 `15 passed in 0.93s`，原始 stdout transcript SHA256 为
+`2474a6233c25a55303cfdbee51446b3dd78e70c0a33fd0b4121caf79f39c5c00`。
 
 这 15 项覆盖 `legacyio`/`latestio` 两个版本分支及 SCF、relax、cell-relax、MD
 四个 capability，并覆盖完整日志、截断日志、非收敛日志、output-only（没有
@@ -47,7 +47,7 @@ Forge adapter 路由可用；direct oracle 与 adapter 在该进程共享同一�
 conda run --no-capture-output -n abacus-env pytest -q
 ```
 
-在修复 LocalRunner 绝对 `PATH` 预检失败语义后，结果为 `1391 passed, 30 skipped`
+在修复 LocalRunner 绝对 `PATH` 预检失败语义并恢复候选分支的 release-gate/postprocess 回归后，结果为 `1401 passed, 31 skipped`
 （156 warnings，均为已有 ASE 第三方弃用警告）。`tests/test_service_status.py` 的
 generated `mpirun` preflight 回归单独为 `1 passed`。
 
