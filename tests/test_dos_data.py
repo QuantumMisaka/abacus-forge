@@ -25,6 +25,33 @@ def test_pdos_xml_queries_and_summary(tmp_path: Path) -> None:
     assert np.allclose(pdos.get_pdos_by_atom_orbital(1, "p", 0)[:, 0], [0.2, 0.3, 0.2])
 
 
+def test_pdos_data_from_job_dir_binds_unique_artifact_and_fermi(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text(
+        "<pdos><nspin>1</nspin><energy_values>0 1</energy_values>"
+        "<orbital index='1' atom_index='1' species='Si' l='1' m='0' z='1'>"
+        "<data>1 2</data></orbital></pdos>"
+    )
+    (out / "running_scf.log").write_text(" E-fermi : 5.0 eV\n")
+    pdos = PDOSData.from_job_dir(root)
+    assert pdos.efermi == 5.0
+    assert pdos.energy.tolist() == [-5.0, -4.0]
+
+
+def test_pdos_data_from_job_dir_rejects_ambiguous_artifacts(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    content = "<pdos><nspin>1</nspin><energy_values>0 1</energy_values></pdos>"
+    (out / "PDOS").write_text(content)
+    (out / "PDOS.xml").write_text(content)
+    (out / "running_scf.log").write_text(" E-fermi : 5.0 eV\n")
+    with pytest.raises(ValueError, match="exactly one PDOS"):
+        PDOSData.from_job_dir(root)
+
+
 def test_sum_pdos_data_supports_spin_polarized_arrays() -> None:
     selected = [
         {"data": np.asarray([[1.0, 0.5], [2.0, 1.5]])},

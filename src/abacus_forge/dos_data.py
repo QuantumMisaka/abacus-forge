@@ -198,6 +198,44 @@ class PDOSData:
             nspin=nspin,
         )
 
+    @classmethod
+    def from_job_dir(cls, job_dir: str | Path) -> "PDOSData":
+        """Read one completed ABACUS PDOS job without running a collector.
+
+        The job directory must contain exactly one ``PDOS``/``PDOS.xml``
+        artifact below ``OUT*`` (or the job root) and a log with one
+        parseable Fermi-energy fact.  Ambiguous or incomplete handoffs fail
+        closed so callers cannot silently select a neighboring calculation.
+        """
+        root = Path(job_dir).expanduser().resolve()
+        if not root.is_dir():
+            raise FileNotFoundError(f"PDOS job directory does not exist: {root}")
+        candidates = sorted({
+            path for pattern in ("OUT*/PDOS", "OUT*/PDOS.xml", "PDOS", "PDOS.xml")
+            for path in root.glob(pattern)
+            if path.is_file() and not path.is_symlink()
+        })
+        if len(candidates) != 1:
+            raise ValueError(
+                "completed PDOS job must contain exactly one PDOS artifact; "
+                f"found {len(candidates)}"
+            )
+        log_candidates = sorted({
+            path for pattern in ("OUT*/running*.log", "running*.log", "OUT*/log", "log")
+            for path in root.glob(pattern)
+            if path.is_file() and not path.is_symlink()
+        })
+        if not log_candidates:
+            raise ValueError("completed PDOS job is missing a running log with Fermi energy")
+        fermi_values: list[float] = []
+        pattern = re.compile(r"(?:E-?fermi|Fermi(?:\s+Energy)?)\s*[:=]\s*([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
+        for log_path in log_candidates:
+            for match in pattern.finditer(log_path.read_text(encoding="utf-8", errors="ignore")):
+                fermi_values.append(float(match.group(1)))
+        if not fermi_values:
+            raise ValueError("completed PDOS job log has no parseable Fermi energy")
+        return cls.from_path(candidates[0], efermi=fermi_values[-1])
+
     def summary(self) -> dict[str, Any]:
         return {
             "pdos_file": str(self.pdos_path) if self.pdos_path else None,
