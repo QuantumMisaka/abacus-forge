@@ -232,11 +232,18 @@ class PDOSData:
         })
         if not log_candidates:
             raise ValueError("completed PDOS job is missing a running log with Fermi energy")
+        native_pattern = re.compile(r"\bE[_-]?Fermi\s+([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)\s+([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
+        generic_pattern = re.compile(r"(?:E-?fermi|Fermi(?:\s+Energy)?|EFERMI)\s*[:=]\s*([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
         fermi_values: list[float] = []
-        pattern = re.compile(r"(?:E-?fermi|Fermi(?:\s+Energy)?)\s*[:=]\s*([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
         for log_path in log_candidates:
-            for match in pattern.finditer(log_path.read_text(encoding="utf-8", errors="ignore")):
-                fermi_values.append(float(match.group(1)))
+            content = log_path.read_text(encoding="utf-8", errors="ignore")
+            native = native_pattern.findall(content)
+            if native:
+                fermi_values.append(float(native[-1][1]))
+                continue
+            generic = generic_pattern.findall(content)
+            if generic:
+                fermi_values.append(float(generic[-1]))
         if not fermi_values:
             raise ValueError("completed PDOS job log has no parseable Fermi energy")
         if len({round(value, 12) for value in fermi_values}) > 1:

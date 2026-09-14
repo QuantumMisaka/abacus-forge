@@ -40,6 +40,19 @@ def test_pdos_data_from_job_dir_binds_unique_artifact_and_fermi(tmp_path: Path) 
     assert pdos.energy.tolist() == [-5.0, -4.0]
 
 
+def test_pdos_data_from_job_dir_reads_native_two_column_fermi(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text("<pdos><energy_values>0 1</energy_values></pdos>")
+    (out / "running_scf.log").write_text(
+        "E_Fermi        -0.1000000000      1.25\n"
+        "E_Fermi        -0.2000000000      2.50\n"
+    )
+    pdos = PDOSData.from_job_dir(root)
+    assert pdos.efermi == 2.5
+
+
 def test_pdos_data_from_job_dir_rejects_ambiguous_artifacts(tmp_path: Path) -> None:
     root = tmp_path / "job"
     out = root / "OUT.ABACUS"
@@ -69,6 +82,7 @@ def test_pdos_data_from_job_dir_rejects_conflicting_fermi_values(tmp_path: Path)
     out.mkdir(parents=True)
     (out / "PDOS").write_text("<pdos><energy_values>0 1</energy_values></pdos>")
     (out / "running_scf.log").write_text("E-fermi : 1 eV\nE-fermi : 2 eV\n")
+    (out / "running_nscf.log").write_text("E-fermi : 3 eV\n")
     with pytest.raises(ValueError, match="conflicting Fermi"):
         PDOSData.from_job_dir(root)
 
