@@ -60,14 +60,16 @@ def test_case_insensitive_dependency_header_cannot_hide_default_parser(tmp_path,
         contract.test_built_wheel_keeps_the_same_optional_dependency_boundary()
 
 
-def test_case_insensitive_headers_accept_matching_optional_parser(tmp_path, monkeypatch):
+@pytest.mark.parametrize("folded", [False, True])
+def test_case_insensitive_headers_accept_matching_optional_parser(tmp_path, monkeypatch, folded):
     project = {'name': 'abacus-forge', 'version': '0.1.0', 'dependencies': [],
                'optional-dependencies': {'parser': ['abacuslite==1.0.0']}}
     wheel = tmp_path / 'candidate.whl'
+    separator = '\n ' if folded else ' '
     with zipfile.ZipFile(wheel, 'w') as archive:
         archive.writestr('abacus_forge-0.1.0.dist-info/METADATA',
                          'name: abacus-forge\nvErSiOn: 0.1.0\nprovides-extra: parser\n'
-                         'requires-dist: abacuslite==1.0.0; extra == "parser"\n')
+                         f'requires-dist: abacuslite==1.0.0;{separator}extra == "parser"\n')
     monkeypatch.setattr(contract, '_project_metadata', lambda: project)
     monkeypatch.setenv('ABACUS_FORGE_WHEEL', str(wheel))
     contract.test_built_wheel_keeps_the_same_optional_dependency_boundary()

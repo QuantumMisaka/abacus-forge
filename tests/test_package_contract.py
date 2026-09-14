@@ -119,7 +119,9 @@ def test_built_wheel_keeps_the_same_optional_dependency_boundary() -> None:
     headers = Parser().parsestr(metadata)
     names = headers.get_all("Name", [])
     assert names == ["abacus-forge"]
-    requires = headers.get_all("Requires-Dist", [])
+    # Core Metadata permits RFC-style continuation lines. Unfold before
+    # checking requirement syntax and its extra marker.
+    requires = [" ".join(value.split()) for value in headers.get_all("Requires-Dist", [])]
     abacuslite = [
         requirement
         for requirement in requires

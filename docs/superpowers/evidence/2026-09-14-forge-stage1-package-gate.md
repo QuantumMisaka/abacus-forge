@@ -119,3 +119,8 @@ exact published package、fresh-extra install 和发布包四 capability parity 
 `/home/james/scratch/forge-package-header-wheel/abacus_forge-0.1.0-py3-none-any.whl`，
 SHA-256 仍为 `6717a403bc6f51602f0a6757edf936f17b3135e66e3cda1619925605fc46b08a`；
 测试修改未改变 wheel 包内容。历史 provenance 与外部 Stage 1 门状态不变。
+
+后续 Minor 修复：读取 Requires-Dist 后先展开合法 continuation whitespace，再执行
+精确依赖和 marker 检查。折行 optional parser 正例先出现 `1 failed, 1 passed`，
+修复后同一实际 wheel 的 owning suites 为 `17 passed`；未改变 wheel 内容或哈希，
+未改变外部 published package/fresh-extra 门。
