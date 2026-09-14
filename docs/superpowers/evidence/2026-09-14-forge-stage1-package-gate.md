@@ -110,3 +110,12 @@ conda run --no-capture-output -n abacus-env pytest -q \
 首次关闭 build isolation 的构建因环境缺少 hatchling 失败；正常隔离构建成功。
 历史 provenance record 保持原 artifact 绑定；本次未安装或发布 `abacuslite`。
 exact published package、fresh-extra install 和发布包四 capability parity 继续开放。
+
+独立审查补修：Core Metadata header 名称不区分大小写；旧门禁按大小写敏感行前缀
+读取 Name/Requires-Dist，会漏掉小写的默认 parser 依赖。新增小写及混合大小写
+污染负例在修复前 `2 failed`；统一使用 email Parser 的 `get_all` 读取 header 后，
+加入混合大小写的合法 optional 声明正例，真实 wheel owning suites 为 `16 passed`。
+重新从 `c516d12` 加本次测试修复构建到
+`/home/james/scratch/forge-package-header-wheel/abacus_forge-0.1.0-py3-none-any.whl`，
+SHA-256 仍为 `6717a403bc6f51602f0a6757edf936f17b3135e66e3cda1619925605fc46b08a`；
+测试修改未改变 wheel 包内容。历史 provenance 与外部 Stage 1 门状态不变。

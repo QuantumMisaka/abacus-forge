@@ -43,3 +43,31 @@ def test_candidate_wheel_source_metadata_consistency(tmp_path, monkeypatch, drif
     else:
         with pytest.raises(AssertionError):
             contract.test_built_wheel_keeps_the_same_optional_dependency_boundary()
+
+
+@pytest.mark.parametrize('header', ['requires-dist', 'rEqUiReS-dIsT'])
+def test_case_insensitive_dependency_header_cannot_hide_default_parser(tmp_path, monkeypatch, header):
+    project = {'name': 'abacus-forge', 'version': '0.1.0',
+               'dependencies': [], 'optional-dependencies': {}}
+    wheel = tmp_path / 'candidate.whl'
+    with zipfile.ZipFile(wheel, 'w') as archive:
+        archive.writestr('abacus_forge-0.1.0.dist-info/METADATA',
+                         'Name: abacus-forge\nVersion: 0.1.0\n'
+                         f'{header}: abacuslite==1.0.0\n')
+    monkeypatch.setattr(contract, '_project_metadata', lambda: project)
+    monkeypatch.setenv('ABACUS_FORGE_WHEEL', str(wheel))
+    with pytest.raises(AssertionError):
+        contract.test_built_wheel_keeps_the_same_optional_dependency_boundary()
+
+
+def test_case_insensitive_headers_accept_matching_optional_parser(tmp_path, monkeypatch):
+    project = {'name': 'abacus-forge', 'version': '0.1.0', 'dependencies': [],
+               'optional-dependencies': {'parser': ['abacuslite==1.0.0']}}
+    wheel = tmp_path / 'candidate.whl'
+    with zipfile.ZipFile(wheel, 'w') as archive:
+        archive.writestr('abacus_forge-0.1.0.dist-info/METADATA',
+                         'name: abacus-forge\nvErSiOn: 0.1.0\nprovides-extra: parser\n'
+                         'requires-dist: abacuslite==1.0.0; extra == "parser"\n')
+    monkeypatch.setattr(contract, '_project_metadata', lambda: project)
+    monkeypatch.setenv('ABACUS_FORGE_WHEEL', str(wheel))
+    contract.test_built_wheel_keeps_the_same_optional_dependency_boundary()

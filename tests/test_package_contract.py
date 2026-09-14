@@ -116,18 +116,10 @@ def test_built_wheel_keeps_the_same_optional_dependency_boundary() -> None:
         assert len(metadata_paths) == 1
         metadata = archive.read(metadata_paths[0]).decode("utf-8")
 
-    names = [
-        line.split(":", 1)[1].strip()
-        for line in metadata.splitlines()
-        if line.startswith("Name:")
-    ]
+    headers = Parser().parsestr(metadata)
+    names = headers.get_all("Name", [])
     assert names == ["abacus-forge"]
-
-    requires = [
-        line.split(":", 1)[1].strip()
-        for line in metadata.splitlines()
-        if line.startswith("Requires-Dist:")
-    ]
+    requires = headers.get_all("Requires-Dist", [])
     abacuslite = [
         requirement
         for requirement in requires
@@ -150,7 +142,6 @@ def test_built_wheel_keeps_the_same_optional_dependency_boundary() -> None:
     # syntactically acceptable optional requirement in either file.
     project = _project_metadata()
     assert names == [project["name"]]
-    headers = Parser().parsestr(metadata)
     assert headers.get_all("Version", []) == [project["version"]]
     optional = project.get("optional-dependencies", {})
     expected_extras = {canonicalize_name(extra) for extra in optional}
