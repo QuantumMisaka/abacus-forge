@@ -53,6 +53,16 @@ def test_pdos_data_from_job_dir_reads_native_two_column_fermi(tmp_path: Path) ->
     assert pdos.efermi == 2.5
 
 
+def test_pdos_data_from_job_dir_reads_underscore_single_value_fermi(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text("<pdos><energy_values>0 1</energy_values></pdos>")
+    (out / "running_scf.log").write_text("E_Fermi : 3.25 eV\n")
+    pdos = PDOSData.from_job_dir(root)
+    assert pdos.efermi == 3.25
+
+
 def test_pdos_data_from_job_dir_rejects_ambiguous_artifacts(tmp_path: Path) -> None:
     root = tmp_path / "job"
     out = root / "OUT.ABACUS"

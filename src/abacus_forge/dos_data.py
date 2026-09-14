@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 import re
-import hashlib
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -233,7 +232,7 @@ class PDOSData:
         if not log_candidates:
             raise ValueError("completed PDOS job is missing a running log with Fermi energy")
         native_pattern = re.compile(r"\bE[_-]?Fermi\s+([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)\s+([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
-        generic_pattern = re.compile(r"(?:E-?fermi|Fermi(?:\s+Energy)?|EFERMI)\s*[:=]\s*([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
+        generic_pattern = re.compile(r"(?:E[_-]?fermi|Fermi(?:\s+Energy)?|EFERMI)\s*[:=]\s*([-+]?\d+(?:\.\d*)?(?:[Ee][-+]?\d+)?)", re.IGNORECASE)
         fermi_values: list[float] = []
         for log_path in log_candidates:
             content = log_path.read_text(encoding="utf-8", errors="ignore")
