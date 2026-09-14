@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 import re
+import hashlib
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -165,7 +166,10 @@ class PDOSData:
         text = pdos_path.read_text(encoding="utf-8", errors="ignore")
         if "<pdos" not in text.lower():
             return cls(pdos_path=pdos_path, tdos_path=Path(tdos_path) if tdos_path else None)
-        root = ET.fromstring(_normalize_abacus_xml(text))
+        try:
+            root = ET.fromstring(_normalize_abacus_xml(text))
+        except ET.ParseError as exc:
+            raise RuntimeError(f"PDOS artifact is malformed XML: {path}") from exc
         energy_node = root.find("energy_values")
         energy = _numbers_from_text(energy_node.text if energy_node is not None else "")
         nspin_node = root.find("nspin")
@@ -220,9 +224,10 @@ class PDOSData:
                 "completed PDOS job must contain exactly one PDOS artifact; "
                 f"found {len(candidates)}"
             )
+        output_root = candidates[0].parent
         log_candidates = sorted({
-            path for pattern in ("OUT*/running*.log", "running*.log", "OUT*/log", "log")
-            for path in root.glob(pattern)
+            path for pattern in ("running*.log", "log")
+            for path in output_root.glob(pattern)
             if path.is_file() and not path.is_symlink()
         })
         if not log_candidates:
@@ -234,7 +239,12 @@ class PDOSData:
                 fermi_values.append(float(match.group(1)))
         if not fermi_values:
             raise ValueError("completed PDOS job log has no parseable Fermi energy")
-        return cls.from_path(candidates[0], efermi=fermi_values[-1])
+        if len({round(value, 12) for value in fermi_values}) > 1:
+            raise ValueError("completed PDOS job log contains conflicting Fermi energies")
+        try:
+            return cls.from_path(candidates[0], efermi=fermi_values[-1])
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"completed PDOS artifact is malformed: {exc}") from exc
 
     def summary(self) -> dict[str, Any]:
         return {

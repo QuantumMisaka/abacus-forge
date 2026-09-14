@@ -52,6 +52,37 @@ def test_pdos_data_from_job_dir_rejects_ambiguous_artifacts(tmp_path: Path) -> N
         PDOSData.from_job_dir(root)
 
 
+def test_pdos_data_from_job_dir_binds_log_to_pdos_output(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text("<pdos><energy_values>0 1</energy_values></pdos>")
+    (root / "OUT.other").mkdir()
+    (root / "OUT.other" / "running_scf.log").write_text("E-fermi : 99 eV\n")
+    with pytest.raises(ValueError, match="Fermi"):
+        PDOSData.from_job_dir(root)
+
+
+def test_pdos_data_from_job_dir_rejects_conflicting_fermi_values(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text("<pdos><energy_values>0 1</energy_values></pdos>")
+    (out / "running_scf.log").write_text("E-fermi : 1 eV\nE-fermi : 2 eV\n")
+    with pytest.raises(ValueError, match="conflicting Fermi"):
+        PDOSData.from_job_dir(root)
+
+
+def test_pdos_data_from_job_dir_rejects_malformed_xml(tmp_path: Path) -> None:
+    root = tmp_path / "job"
+    out = root / "OUT.ABACUS"
+    out.mkdir(parents=True)
+    (out / "PDOS").write_text("<pdos>")
+    (out / "running_scf.log").write_text("E-fermi : 1 eV\n")
+    with pytest.raises(RuntimeError, match="malformed"):
+        PDOSData.from_job_dir(root)
+
+
 def test_sum_pdos_data_supports_spin_polarized_arrays() -> None:
     selected = [
         {"data": np.asarray([[1.0, 0.5], [2.0, 1.5]])},
