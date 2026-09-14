@@ -99,6 +99,9 @@ Paimon 工具覆盖矩阵已由 `app-tools/toolbox/ABACUS` 建立并维护；gen
 通用 Forge adapter 的 typed child subprocess 也已绑定显式 candidate 来源并阻断
 `abacusagent`/`abacustest`，证据见
 `app-tools/toolbox/ABACUS/docs/superpowers/evidence/2026-09-14-paimon-forge-adapter-runtime-isolation.md`。
+Paimon 侧还把 Forge core 的 source-tree import inventory、deferred 排除清单和
+机器可读 gate 接入，证据见
+`app-tools/toolbox/ABACUS/docs/superpowers/evidence/2026-09-14-paimon-forge-core-inventory-gate.md`。
 旧依赖清零、同输入 legacy parity、Agent Benchmark 与生产 E2E 仍由该仓负责，
 本计划只引用 SPEC 的 owner 和边界。它们不成为 A/B 的前置条件；未验收不得宣称
 Paimon v1.3 迁移完成。
