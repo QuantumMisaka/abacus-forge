@@ -13,6 +13,10 @@ from pathlib import Path
 import re
 import tomllib
 import zipfile
+from email.parser import Parser
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 import pytest
 
@@ -140,3 +144,38 @@ def test_built_wheel_keeps_the_same_optional_dependency_boundary() -> None:
             abacuslite[0],
             flags=re.IGNORECASE,
         )
+
+
+    # Bind the generated artifact to the source declaration, not merely to a
+    # syntactically acceptable optional requirement in either file.
+    project = _project_metadata()
+    assert names == [project["name"]]
+    headers = Parser().parsestr(metadata)
+    assert headers.get_all("Version", []) == [project["version"]]
+    optional = project.get("optional-dependencies", {})
+    expected_extras = {canonicalize_name(extra) for extra in optional}
+    actual_extras = [canonicalize_name(extra) for extra in headers.get_all("Provides-Extra", [])]
+    assert len(actual_extras) == len(set(actual_extras))
+    assert set(actual_extras) == expected_extras
+
+    expected_parser = []
+    for extra, dependencies in optional.items():
+        for dependency in dependencies:
+            requirement = Requirement(dependency)
+            if canonicalize_name(requirement.name) == "abacuslite":
+                assert re.fullmatch(r"abacuslite==[^;\s*]+", dependency, flags=re.IGNORECASE)
+                expected_parser.append((str(requirement.specifier), canonicalize_name(extra)))
+    assert len(expected_parser) <= 1
+    assert all(canonicalize_name(Requirement(item).name) != "abacuslite"
+               for item in project.get("dependencies", []))
+
+    actual_parser = []
+    for dependency in requires:
+        requirement = Requirement(dependency)
+        if canonicalize_name(requirement.name) != "abacuslite":
+            continue
+        marker = re.fullmatch(r"extra == [\"']([^\"']+)[\"']", str(requirement.marker))
+        assert marker is not None, "abacuslite must be scoped to exactly one extra"
+        assert requirement.url is None and not requirement.extras
+        actual_parser.append((str(requirement.specifier), canonicalize_name(marker[1])))
+    assert actual_parser == expected_parser, "source/wheel abacuslite dependency drift"

@@ -81,3 +81,32 @@ Stage 1 仍未完成。必须等 canonical 项目提供可从包索引安装的�
 
 在这些证据产生前，Stage 0 checkout parity 和本地 source-wheel smoke 不得升级为
 Stage 1 发布结论。
+
+
+## 源码与构建产物一致性补强（2026-09-14）
+
+候选 wheel 门禁现在对比当前源码与生成元数据的项目 Name/Version、完整
+`Provides-Extra` 集合，以及 `abacuslite` 的存在性、exact pin 和所属 extra。
+源码未声明 parser extra 时，wheel 也必须不声明该 parser 依赖。默认依赖中的
+parser 和非单一 extra marker 均被拒绝。这不证明包索引有可安装的发布版本。
+
+新增合成 wheel 回归先在旧实现观察到 `5 failed, 1 passed`：新增/缺失 parser、
+pin 漂移、extra 名称漂移、Version 漂移均未被旧实现拒绝；默认依赖污染原已拒绝。
+修复并加入一致声明/无 parser 声明正例后，三个 owning suites 为
+`12 passed, 1 skipped`；给定真实候选 wheel 后为 `13 passed`：
+
+```bash
+conda run --no-capture-output -n abacus-env python -m pip wheel --no-deps . \
+  --wheel-dir /home/james/scratch/forge-package-drift-wheel
+ABACUS_FORGE_WHEEL=/home/james/scratch/forge-package-drift-wheel/abacus_forge-0.1.0-py3-none-any.whl \
+conda run --no-capture-output -n abacus-env pytest -q \
+  tests/test_package_contract.py tests/test_package_metadata_drift.py \
+  tests/test_abacuslite_release_gate.py
+```
+
+此 wheel 从 Forge `3371971cf35e7ec091265331fce567666f2c9694` 加本次仅测试/文档
+增量的工作树构建，SHA-256 为
+`6717a403bc6f51602f0a6757edf936f17b3135e66e3cda1619925605fc46b08a`。
+首次关闭 build isolation 的构建因环境缺少 hatchling 失败；正常隔离构建成功。
+历史 provenance record 保持原 artifact 绑定；本次未安装或发布 `abacuslite`。
+exact published package、fresh-extra install 和发布包四 capability parity 继续开放。

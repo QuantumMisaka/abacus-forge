@@ -86,6 +86,7 @@
 - [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
 - [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
 - [x] package-contract regression 要求未来声明的 `abacuslite` extra 只能包含单一精确 `abacuslite==<version>`，并禁止进入默认依赖；在没有公开 release 时保持不声明 extra（`tests/test_package_contract.py`）。
+- [x] 候选 wheel 与源码的 Name/Version、完整 extra 集合及 abacuslite exact pin/extra 归属一致性已补强；合成漂移负例先失败后通过，真实 wheel owning suites `13 passed`。见 Stage 1 package-gate evidence；不关闭 published package/fresh-extra 门。
 - [x] canonical checkout-backed native/abacuslite 数值矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。该矩阵不替代 exact published package/fresh-extra 验收。
 - [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
