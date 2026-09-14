@@ -39,11 +39,11 @@
 - [x] 错误顺序的离线回归覆盖无效配置、caller/log 冲突、unsupported log、optional 缺包、无主日志不 dispatch、缺值不 fallback，以及 API/CLI 的既有 error schema/exit 映射。
 - [x] canonical checkout 的四 capability 完整/截断/非收敛/缺辅助文件/output-only/歧义/越界/重复调用 parity、同进程交替版本与并发只读验证已在 `tests/benchmark/test_abacuslite_canonical_parity.py` 固化；指定 checkout 的 15 项 benchmark 通过。
 - [x] Band/DOS 的显式 `energy_axis`/`fermi_reference_ev` 贯穿 typed postprocess；一列 k-path 多能带绘图、能带前缀列、DOS/PDOS 相对轴 summary 均有回归。
-- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1401 passed, 31 skipped`；真实 parser package/双轨 parity 仍是未完成证据项。
+- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；当前候选全量结果为 `1401 passed, 32 skipped`；canonical checkout-backed 数值双轨矩阵已通过，但 exact published parser package、fresh extra 和发布包绑定的 parity 仍是未完成证据项。
 
 ### C/D
 
-阶段 1 的 exact installable package、fresh extra 和 Paimon 工具矩阵/运行时依赖清零仍未验收；完整 native/abacuslite 发布矩阵已执行并通过候选门禁。矩阵通过不等于 exact extra 或外部迁移完成。
+阶段 1 的 exact installable package、fresh extra 和 Paimon 工具矩阵/运行时依赖清零仍未验收；基于 canonical checkout 的 native/abacuslite 数值矩阵已执行并通过候选门禁。矩阵通过不等于 exact extra 或外部迁移完成。
 
 ### C 阶段 native real-smoke 证据（2026-09-13）
 
@@ -86,7 +86,7 @@
 - [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
 - [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
 - [x] package-contract regression 要求未来声明的 `abacuslite` extra 只能包含单一精确 `abacuslite==<version>`，并禁止进入默认依赖；在没有公开 release 时保持不声明 extra（`tests/test_package_contract.py`）。
-- [x] 完整 native/abacuslite 发布矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。
+- [x] canonical checkout-backed native/abacuslite 数值矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。该矩阵不替代 exact published package/fresh-extra 验收。
 - [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
 

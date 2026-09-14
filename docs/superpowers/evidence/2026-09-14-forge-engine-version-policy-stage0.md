@@ -47,7 +47,7 @@ Forge adapter 路由可用；direct oracle 与 adapter 在该进程共享同一�
 conda run --no-capture-output -n abacus-env pytest -q
 ```
 
-在修复 LocalRunner 绝对 `PATH` 预检失败语义并恢复候选分支的 release-gate/postprocess 回归后，结果为 `1401 passed, 31 skipped`
+在修复 LocalRunner 绝对 `PATH` 预检失败语义、恢复候选分支的 release-gate/postprocess 回归并加入 Stage 1 package-contract 检查后，结果为 `1401 passed, 32 skipped`
 （156 warnings，均为已有 ASE 第三方弃用警告）。`tests/test_service_status.py` 的
 generated `mpirun` preflight 回归单独为 `1 passed`。
 
