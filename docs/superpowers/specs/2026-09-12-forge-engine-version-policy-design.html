@@ -109,7 +109,7 @@
       <h2>摘要与修订依据</h2>
       <p>Forge 是面向人类研发者与不同类别 Agent 的、协议和平台无关的 ABACUS 科学计算单元操作基座，同时提供非交互 CLI 与 Python API。Paimon v1.2 → v1.3 是主要迁移消费者，不能以 Paimon 的进程模型限制其他调用方。</p>
       <p>保留 2026-09-12 的方向裁决：abacuslite 作为内部解析/写入后端、collect 优先、可选依赖与 native 默认；PyATB 双命名兼容、保持既有 final-structure 候选与优先级；LTS/develop 双轨发布证据；工具级迁移矩阵由 Paimon adapter 维护。2026-09-13 本人确认审查发现并授权优化本文；当前实现已经完成 Stage 0 的调用配置、局部分发、版本来源和离线 parity，本文仍是后续发布与迁移验收的规范源。</p>
-      <p>当前基线：Forge Stage 0 实现提交 <code>6654001</code> 与 <code>cf5b2774283254c91d00f94bdee690bbfc3c9ae8</code>，完整候选绑定为 <code>cb988adf13dd8199aced31db463121b571652943</code>；ABACUS/abacuslite <code>94576a80169de36e02e637edc2a0963fba9e1838</code>；app-tools 的初始配对证据提交为 <code>d149294d</code>，当前 prepare 配对复跑绑定 app 提交 <code>e9fc4289</code>、runner 提交 <code>ef9f1124</code>，JSON transcript SHA-256 为 <code>7dc13a5fb7695bad9b087e48dcaf730998002a76af5cb3dc068e4cb34142c545</code>；证据文件位于工作区路径 <code>app-tools/toolbox/ABACUS/docs/superpowers/evidence/2026-09-14-paimon-forge-prepare-pair.md</code>。<a href="../evidence/2026-09-14-forge-engine-version-policy-stage0.md">Stage 0 证据</a>记录 canonical checkout 的 15 项 parity 与 Forge 全量离线回归；<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 历史证据</a>仍记录 develop 9 passed、LTS 1 failed + 8 passed，失败为 typed cell-relax collection 未达到 complete；具体原因须核对原始 diagnostics，不能仅由缺少 STRU_FINAL 推断。</p>
+      <p>当前基线：Forge Stage 0 实现提交 <code>6654001</code> 与 <code>cf5b2774283254c91d00f94bdee690bbfc3c9ae8</code>，完整候选绑定为 <code>cb988adf13dd8199aced31db463121b571652943</code>；ABACUS/abacuslite <code>94576a80169de36e02e637edc2a0963fba9e1838</code>；app-tools 的初始配对证据提交为 <code>d149294d</code>，当前 prepare 配对复跑绑定 app 提交 <code>bcdf297d</code>、runner 提交 <code>bcdf297d761a7d1b098aeb9c3939ecd8f51a6f57</code>，JSON transcript SHA-256 为 <code>188208e2eccaa153b068473c1dd62ecd3099cd896220857c7e030508857e95fb</code>；Forge track 已经由 Paimon 的 <code>abacus_worker_input_prepare/backend=forge</code> 入口执行，证据文件位于工作区路径 <code>app-tools/toolbox/ABACUS/docs/superpowers/evidence/2026-09-14-paimon-forge-prepare-pair.md</code>。<a href="../evidence/2026-09-14-forge-engine-version-policy-stage0.md">Stage 0 证据</a>记录 canonical checkout 的 15 项 parity 与 Forge 全量离线回归；<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 历史证据</a>仍记录 develop 9 passed、LTS 1 failed + 8 passed，失败为 typed cell-relax collection 未达到 complete；具体原因须核对原始 diagnostics，不能仅由缺少 STRU_FINAL 推断。</p>
     </section>
 
     <section id="goals">
@@ -246,7 +246,7 @@
         <li>阶段 0：已完成并绑定 Forge 候选代码、canonical checkout、15 项 parity 与 <code>1401 passed, 32 skipped</code> 的默认离线回归；native 仍为默认。</li>
         <li>阶段 1：核验发布包可用，选择实际 exact pin，验证 extra 独立安装与四 capability 双轨；达到上述判据后发布可选 collect backend，native 仍默认。</li>
         <li>迁移工作已在 app-tools 建立并维护工具覆盖矩阵；矩阵记录核心八能力的当前证据、partial/gap 行与 owner，Forge README/证据入口按实际能力和限制引用它。矩阵存在不等于迁移完成；Paimon v1.3 发布前仍须完成运行时依赖解除、完整 Benchmark parity 和生产链路证据。</li>
-        <li>prepare backend、默认引擎翻转、final-structure 候选政策变更、额外 PyATB/property 能力均为后续独立范围；Stage 1 可安装包、外部发布和真实计算仍须按各自授权与验收门禁推进。</li>
+        <li>Forge-native prepare backend、默认引擎翻转、final-structure 候选政策变更、额外 PyATB/property 能力均为后续独立范围；Paimon 已有 bounded worker adapter 不改变 Forge 原生范围。Stage 1 可安装包、外部发布和真实计算仍须按各自授权与验收门禁推进。</li>
       </ol>
     </section>
 
