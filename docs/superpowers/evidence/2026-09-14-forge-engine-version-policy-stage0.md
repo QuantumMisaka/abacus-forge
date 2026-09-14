@@ -65,5 +65,5 @@ generated `mpirun` preflight 回归单独为 `1 passed`。
 当前 `pip index versions abacuslite` 返回 `No matching distribution found for abacuslite`，
 因此本地 wheel 证据和 canonical checkout 证据都不能替代可安装发布包。默认 wheel 的 optional extra、fresh
 environment 的真实 package import、native/abacuslite × LTS/develop 四 capability 双轨
-发布矩阵，以及 app-tools 的 Paimon 工具矩阵/旧依赖清零/Agent Benchmark/生产 E2E，均
-继续保持未验收状态。Forge 仍不宣称 Engine/Version Policy 发布完成。
+发布矩阵，以及 app-tools 的旧依赖清零/Agent Benchmark/生产 E2E，均继续保持未验收状态；Paimon
+工具覆盖矩阵已经建立并作为迁移审计入口维护。Forge 仍不宣称 Engine/Version Policy 发布完成。

@@ -21,7 +21,7 @@ workspace 中的 `meta.json`、`forge-unit.json` 和 `forge-result.json` 是现�
 - 人类与 AI 开发者：先阅读 [AGENTS.md](./AGENTS.md)；其中定义边界、测试和开发路由。
 - 架构与 Paimon v1.3 迁移规范：先阅读 [契约优先重构 SPEC](./docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html)，再阅读其 [Service/Status 细化 SPEC](./docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html)。
 - Engine/Version Policy 的 parser backend、版本来源与双轨验收边界见 [Engine/Version Policy SPEC](./docs/superpowers/specs/2026-09-12-forge-engine-version-policy-design.html)、[实施 PLAN](./docs/superpowers/plans/2026-09-13-forge-engine-version-policy.md) 和 [Stage 0 证据](./docs/superpowers/evidence/2026-09-14-forge-engine-version-policy-stage0.md)。当前 native 默认与 canonical checkout parity 已验证；可安装的 `abacuslite` exact extra、fresh environment 双轨发布和外部迁移仍须单独验收。
-- Paimon v1.3 的逐工具迁移状态由 [app-tools coverage matrix](../app-tools/toolbox/ABACUS/docs/superpowers/specs/paimon-v1.3-forge-coverage.html) 维护。该矩阵中的 covered/partial 仅表示接口映射与证据边界；运行时旧依赖清零、完整 Agent Benchmark、SAI/平台与生产验收未完成前，不将 Forge 能力页解释为 Paimon v1.3 发布签收。
+- Paimon v1.3 的逐工具迁移状态由工作区中的 `app-tools/toolbox/ABACUS/docs/superpowers/specs/paimon-v1.3-forge-coverage.html` 维护。该矩阵中的 covered/partial 仅表示接口映射与证据边界；运行时旧依赖清零、完整 Agent Benchmark、SAI/平台与生产验收未完成前，不将 Forge 能力页解释为 Paimon v1.3 发布签收。
 - 实施前的文档先行流程：阅读 [开发治理入口](./docs/superpowers/README.md)。
 
 ## 当前已实现能力

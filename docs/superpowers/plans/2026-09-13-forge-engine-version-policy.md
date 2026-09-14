@@ -43,7 +43,7 @@
 
 ### C/D
 
-阶段 1 的 exact installable package、fresh extra 和 Paimon 工具矩阵/运行时依赖清零仍未验收；基于 canonical checkout 的 native/abacuslite 数值矩阵已执行并通过候选门禁。矩阵通过不等于 exact extra 或外部迁移完成。
+阶段 1 的 exact installable package 与 fresh extra 仍未验收；Paimon 工具覆盖矩阵已经建立，但运行时依赖清零、完整 Benchmark 与生产迁移仍未验收。基于 canonical checkout 的 native/abacuslite 数值矩阵已执行并通过候选门禁；矩阵通过不等于 exact extra 或外部迁移完成。
 
 ### C 阶段 native real-smoke 证据（2026-09-13）
 
@@ -92,7 +92,7 @@
 
 ## D. 外部迁移交接
 
-Paimon 工具覆盖矩阵、旧依赖清零、Agent Benchmark 与生产 E2E 由 `app-tools/toolbox/ABACUS` 维护，本计划只引用 SPEC 的 owner 和边界。它们不成为 A/B 的前置条件；未验收不得宣称 Paimon v1.3 迁移完成。
+Paimon 工具覆盖矩阵已由 `app-tools/toolbox/ABACUS` 建立并维护；旧依赖清零、Agent Benchmark 与生产 E2E 仍由该仓负责，本计划只引用 SPEC 的 owner 和边界。它们不成为 A/B 的前置条件；未验收不得宣称 Paimon v1.3 迁移完成。
 
 ## 回退与验收边界
 
