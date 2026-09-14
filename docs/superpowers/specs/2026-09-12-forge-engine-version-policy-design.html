@@ -82,9 +82,9 @@
   <header>
     <h1>ABACUS-Forge Engine/Version Policy</h1>
     <div class="meta">
-      <p><strong>Status:</strong> Converged for planning（2026-09-13 本人要求收口；契约冲突已消解，进入分阶段 PLAN，尚未实施）</p>
+      <p><strong>Status:</strong> Stage 0 implemented and verified（2026-09-14）；Stage 1 optional-package/double-track release and Paimon migration gates remain open。</p>
       <p><strong>Owner:</strong> ABACUS-Forge（Paimon v1.3 后端）</p>
-      <p><strong>Updated:</strong> 2026-09-13</p>
+      <p><strong>Updated:</strong> 2026-09-14</p>
       <p><strong>上位规范:</strong> 2026-09-01 契约优先重构 SPEC、2026-09-02 Service/Status SPEC；本 SPEC 增补 parser backend、版本与迁移政策；保持 v1 请求/结果/schema 与 workspace 语义兼容，新增调用层配置和 diagnostics，见架构章节。</p>
     </div>
   </header>
@@ -108,8 +108,8 @@
     <section id="summary">
       <h2>摘要与修订依据</h2>
       <p>Forge 是面向人类研发者与不同类别 Agent 的、协议和平台无关的 ABACUS 科学计算单元操作基座，同时提供非交互 CLI 与 Python API。Paimon v1.2 → v1.3 是主要迁移消费者，不能以 Paimon 的进程模型限制其他调用方。</p>
-      <p>保留 2026-09-12 的方向裁决：abacuslite 作为内部解析/写入后端、collect 优先、可选依赖与 native 默认；PyATB 双命名兼容、保持既有 final-structure 候选与优先级；LTS/develop 双轨发布证据；工具级迁移矩阵由 Paimon adapter 维护。2026-09-13 本人确认审查发现并授权优化本文；以下补齐调用配置、无全局状态解析、版本来源、预期状态矩阵与迁移责任，不表示实现已交付。</p>
-      <p>基线：Forge <code>81c97c1</code>；ABACUS/abacuslite <code>94576a80169de36e02e637edc2a0963fba9e1838</code>；app-tools <code>ec173fae19ad6d94b7cd4025dbe7a56fef483209</code>。<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 历史证据</a>记录 develop 9 passed、LTS 1 failed + 8 passed，失败为 typed cell-relax collection 未达到 complete；具体原因须核对原始 diagnostics，不能仅由缺少 STRU_FINAL 推断；此记录不改写为全绿，也不是新后端的验收证据。</p>
+      <p>保留 2026-09-12 的方向裁决：abacuslite 作为内部解析/写入后端、collect 优先、可选依赖与 native 默认；PyATB 双命名兼容、保持既有 final-structure 候选与优先级；LTS/develop 双轨发布证据；工具级迁移矩阵由 Paimon adapter 维护。2026-09-13 本人确认审查发现并授权优化本文；当前实现已经完成 Stage 0 的调用配置、局部分发、版本来源和离线 parity，本文仍是后续发布与迁移验收的规范源。</p>
+      <p>当前基线：Forge 代码提交 <code>6654001</code> 与 <code>cf5b2774283254c91d00f94bdee690bbfc3c9ae8</code>；ABACUS/abacuslite <code>94576a80169de36e02e637edc2a0963fba9e1838</code>；app-tools 配对证据提交 <code>d149294d</code>。<a href="../evidence/2026-09-14-forge-engine-version-policy-stage0.md">Stage 0 证据</a>记录 canonical checkout 的 15 项 parity 与 Forge 全量离线回归；<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 历史证据</a>仍记录 develop 9 passed、LTS 1 failed + 8 passed，失败为 typed cell-relax collection 未达到 complete；具体原因须核对原始 diagnostics，不能仅由缺少 STRU_FINAL 推断。</p>
     </section>
 
     <section id="goals">
@@ -177,8 +177,8 @@
         <tr><td>共同派生与交付</td><td>从已选事实推导 energy_per_atom、压力与力/应力汇总，复用单位、来源引用、非有限值、typed observations/status 及审计投影；不追加新科学判断。</td></tr>
       </tbody></table></div>
       <p>abacuslite 的 read_abacus_out 会额外要求 eig_occ.txt、MD_dump 和轨迹/电子态帧数一致，本批不把它作为四 capability 的通用入口；优先使用接受日志行的底层读取函数。不得将这些辅助文件升级为 Forge 最小 collect 的前置条件，也不得把上游默认补零当作报告事实。压力符号、单位和末步选择按 Forge 同源 parity 校验。可识别的数值缺失仍返回部分事实；若底层函数无法满足既有公开语义，阻断可选后端交付并处理其实现缺口，不降低 parity 标准或隐式 fallback。</p>
-      <h3>调用层配置（本次新增设计，尚未实现）</h3>
-      <p>为 ScfServiceSet、RelaxServiceSet、MdServiceSet 的构造与 default 工厂新增 keyword-only <code>parser_backend="native"</code> 和 <code>output_version=None</code>；配置保存在 service 实例中，仅供 collect 使用，不修改进程环境。CLI <code>operation collect</code> 新增 <code>--parser-backend native|abacuslite</code> 与可选 <code>--output-version</code>，构造相同 service 配置；CLI 在其他 operation/capability 显式使用这些选项返回 request.invalid；Python 实例配置仅在 collect 调用时校验，其他 operation 不消费该配置。legacy facade/API/CLI 保持既有路径。</p>
+      <h3>调用层配置（Stage 0 已实现；Stage 1 发布门禁仍待验收）</h3>
+      <p>ScfServiceSet、RelaxServiceSet、MdServiceSet 的构造与 default 工厂已新增 keyword-only <code>parser_backend="native"</code> 和 <code>output_version=None</code>；配置保存在 service 实例中，仅供 collect 使用，不修改进程环境。CLI <code>operation collect</code> 已新增 <code>--parser-backend native|abacuslite</code> 与可选 <code>--output-version</code>，构造相同 service 配置；CLI 在其他 operation/capability 显式使用这些选项返回 request.invalid；Python 实例配置仅在 collect 调用时校验，其他 operation 不消费该配置。legacy facade/API/CLI 保持既有路径。行为证据见 Stage 0 evidence。</p>
       <p>这里的 parser_backend 不替换已有描述 ABACUS/PyATB 计算程序的 engine 字段。v1 request JSON、capabilities/schema 文档和 workspace schema 不增加配置字段；配置属于新增的调用接口，必须在 README、Python 用法和 CLI help 说明。默认始终 native，安装 extra 不自动改变行为；本批次不引入 auto 模式。</p>
       <h3>版本解析与 provenance</h3>
       <p>abacuslite 选择使用被收集的 contained running log 中的生产者版本，不运行本机 abacus --version。output-only workspace 无需 INPUT 或已安装 ABACUS。调用方可在日志无版本时显式提供 output_version；若与日志识别结果冲突则拒绝，不能覆盖冲突。来源歧义沿用原 collector 的拒绝/partial 规则，不任选一个目录。</p>
@@ -217,7 +217,7 @@
 
     <section id="testing">
       <h2>测试与验收</h2>
-      <p>下列是待实施的验收判据，不是已通过测试。复用 tests/README.md 分层，默认回归离线，真实计算显式启用；新用例保护行为而非复制实现。</p>
+      <p>下列是完整验收判据。Stage 0 的离线调用隔离、错误优先级、canonical checkout parity 与默认回归已通过并记录在 evidence；可安装 extra、真实双轨发布和外部迁移仍按表中边界单独验收。复用 tests/README.md 分层，真实计算显式启用；新用例保护行为而非复制实现。</p>
       <div class="table-wrap"><table><thead><tr><th>边界</th><th>比较/断言</th></tr></thead><tbody>
         <tr><td>事实与单位</td><td>同一输入先归一到当前 Forge 单位；离散值、数量、名称精确相等。浮点按字段声明 atol/rtol（在 owning parity 数据表中给出单位与理由），不得用单一宽容差掩盖单位错误。</td></tr>
         <tr><td>数组与帧</td><td>原子顺序、形状、帧索引/步数一致；显式区分最后一帧与全轨迹。四个 capability 的既有公开事实集合均比较，缺失/非有限值不得补零或虚构。</td></tr>
@@ -242,8 +242,8 @@
     <section id="rollout">
       <h2>Rollout 阶段</h2>
       <ol>
-        <li>先落地 R3/R5 及 R4/R6 的版本预期断言，形成有界实施 PLAN；更新真实双轨证据，native 发布可独立推进。</li>
-        <li>阶段 0：实现调用层配置、局部 parser 分发、版本来源与 diagnostics，使用指定 commit 的 abacuslite checkout 建立 fixture parity、并发/只读/错误验证。不得把开发态可用写为 wheel 已支持 extra。</li>
+        <li>R3/R5 及 R4/R6 的版本预期断言、调用层配置、局部 parser 分发、版本来源与 diagnostics 已形成有界实施 PLAN；Stage 0 的 checkout parity、并发/只读/错误验证已通过。不得把开发态 checkout 可用写为 wheel 已支持 extra。</li>
+        <li>阶段 0：已完成并绑定 Forge 代码、canonical checkout、15 项 parity 与 <code>1391 passed, 30 skipped</code> 的默认离线回归；native 仍为默认。</li>
         <li>阶段 1：核验发布包可用，选择实际 exact pin，验证 extra 独立安装与四 capability 双轨；达到上述判据后发布可选 collect backend，native 仍默认。</li>
         <li>迁移工作在 app-tools 建立工具覆盖矩阵与索引，Forge README 更新实际能力和限制并链接矩阵；矩阵尚未建立时明确未完成，不虚构链接。Paimon v1.3 发布前完成运行时依赖解除、Benchmark parity 和生产链路证据。</li>
         <li>prepare backend、默认引擎翻转、final-structure 候选政策变更、额外 PyATB/property 能力均为后续独立范围。本文修订不授权代码实施、外部发布或真实计算。</li>
@@ -259,11 +259,11 @@
         <tr><td>解析兼容范围</td><td>abacuslite parser 对辅助文件、单位和轨迹格式的要求仍需 parity 验证；不能把版本函数存在称为“系统性解决版本漂移”，也不能把 parser 维护责任全部转交上游。</td></tr>
         <tr><td>外部迁移</td><td>app-tools 当前含旧包 post/prepare/collect 调用；矩阵创建和 Paimon 生产验收尚未完成。Forge 基元发布不表示 Paimon v1.3 已交付。</td></tr>
       </tbody></table></div>
-      <p>证据入口：<a href="2026-09-01-forge-contract-first-rearchitecture-design.html">契约优先 SPEC</a>、<a href="2026-09-02-forge-service-status-migration-design.html">Service/Status SPEC</a>、<a href="../../../README.md">Forge 当前能力</a>、<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 证据</a>。跨仓源码核验路径（相对工作区）：<code>abacus-develop/interfaces/ASE_interface/abacuslite/{core.py,io/latestio.py}</code>；<code>app-tools/toolbox/ABACUS/toolkits/{band_report.py,band_moments.py,cohp_runtime.py,abacustest_convergence_adapter.py}</code>；资源策略见该项目 <code>docs/guides/abacus-runtime-resource-policy.md</code>。</p>
+      <p>证据入口：<a href="2026-09-01-forge-contract-first-rearchitecture-design.html">契约优先 SPEC</a>、<a href="2026-09-02-forge-service-status-migration-design.html">Service/Status SPEC</a>、<a href="../../../README.md">Forge 当前能力</a>、<a href="../evidence/2026-09-13-forge-stage5-evidence.md">Stage 5 证据</a>、<a href="../evidence/2026-09-14-forge-engine-version-policy-stage0.md">Engine/Version Policy Stage 0 证据</a>。跨仓源码核验路径（相对工作区）：<code>abacus-develop/interfaces/ASE_interface/abacuslite/{core.py,io/latestio.py}</code>；<code>app-tools/toolbox/ABACUS/toolkits/{band_report.py,band_moments.py,cohp_runtime.py,abacustest_convergence_adapter.py}</code>；资源策略见该项目 <code>docs/guides/abacus-runtime-resource-policy.md</code>。</p>
       <p>本次收口依据：本人在收敛审查后要求“进行收口”；沿用保持既有行为与冻结 v1 协议的目标，采用兼容候选、现有 error 字段和共同事实提取。审阅记录见 <a href="../evidence/2026-09-13-forge-engine-version-policy-review.md">收敛审查与闭环记录</a>；分阶段交接见 <a href="../plans/2026-09-13-forge-engine-version-policy.md">实施 PLAN</a>。</p>
       <p>后续待完成：实际 abacuslite 发布版本选择、parity 容差表与四 capability 数据集、Paimon 工具矩阵和生产验收。以上有各自阶段和 owner，不以“无开放问题”掩盖未完成证据。这些为实施/发布证据，不是未决产品选择。实施 PLAN 须遵循本文；若实现调查要求改变这些公共行为，应回到 SPEC 处理。</p>
     </section>
   </main>
-  <footer>2026-09-13 修订：依据本人确认的七项审查发现优化既有 SPEC。保留 native 默认和兼容目标，校正 final 候选归因，明确错误承载/优先级及共同解析职责；本文描述目标设计，不宣称尚未实施的能力已可用。</footer>
+  <footer>2026-09-14 修订：记录 Stage 0 实施与离线证据，保留 native 默认和兼容目标，校正 final 候选归因，明确错误承载/优先级及共同解析职责；Stage 1 可安装包/双轨发布与 Paimon 迁移仍须独立验收。</footer>
 </body>
 </html>

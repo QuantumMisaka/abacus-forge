@@ -4,15 +4,15 @@
 
 **Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-13 收口版本。
 
-**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已在隔离分支执行 A 与离线 B；真实计算、可安装 extra、双轨发布和外部迁移仍不在本轮授权结果内。
+**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已完成并集成 A 与离线 B；真实计算、可安装 extra、双轨发布和外部迁移仍不在本轮已验收结果内。
 
 **Architecture:** 复用 collection 来源选择、共同事实提取与 typed 投影；只替换主日志电子标量/力/应力读取层。配置置于 service 实例，CLI 调用同一 service；error schema、final 候选、legacy surface 和 workspace 审计保持原契约。
 
 **Verification:** 默认离线 owning tests、API/CLI parity、schema/admission/event 回归；真实双轨与 extra 安装是分阶段显式验收。
 
-## 当前实施状态（2026-09-13）
+## 当前实施状态（2026-09-14）
 
-本轮实现保留 native 默认，未修改 v1 request JSON、workspace schema、错误 envelope 字段、final-structure 候选或 legacy `collect()`。实现证据绑定当前隔离分支 `codex/forge-engine-version-policy`；原始工作树在分派前已有的 SPEC/PLAN/evidence/ROADMAP/README 修改不计入下面的代码包。
+本轮实现保留 native 默认，未修改 v1 request JSON、workspace schema、错误 envelope 字段、final-structure 候选或 legacy `collect()`。代码已从 subagent worktree 集成到 main：`6654001` 提供 Stage 0 backend/collector/service/CLI 实现，`cf5b2774283254c91d00f94bdee690bbfc3c9ae8` 修复 LocalRunner 绝对 `PATH` 预检语义；[Stage 0 evidence](../evidence/2026-09-14-forge-engine-version-policy-stage0.md) 绑定 canonical checkout parity 与离线回归结果。
 
 ### 字段责任表
 
@@ -38,7 +38,7 @@
 - [x] 版本正规化覆盖 `v3.10.1`、裸 `v3.9.0`、3.9 develop `.x`/预发布与 `v3.11.0-beta8+56`；import 延迟到合法 collect admission 后，禁止 calculator/global switch/executable 探测。
 - [x] 错误顺序的离线回归覆盖无效配置、caller/log 冲突、unsupported log、optional 缺包、无主日志不 dispatch、缺值不 fallback，以及 API/CLI 的既有 error schema/exit 映射。
 - [x] canonical checkout 的四 capability 完整/截断/非收敛/缺辅助文件/output-only/歧义/越界/重复调用 parity、同进程交替版本与并发只读验证已在 `tests/benchmark/test_abacuslite_canonical_parity.py` 固化；指定 checkout 的 15 项 benchmark 通过。
-- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；真实 parser package/双轨 parity 仍是未完成证据项。
+- [x] 当前 owning suites、architecture/contracts/workspace 与默认离线全量回归已通过；默认回归实际为 `1391 passed, 30 skipped`（`abacus-env`，156 个已有 ASE 弃用警告）。真实发布 parser package/双轨 parity 仍是未完成证据项。
 
 ### C/D
 
@@ -67,7 +67,7 @@
 - [x] 验证同进程交替版本、并发 workspace、只读领域文件与 append-only 审计；底层 reader 路径不要求 `eig_occ.txt` 或 `MD_dump`。
 - [x] 运行 owning suites、`tests/test_architecture.py`、`tests/test_contracts.py`、`tests/test_workspace.py` 与默认离线全量回归；canonical parity 另以显式 `--run-benchmark` 门禁执行，未放宽既有事实集合。
 
-验收时使用仓库约定环境：`conda run -n paimon python -m pytest ... -q`；新测试文件的最终名称由实施者记录，不能将尚未创建的用例写成已通过。
+验收时使用仓库约定环境；本轮 Stage 0 实际使用 `conda run --no-capture-output -n abacus-env pytest -q`，并以 [Stage 0 evidence](../evidence/2026-09-14-forge-engine-version-policy-stage0.md) 记录命令、候选和 transcript hash。新测试文件的最终名称由实施者记录，不能将尚未创建的用例写成已通过。
 
 ## C. 阶段 1：可选包与双轨发布证据
 
