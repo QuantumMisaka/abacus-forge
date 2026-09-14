@@ -85,6 +85,7 @@ class LocalRunner:
             resolved = shutil.which(program, path=search_path)
             if resolved is not None:
                 return resolved
+            raise FileNotFoundError(f"{role} executable not found or not executable: {program}")
         for entry in search_path.split(os.pathsep):
             directory = Path(entry) if entry else Path(".")
             if not directory.is_absolute():
