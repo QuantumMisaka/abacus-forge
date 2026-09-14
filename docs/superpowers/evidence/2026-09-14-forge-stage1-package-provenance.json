@@ -1,0 +1,39 @@
+{
+  "schema_version": "forge.stage1-package-provenance/v1",
+  "status": "local_oracle_only",
+  "public_exact_release_available": false,
+  "forge_optional_extra_declared": false,
+  "canonical_source": {
+    "repository": "abacus-develop/interfaces/ASE_interface",
+    "commit": "94576a80169de36e02e637edc2a0963fba9e1838",
+    "package_name": "abacuslite",
+    "package_version": "1.0.0",
+    "wheel_filename": "abacuslite-1.0.0-py3-none-any.whl",
+    "wheel_sha256": "8dd81ccf5736f5299a013ea593c91578b98b0681cfbe92d170657961deec5130",
+    "build_command": "python -m pip wheel --no-deps . --wheel-dir /tmp/forge-abacuslite-wheel",
+    "artifact_binding": {
+      "canonical_commit": "94576a80169de36e02e637edc2a0963fba9e1838",
+      "wheel_filename": "abacuslite-1.0.0-py3-none-any.whl",
+      "wheel_sha256": "8dd81ccf5736f5299a013ea593c91578b98b0681cfbe92d170657961deec5130"
+    }
+  },
+  "forge_candidate": {
+    "repository": "abacus-forge",
+    "revision": "edda0618f68863da5a516a06269e2ca489338d55",
+    "package_name": "abacus-forge",
+    "package_version": "0.1.0",
+    "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "809cec1e83cc021ce12b250ee4caae0b265a4e9c5101987a25fb71dc267b9906",
+    "build_command": "python -m pip wheel --no-deps . --wheel-dir /tmp/forge-stage1-wheel",
+    "artifact_binding": {
+      "forge_revision": "edda0618f68863da5a516a06269e2ca489338d55",
+      "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+      "wheel_sha256": "809cec1e83cc021ce12b250ee4caae0b265a4e9c5101987a25fb71dc267b9906"
+    }
+  },
+  "notes": [
+    "The canonical checkout and source wheel are Stage 0 parser oracles only.",
+    "A later build with the same wheel filename is a different artifact unless its SHA-256 is recorded here with its own source commit.",
+    "The source checkout's package root was clean at the recorded canonical commit; unrelated worktree changes outside interfaces/ASE_interface are not part of this artifact."
+  ]
+}

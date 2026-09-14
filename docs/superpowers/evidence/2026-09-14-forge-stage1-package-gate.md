@@ -35,7 +35,13 @@ version:    abacuslite 1.0.0
 `abacuslite-1.0.0-py3-none-any.whl`，SHA-256 为
 `8dd81ccf5736f5299a013ea593c91578b98b0681cfbe92d170657961deec5130`。
 它仅用于本地 smoke 和 adapter 验证，不能替代发布仓库中的 installable exact
-package。
+package。Forge 候选 wheel 的 SHA-256 为
+`809cec1e83cc021ce12b250ee4caae0b265a4e9c5101987a25fb71dc267b9906`，对应
+Forge revision `edda0618f68863da5a516a06269e2ca489338d55`。两者的 canonical
+commit、构建命令、文件名和 SHA-256 已写入可执行 provenance record
+[`2026-09-14-forge-stage1-package-provenance.json`](./2026-09-14-forge-stage1-package-provenance.json)，
+测试会拒绝缺字段、命名/version 不一致或非 64 位 SHA。相同 wheel 文件名的另一次
+构建必须作为新的 artifact 记录其自身 SHA 和 source commit，不能沿用本记录。
 
 ## 可执行 package-contract 门禁
 
@@ -46,7 +52,7 @@ conda run --no-capture-output -n abacus-env \
   pytest -q tests/test_package_contract.py
 ```
 
-结果为 `1 passed, 1 skipped`。没有声明 extra 时，skip 是有意的发布候选门；
+结果为 `2 passed, 1 skipped`。没有声明 extra 时，skip 是有意的发布候选门；
 测试仍验证默认 dependencies 不包含 `abacuslite`。
 
 对具体 wheel 的生成元数据检查：

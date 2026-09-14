@@ -8,6 +8,7 @@ published abacuslite release exists.
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import re
 import tomllib
@@ -17,11 +18,51 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PROVENANCE = ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
 
 
 def _project_metadata() -> dict[str, object]:
     with (ROOT / "pyproject.toml").open("rb") as stream:
         return tomllib.load(stream)["project"]
+
+
+def test_local_source_wheel_provenance_is_an_explicit_oracle_binding() -> None:
+    """Bind every local oracle wheel to its source and candidate revision."""
+
+    record = json.loads(PROVENANCE.read_text(encoding="utf-8"))
+    assert record["schema_version"] == "forge.stage1-package-provenance/v1"
+    assert record["status"] == "local_oracle_only"
+    assert record["public_exact_release_available"] is False
+    assert record["forge_optional_extra_declared"] is False
+
+    source = record["canonical_source"]
+    assert re.fullmatch(r"[0-9a-f]{40}", source["commit"])
+    assert source["package_name"] == "abacuslite"
+    assert source["package_version"] == "1.0.0"
+    assert source["wheel_filename"] == "abacuslite-1.0.0-py3-none-any.whl"
+    assert re.fullmatch(r"[0-9a-f]{64}", source["wheel_sha256"])
+    assert "pip wheel" in source["build_command"]
+    assert "--no-deps" in source["build_command"]
+
+    forge = record["forge_candidate"]
+    assert re.fullmatch(r"[0-9a-f]{40}", forge["revision"])
+    assert forge["package_name"] == "abacus-forge"
+    assert forge["package_version"] == "0.1.0"
+    assert forge["wheel_filename"] == "abacus_forge-0.1.0-py3-none-any.whl"
+    assert re.fullmatch(r"[0-9a-f]{64}", forge["wheel_sha256"])
+    assert "pip wheel" in forge["build_command"]
+    assert "--no-deps" in forge["build_command"]
+
+    assert source["artifact_binding"] == {
+        "canonical_commit": source["commit"],
+        "wheel_filename": source["wheel_filename"],
+        "wheel_sha256": source["wheel_sha256"],
+    }
+    assert forge["artifact_binding"] == {
+        "forge_revision": forge["revision"],
+        "wheel_filename": forge["wheel_filename"],
+        "wheel_sha256": forge["wheel_sha256"],
+    }
 
 
 def test_abacuslite_extra_is_exactly_pinned_if_declared() -> None:
