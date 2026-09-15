@@ -58,6 +58,12 @@ _NEGATIVE_CONVERGENCE_PATTERNS = {
     "scf_not_converged": re.compile(r"\bSCF\s+NOT\s+CONVERGED\b", re.IGNORECASE),
     "not_converged": re.compile(r"\bnot\s+converged\b", re.IGNORECASE),
 }
+# ABACUS prints one relaxation status line per ionic step; the final line is
+# the outcome ("Relaxation is converged!") while earlier ones are progress
+# ("Relaxation is not converged yet!").
+_RELAX_FINAL_STATUS_PATTERN = re.compile(
+    r"Relaxation\s+is\s+(?P<neg>not\s+)?converged(?:\s+yet)?", re.IGNORECASE
+)
 
 
 def _regex_metrics(content: str) -> dict[str, Any]:
@@ -706,6 +712,17 @@ def _collect_convergence_matches(content: str) -> tuple[list[str], list[str]]:
         for name, pattern in _NEGATIVE_CONVERGENCE_PATTERNS.items()
         if pattern.search(content)
     ]
+    # A multi-step relaxation always carries intermediate progress lines
+    # ("Relaxation is not converged yet!"), so the generic negative pattern
+    # alone would report a finally-converged relaxation as unconverged.  The
+    # last relaxation status line is the outcome.
+    relax_statuses = list(_RELAX_FINAL_STATUS_PATTERN.finditer(content))
+    if relax_statuses:
+        final_relax_negated = relax_statuses[-1].group("neg") is not None
+        if final_relax_negated and "not_converged" not in negative_matches:
+            negative_matches.append("not_converged")
+        if not final_relax_negated and "not_converged" in negative_matches:
+            negative_matches.remove("not_converged")
     return positive_matches, negative_matches
 
 

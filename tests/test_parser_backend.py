@@ -352,3 +352,41 @@ def test_python_service_rejects_invalid_parser_configuration_before_claim(tmp_pa
     assert result.error_class == "request.invalid"
     assert result.affected_fields == ("parser_backend", "output_version")
     assert not (tmp_path / "job").exists()
+
+
+def test_relax_progress_lines_do_not_poison_final_convergence() -> None:
+    """A multi-step relaxation that ends converged reports converged=True.
+
+    Intermediate ionic steps print "Relaxation is not converged yet!", which
+    the generic negative pattern must not treat as the final outcome
+    (workplace replay finding, 2026-09-15).
+    """
+    from abacus_forge.collectors.abacus import _regex_metrics
+
+    content = (
+        "TOTAL ENERGY : -100.00000000 eV\n"
+        "charge density convergence is achieved\n"
+        "Relaxation is not converged yet!\n"
+        "TOTAL ENERGY : -100.05000000 eV\n"
+        "charge density convergence is achieved\n"
+        "Relaxation is converged!\n"
+        "TOTAL TIME : 5.0\n"
+    )
+    metrics = _regex_metrics(content)
+    assert metrics["converged"] is True
+    assert metrics["normal_end"] is True
+
+
+def test_relax_max_steps_without_convergence_stays_negative() -> None:
+    """A relaxation that exhausts its steps keeps converged=False."""
+    from abacus_forge.collectors.abacus import _regex_metrics
+
+    content = (
+        "TOTAL ENERGY : -100.00000000 eV\n"
+        "charge density convergence is achieved\n"
+        "Relaxation is not converged yet!\n"
+        "TOTAL TIME : 5.0\n"
+    )
+    metrics = _regex_metrics(content)
+    assert metrics["converged"] is False
+    assert metrics["normal_end"] is True
