@@ -3,9 +3,9 @@
 ## Scope and candidate
 
 Code-content commit: `a9e9d48b888d2fa6f397e44f18f1292998edd157` on
-`unify/mainline-paimon-20260927`. The branch tip also carries this docs-only
-evidence commit (`41307c5967cb3fda3b13fe50389a3030c5761b89`); rebuilding at
-that tip produced the identical wheel SHA-256.
+`unify/mainline-paimon-20260927`. Later candidate commits in this record are
+documentation/evidence-only; rebuilding after those commits produced the same
+wheel SHA-256.
 
 This record covers a rebuilt release wheel, wheel metadata gates, and a fresh
 Python 3.13 venv install/import/console/schema probe. It does **not** claim a
@@ -68,3 +68,25 @@ started in this probe.
 
 The same candidate commit also passed the Forge offline suite:
 `1423 passed / 32 skipped`.
+
+## Fresh-venv real SCF execution
+
+The same clean venv then executed and collected a real Si LCAO SCF through the
+Forge machine CLI. The ABACUS LTS executable and input/pseudopotential bundle
+were identical by SHA-256 to the archived 2026-09-15 clean-install slice.
+
+- ABACUS LTS executable SHA-256:
+  `51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f`
+- Input identity: INPUT `c30de3c5...`, KPT `1ad281c0...`, STRU `363e2ff2...`
+- Resources: 1 MPI rank, 4 OpenMP threads, 600 s timeout
+- Result: execution `completed`, collection `complete`
+- Facts: `normal_end=true`, `converged=true`, `total_energy=-229.9415680244328 eV`,
+  `fermi_energy=6.7936808644 eV`, `total_time=44.2588 s`
+- Fresh-venv isolation remained true after the run: `abacusagent`,
+  `abacustest`, `aiida`, and `atst_tools` were all absent.
+
+Raw machine outcomes and the clean-venv dependency freeze are retained beside
+this record. This advances fresh-venv real execution from the prior import-only
+probe, but remains a one-capability local slice: it does not claim full Agent
+Benchmark parity, SAI/platform acceptance, production rollout, or scientific
+acceptance.

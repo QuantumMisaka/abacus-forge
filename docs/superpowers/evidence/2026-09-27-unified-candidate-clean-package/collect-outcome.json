@@ -1,0 +1,625 @@
+{
+  "envelope": {
+    "artifacts": [
+      {
+        "availability": "available",
+        "id": "artifact-10ec10d41b3a",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/INPUT",
+        "role": "output",
+        "sha256": "c30de3c5dc384226886bdbe0a36cb64c27ab212fc40b76a09aca21253609ccbd",
+        "size_bytes": 360,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-cc03a40b77ff",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/KPT",
+        "role": "output",
+        "sha256": "1ad281c0f88e2f4269b222db91fc59e3365188569a96e8629b57c8f65b0613e7",
+        "size_bytes": 29,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-62cafbee1b90",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart",
+        "role": "output",
+        "sha256": "5508f0d89193403b350694f4a85c83ee1941232da518dce20922841745dd6ae2",
+        "size_bytes": 1001088,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-d1dd4bfabd78",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/INPUT",
+        "role": "output",
+        "sha256": "ef057fbbb1f0939deb106cb15943e80ef5437dbd8baee9d37209e8fb8df1c946",
+        "size_bytes": 36611,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-ff89f65cd0ca",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/STRU.cif",
+        "role": "output",
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-dd8fa79389be",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/istate.info",
+        "role": "output",
+        "sha256": "6fd3bb071f17b207ed69c33d9b424f342acf964c031e8eaeb8da2d034abccfe9",
+        "size_bytes": 7620,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-d23bce375eb0",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/kpoints",
+        "role": "output",
+        "sha256": "4a705d793e1fb1eb27f4493daac9ba289b6c8714c39bddff157a336e0b56dd96",
+        "size_bytes": 6492,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-f7661ec950d4",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/running_scf.log",
+        "role": "output",
+        "sha256": "6b4e704ee5a918092540eb294f72016a433c2430897ffaa0cd305350145d0ffb",
+        "size_bytes": 39730,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-774ae3ffa2be",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/warning.log",
+        "role": "output",
+        "sha256": "7c714febcd1697c565a73d794608d8adf88d4ce454b82012c3f3af5d54a8aaec",
+        "size_bytes": 3120,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-a188b836c514",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/STRU",
+        "role": "output",
+        "sha256": "363e2ff2171fbcbbecf09e872ca9f0567c8f80cb476bd0f86e71e7ae9d2ff0d0",
+        "size_bytes": 235,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-caa49f5658bf",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/abacus.json",
+        "role": "output",
+        "sha256": "405fa71894c8789f227c61f1508c4035bee3b343337ccf4bdc73eb960b479317",
+        "size_bytes": 5011,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-1b4c15bd1ba6",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/time.json",
+        "role": "output",
+        "sha256": "ab2a82560921bacf209f5bf7eb95ebc2c498d511ed28516c00f37050533a0d8e",
+        "size_bytes": 32131,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "stderr_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stderr.log",
+        "role": "output",
+        "sha256": "3d4e8586afd33b0672927149910216601c50f7a5a9a68830524bbfa5aeb2615c",
+        "size_bytes": 101,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "stdout_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stdout.log",
+        "role": "output",
+        "sha256": "70881a7b39e1a76fa1dea158f8a8900f64c2455d86db79fb8d271aa615142f46",
+        "size_bytes": 12153,
+        "stage": "collect"
+      }
+    ],
+    "checks": [
+      {
+        "message": null,
+        "name": "converged",
+        "status": "passed"
+      }
+    ],
+    "diagnostics": {
+      "artifact_refs": [
+        {
+          "artifact_id": "artifact-10ec10d41b3a",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-cc03a40b77ff",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-62cafbee1b90",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-d1dd4bfabd78",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-ff89f65cd0ca",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-dd8fa79389be",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-d23bce375eb0",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-f7661ec950d4",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-774ae3ffa2be",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-a188b836c514",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-caa49f5658bf",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "artifact-1b4c15bd1ba6",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "stderr_log",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        },
+        {
+          "artifact_id": "stdout_log",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174124"
+        }
+      ],
+      "band_artifact_candidates": [],
+      "band_artifact_selection_ambiguous": false,
+      "dos_artifact_candidates": [],
+      "dos_artifact_selection_ambiguous": false,
+      "dos_family_projected_artifact_candidates": [],
+      "fallback_log_candidates": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/outputs/stdout.log"
+      ],
+      "final_structure_candidates": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/inputs/OUT.ABACUS/STRU.cif",
+        "/tmp/forge-clean-real-scf-20260927/workspace/inputs/STRU"
+      ],
+      "final_structure_path": "/tmp/forge-clean-real-scf-20260927/workspace/inputs/OUT.ABACUS/STRU.cif",
+      "final_structure_selected_suffix": "STRU.cif",
+      "final_structure_selection_ambiguous": true,
+      "ignored_log_paths": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/outputs/stdout.log"
+      ],
+      "layout": "forge",
+      "legacy_metrics": {
+        "force": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "forces": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "pressures": [
+          49.3566248235
+        ],
+        "stress": [
+          49.3566248235,
+          0.0,
+          0.0,
+          -0.0,
+          49.3566248235,
+          0.0,
+          -0.0,
+          0.0,
+          49.3566248235
+        ],
+        "stresses": [
+          [
+            49.3566248235,
+            0.0,
+            0.0,
+            -0.0,
+            49.3566248235,
+            0.0,
+            -0.0,
+            0.0,
+            49.3566248235
+          ]
+        ],
+        "virial": [
+          1.211096342160177,
+          0.0,
+          0.0,
+          -0.0,
+          1.211096342160177,
+          0.0,
+          -0.0,
+          0.0,
+          1.211096342160177
+        ],
+        "virials": [
+          [
+            1.211096342160177,
+            0.0,
+            0.0,
+            -0.0,
+            1.211096342160177,
+            0.0,
+            -0.0,
+            0.0,
+            1.211096342160177
+          ]
+        ]
+      },
+      "log_paths": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/inputs/OUT.ABACUS/running_scf.log",
+        "/tmp/forge-clean-real-scf-20260927/workspace/outputs/stdout.log"
+      ],
+      "log_selection_ambiguous": false,
+      "log_sources": 2,
+      "log_strategy": "selected-running-log",
+      "matched_converged_markers": [
+        "charge_density_converged"
+      ],
+      "matched_nonconverged_markers": [],
+      "native_final_energy_markers": 1,
+      "native_md_block_complete": false,
+      "native_md_block_present": false,
+      "native_md_rows": 0,
+      "output_log_candidates": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/outputs/stdout.log"
+      ],
+      "output_log_ignored_paths": [],
+      "output_log_override_missing": false,
+      "output_log_override_requested": null,
+      "output_log_path": "/tmp/forge-clean-real-scf-20260927/workspace/outputs/stdout.log",
+      "output_log_reason": "fixed-candidate:stdout.log",
+      "output_log_selection_ambiguous": false,
+      "parser": {
+        "actual_backend": "native",
+        "backend_version": "0.1.0",
+        "io_backend": null,
+        "log_source_rel": "inputs/OUT.ABACUS/running_scf.log",
+        "output_version_normalized": null,
+        "output_version_raw": null,
+        "requested_backend": "native",
+        "version_source": "unknown"
+      },
+      "pyatb_band_artifact_candidates": [],
+      "report_json_absent": [
+        "metrics_band.json",
+        "metrics_dos.json",
+        "metrics_dos_family.json",
+        "metrics_relax.json"
+      ],
+      "running_log_candidates": [
+        "/tmp/forge-clean-real-scf-20260927/workspace/inputs/OUT.ABACUS/running_scf.log"
+      ],
+      "selected_log_path": "/tmp/forge-clean-real-scf-20260927/workspace/inputs/OUT.ABACUS/running_scf.log",
+      "selected_log_reason": "matched-input-calculation:running_scf.log",
+      "stderr_nonempty": true,
+      "structure_volume": 39.31370027216318,
+      "time_json": "/tmp/forge-clean-real-scf-20260927/workspace/inputs/time.json",
+      "time_json_absent": false,
+      "warnings": [
+        "No report JSON artifacts found."
+      ],
+      "workspace": "/tmp/forge-clean-real-scf-20260927/workspace"
+    },
+    "metrics": [
+      {
+        "kind": "reported",
+        "name": "natom",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": "atoms",
+        "value": 2
+      },
+      {
+        "kind": "reported",
+        "name": "fermi_energy",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": "eV",
+        "value": 6.7936808644
+      },
+      {
+        "kind": "reported",
+        "name": "converged",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "converge",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "normal_end",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "total_energy",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": "eV",
+        "value": -229.9415680244328
+      },
+      {
+        "kind": "derived",
+        "name": "pressure",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": "kbar",
+        "value": 49.3566248235
+      },
+      {
+        "kind": "reported",
+        "name": "total_time",
+        "source_artifact_id": "artifact-1b4c15bd1ba6",
+        "unit": "s",
+        "value": 44.2588
+      },
+      {
+        "kind": "derived",
+        "name": "energy_per_atom",
+        "source_artifact_id": "artifact-f7661ec950d4",
+        "unit": "eV/atom",
+        "value": -114.9707840122164
+      }
+    ],
+    "operation": "collect",
+    "schema_version": "forge.result/v1",
+    "status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "warnings": [
+      "No report JSON artifacts found."
+    ],
+    "workspace_rel": "workspace"
+  },
+  "observations": [
+    {
+      "name": "natom",
+      "source": "parser",
+      "value": 2
+    },
+    {
+      "name": "fermi_energy",
+      "source": "parser",
+      "value": 6.7936808644
+    },
+    {
+      "name": "converged",
+      "source": "parser",
+      "value": true
+    },
+    {
+      "name": "converge",
+      "source": "parser",
+      "value": true
+    },
+    {
+      "name": "normal_end",
+      "source": "parser",
+      "value": true
+    },
+    {
+      "name": "total_energy",
+      "source": "parser",
+      "value": -229.9415680244328
+    },
+    {
+      "name": "pressure",
+      "source": "parser",
+      "value": 49.3566248235
+    },
+    {
+      "name": "total_time",
+      "source": "parser",
+      "value": 44.2588
+    },
+    {
+      "name": "energy_per_atom",
+      "source": "parser",
+      "value": -114.9707840122164
+    },
+    {
+      "name": "force",
+      "source": "parser",
+      "value": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "forces",
+      "source": "parser",
+      "value": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "stress",
+      "source": "parser",
+      "value": [
+        49.3566248235,
+        0.0,
+        0.0,
+        -0.0,
+        49.3566248235,
+        0.0,
+        -0.0,
+        0.0,
+        49.3566248235
+      ]
+    },
+    {
+      "name": "stresses",
+      "source": "parser",
+      "value": [
+        [
+          49.3566248235,
+          0.0,
+          0.0,
+          -0.0,
+          49.3566248235,
+          0.0,
+          -0.0,
+          0.0,
+          49.3566248235
+        ]
+      ]
+    },
+    {
+      "name": "pressures",
+      "source": "parser",
+      "value": [
+        49.3566248235
+      ]
+    },
+    {
+      "name": "virial",
+      "source": "parser",
+      "value": [
+        1.211096342160177,
+        0.0,
+        0.0,
+        -0.0,
+        1.211096342160177,
+        0.0,
+        -0.0,
+        0.0,
+        1.211096342160177
+      ]
+    },
+    {
+      "name": "virials",
+      "source": "parser",
+      "value": [
+        [
+          1.211096342160177,
+          0.0,
+          0.0,
+          -0.0,
+          1.211096342160177,
+          0.0,
+          -0.0,
+          0.0,
+          1.211096342160177
+        ]
+      ]
+    },
+    {
+      "name": "electronic_convergence",
+      "source": "parser",
+      "value": true
+    },
+    {
+      "name": "structure_snapshot",
+      "source": "file",
+      "value": {
+        "atom_count": 2,
+        "cell_parameters": {
+          "a": 3.8166849016447304,
+          "alpha": 60.00000000000001,
+          "b": 3.8166849016447304,
+          "beta": 60.00000000000001,
+          "c": 3.8166849016447304,
+          "gamma": 60.00000000000001
+        },
+        "density": 2.372562022238853,
+        "elements": [
+          "Si"
+        ],
+        "formula": "Si2",
+        "layer_info": null,
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "source": "/tmp/forge-clean-real-scf-20260927/workspace/inputs/STRU",
+        "species_counts": {
+          "Si": 2
+        },
+        "string_info": null,
+        "structure_class": "bulk",
+        "symmetry": {
+          "crystal_system": "cubic",
+          "point_group": "m-3m",
+          "spacegroup_number": 227,
+          "spacegroup_symbol": "Fd-3m"
+        },
+        "vacuum_axes": [],
+        "vacuum_thickness": {},
+        "volume": 39.31370032298773
+      }
+    }
+  ],
+  "operation_id": "123e4567-e89b-42d3-a456-426614174124",
+  "schema_version": "forge.operation-outcome/v1"
+}

@@ -1,0 +1,105 @@
+{
+  "envelope": {
+    "artifacts": [
+      {
+        "availability": "available",
+        "id": "stdout_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stdout.log",
+        "role": "output",
+        "sha256": "70881a7b39e1a76fa1dea158f8a8900f64c2455d86db79fb8d271aa615142f46",
+        "size_bytes": 12153,
+        "stage": "execute"
+      },
+      {
+        "availability": "available",
+        "id": "stderr_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stderr.log",
+        "role": "output",
+        "sha256": "3d4e8586afd33b0672927149910216601c50f7a5a9a68830524bbfa5aeb2615c",
+        "size_bytes": 101,
+        "stage": "execute"
+      }
+    ],
+    "checks": [],
+    "diagnostics": {
+      "artifact_refs": [
+        {
+          "artifact_id": "stdout_log",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174123"
+        },
+        {
+          "artifact_id": "stderr_log",
+          "operation_id": "123e4567-e89b-42d3-a456-426614174123"
+        }
+      ],
+      "env_overrides": {},
+      "extra_args": [],
+      "failure_class": "none",
+      "launcher": [],
+      "mpi_ranks": 1,
+      "normal_end": true,
+      "normal_end_source": "outputs/stdout.log",
+      "omp_threads": 4,
+      "stderr_tail": "Info: Local MPI proc number: 1,OpenMP thread number: 4,Total thread number: 4,Local thread limit: 32",
+      "stdout_tail": " Stress_Func       stress_cc                          1.96   1        1.96   4.43   \n Stress_Func       stress_gga                         1.19   1        1.19   2.70   \n Force_LCAO        ftable                             0.35   1        0.35   0.78   \n Force_LCAO        allocate                           0.02   1        0.02   0.05   \n LCAO_domain       build_ST_new                       0.02   2        0.01   0.05   \n Force_LCAO        cal_pulay_fs_center2               0.02   2        0.01   0.04   \n Gint_interface    cal_gint_force                     0.30   1        0.30   0.67   \n Gint_Tools        cal_dpsir_ylm                      0.08   710      0.00   0.18   \n Gint_Tools        cal_dpsirr_ylm                     0.02   710      0.00   0.04   \n NonlocalNew       cal_force_stress                   0.08   1        0.08   0.17   \n ESolver_KS_LCAO   cal_stress                         0.00   1        0.00   0.00   \n ESolver_KS_LCAO   after_all_runners                  0.00   1        0.00   0.00   \n ModuleIO          write_istate_info                  0.00   1        0.00   0.00   \n------------------------------------------------------------------------------------\n\n\n START  Time  : Mon Sep 28 00:01:18 2026\n FINISH Time  : Mon Sep 28 00:02:06 2026\n TOTAL  Time  : 48\n SEE INFORMATION IN : OUT.ABACUS/",
+      "termination": "exited",
+      "timeout_seconds": 600
+    },
+    "metrics": [
+      {
+        "kind": "runtime",
+        "name": "returncode",
+        "source_artifact_id": null,
+        "unit": null,
+        "value": 0
+      },
+      {
+        "kind": "runtime",
+        "name": "omp_threads",
+        "source_artifact_id": null,
+        "unit": null,
+        "value": 4
+      }
+    ],
+    "operation": "execute",
+    "schema_version": "forge.result/v1",
+    "status": {
+      "collection": "not_collected",
+      "execution": "completed",
+      "scientific": "unassessed"
+    },
+    "warnings": [],
+    "workspace_rel": "workspace"
+  },
+  "observations": [
+    {
+      "name": "returncode",
+      "source": "runtime",
+      "value": 0
+    },
+    {
+      "name": "omp_threads",
+      "source": "runtime",
+      "value": 4
+    },
+    {
+      "name": "failure_class",
+      "source": "runtime",
+      "value": "none"
+    },
+    {
+      "name": "normal_end",
+      "source": "log",
+      "value": true
+    },
+    {
+      "name": "termination",
+      "source": "runtime",
+      "value": "exited"
+    }
+  ],
+  "operation_id": "123e4567-e89b-42d3-a456-426614174123",
+  "schema_version": "forge.operation-outcome/v1"
+}
