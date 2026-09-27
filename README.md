@@ -282,6 +282,7 @@ Forge 只忠实执行单个 prepare/execute/postprocess 操作并返回结构化
 - `abacus-forge vibration prepare|run|post`
 - `abacus-forge phonon prepare|run|post`
 - composite pack 只管理本地子目录和本地 runner；不生成 Slurm/Bohrium/DPDispatcher 配置
+- `elastic post` 会从计划中的 zero/strain 状态与收集到的 stress 做最小二乘拟合并发布 `elastic_tensor.json`、`elastic_fit.json`；数据不足时明确降级为 `unavailable`
 - `phonon` 的 phonopy 能力是可选依赖：`pip install "abacus-forge[phonon]"`
 
 ### 本地 property pack

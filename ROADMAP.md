@@ -74,7 +74,7 @@
 - Stage 5 在全新干净环境执行安装与 import 验证，作为解除 `abacus-agent-tools`、`abacustest` 等 legacy 运行时依赖的发布门禁。
 
 ## 明确延后项
-- `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。
+- `phonon` / `elastic` 等厚工作流只保留本地 pack，不扩展为平台工作流。2026-09-28 起 `elastic post` 可由已收集 strain/stress 拟合弹性张量与工程模量，但仍不接管调度或平台编排。
 - Slurm、Bohrium、DPDispatcher 等调度与平台能力不下沉到 Forge。
 - typed `export` 已作为独立实验性 operation 落地；本 capability 不把 postprocess 结果隐式导出，也不改写 legacy export。replace/merge、binary/archive 和多 operation 聚合仍需单独设计和验证。
 - PyATB properties 和 property/composite 聚合仍需单独设计和验证；nspin=4 handoff 已支持，typed `pyatb-band` band process smoke 已有证据，但现有 PyATB sequence/helper 不构成该 capability 的替代实现，真实 NEB workflow 也仍未验证。
