@@ -2,8 +2,10 @@
 
 ## Scope and candidate
 
-Candidate: `unify/mainline-paimon-20260927` at
-`a9e9d48b888d2fa6f397e44f18f1292998edd157` (clean worktree).
+Code-content commit: `a9e9d48b888d2fa6f397e44f18f1292998edd157` on
+`unify/mainline-paimon-20260927`. The branch tip also carries this docs-only
+evidence commit (`41307c5967cb3fda3b13fe50389a3030c5761b89`); rebuilding at
+that tip produced the identical wheel SHA-256.
 
 This record covers a rebuilt release wheel, wheel metadata gates, and a fresh
 Python 3.13 venv install/import/console/schema probe. It does **not** claim a
