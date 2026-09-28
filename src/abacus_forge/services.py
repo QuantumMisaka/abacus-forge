@@ -10,6 +10,7 @@ from typing import Callable, Protocol, runtime_checkable
 from abacus_forge.collection import collect_contained as collect
 from abacus_forge.preparation import prepare_with_assets
 from abacus_forge.modify import modify_input
+from abacus_forge.prepare_profiles import normalize_parameter_updates, normalize_removals
 from abacus_forge.compatibility_records import unit_manifest, modification_record
 from abacus_forge.service_support import (
     ServiceContext, _with_workspace, _prepare_artifacts, _input_snapshot,
@@ -149,12 +150,13 @@ class _AbacusServiceContext(ServiceContext):
         if not self.validate_input_calculation:
             return
         if isinstance(request, (ScfPrepareRequest, RelaxPrepareRequest, MdPrepareRequest)):
-            values = request.parameters
+            values = normalize_parameter_updates(request.parameters)
             field_name = "parameters"
         elif isinstance(request, (ScfModifyRequest, RelaxModifyRequest, MdModifyRequest)):
-            values = request.input_updates
+            values = normalize_parameter_updates(request.input_updates)
             field_name = "input_updates"
-            if "calculation" in request.remove_parameters:
+            removals = normalize_removals(request.remove_parameters)
+            if "calculation" in removals:
                 raise ForgeSchemaError("remove_parameters cannot include calculation")
         else:
             return
@@ -195,9 +197,9 @@ class _AbacusServiceContext(ServiceContext):
             values = read_input(input_path)
         except (OSError, ValueError) as error:
             raise ForgePreconditionError("inputs/INPUT calculation cannot be read") from error
-        values.update(dict(request.input_updates))  # type: ignore[attr-defined]
-        for key in request.remove_parameters:  # type: ignore[attr-defined]
-            values.pop(str(key), None)
+        values.update(normalize_parameter_updates(request.input_updates))  # type: ignore[attr-defined]
+        for key in normalize_removals(request.remove_parameters):  # type: ignore[attr-defined]
+            values.pop(key, None)
         calculations = serialized_calculation_values(values)
         if len(calculations) != 1 or calculations[0] != task:
             raise ForgeSchemaError(f"serialized INPUT calculation must match capability {task!r}")
@@ -297,8 +299,13 @@ class _ModifyService:
                     self._context.validate_collect_calculation(workspace, task)
                 self._context.validate_modify_serialization(workspace, typed_request, task)
                 before = _input_snapshot(workspace)
-                updates = dict(typed_request.input_updates)  # type: ignore[attr-defined]
-                removed = typed_request.remove_parameters  # type: ignore[attr-defined]
+                updates = normalize_parameter_updates(typed_request.input_updates)  # type: ignore[attr-defined]
+                removed = normalize_removals(typed_request.remove_parameters)  # type: ignore[attr-defined]
+                if set(updates).intersection(removed):
+                    conflict = next(iter(set(updates).intersection(removed)))
+                    raise ForgeSchemaError(
+                        f"parameter {conflict} cannot be updated and removed in one operation"
+                    )
                 modified_files: list[str] = []
                 changes: dict[str, object] = {}
                 if updates or removed:
@@ -308,7 +315,7 @@ class _ModifyService:
                     )
                     modified_files.append("INPUT")
                     changes["INPUT"] = {
-                        "updates": updates, "removed": [str(key) for key in removed or ()],
+                        "updates": updates, "removed": removed,
                     }
                 workspace.write_json(
                     "forge-result.json",

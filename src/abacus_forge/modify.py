@@ -10,6 +10,7 @@ import numpy as np
 from ase import Atoms
 
 from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt
+from abacus_forge.prepare_profiles import normalize_parameter_updates, normalize_removals
 from abacus_forge.perturbation import perturb_structure
 from abacus_forge.structure import AbacusStructure
 
@@ -24,10 +25,15 @@ def modify_input(
 ) -> dict[str, str]:
     """Load, update, optionally write, and return an ABACUS ``INPUT`` mapping."""
     params = _load_input_parameters(source)
-    for key, value in (updates or {}).items():
+    normalized_updates = normalize_parameter_updates(updates)
+    normalized_removals = normalize_removals(remove_keys)
+    if normalized_removals and set(normalized_updates).intersection(normalized_removals):
+        conflict = next(iter(set(normalized_updates).intersection(normalized_removals)))
+        raise ValueError(f"parameter {conflict} cannot be updated and removed in one operation")
+    for key, value in normalized_updates.items():
         params[str(key)] = str(value)
-    for key in remove_keys or ():
-        params.pop(str(key), None)
+    for key in normalized_removals:
+        params.pop(key, None)
     if destination is not None:
         write_input(destination, params, header=header)
     return params

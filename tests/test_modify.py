@@ -41,6 +41,37 @@ def test_modify_input_accepts_mapping_source() -> None:
     }
 
 
+def test_modify_input_normalizes_legacy_energy_cutoff_alias(tmp_path) -> None:
+    source = tmp_path / "INPUT"
+    source.write_text("INPUT_PARAMETERS\ncalculation scf\nsmearing_sigma 0.02\n", encoding="utf-8")
+    destination = tmp_path / "INPUT.modified"
+
+    params = modify_input(
+        source,
+        updates={"ec_cut": 80},
+        destination=destination,
+    )
+
+    assert params["ecutwfc"] == "80"
+    assert "ec_cut" not in params
+    assert "ecutwfc 80" in destination.read_text(encoding="utf-8")
+
+
+def test_modify_input_removal_maps_legacy_energy_cutoff_alias(tmp_path) -> None:
+    source = tmp_path / "INPUT"
+    source.write_text("INPUT_PARAMETERS\ncalculation scf\necutwfc 80\n", encoding="utf-8")
+
+    params = modify_input(source, remove_keys=["ec_cut"])
+
+    assert "ecutwfc" not in params
+    assert "ec_cut" not in params
+
+
+def test_modify_input_rejects_conflicting_legacy_energy_cutoff_alias() -> None:
+    with pytest.raises(ValueError, match="conflicts with canonical parameter"):
+        modify_input({"calculation": "scf"}, updates={"ec_cut": 80, "ecutwfc": 100})
+
+
 def test_modify_stru_applies_composed_edits_and_writes_destination(tmp_path) -> None:
     atoms = Atoms(
         symbols=["Si", "O"],

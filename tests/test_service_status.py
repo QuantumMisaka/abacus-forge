@@ -1466,7 +1466,7 @@ def test_prepare_and_modify_envelopes_retain_inputs_and_changes(tmp_path: Path) 
         "ATOMIC_POSITIONS\nDirect\nSi\n0\n1\n0 0 0 m 1 1 1\n", encoding="utf-8"
     )
     prepared = services.prepare_scf(_request(ScfPrepareRequest, "scf", "123e4567-e89b-42d3-a456-426614174013", structure_path_rel="source.STRU"))
-    modified = services.modify_scf(_request(ScfModifyRequest, "scf", "123e4567-e89b-42d3-a456-426614174014", input_updates={"ecutwfc": 90}))
+    modified = services.modify_scf(_request(ScfModifyRequest, "scf", "123e4567-e89b-42d3-a456-426614174014", input_updates={"ec_cut": 90}))
     assert isinstance(prepared, OperationOutcome)
     assert {artifact.path_rel for artifact in prepared.envelope.artifacts} >= {"inputs/INPUT", "inputs/STRU", "inputs/KPT", "forge-unit.json"}
     assert isinstance(modified, OperationOutcome)

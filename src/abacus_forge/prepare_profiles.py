@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from abacus_forge.structure_recognition import StructureMetadata
@@ -11,7 +12,7 @@ _COMMON_DEFAULTS: dict[str, Any] = {"dft_functional": "pbe"}
 # ABACUS has retired a small number of historical spellings.  Normalize the
 # aliases at the preparation boundary so canonical values survive in INPUT and
 # SAI execution cannot fail on a key the current engine rejects.
-_PARAMETER_ALIASES: dict[str, str] = {"ec_cut": "ecutwfc"}
+PARAMETER_ALIASES: dict[str, str] = {"ec_cut": "ecutwfc"}
 
 
 TASK_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -56,15 +57,7 @@ def build_task_parameters(
     normalized_task = (task or "scf").lower()
     if normalized_task not in TASK_DEFAULTS:
         raise ValueError(f"unsupported task: {normalized_task}")
-    raw_supplied = dict(parameters or {})
-    for alias, canonical in _PARAMETER_ALIASES.items():
-        if alias not in raw_supplied:
-            continue
-        value = raw_supplied.pop(alias)
-        if canonical in raw_supplied:
-            raise ValueError(f"parameter {alias} conflicts with canonical parameter {canonical}")
-        raw_supplied[canonical] = value
-    supplied = {str(key).lower(): value for key, value in raw_supplied.items()}
+    supplied = normalize_parameter_updates(parameters)
     if normalized_task == "dos":
         forbidden = sorted(_FORBIDDEN_DOS_PARAMETERS.intersection(supplied))
         if forbidden:
@@ -89,6 +82,29 @@ def build_task_parameters(
         basis_type = str(merged.get("basis_type", "pw")).lower()
         merged["out_dos"] = 2 if include_pdos and basis_type == "lcao" else 1
     return merged
+
+
+def normalize_parameter_updates(parameters: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Normalize retired spellings and canonicalize INPUT parameter keys."""
+    supplied = {str(key).lower(): value for key, value in dict(parameters or {}).items()}
+    for alias, canonical in PARAMETER_ALIASES.items():
+        if alias not in supplied:
+            continue
+        value = supplied.pop(alias)
+        if canonical in supplied:
+            raise ValueError(
+                f"parameter {alias} conflicts with canonical parameter {canonical}"
+            )
+        supplied[canonical] = value
+    return supplied
+
+
+def normalize_removals(keys: Iterable[str] | None) -> list[str]:
+    """Normalize retired spellings in INPUT removal requests."""
+    return sorted({
+        PARAMETER_ALIASES.get(str(key).lower(), str(key).lower())
+        for key in keys or ()
+    })
 
 
 def _truthy(value: Any) -> bool:
