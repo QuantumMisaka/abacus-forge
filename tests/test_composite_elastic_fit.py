@@ -35,7 +35,8 @@ def _rows_for_cubic_tensor() -> list[dict]:
             if abs(strain[2, 2]) > 0:
                 stress_3x3[0, 0] = 100.0 * strain[2, 2]
                 stress_3x3[1, 1] = 100.0 * strain[2, 2]
-        rows.append({"strain": strain.tolist(), "stress": stress_3x3.tolist()})
+        # Forge collector exposes raw ABACUS kbar; helper converts sign/units.
+        rows.append({"strain": strain.tolist(), "stress": (-10.0 * stress_3x3).tolist()})
     return rows
 
 

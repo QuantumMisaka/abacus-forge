@@ -162,7 +162,11 @@ def _stress_voigt(value: np.ndarray) -> np.ndarray:
 
 
 def _fit_elastic(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Fit an elastic tensor by linear least squares from strain/stress pairs."""
+    """Fit an elastic tensor from strain and Forge-collected kbar stress pairs.
+
+    Forge collector stress is raw ABACUS kbar.  Legacy elastic fitting uses
+    ``Stress(-0.1 * kbar)`` to obtain GPa and the thermodynamic sign convention.
+    """
     complete = [
         row for row in rows
         if row.get("strain") is not None and row.get("stress") is not None
@@ -180,7 +184,7 @@ def _fit_elastic(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
 
     strain_rows = np.asarray([_strain_voigt(row["strain"]) for row in deformed])
     stress_rows = np.asarray([
-        _stress_voigt(row["stress"])
+        np.asarray(_stress_voigt(row["stress"]), dtype=float) * -0.1
         for row in deformed
     ])
     voigt, *_ = np.linalg.lstsq(strain_rows, stress_rows, rcond=None)
