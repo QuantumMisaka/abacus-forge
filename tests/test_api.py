@@ -41,6 +41,23 @@ def test_prepare_task_profile_overrides_pbe_default(tmp_path: Path) -> None:
     assert read_input(input_override_workspace.inputs_dir / "INPUT")["dft_functional"] == "hse06"
 
 
+def test_prepare_normalizes_legacy_energy_cutoff_alias(tmp_path: Path) -> None:
+    workspace = prepare(tmp_path / "legacy-cutoff", task="scf", parameters={"ec_cut": 80})
+
+    values = read_input(workspace.inputs_dir / "INPUT")
+    assert values["ecutwfc"] == "80"
+    assert "ec_cut" not in values
+
+
+def test_prepare_rejects_conflicting_legacy_energy_cutoff_alias(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="conflicts with canonical parameter"):
+        prepare(
+            tmp_path / "conflicting-cutoff",
+            task="scf",
+            parameters={"ec_cut": 80, "ecutwfc": 100},
+        )
+
+
 def test_prepare_creates_task_aware_workspace_with_assets(tmp_path: Path) -> None:
     structure = Atoms(
         symbols=["Si", "Si"],

@@ -8,6 +8,12 @@ from abacus_forge.structure_recognition import StructureMetadata
 
 _COMMON_DEFAULTS: dict[str, Any] = {"dft_functional": "pbe"}
 
+# ABACUS has retired a small number of historical spellings.  Normalize the
+# aliases at the preparation boundary so canonical values survive in INPUT and
+# SAI execution cannot fail on a key the current engine rejects.
+_PARAMETER_ALIASES: dict[str, str] = {"ec_cut": "ecutwfc"}
+
+
 TASK_DEFAULTS: dict[str, dict[str, Any]] = {
     "scf": {"calculation": "scf"},
     "relax": {"calculation": "relax", "cal_force": 1, "cal_stress": 1},
@@ -50,7 +56,15 @@ def build_task_parameters(
     normalized_task = (task or "scf").lower()
     if normalized_task not in TASK_DEFAULTS:
         raise ValueError(f"unsupported task: {normalized_task}")
-    supplied = dict(parameters or {})
+    raw_supplied = dict(parameters or {})
+    for alias, canonical in _PARAMETER_ALIASES.items():
+        if alias not in raw_supplied:
+            continue
+        value = raw_supplied.pop(alias)
+        if canonical in raw_supplied:
+            raise ValueError(f"parameter {alias} conflicts with canonical parameter {canonical}")
+        raw_supplied[canonical] = value
+    supplied = {str(key).lower(): value for key, value in raw_supplied.items()}
     if normalized_task == "dos":
         forbidden = sorted(_FORBIDDEN_DOS_PARAMETERS.intersection(supplied))
         if forbidden:
