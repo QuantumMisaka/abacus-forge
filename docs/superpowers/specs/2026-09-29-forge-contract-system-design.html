@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ABACUS-Forge Contract System Design</title>
+<style>
+body{font-family:sans-serif;max-width:860px;margin:2em auto;padding:0 1em;line-height:1.6}
+h1,h2,h3{color:#1a1a2e}
+table{border-collapse:collapse;width:100%;margin:1em 0}
+th,td{border:1px solid #ccc;padding:0.5em;text-align:left}
+th{background:#f0f0f0}
+.status{font-weight:bold}
+.decision{margin:1em 0;padding:1em;background:#f8f8f8;border-left:4px solid #1a1a2e}
+</style>
+</head>
+<body>
+<h1>ABACUS-Forge Contract System 设计</h1>
+<h2>状态与元数据</h2>
+<ul>
+<li><strong>状态</strong>：Draft — 2026-09-29；待本人确认后进入 design freeze。</li>
+<li><strong>上位规范</strong>：<a href="2026-09-01-forge-contract-first-rearchitecture-design.html">契约优先重构 SPEC</a>；<a href="2026-09-02-forge-service-status-migration-design.html">Service/Status SPEC</a>。本 SPEC 不修改 v1 请求/结果/workspace 语义。</li>
+<li><strong>取代</strong>：<a href="2026-09-29-forge-io-contract-knowledge-base-design.html">I/O Contract Knowledge Base 设计</a>（Draft，扩展为其 M1 模块）。</li>
+<li><strong>Owner</strong>：ABACUS-Forge / Paimon v1.3 maintainers</li>
+</ul>
+
+<h2>目录</h2>
+<ol>
+<li><a href="#summary">摘要</a></li>
+<li><a href="#motivation">动机与问题</a></li>
+<li><a href="#architecture">系统架构</a></li>
+<li><a href="#m1">M1: 契约知识库</a></li>
+<li><a href="#m2">M2: 契约发现 API</a></li>
+<li><a href="#m3">M3: 契约验证框架</a></li>
+<li><a href="#m4">M4: 契约查询服务</a></li>
+<li><a href="#upstream">上游感知边界</a></li>
+<li><a href="#agent">ABACUS 开发 Agent 边界</a></li>
+<li><a href="#testing">测试与验收</a></li>
+<li><a href="#migration">迁移与发布</a></li>
+<li><a href="#risks">风险与开放项</a></li>
+</ol>
+
+<h2 id="summary">摘要</h2>
+<p>Forge Contract System 是 Forge 的知识基础设施层，为上层 Agent 提供结构化的 ABACUS 输入/输出/工件/科学量契约元数据。它由四个模块组成：M1（契约知识库）、M2（契约发现 API）、M3（契约验证框架）和 M4（契约查询服务）。该系统使 Forge 从"能执行 ABACUS 计算"升级为"能解释 ABACUS 计算契约"，是 Paimon v1.3 Agent 推理的知识基座。</p>
+
+<h2 id="motivation">动机与问题</h2>
+<table>
+<tr><th>问题</th><th>影响</th></tr>
+<tr><td>Agent 无法从 Forge 推理"计算带隙需要什么 ABACUS 输入"</td><td>每次新任务需要人工查文档</td></tr>
+<tr><td>ABACUS 上游变更影响面不可评估</td><td>只能 reactive 修 break</td></tr>
+<tr><td>Capability 之间的依赖关系（band 依赖 SCF）未声明</td><td>上层 workflow 不知道执行顺序</td></tr>
+<tr><td>同一物理量的多格式等价关系（TOTAL ENERGY = !FINAL_ETOT_IS）未声明</td><td>等价关系只在覆盖链代码中隐式存在</td></tr>
+<tr><td>指标单位不完整（仅 fermi_energy 有 _metric_units）</td><td>上层无法做量纲一致性检查</td></tr>
+<tr><td>Forge 覆盖边界不明确（哪些 ABACUS 输出是有意不覆盖的）</td><td>维护者和 Agent 不知道边界在哪</td></tr>
+</table>
+
+<h2 id="architecture">系统架构</h2>
+<pre>
+┌─ Forge Contract System ─────────────────────────────────────────┐
+│                                                                  │
+│  M1: Contract Knowledge Base                                    │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ io_contracts.json                                        │   │
+│  │ ├─ capabilities: {scf, relax, cell-relax, md, band,      │   │
+│  │ │   dos, pyatb-band, atst-neb, export}                   │   │
+│  │ │   ├─ input: {required, defaults, optional}              │   │
+│  │ │   ├─ prerequisites: [capability_names]                  │   │
+│  │ │   ├─ outputs: {metric: {unit, kind, markers,            │   │
+│  │ │   │   abacus_source, requires_input}}                   │   │
+│  │ │   └─ artifacts: [artifact_types]                        │   │
+│  │ ├─ convergence_markers: {positive, negative, relax}      │   │
+│  │ ├─ input_units: {param: unit}                             │   │
+│  │ ├─ common_artifacts: {type: {pattern, parser, columns}}  │   │
+│  │ ├─ out_of_scope: {artifact: reason}                       │   │
+│  │ └─ unit_registry: {canonical_units, aliases}              │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│       ▲ validated by M3         ▼ served by M2/M4              │
+│                                                                  │
+│  M2: Discovery API                                              │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ capabilities_document() → 扩展 contracts 字段              │   │
+│  │ request_schema_document() → 扩展 input/output 元数据       │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  M3: Validation Framework                                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ test_io_contract_consistency.py                           │   │
+│  │ ├─ TASK_DEFAULTS ↔ knowledge base coverage                │   │
+│  │ ├─ _METRIC_PATTERNS ↔ knowledge base outputs              │   │
+│  │ ├─ convergence patterns ↔ knowledge base                  │   │
+│  │ ├─ units ↔ canonical unit registry                        │   │
+│  │ └─ prerequisites ↔ TASK_DEFAULTS task graph               │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  M4: Query Service (Phase C)                                    │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ forge.contract.query(operation, query_type, query)        │   │
+│  │ ├─ get_capability: capability → full contract             │   │
+│  │ ├─ get_metric: metric_name → units, markers, capabilities │   │
+│  │ ├─ get_impact: marker/pattern → affected capabilities     │   │
+│  │ └─ get_dependencies: capability → prerequisite graph      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+         │
+         ▼ 消费者
+┌─ 上层 ──────────────────────────────────────────────────────────┐
+│  Paimon v1.3 adapter（科学推理：哪些计算回答什么科学问题）         │
+│  ABACUS 上游维护者（契约变更影响报告）                             │
+│  Forge 维护者（parser 扩展的完整性检查）                           │
+└──────────────────────────────────────────────────────────────────┘
+</pre>
+
+<h2 id="m1">M1: 契约知识库</h2>
+<p>文件：<code>src/abacus_forge/io_contracts.json</code>。Schema version <code>forge.io-contract/v1</code>。</p>
+<p>Schema 详情见已提交的 <a href="2026-09-29-forge-io-contract-knowledge-base-design.html">I/O Contract Knowledge Base 设计</a>，本 SPEC 扩展以下内容：</p>
+<h3>新增：out_of_scope 节</h3>
+<pre>
+"out_of_scope": {
+  "chg_ini.cube": "Initial charge density; not consumed by any Forge capability",
+  "chgg{step}_ini.cube": "Geometry-step charge density; not consumed by any Forge capability",
+  "tau.cube / taus*.cube": "Meta-GGA kinetic energy density; Forge does not support Meta-GGA",
+  "elfs*.cube": "ELF spin component; ELF pack discovers *.cube but does not distinguish spin",
+  "WFC_NAO_K*.dat": "LCAO wavefunction coefficients; outside Forge capability scope",
+  "WFN_PW": "Plane wave wavefunction; outside Forge capability scope",
+  "mulliken.txt": "Mulliken charge analysis; v1.2 has parser, Forge does not yet",
+  "eig_occ.txt": "Eigenvalues + occupations; abacuslite reader requires it, native parser does not",
+  "EIGENVAL": "Alternative eigenvalue file; not consumed",
+  "spread.out": "Wannier spread; outside Forge capability scope",
+  "vdw3_info.json": "vdW correction info; outside Forge capability scope",
+  "deepks_*": "DeepKS labels; outside Forge capability scope",
+  "{suffix}-CHARGE-DENSITY.restart": "Restart charge file; managed by upper layer"
+}
+</pre>
+<h3>新增：unit_registry 节（从 v1.2 abacus_unit_contract.py 移植）</h3>
+<pre>
+"unit_registry": {
+  "canonical_units": ["1","eV","Ry","K","s","Bohr","Bohr^-1","Angstrom",
+    "Angstrom^3","eV/Angstrom","Ry/Bohr","kbar","GPa","THz","fs",
+    "Angstrom^2","Angstrom^2/fs","eV/cell","eV/atom","cm^-1","m^-1",
+    "eV/K","J/(mol*K)","mu_B","e","degree","MiB","%"],
+  "aliases": {"count":"1","index":"1","dimensionless":"1",
+    "angstrom^3":"Angstrom^3","Å^3":"Angstrom^3","Å³":"Angstrom^3", ...},
+  "input_units": {"ecutwfc":"Ry","scf_thr":"1","md_dt":"fs",
+    "md_tfirst":"K","md_tlast":"K"}
+}
+</pre>
+
+<h2 id="m2">M2: 契约发现 API</h2>
+<p>扩展现有 <code>discovery.py</code> 的两个函数，使 Agent 能从 CLI/API 获取完整契约元数据。</p>
+<h3>capabilities_document() 扩展</h3>
+<p>每个 capability entry 新增 <code>contracts</code> 字段（向后兼容，不影响现有消费者）：</p>
+<pre>
+{
+  "name": "band",
+  "maturity": "experimental",
+  "operations": ["postprocess"],
+  "contracts": {
+    "input_required": {"calculation": "nscf", "init_chg": "file", "out_band": 1},
+    "input_defaults": {},
+    "prerequisites": ["scf"],
+    "metrics": {
+      "band_gap": {"unit": "eV", "kind": "reported"},
+      "fermi_energy": {"unit": "eV", "kind": "reported"}
+    },
+    "artifacts": ["BANDS_*.dat"],
+    "abacus_source": "source/source_io/module_parameter/input_parameter.h#calculation"
+  }
+}
+</pre>
+
+<h3>request_schema_document() 扩展</h3>
+<p>每个 operation 的 request schema 新增 <code>contracts</code> 字段，携带该 operation 涉及的 ABACUS 参数元数据。</p>
+
+<h2 id="m3">M3: 契约验证框架</h2>
+<p>新增 <code>tests/test_io_contract_consistency.py</code>：</p>
+<table>
+<tr><th>测试</th><th>验证内容</th></tr>
+<tr><td><code>test_task_defaults_covered</code></td><td>每个 <code>TASK_DEFAULTS</code> capability → 知识库有 entry 且 <code>input.required</code> 匹配</td></tr>
+<tr><td><code>test_metric_patterns_covered</code></td><td>每个 <code>_METRIC_PATTERNS</code> 指标名 → 至少一个 capability 的 <code>outputs</code> 中有声明</td></tr>
+<tr><td><code>test_convergence_markers_consistent</code></td><td>知识库 convergence markers ↔ <code>_POSITIVE/_NEGATIVE_CONVERGENCE_PATTERNS</code></td></tr>
+<tr><td><code>test_units_valid</code></td><td>所有 <code>unit</code> ∈ canonical machine units</td></tr>
+<tr><td><code>test_prerequisites_declared</code></td><td><code>band</code>/<code>dos</code> 声明 <code>prerequisites: ["scf"]</code></td></tr>
+<tr><td><code>test_abacus_source_anchors</code></td><td>每个 <code>abacus_source</code> 路径格式合法（不做文件存在性检查）</td></tr>
+<tr><td><code>test_out_of_scope_documented</code></td><td><code>out_of_scope</code> 中声明的 artifact 在 Forge 源码中确实无对应解析</td></tr>
+</table>
+
+<h2 id="m4">M4: 契约查询服务</h2>
+<p>新增 typed operation <code>forge.contract.query</code>（Phase C，在 M1–M3 稳定后实施）。这不是一个 ABACUS 计算 operation，而是一个元数据查询 operation。</p>
+<h3>查询类型</h3>
+<table>
+<tr><th>query_type</th><th>输入</th><th>输出</th><th>用途</th></tr>
+<tr><td><code>get_capability</code></td><td>capability name</td><td>该 capability 的完整契约</td><td>Agent 设计计算前查询</td></tr>
+<tr><td><code>get_metric</code></td><td>metric name</td><td>units, markers, 使用该指标的 capabilities</td><td>上层做量纲检查</td></tr>
+<tr><td><code>get_impact</code></td><td>ABACUS marker/pattern</td><td>受影响的 capabilities + metrics</td><td>上游变更影响评估</td></tr>
+<tr><td><code>get_dependencies</code></td><td>capability name</td><td>prerequisite 闭包图</td><td>workflow 排序</td></tr>
+<tr><td><code>get_out_of_scope</code></td><td>（无参数）</td><td>完整 out_of_scope 列表 + 理由</td><td>边界确认</td></tr>
+</table>
+<div class="decision">
+<p><strong>边界约束：M4 是数据查询，不是科学推理。</strong>它返回结构化契约事实（"band 依赖 scf"），不做科学建议（"你应该先跑 SCF"）。科学推理由上层 Agent 基于 M4 返回的事实自行完成。</p>
+</div>
+
+<h2 id="upstream">上游感知边界</h2>
+<p>Forge Contract System 不包含独立的"ABACUS 开发 Agent"。其上游感知策略为：</p>
+<table>
+<tr><th>层次</th><th>职责</th><th>归属</th></tr>
+<tr><td>ABACUS 物理功能开发（DFT 求解器、赝势方法、新算法）</td><td>开源社区全权负责</td><td>abacus-develop 仓</td></tr>
+<tr><td>ABACUS 接口契约变更检测</td><td>M3 一致性测试 + real-smoke gates 自动检测</td><td>Forge 仓</td></tr>
+<tr><td>变更影响评估</td><td>M4 get_impact 查询：标记 → 受影响 capability/metric 列表</td><td>Forge 仓</td></tr>
+<tr><td>上游 issue 辅助起草</td><td>薄脚本：从 M4 查询结果生成结构化 issue 模板（非 Agent）</td><td>可选，按需</td></tr>
+<tr><td>Forge parser 适配</td><td>扩展 regex pattern + 更新知识库 markers</td><td>Forge 仓</td></tr>
+<tr><td>生态需求向上游表达</td><td>知识库 <code>out_of_scope</code> 节作为需求文档基础</td><td>按需</td></tr>
+</table>
+
+<h2 id="agent">ABACUS 开发 Agent 边界</h2>
+<div class="decision">
+<p><strong>Forge 不需要成为 ABACUS 开发 Agent，但 Contract System 是 ABACUS 开发 Agent 的知识基座。</strong></p>
+<p>三个层级的判断：</p>
+<ul>
+<li><strong>L1: 契约数据暴露（M1+M2）</strong> — Forge 内。Agent 可获取结构化的 capability → INPUT → OUTPUT → metric → unit 映射。这是 Forge 作为"Agent 可消费基座"的职责。</li>
+<li><strong>L2: 契约查询（M4）</strong> — Forge 内。确定性结构化数据查询（"查表回答问题"），不涉及科学推理。</li>
+<li><strong>L3: 科学计算设计助手</strong> — Forge 外。Agent 问"我想计算 Si 的带隙"→ 系统返回完整 INPUT + workflow plan。这是科学推理，属于 Paimon adapter 或独立 Agent 层。</li>
+</ul>
+</div>
+
+<h2 id="testing">测试与验收</h2>
+<table>
+<tr><th>模块</th><th>验收信号</th><th>门禁</th></tr>
+<tr><td>M1</td><td>JSON schema 合法、所有 capability/metric/artifact 已覆盖、单位合法</td><td>默认离线 pytest</td></tr>
+<tr><td>M2</td><td>capabilities_document() 输出包含 contracts 且向后兼容</td><td>默认离线 pytest</td></tr>
+<tr><td>M3</td><td>7 项一致性测试全部通过</td><td>默认离线 pytest</td></tr>
+<tr><td>M4</td><td>5 种 query_type 的正确性和边界测试</td><td>默认离线 pytest</td></tr>
+</table>
+
+<h2 id="migration">迁移与发布</h2>
+<ol>
+<li><strong>Phase A（M1 + M3）</strong>：编写 io_contracts.json 首版；编写一致性测试；默认门禁通过。</li>
+<li><strong>Phase B（M2）</strong>：扩展 capabilities_document() 暴露 contracts；API/CLI parity 测试。</li>
+<li><strong>Phase C（M4）</strong>：实现 contract.query operation；CLI + Python API 暴露。</li>
+<li><strong>后续</strong>：每新增 capability/parser pattern 时同步更新知识库；上游 ABACUS 新版本发布时更新 abacus_source 锚点和 markers。</li>
+</ol>
+
+<h2 id="risks">风险与开放项</h2>
+<ul>
+<li><strong>维护成本</strong>：由一致性测试在 CI 中强制，不依赖人工记忆。</li>
+<li><strong>ABACUS 源码锚点漂移</strong>：<code>abacus_source</code> 是文档性参考，失效不影响 parser 运行。</li>
+<li><strong>M4 与 Forge typed operation 的关系</strong>：M4 是元数据查询 operation，不是 ABACUS 计算 operation。它的 request/result schema 需要独立设计，可能引入新的 operation type（区别于 ABACUS 相关的 prepare/execute/collect 等）。具体 schema 在 M4 PLAN 中确定。</li>
+<li><strong>与 v1.2 知识库的关系</strong>：v1.2 的 Openknowledge RAG 系统服务 Agent 科学问答（不同用途）。Contract System 服务工程推理（本 SPEC 范围）。两者互补，不替代。</li>
+</ul>
+
+<p><em>本地 SPEC 是规范源；远程审阅副本如有，仅为非规范镜像。</em></p>
+</body>
+</html>
