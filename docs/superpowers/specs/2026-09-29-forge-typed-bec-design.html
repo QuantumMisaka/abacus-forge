@@ -103,8 +103,9 @@ bec/disp_atom001_x_plus/
 </div>
 
 <div class="decision">
-<p><strong>决策 2：NSCF 阶段通过电荷文件路径引用 SCF 产物。</strong></p>
-<p>NSCF INPUT 的 <code>init_chg</code> 设为 <code>file</code>；同时 <code>init_chg_file</code>（如果 ABACUS 支持该参数）或不设，让 ABACUS 从默认输出路径读取。stage 子目录在 SCF 执行完成后，由 pack runner 将 SCF 输出目录的电荷文件（<code>SPIN*_CHARGE.cube</code> 或 <code>SPIN*_CHARGE.hdf5</code>）复制到各 NSCF stage 的输出目录（或通过符号链接），确保 ABACUS 能找到。</p>
+<p><strong>决策 2：SCF → NSCF 电荷文件发现与传递（含 nspin=1/2）。</strong></p>
+<p>SCF 阶段执行完成后，pack runner 在 SCF stage 的 ABACUS 输出目录中以 glob 模式 <code>SPIN*_CHARGE.*</code> 发现全部电荷密度文件（nspin=1 通常产生 1 个，nspin=2 产生 2 个；后缀为 <code>.cube</code> 或 <code>.hdf5</code> 由 ABACUS 版本决定）。发现的全部电荷文件以 <code>shutil.copy2</code> 复制到每个 NSCF stage 的输出目录中，保持文件名不变。NSCF INPUT 的 <code>init_chg</code> 设为 <code>file</code>，ABACUS 按默认路径约定从输出目录读取。未发现任何电荷文件时，pack runner 将该子任务的后续 NSCF 阶段标记为 <code>failed</code> 并记录诊断，不启动 NSCF 进程。</p>
+<p>该发现-复制规则同时覆盖 nspin=1 和 nspin=2，不需要调用方区分。Forge 不判断电荷文件的物理合理性；只负责文件存在性和复制。</p>
 <p><strong>替代方案（不采用）</strong>：所有阶段共用一个 OUT 目录——破坏 workspace containment 和 per-stage artifact 归属。</p>
 </div>
 
@@ -224,8 +225,8 @@ Z*_{atom, direction→axis} = [P_plus[N] − P_minus[N]] / (2·δ_bohr)
 <ul>
 <li><strong>ABACUS 版本差异</strong>：LTS v3.10.1 与 develop 的 berry phase 输出格式如存在差异，须在双轨 parity 中发现并正向断言。当前未发现差异。</li>
 <li><strong>极性/非极性体系</strong>：本 SPEC 假设调用方选择适当的 k-mesh 和位移步长以获得物理合理的 BEC；Forge 不做科学判断。</li>
-<li><strong>nspin=2</strong>：自旋极化体系的 SCF 产生 <code>SPIN1_CHARGE.cube</code> + <code>SPIN2_CHARGE.cube</code>；NSCF 需同时读取两份。当前实现须验证此路径。</li>
-<li><strong>PAW / ultrasoft PP</strong>：<code>uspp_support.cpp:44</code> 明确 <code>berry_phase=true is not supported</code> for USPP。调用方需使用 NC 或 PAW PP（视 ABACUS 版本支持而定）。Forge prepare 不自动拦截此组合，但 real-smoke 在此处会获得 ABACUS 自身的报错。</li>
+
+<li><strong>PP 类型兼容</strong>：USPP 赝势不支持 <code>berry_phase=true</code>（<code>uspp_support.cpp:44</code>）。Forge prepare 不对此组合做前置校验；ABACUS 进程自身在启动时拒绝并返回错误，Forge 将其如实记录为 execution failed 与诊断。由 ABACUS 自身承担输入合法性校验是更诚实的边界。</li>
 <li><strong>orbital/PP 路径</strong>：stage 子目录的 INPUT 中 <code>pseudo_dir</code>/<code>orbital_dir</code> 须指向 stage 子目录自身的 <code>inputs/</code>（Forge prepared 格式，PP/ORB 在 inputs/ 内部），由 <code>_copy_auxiliary_inputs</code> 自然处理。</li>
 </ul>
 
