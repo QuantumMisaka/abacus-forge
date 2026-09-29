@@ -55,6 +55,7 @@ _POSITIVE_CONVERGENCE_PATTERNS = {
 }
 
 _NEGATIVE_CONVERGENCE_PATTERNS = {
+    "convergence_not_achieved": re.compile(r"\bconvergence\s+has\s+not\s+been\s+achieved\b", re.IGNORECASE),
     "scf_not_converged": re.compile(r"\bSCF\s+NOT\s+CONVERGED\b", re.IGNORECASE),
     "not_converged": re.compile(r"\bnot\s+converged\b", re.IGNORECASE),
 }
@@ -166,10 +167,20 @@ def collect_abacus_metrics(
         if main_source is not None:
             metric_origins["total_energy"] = main_source
     positive_matches, negative_matches = _collect_convergence_matches(main_content)
+    # Keep the last observed SCF outcome separate from the conservative
+    # whole-log convergence metric (which retains any failure evidence).
+    ordered_matches = [
+        (match.start(), converged)
+        for patterns, converged in ((_POSITIVE_CONVERGENCE_PATTERNS, True),
+                                    (_NEGATIVE_CONVERGENCE_PATTERNS, False))
+        for pattern in patterns.values()
+        for match in pattern.finditer(main_content)
+    ]
     diagnostics: dict[str, Any] = {
         "log_sources": len([blob for blob in (main_log_text, output_log_text) if blob]),
         "matched_converged_markers": positive_matches,
         "matched_nonconverged_markers": negative_matches,
+        "last_scf_converged": max(ordered_matches)[1] if ordered_matches else None,
         "warnings": [],
         "report_json_absent": [],
     }
@@ -215,11 +226,15 @@ def collect_abacus_metrics(
     if time_path and time_path.exists():
         try:
             payload = json.loads(time_path.read_text(encoding="utf-8"))
-            metrics["total_time"] = payload.get("total")
             diagnostics["time_json"] = str(time_path)
-            if payload.get("total") is not None:
+            if payload == {}:
+                # An empty document carries no timing fact; retain stdout.
+                pass
+            elif payload.get("total") is not None:
+                metrics["total_time"] = payload["total"]
                 metric_origins["total_time"] = str(time_path)
             else:
+                metrics["total_time"] = None
                 # The JSON artifact still follows the legacy assignment
                 # behavior, but it did not provide a metric value.  Do not
                 # leave an earlier output-log provenance attached to None.

@@ -204,7 +204,7 @@ def test_collect_sidecar_tracks_output_fallback_and_time_json_override(tmp_path:
     assert result.diagnostics["time_json"] == str(workspace.outputs_dir / "time.json")
 
 
-@pytest.mark.parametrize("payload", [{"total": None}, {}])
+@pytest.mark.parametrize("payload", [{"total": None}, {"other": 1}])
 def test_collect_time_json_without_total_drops_stale_output_provenance(
     tmp_path: Path, payload: dict[str, object]
 ) -> None:
@@ -221,6 +221,16 @@ def test_collect_time_json_without_total_drops_stale_output_provenance(
     metric = next(item for item in envelope.metrics if item.name == "total_time")
     assert metric.source_artifact_id is None
     assert metric.unit is None
+
+
+def test_collect_empty_time_json_preserves_stdout_timing(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "empty-time").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/out.log", "total 12.5\n")
+    workspace.write_json("outputs/time.json", {})
+    result = collect(workspace)
+    assert result.metrics["total_time"] == pytest.approx(12.5)
+    assert result.metric_origins["total_time"] == str(workspace.outputs_dir / "out.log")
 
 
 def test_typed_scf_projection_reports_repository_native_final_energy(tmp_path: Path) -> None:
@@ -466,3 +476,26 @@ def test_collect_omits_relax_steps_without_marker(tmp_path: Path) -> None:
     result = collect(workspace)
 
     assert "relax_steps" not in result.metrics
+
+
+@pytest.mark.parametrize('message', ['convergence has NOT been achieved!', 'convergence has not been achieved'])
+def test_collect_preserves_native_negative_convergence_evidence(tmp_path, message):
+    workspace = Workspace(tmp_path / 'negative').ensure_layout()
+    workspace.write_text('inputs/INPUT', 'INPUT_PARAMETERS\ncalculation scf\n')
+    workspace.write_text('outputs/OUT.ABACUS/running_scf.log', message + '\n Total  Time  : 1\n')
+    result = collect(workspace)
+    assert result.metrics['converged'] is False
+    assert 'convergence_not_achieved' in result.diagnostics['matched_nonconverged_markers']
+
+
+@pytest.mark.parametrize('last_converged', [True, False])
+def test_last_scf_fact_preserves_order_without_weakening_aggregate(tmp_path: Path, last_converged: bool) -> None:
+    workspace = Workspace(tmp_path / 'ordered-scf').ensure_layout()
+    workspace.write_text('inputs/INPUT', 'INPUT_PARAMETERS\ncalculation scf\n')
+    positive = 'charge density convergence is achieved\n'
+    negative = 'convergence has NOT been achieved!\n'
+    workspace.write_text('outputs/OUT.ABACUS/running_scf.log',
+                         negative + positive if last_converged else positive + negative)
+    result = collect(workspace)
+    assert result.diagnostics['last_scf_converged'] is last_converged
+    assert result.metrics['converged'] is False
