@@ -76,6 +76,10 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
         "ABACUS_FORGE_LCAO_MATRICES_SMOKE_WORKSPACE",
         "ABACUS_FORGE_ABACUS_EXECUTABLE",
     ),
+    "test_vacancy_pack_machine_execute_and_collect": (
+        "ABACUS_FORGE_VACANCY_SMOKE_WORKSPACE",
+        "ABACUS_FORGE_ABACUS_EXECUTABLE",
+    ),
     "test_typed_pyatb_band_machine_process_smoke": (
         "ABACUS_FORGE_PYATB_SMOKE_WORKSPACE",
         "ABACUS_FORGE_PYATB_EXECUTABLE",

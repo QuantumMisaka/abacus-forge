@@ -184,3 +184,28 @@ This test runs `atst neb make`, `atst run --dry-run`, and `atst neb summary/post
 through Forge's machine CLI, checking only process envelopes, status, contained
 summary/CIF artifacts, and audit containment. It is process/API compatibility
 evidence, not a real NEB execution, scientific validation, or maturity proof.
+
+The vacancy property-pack process smoke is an additional opt-in gate. It
+consumes a caller-provided prepared Forge workspace (with `inputs/INPUT`,
+`inputs/STRU`, `inputs/KPT`, and all PP/ORB assets), builds one pristine and
+one defect sub-workspace through `prepare_vacancy`, runs real ABACUS in both
+through `run_vacancy`, and computes formation-energy parser facts with
+`post_vacancy`:
+
+```bash
+export ABACUS_FORGE_VACANCY_SMOKE_WORKSPACE=/absolute/path/to/prepared-vacancy-source
+export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
+# Optional: 1-based atom index to remove; defaults to 1.
+export ABACUS_FORGE_VACANCY_SMOKE_INDEX=1
+conda run -n abacus-env env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-real-smoke \
+  tests/real_smoke/test_vacancy_smoke.py
+```
+
+The source may include an optional `vacancy/ref_energy.txt` file with one
+`<element> <energy_eV>` pair per line; when present, `post_vacancy` computes
+finite formation energies and reports `completed`; otherwise it reports
+`degraded` with `null` formation values. Both outcomes are acceptable process
+evidence. The gate checks pack orchestration, process completion, and parser
+facts only. It does not judge formation-energy physical correctness,
+convergence quality, or scientific acceptance.
