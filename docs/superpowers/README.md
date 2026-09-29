@@ -2,6 +2,12 @@
 
 本目录把架构决策与实施清单留在仓内，使人类开发者、Codex 和其他 AI 开发者消费同一份本地事实。它是轻量入口，不复制全局 Superpowers 指令；执行者仍须先读取根目录 `AGENTS.md` 与命中的 Skill。
 
+## Paimon v1.3 跨仓迁移导航
+
+2026-09-29 总体设计入口位于 app-tools 仓 `toolbox/ABACUS/docs/superpowers/specs/2026-09-29-paimon-v1.3-backend-architecture.html`（当前工作区 checkout 为 `app-tools-forge`）。该 Reviewed / 实施基线汇总两个产品的定位、目标架构、开发参考、M0–M4 落地与验收模式；执行总表为同仓 `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md` 的 W0–W4，路径相对 `toolbox/ABACUS/`。
+
+Forge 继续独立交付，以下已批准的公共契约与能力专项 SPEC 仍拥有其范围。总体设计不批量覆盖这些契约，不将 Paimon 发布门槛施加到每次 Forge 发布。原有实现/证据 PLAN 保留原状态；未完成的跨仓依赖、adapter 与 benchmark 事项在迁移总表关联，optional abacuslite extra、Contract System 和 BEC 仍按各自设计推进。
+
 ## 文档层级
 
 | 文档 | 读者 | 职责 | 是否可改变实现边界 |
