@@ -1,6 +1,6 @@
 # SCF fallback native facts — 2026-09-29
 
-Candidate: branch `fix/scf-fallback-facts`, base `079ea5a6`, uncommitted changes in `src/abacus_forge/collectors/abacus.py` and owning tests. This is an L2 parser correction and additive diagnostic, with no request/result/workspace schema change.
+Candidate: branch `fix/scf-fallback-facts`, base `079ea5a6`, implementation fixed by local commit `6704422` in `src/abacus_forge/collectors/abacus.py` and owning tests. The referenced real-SAI manifest below froze the pre-commit dirty content that is byte-equivalent to this candidate. This is an L2 parser correction and additive diagnostic, with no request/result/workspace schema change.
 
 - Recognize native `convergence has NOT been achieved!` and lowercase `@_@` variants as explicit negative evidence.
 - Add `diagnostics.last_scf_converged`: final positive/negative SCF marker in the selected main log, or `None`. Preserve existing aggregate `metrics.converged` behavior: any negative marker remains negative evidence. Consumers needing the final SCF outcome must not infer it from the aggregate.
