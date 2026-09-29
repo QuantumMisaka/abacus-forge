@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ABACUS-Forge I/O Contract Knowledge Base Design</title>
+<style>
+body{font-family:sans-serif;max-width:860px;margin:2em auto;padding:0 1em;line-height:1.6}
+h1,h2,h3{color:#1a1a2e}
+table{border-collapse:collapse;width:100%;margin:1em 0}
+th,td{border:1px solid #ccc;padding:0.5em;text-align:left}
+th{background:#f0f0f0}
+.status{font-weight:bold}
+.decision{margin:1em 0;padding:1em;background:#f8f8f8;border-left:4px solid #1a1a2e}
+code{background:#f5f5f5;padding:0.1em 0.3em}
+</style>
+</head>
+<body>
+<h1>ABACUS-Forge I/O Contract Knowledge Base 设计</h1>
+<h2>状态与元数据</h2>
+<ul>
+<li><strong>状态</strong>：Draft — 2026-09-29；待本人确认后进入 design freeze。</li>
+<li><strong>上位规范</strong>：<a href="2026-09-01-forge-contract-first-rearchitecture-design.html">契约优先重构 SPEC</a>；<a href="2026-09-02-forge-service-status-migration-design.html">Service/Status SPEC</a>。本 SPEC 不修改 v1 请求/结果/workspace 语义。</li>
+<li><strong>范围</strong>：为 Forge 已实现的 ABACUS 输入/输出/工件契约建立结构化知识库。不新增 typed capability operation；不将科学判断引入 Forge。</li>
+<li><strong>Owner</strong>：ABACUS-Forge / Paimon v1.3 maintainers</li>
+</ul>
+
+<h2>目录</h2>
+<ol>
+<li><a href="#summary">摘要</a></li>
+<li><a href="#problem">问题陈述</a></li>
+<li><a href="#references">设计参考</a></li>
+<li><a href="#schema">知识库 schema</a></li>
+<li><a href="#validation">一致性验证</a></li>
+<li><a href="#consumption">消费者与 API</a></li>
+<li><a href="#upstream">上游变更跟踪</a></li>
+<li><a href="#testing">测试与验收</a></li>
+<li><a href="#migration">迁移与发布</a></li>
+<li><a href="#risks">风险与开放项</a></li>
+</ol>
+
+<h2 id="summary">摘要</h2>
+<p>Forge 的 native parser 当前通过分散在 <code>prepare_profiles.py</code>、<code>collectors/abacus.py</code>、<code>collection.py</code> 和 <code>pyatb.py</code> 中的 regex 和逻辑实现了 ABACUS I/O 契约的消费，但缺乏一份结构化知识资产来回答：计算某个科学量需要哪些 ABACUS 输入参数、产生哪些输出标记、解析为哪些 Forge metric、单位和来源是什么。</p>
+<p>本 SPEC 定义一份 machine-readable 的 <strong>I/O 契约知识库</strong>（JSON 文件），映射 Forge capability → ABACUS INPUT 参数 → 输出标记（含 ABACUS 源码锚点）→ 解析指标（含单位）→ 工件 → 科学量的计算工程语义。知识库由一致性测试验证与实际代码同步，并暴露给 <code>capabilities_document()</code> 和上层 adapter。</p>
+
+<h2 id="problem">问题陈述</h2>
+<p>当前存在的具体缺口：</p>
+<table>
+<tr><th>缺口</th><th>示例</th><th>影响</th></tr>
+<tr><td>INPUT → 输出因果断裂</td><td><code>out_band=1</code> 导致 running log 出现 <code>BAND GAP =</code>——因果关系只存在于开发者隐性知识中</td><td>Agent 无法推理"计算带隙需要什么输入"</td></tr>
+<tr><td>SCF 前置依赖未声明</td><td><code>band</code> 和 <code>dos</code> 需要 <code>init_chg=file</code>（前置 SCF），但 capability descriptor 不声明此依赖</td><td>上层 workflow 不知道必须先跑 SCF</td></tr>
+<tr><td>单位体系不完整</td><td>仅 <code>fermi_energy</code> 在 diagnostics 中记录了 <code>_metric_units</code>；其余指标单位隐含在 regex 的解析逻辑中</td><td>上层 adapter 无法对指标做量纲一致性检查</td></tr>
+<tr><td>工件语义未定义</td><td><code>BANDS_*.dat</code> 的列格式（k-path, energy, occupation）没有 schema 定义</td><td>后处理工具无法可靠消费 Forge 工件</td></tr>
+<tr><td>上游变更影响不可评估</td><td>ABACUS 改变 <code>!FINAL_ETOT_IS</code> 格式时，不知道哪些 capability 受影响</td><td>上游升级后排查成本高</td></tr>
+<tr><td>同物理量多标记等价未声明</td><td><code>!FINAL_ETOT_IS</code> 和 <code>TOTAL ENERGY =</code> 是同一物理量（Kohn-Sham 总能量）的两种输出格式</td><td>等价关系仅在覆盖链代码中隐式表达</td></tr>
+</table>
+
+<h2 id="references">设计参考</h2>
+<table>
+<tr><th>来源</th><th>已有知识</th><th>本设计复用方式</th></tr>
+<tr><td>Paimon v1.2 <code>abacus_unit_contract.py</code></td><td>27 个 canonical 机器单位（eV, Ry, K, s, Bohr, kbar, GPa, eV/Å 等）+ 输入参数单位映射</td><td>单位体系直接继承；canonical unit 集合作为知识库 <code>unit</code> 字段的合法值域</td></tr>
+<tr><td>Paimon v1.2 <code>result_evidence.py</code></td><td>closed-schema 设计模式；<code>metric.role/kind/priority</code>、<code>artifact.role/stage/visibility</code> 枚举</td><td>schema 枚举设计模式参考；不引入 ATP 语义</td></tr>
+<tr><td>ABACUS <code>input_parameter.h</code></td><td>533 个参数、13 个分组，每个含 C++ 类型、默认值和注释</td><td>上游参数目录真值源；知识库引用参数名和分组，不复制全部 533 个</td></tr>
+<tr><td>ABACUS <code>output_log.cpp</code> / esolver 源码</td><td>每个 running log 标记的 C++ 生成位置</td><td>上游追溯锚点：<code>abacus_source</code> 字段指向源码文件和行号</td></tr>
+<tr><td>abacuscopilot <code>band_tasks.py</code></td><td>从 BANDS_*.dat 计算 VBM/CBM/band_gap 的后处理逻辑</td><td>科学量后处理语义参考；Forge 不实施后处理，仅记录解析事实与科学量的对应关系</td></tr>
+<tr><td>Forge <code>collectors/abacus.py</code></td><td>13+ regex 模式、双格式覆盖链、收敛标记集、MD/力/应力解析器</td><td>知识库的 <code>markers</code> 字段从这些 regex 的文本模式中提取</td></tr>
+<tr><td>Forge <code>prepare_profiles.py</code></td><td>6 个 capability 的 TASK_DEFAULTS 映射</td><td>知识库的 <code>input.required</code> 和 <code>input.defaults</code> 从此映射中提取</td></tr>
+</table>
+
+<h2 id="schema">知识库 Schema</h2>
+<p>知识库文件位于 <code>src/abacus_forge/io_contracts.json</code>。schema 版本 <code>forge.io-contract/v1</code>。</p>
+<h3>顶层结构</h3>
+<pre>
+{
+  "schema_version": "forge.io-contract/v1",
+  "generated_at": "2026-09-29",
+  "forge_commit": "de9693a",
+  "abacus_versions": {
+    "lts": {"version": "3.10.1", "commit": "f71921fe8"},
+    "develop": {"version": "3.11.0-beta8+56", "commit": "94576a801"}
+  },
+  "capabilities": { ... },
+  "common_artifacts": { ... },
+  "convergence_markers": { ... },
+  "input_units": { ... }
+}
+</pre>
+
+<h3>capabilities 条目</h3>
+<pre>
+"scf": {
+  "description": "Self-consistent field calculation",
+  "input": {
+    "required": {"calculation": "scf"},
+    "defaults": {"dft_functional": "pbe"},
+    "optional": ["ecutwfc", "ks_solver", "symmetry", "nspin", "basis_type", "scf_thr", "scf_nmax"],
+    "abacus_source": "source/source_io/module_parameter/input_parameter.h#calculation"
+  },
+  "prerequisites": [],
+  "outputs": {
+    "total_energy": {
+      "unit": "eV",
+      "kind": "reported",
+      "markers": [
+        {"pattern": "TOTAL ENERGY = <num>", "abacus_source": "source/source_io/module_output/output_log.cpp"},
+        {"pattern": "!FINAL_ETOT_IS <num> eV", "abacus_source": "source/source_io/module_output/output_log.cpp"}
+      ],
+      "notes": "Kohn-Sham total energy; newer format overrides legacy"
+    },
+    "fermi_energy": {
+      "unit": "eV",
+      "kind": "reported",
+      "markers": [
+        {"pattern": "FERMI ENERGY = <num>", "abacus_source": "source/source_io/module_output/output_log.cpp"},
+        {"pattern": "E_Fermi <ry> <ev>", "abacus_source": "source/source_io/module_output/output_log.cpp"}
+      ],
+      "notes": "Native ABACUS prints Rydberg first and eV second; Forge takes eV"
+    },
+    "converged": {"unit": "1", "kind": "reported", "type": "boolean"},
+    "normal_end": {"unit": "1", "kind": "reported", "type": "boolean"},
+    "scf_steps": {"unit": "1", "kind": "reported"},
+    "natom": {"unit": "1", "kind": "reported"},
+    "nelec": {"unit": "1", "kind": "reported"},
+    "volume": {"unit": "Angstrom^3", "kind": "reported"},
+    "energy_per_atom": {"unit": "eV/atom", "kind": "derived"},
+    "pressure": {"unit": "kbar", "kind": "reported"},
+    "force": {"unit": "eV/Angstrom", "kind": "reported", "requires_input": "cal_force=1"},
+    "stress": {"unit": "kbar", "kind": "reported", "requires_input": "cal_stress=1"}
+  },
+  "artifacts": ["time.json"]
+}
+</pre>
+
+<h3>关键字段约定</h3>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td><code>unit</code></td><td>string</td><td>必须属于 v1.2 <code>CANONICAL_MACHINE_UNITS</code> 集合</td></tr>
+<tr><td><code>kind</code></td><td>enum</td><td><code>reported</code>（regex 直接解析）| <code>derived</code>（从其他指标计算）</td></tr>
+<tr><td><code>markers</code></td><td>list</td><td>每项含 <code>pattern</code>（正则的文本描述）和 <code>abacus_source</code>（生成该标记的 C++ 源码位置）</td></tr>
+<tr><td><code>requires_input</code></td><td>string</td><td>只有当 INPUT 中启用了某参数时才出现的输出</td></tr>
+<tr><td><code>prerequisites</code></td><td>list</td><td>必须先完成的 capability（如 <code>band</code> 依赖 <code>scf</code>）</td></tr>
+<tr><td><code>abacus_source</code></td><td>string</td><td>ABACUS 仓内的源码文件路径（可选行号），供上游变更追溯</td></tr>
+</table>
+
+<h3>convergence_markers 条目</h3>
+<pre>
+"convergence_markers": {
+  "positive": {
+    "scf_converged": {"pattern": "\\bSCF\\s+CONVERGED\\b", "abacus_source": "source/source_io/module_output/output_log.cpp"},
+    "scf_is_converged": {"pattern": "\\bSCF\\s+IS\\s+CONVERGED\\b", "abacus_source": "..."},
+    "charge_density_converged": {"pattern": "charge density convergence is achieved", "abacus_source": "..."}
+  },
+  "negative": {
+    "scf_not_converged": {"pattern": "\\bSCF\\s+NOT\\s+CONVERGED\\b", "abacus_source": "..."},
+    "not_converged": {"pattern": "\\bnot\\s+converged\\b", "abacus_source": "..."}
+  },
+  "relax_final": {"pattern": "Relaxation\\s+is\\s+(not\\s+)?converged(?:\\s+yet)?", "selection": "last_line"}
+}
+</pre>
+
+<h3>input_units 条目（从 v1.2 继承）</h3>
+<pre>
+"input_units": {
+  "ecutwfc": "Ry",
+  "scf_thr": "1",
+  "md_dt": "fs",
+  "md_tfirst": "K",
+  "md_tlast": "K",
+  "vdw3_d": "1"
+}
+</pre>
+
+<h3>common_artifacts 条目</h3>
+<pre>
+"common_artifacts": {
+  "running_log": {"pattern": "running_{calculation}.log", "parser": "regex", "description": "Primary ABACUS output log"},
+  "final_structure": {"patterns": ["STRU_FINAL", "STRU_ION_D", "STRU_NOW", "STRU_NOW.cif", "STRU.cif", "STRU"], "selection": "priority", "parser": "stru"},
+  "time_json": {"pattern": "time.json", "parser": "json", "fields": {"total": "s"}},
+  "md_dump": {"pattern": "MD_dump", "parser": "abacus_md", "description": "MD trajectory frames"},
+  "charge_density": {"pattern": "SPIN*_CHARGE.*", "parser": "file_copy", "description": "Charge density for init_chg=file"},
+  "sparse_hr": {"patterns": ["data-HR-sparse_SPIN*.csr", "hrs1_nao.csr", "hrs2_nao.csr"], "parser": "path_ref"},
+  "sparse_sr": {"patterns": ["data-SR-sparse_SPIN*.csr", "sr_nao.csr"], "parser": "path_ref"},
+  "sparse_rr": {"patterns": ["data-rR-sparse.csr", "rr.csr"], "parser": "path_ref"},
+  "bands_dat": {"pattern": "BANDS_*.dat", "parser": "forge_band_data", "columns": ["k_path_index", "energy_eV", "occupation"]},
+  "dos_dat": {"pattern": "DOS_*_smearing.dat", "parser": "forge_dos_data", "columns": ["energy_eV", "dos", "int_dos"]},
+  "pdos_dat": {"pattern": "PDOS", "parser": "forge_pdos_data"}
+}
+</pre>
+
+<h2 id="validation">一致性验证</h2>
+<p>新增 <code>tests/test_io_contract_consistency.py</code>，在默认离线门禁中运行：</p>
+<table>
+<tr><th>测试</th><th>验证内容</th></tr>
+<tr><td><code>test_task_defaults_covered</code></td><td>每个 <code>TASK_DEFAULTS</code> 中的 capability 在知识库中有 entry，且 <code>input.required</code> 匹配</td></tr>
+<tr><td><code>test_metric_patterns_covered</code></td><td>每个 <code>_METRIC_PATTERNS</code> 中的指标名在知识库的至少一个 capability 的 <code>outputs</code> 中有声明</td></tr>
+<tr><td><code>test_convergence_markers_consistent</code></td><td>知识库中的 convergence markers 与 <code>_POSITIVE_CONVERGENCE_PATTERNS</code> / <code>_NEGATIVE_CONVERGENCE_PATTERNS</code> 一致</td></tr>
+<tr><td><code>test_units_valid</code></td><td>所有 <code>unit</code> 值属于 canonical machine units 集合</td></tr>
+<tr><td><code>test_prerequisites_declared</code></td><td><code>band</code> 和 <code>dos</code> 声明 <code>prerequisites: ["scf"]</code></td></tr>
+<tr><td><code>test_abacus_source_anchors</code></td><td>每个 <code>abacus_source</code> 指向 ABACUS 仓内的有效路径模式（不做文件存在性检查，只验证路径格式）</td></tr>
+</table>
+
+<h2 id="consumption">消费者与 API</h2>
+<h3>1. capabilities_document() 扩展</h3>
+<p>当前 <code>discovery.py</code> 的 <code>capabilities_document()</code> 只返回 capability 名称和 operation 列表。本 SPEC 将其扩展为可携带知识库元数据：</p>
+<pre>
+// 当前输出
+{"schema_version": "forge.capabilities/v1", "capabilities": [{"capability": "scf", "operations": ["prepare","modify","execute","collect"], "maturity": "experimental"}, ...]}
+
+// 扩展后（新增 contracts 字段，向后兼容）
+{"schema_version": "forge.capabilities/v1", "capabilities": [
+  {"capability": "scf", "operations": [...], "maturity": "experimental",
+   "contracts": {
+     "input_required": {"calculation": "scf"},
+     "input_defaults": {"dft_functional": "pbe"},
+     "prerequisites": [],
+     "metrics": {"total_energy": {"unit": "eV"}, "fermi_energy": {"unit": "eV"}, "converged": {"type": "boolean"}}
+   }
+  }, ...
+]}
+</pre>
+<p>Agent 通过 <code>abacus-forge capabilities --json</code> 获取扩展元数据，无需读源码。</p>
+
+<h3>2. Paimon adapter 消费</h3>
+<p>Paimon v3 的薄 adapter 在构造 tool 描述时，可从知识库生成 tool 的参数说明和返回值说明，而不是硬编码字符串。</p>
+
+<h3>3. 上游变更影响查询</h3>
+<p>当 ABACUS 上游改变某个输出标记（如 <code>!FINAL_ETOT_IS</code> 的格式变化）时，在知识库中搜索该标记即可确定哪些 capability 的哪些指标受影响。</p>
+
+<h2 id="upstream">上游变更跟踪</h2>
+<p>知识库中的 <code>abacus_source</code> 字段建立了 Forge 解析标记与 ABACUS 源码位置的映射。跟踪流程：</p>
+<ol>
+<li>ABACUS 发布新版本 → 用新版本运行 real-smoke gates → 如果某个指标消失，diagnostics warning 提示哪个标记未匹配</li>
+<li>在 ABACUS 新版源码中搜索旧标记 → 找到变更位置 → 更新知识库中的 <code>abacus_source</code> 和 <code>markers</code></li>
+<li>在 <code>_METRIC_PATTERNS</code> 中添加新 pattern → 离线回归通过 → 知识库一致性测试通过</li>
+</ol>
+
+<h2 id="testing">测试与验收</h2>
+<table>
+<tr><th>层级</th><th>验证内容</th><th>门禁</th></tr>
+<tr><td>Schema 合法性</td><td>JSON 可解析、schema_version 匹配、必填字段齐全</td><td>默认离线 pytest</td></tr>
+<tr><td>代码一致性</td><td>知识库条目与 <code>_METRIC_PATTERNS</code> / <code>TASK_DEFAULTS</code> / convergence patterns 一致</td><td>默认离线 pytest</td></tr>
+<tr><td>单位合法性</td><td>所有 unit 值属于 canonical machine units</td><td>默认离线 pytest</td></tr>
+<tr><td>API 暴露</td><td>capabilities_document() 输出包含 contracts 扩展且向后兼容</td><td>默认离线 pytest</td></tr>
+</table>
+
+<h2 id="migration">迁移与发布</h2>
+<ol>
+<li>Phase A：编写知识库 JSON 首版（从现有代码提取全部 6 个 capability + common artifacts + convergence markers + input units）。</li>
+<li>Phase B：编写一致性测试 <code>test_io_contract_consistency.py</code>；确保全部通过。</li>
+<li>Phase C：扩展 <code>capabilities_document()</code> 暴露 contracts 字段。</li>
+<li>后续：每新增 capability 或 parser pattern 时同步更新知识库；上游 ABACUS 新版本发布时更新 <code>abacus_source</code> 锚点和 <code>markers</code>。</li>
+</ol>
+
+<h2 id="risks">风险与开放项</h2>
+<ul>
+<li><strong>维护成本</strong>：每新增 parser pattern 或 capability 时须同步更新知识库——由一致性测试在 CI 中强制，不依赖人工记忆。</li>
+<li><strong>ABACUS 源码锚点失效</strong>：上游重构可能移动输出标记的生成位置——<code>abacus_source</code> 是文档性参考，不是硬依赖；失效不影响 parser 运行。</li>
+<li><strong>科学量映射范围</strong>：本 SPEC 只覆盖 Forge 已解析的计算工程事实（能量、力、应力、收敛等），不覆盖需要后处理计算的科学量（band gap 精确值需从 BANDS_*.dat 后处理计算，Forge 只记录 running log 中 ABACUS 报告的近似值）。后处理科学量的映射可在后续 SPEC 中扩展。</li>
+<li><strong>与 capability descriptor 的关系</strong>：当前 capability descriptor（<code>contracts.py</code> 中的 <code>CapabilityDescriptor</code>）仅包含 name/operations/maturity；知识库的 contracts 扩展是补充而非替换。两者是否合并为单一 source of truth 留作后续决策。</li>
+</ul>
+
+<p><em>本地 SPEC 是规范源；远程审阅副本如有，仅为非规范镜像。</em></p>
+</body>
+</html>
