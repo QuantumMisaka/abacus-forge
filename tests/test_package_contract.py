@@ -23,6 +23,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PROVENANCE = ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
+GPLV3_CLASSIFIER = "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
 
 
 def _project_metadata() -> dict[str, object]:
@@ -172,3 +173,36 @@ def test_built_wheel_keeps_the_same_optional_dependency_boundary() -> None:
         assert requirement.url is None and not requirement.extras
         actual_parser.append((str(requirement.specifier), canonicalize_name(marker[1])))
     assert actual_parser == expected_parser, "source/wheel abacuslite dependency drift"
+
+
+def test_built_wheel_license_metadata_matches_the_gplv3_source() -> None:
+    """Keep release metadata aligned with the actual GPL-3.0-only LICENSE."""
+
+    wheel_value = os.environ.get("ABACUS_FORGE_WHEEL")
+    if not wheel_value:
+        pytest.skip("set ABACUS_FORGE_WHEEL to inspect a release candidate wheel")
+    wheel = Path(wheel_value).expanduser().resolve()
+    assert wheel.is_file(), wheel
+
+    with zipfile.ZipFile(wheel) as archive:
+        metadata_paths = [
+            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+        ]
+        assert len(metadata_paths) == 1
+        headers = Parser().parsestr(archive.read(metadata_paths[0]).decode("utf-8"))
+        license_members = [
+            name
+            for name in archive.namelist()
+            if name.endswith(".dist-info/licenses/LICENSE")
+        ]
+
+    classifiers = headers.get_all("Classifier", [])
+    assert GPLV3_CLASSIFIER in classifiers
+    assert not any("mit" in classifier.lower() for classifier in classifiers)
+
+    project = _project_metadata()
+    assert project["license"] == {"file": "LICENSE"}
+    assert headers.get_all("License-File", []) == ["LICENSE"]
+    assert len(license_members) == 1
+    with zipfile.ZipFile(wheel) as archive:
+        assert archive.read(license_members[0]) == (ROOT / "LICENSE").read_bytes()
