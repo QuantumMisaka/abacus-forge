@@ -59,6 +59,13 @@ _NEGATIVE_CONVERGENCE_PATTERNS = {
     "scf_not_converged": re.compile(r"\bSCF\s+NOT\s+CONVERGED\b", re.IGNORECASE),
     "not_converged": re.compile(r"\bnot\s+converged\b", re.IGNORECASE),
 }
+# ``not_converged`` is intentionally absent from the SCF-only fact: the same
+# spelling is used by intermediate/final relaxation status lines.
+_SCF_NEGATIVE_CONVERGENCE_PATTERNS = {
+    key: pattern
+    for key, pattern in _NEGATIVE_CONVERGENCE_PATTERNS.items()
+    if key != "not_converged"
+}
 # ABACUS prints one relaxation status line per ionic step; the final line is
 # the outcome ("Relaxation is converged!") while earlier ones are progress
 # ("Relaxation is not converged yet!").
@@ -172,7 +179,7 @@ def collect_abacus_metrics(
     ordered_matches = [
         (match.start(), converged)
         for patterns, converged in ((_POSITIVE_CONVERGENCE_PATTERNS, True),
-                                    (_NEGATIVE_CONVERGENCE_PATTERNS, False))
+                                    (_SCF_NEGATIVE_CONVERGENCE_PATTERNS, False))
         for pattern in patterns.values()
         for match in pattern.finditer(main_content)
     ]

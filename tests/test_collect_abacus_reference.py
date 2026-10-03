@@ -499,3 +499,18 @@ def test_last_scf_fact_preserves_order_without_weakening_aggregate(tmp_path: Pat
     result = collect(workspace)
     assert result.diagnostics['last_scf_converged'] is last_converged
     assert result.metrics['converged'] is False
+
+
+def test_last_scf_fact_ignores_intermediate_relaxation_status(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / 'scf-pass-relax-progress').ensure_layout()
+    workspace.write_text('inputs/INPUT', 'INPUT_PARAMETERS\ncalculation cell-relax\n')
+    workspace.write_text(
+        'outputs/OUT.ABACUS/running_scf.log',
+        'charge density convergence is achieved\n'
+        'Relaxation is not converged yet!\n'
+        ' Total  Time  : 1\n',
+    )
+    result = collect(workspace)
+    assert result.diagnostics['last_scf_converged'] is True
+    assert result.metrics['converged'] is False
+    assert 'not_converged' in result.diagnostics['matched_nonconverged_markers']

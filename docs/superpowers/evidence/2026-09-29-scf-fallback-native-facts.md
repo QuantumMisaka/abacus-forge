@@ -3,10 +3,10 @@
 Candidate: branch `fix/scf-fallback-facts`, base `079ea5a6`, implementation fixed by local commit `6704422` in `src/abacus_forge/collectors/abacus.py` and owning tests. The referenced real-SAI manifest below froze the pre-commit dirty content that is byte-equivalent to this candidate. This is an L2 parser correction and additive diagnostic, with no request/result/workspace schema change.
 
 - Recognize native `convergence has NOT been achieved!` and lowercase `@_@` variants as explicit negative evidence.
-- Add `diagnostics.last_scf_converged`: final positive/negative SCF marker in the selected main log, or `None`. Preserve existing aggregate `metrics.converged` behavior: any negative marker remains negative evidence. Consumers needing the final SCF outcome must not infer it from the aggregate.
+- Add `diagnostics.last_scf_converged`: final explicit SCF marker in the selected main log, or `None`. The fact intentionally excludes the generic `not converged` marker because relaxation status lines reuse that spelling; explicit `convergence has NOT been achieved` and `SCF NOT CONVERGED` remain SCF-negative facts. Preserve existing aggregate `metrics.converged` behavior: any negative marker, including final relaxation failure, remains negative evidence. Consumers needing the final SCF outcome must not infer it from the aggregate.
 - Empty `time.json` (`{}`) retains stdout timing and its origin; nonempty JSON with missing/null `total` retains the existing `None` behavior and clears stale provenance.
 
-Negative-marker and empty-JSON regressions were observed failing before fixes. Ordered mixed-marker tests cover both directions without weakening aggregate failure evidence. Validation:
+Negative-marker and empty-JSON regressions were observed failing before fixes. Ordered mixed-marker tests cover both directions without weakening aggregate failure evidence. Independent integration review identified one boundary defect: an SCF pass followed by `Relaxation is not converged yet!` incorrectly set `last_scf_converged=false`; the regression failed before the SCF-specific marker split and passes after it. Validation:
 
 ```bash
 conda run -n paimon env PYTHONPATH=src python -m pytest tests/test_result_contract.py tests/test_service_status.py tests/test_md_services.py tests/test_collect_abacus_reference.py -q
