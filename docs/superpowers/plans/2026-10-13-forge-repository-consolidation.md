@@ -1,10 +1,10 @@
 # Forge 文档与代码体系整理实施计划
 
-状态：已完成并独立审查（2026-10-13），交付保留在隔离分支，尚未合入 main。用户已确认设计取舍并要求以 subagent-driven-development 推进；本计划承接该授权。
+状态：首轮已完成并独立审查，2026-10-13 用户要求进一步推进后已快进合入本地 main；后续消费者调查与收口见文末。用户已确认设计取舍并要求以 subagent-driven-development 推进；本计划承接该授权。
 
 设计：[文档与代码体系整理](../specs/2026-10-13-forge-repository-consolidation-design.md)。目标为英文产品 README、中文详细文档、明确的内容归属，以及保留公开行为的加载、能力映射、公共算法和测试分类收敛。
 
-隔离工作区：`/home/james/.codex/worktrees/7037/abacus-forge`；分支 `codex/forge-repository-consolidation-20261013`；实现基线 `5c978b0c88b0654dc0a03e43f93eee4e42a72441`。此前已审阅的设计与导航从原工作区复制进来，原工作区不改动。
+隔离工作区：`/home/james/.codex/worktrees/7037/abacus-forge`；分支 `codex/forge-repository-consolidation-20261013`；实现基线 `5c978b0c88b0654dc0a03e43f93eee4e42a72441`。首轮将已审阅的设计与导航复制进隔离工作区实施；后续本地主线集成另行记录。
 
 基线证据：同一源码/环境的默认离线回归 `1437 passed, 34 skipped in 100.60s`；收集 `1471` 项，其中 `615` 项无 portfolio marker。基线证据来自本轮审查的实际命令输出，复用而不伪造 RED。
 
@@ -96,4 +96,23 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 - 独立文档 reviewer 复核了中文正文、补回的 CLI/Python 示例、两级路径与规范状态；独立 final reviewer 复核了公开导入兼容、映射/错误顺序、band 输出、测试门禁与整体边界。无未解决的重要发现。
 - 最终文档检查：13 份改动文档、153 个相对链接/锚点，0 错误；10 个 Python 代码块语法通过；`tests/test_architecture.py` 在最终示例上 **8 passed in 6.05s**。
 - 在冻结候选重新构建 wheel：`abacus_forge-0.1.0-py3-none-any.whl`，SHA-256 `e43f34889409f9814327bd4acba9d831edac9e1df532112eef1b04a35e4120fb`。该最终 wheel 的 package suites 再次 **16 passed in 0.10s**，无依赖 I/O 和复用科学依赖的独立 venv 安装检查再次通过。命令/原始输出见 `/tmp/forge-consolidation-wheel.log`、`/tmp/forge-consolidation-wheel-tests.log`、`/tmp/forge-consolidation-install.json`。
-- 验证后的代码、测试和示例未再修改；最后只更新完成记录。原工作区保留既有设计文档变更，未执行合并、推送或清理其他工作区。
+- 首轮验证后的代码、测试和示例未再修改，收尾提交只更新完成记录；当时保留原工作区设计草稿，尚未合并。后续合入状态以下节为准。
+
+### 后续推进：本地主线集成与候选调查
+
+授权来源：用户在首轮交付后要求“进一步推进”。本步完成本地主线收口与可废弃候选的证据核对，沿用公开行为和默认依赖保持的设计。远程发布、改变安装依赖、删除兼容 API、实施独立草案均不在此步内。
+
+- [x] 确认原工作区 main 仍为 `5c978b0`，两份未提交设计材料与 `84a46a1` 中的版本逐字一致。将原文件、tracked patch 和恢复说明保存在 `~/scratch/abacus-forge-pre-integration-5lk08tx1/`，再快进至 `1503d0b484d4a382a0c8701f74c37ebeb7b83ba5`。没有覆盖未识别的用户变更。
+- [x] 在原 main checkout 执行 `tests/test_imports.py tests/test_architecture.py tests/test_contracts.py tests/test_workspace.py`：**350 passed in 12.07s**，命令前缀为 `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider`，原始输出见 `/tmp/forge-consolidation-main-integration.log`。相对链接/锚点检查仍为 153 项、0 错误。
+- [x] 确认集成后的生产代码、测试、包声明、README/用户示例相对完整验证候选 `edf3f3c` 无 diff，复用 1442/34 的全量离线及最终 wheel 证据，不将 focused 回归称作新一次全量运行。
+- [x] 核对默认依赖和两个兼容 API 的已知消费者，在 ROADMAP 中写明处置及下一步触发条件。
+- [x] 独立复核后续三个文档的完整 delta：无重要问题；完成记录随本次收尾提交快进合入 main。调查补充后本地链接/锚点检查为 160 项、0 错误。
+
+隔离分支与受管理的 worktree 继续保留；不清理其他历史工作区，不推送远程。
+
+调查绑定：Forge `1503d0b`；只读 Paimon `app-tools-forge@da25adf2127a92139436f26075e0f4f937b185c6` 的 `toolbox/ABACUS`。两位子代理分别核对依赖和兼容接口，控制器复读实现、调用测试与 W3 安装记录。最终处置统一维护在 [ROADMAP 候选表](../../../ROADMAP.md#可废弃与依赖调整候选)。
+
+- `suppress_legacy_events` 无本仓调用，但有可观察的 prepare/modify 事件抑制行为；`claim_v1_operation` 是少量代码的兼容转发。保留两者，避免用接口破坏换取有限的行数减少。
+- `dpdata` 在 Forge 生产源码未发现静态/动态使用，上层有真实使用。Paimon v1.2 的 abacustest 安装链与依赖声明不能证明 v1.3 W3 已独立承接它。已核对 W3 报告中的 Forge wheel 等解析入口和历史 clean-route lock；锁中存在 dpdata 只能证明该历史环境安装了它，不能证明依赖所有权或当前 kit 安装闭合。
+- Ruling：下一批优先解决 dpdata 的安装责任与候选验证，再决定 Forge 默认依赖调整；matplotlib/pymatgen 的 extra 拆分须有明确使用需求 — 当前绘图默认值和结构元数据会受影响 — 静默拆分会改变用户安装后的能力。
+- 后续只变更三个文档的状态与调查结论，生产代码、测试和包声明保持冻结候选一致。
