@@ -2,6 +2,8 @@
 
 本文按实际调用任务组织当前用法。机器字段和持久化语义见[接口与 workspace 参考](reference.md)；`--help` 与能力发现是当前 CLI/schema 的直接来源。
 
+仓库内 NiO 样例的 `INPUT`/`STRU` 来源、SAI 脚本边界及不依赖 ABACUS 的本地 prepare/dry-run 命令见[示例输入说明](../examples/README.md)。
+
 ## 选择调用面
 
 Forge 保留多个面向不同消费场景的入口，它们不是可互换的别名：

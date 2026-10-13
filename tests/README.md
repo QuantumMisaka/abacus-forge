@@ -14,7 +14,16 @@
 | `real_smoke` | 调用方提供引擎和工作区的真实进程 | 显式启用的操作发布证据 |
 | `benchmark` | 规范化迁移投影与 parser parity | 显式启用的迁移证据 |
 
-从仓库根目录运行：
+通用 Python 开发环境（Python 3.10 或更新版本）：
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -m pytest -q
+```
+
+以下是维护者现用的 `paimon` conda 环境命令；从仓库根目录运行：
 
 ```bash
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider

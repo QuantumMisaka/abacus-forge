@@ -121,9 +121,23 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 
 工作流：L3，沿用既有隔离分支，起点 `c2f83c1`。用户确认此前建议的前三项，并顺带整理包简介。范围为历史材料、通用测试与 Python 3.10 测试兼容、示例说明及包元数据；CI 仍为后续事项，本步不推送远端。
 
-- [ ] 历史材料：将 Git 跟踪的 27 份 SDD 记录、3 份 Trae 审查材料及旧 AiiDA 评审归入 docs/archive，保留原始证据/原路径线索；修复已知导航和引用，忽略今后的工具临时状态。已批准 SPEC 的地位不变。
-- [ ] 测试与包：补通用 venv / dev 安装与测试入口；对 Python 3.10 无 tomllib 的收集失败建立真实基线，再以条件 dev 依赖和兼容读取修复；保留运行时最低版本及默认科学依赖。包简介改用当前操作名称并补官方仓库链接。
-- [ ] 示例：说明 NiO 输入、外部 PP/ORB 及 SAI Slurm 脚本边界；补可执行的本地 prepare/dry-run 路径，保留被结构测试使用的 STRU。
+- [x] 历史材料：将 Git 跟踪的 27 份 SDD 记录、3 份 Trae 审查材料及旧 AiiDA 评审归入 docs/archive，保留原始证据/原路径线索；修复已知导航和引用，忽略今后的工具临时状态。已批准 SPEC 的地位不变。
+- [x] 测试与包：补通用 venv / dev 安装与测试入口；对 Python 3.10 无 tomllib 的收集失败建立真实基线，再以条件 dev 依赖和兼容读取修复；保留运行时最低版本及默认科学依赖。包简介改用当前操作名称并补官方仓库链接。
+- [x] 示例：说明 NiO 输入、外部 PP/ORB 及 SAI Slurm 脚本边界；补可执行的本地 prepare/dry-run 路径，保留被结构测试使用的 STRU。
 - [ ] 控制器完成导航整合、历史材料完整性与链接检查、Python 3.10/当前 Python 的相称测试及包构建验证、独立复核和本地主线收口。
 
 分工：历史材料作者仅改原始历史文件、docs/archive、.gitignore 和必要历史引用；测试作者仅改 pyproject.toml、tests/test_package_contract.py、tests/README.md；示例作者仅改 examples 下说明及 docs/guide.md 的示例导航。控制器拥有 AGENTS、README、docs/README、docs/superpowers/README、本计划和统一提交。所有作者不得提交、操作共享 index 或再派生代理；共享工作区内不覆盖其他人的修改。
+
+
+#### 本批验收记录
+
+- 归档：控制器以 `git show 15ab407:<原路径>` 对照新路径文件，31/31 逐字节一致；三份原始 NiO 文件同样一致。归档索引保留旧路径到新路径的映射，历史命令和报告不重写；工具临时目录忽略规则有效。
+- Python 3.10：在全新 Python 3.10.20 venv 中，修复前 package 测试收集以 `ModuleNotFoundError: No module named 'tomllib'` 失败（exit 2）。补条件 `tomli` dev 依赖与兼容导入后，`pip install -e '.[dev]'` 成功，`pip check` 无冲突。直接使用的 `packaging` 同时纳入 dev 声明，默认运行依赖和 Python 最低版本保持原样。
+- 默认全量：该 Python 3.10 环境执行 `python -m pytest -q`，**1442 passed, 34 skipped in 97.27s**（exit 0）。跳过项仍是显式门控的 benchmark/real_smoke 与未提供 wheel 的检查；没有运行真实 ABACUS 或集群任务。
+- wheel：隔离构建生成 `abacus_forge-0.1.0-py3-none-any.whl`，SHA-256 `2ae609f7045cce5885ca3594e3e08e4e49e836dd099caa131f3e737c5b8d4eee`；以 `ABACUS_FORGE_WHEEL` 指向该文件，Python 3.10 的 package contract/metadata drift 为 **16 passed**，现用 paimon Python 的相同检查加 architecture 为 **24 passed**。额外核对 wheel URL 及 dev marker：仅 Python <3.11 引入 tomli，运行依赖未改变。
+- 示例：文档中的 prepare 返回 `prepared`，typed execute dry-run 返回 `execution=skipped`、`scientific=unassessed`，exit 0；原结构 owning suite 为 **57 passed**。示例明确资源占位符、原始 INPUT 不被自动复制，以及 SAI 脚本的站点边界。
+- 导航：本轮累计改动的 15 份当前文档检查 173 个本地链接/锚点，0 错误；31 份原文归档按完整性验收，不将其历史路径改写成当前上下文。`git diff --check` 通过。
+
+证据位于执行机 `/tmp/forge_package_py310_{red,editable,green,pipcheck}.log`、`/tmp/forge_package_current_green.log`、`/tmp/forge-prepush-py310-full.log`、`/tmp/forge-prepush-wheel.log`、`/tmp/forge-prepush-wheel-py310.log`、`/tmp/forge-prepush-current.log` 及 `/tmp/forge-archive-move-manifest.json`。示例与 structure 的原始输出由作者工具返回并交给控制器复读，未额外落盘；临时日志不是永久发布工件。本批不新增持续集成服务或文档框架，后续依赖调整仍按 ROADMAP 候选独立处理。
+
+独立终审和本地主线集成待完成，证据与结论将在本节补记。

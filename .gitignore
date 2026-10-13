@@ -177,3 +177,6 @@ Thumbs.db
 # specific
 runs/
 .worktrees/
+# Local agent/tool state; historical tracked reports live under docs/archive/.
+.superpowers/
+.trae/

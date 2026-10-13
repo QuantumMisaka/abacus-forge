@@ -15,8 +15,9 @@
   - 在本仓库根目录执行
   - `PYTHONPATH=src python -m abacus_forge.cli --help`
 - **测试入口**：
-  - `conda run -n paimon python -m pytest tests/test_cli.py -q`
-  - `conda run -n paimon python -m pytest -q`
+  - 按 [tests/README.md](tests/README.md) 安装开发依赖；不要求特定名称的 Conda 环境。
+  - `python -m pytest tests/test_cli.py -q`
+  - `python -m pytest -q`
 - `tests/README.md` 是测试分层和门禁的唯一入口；新增测试先选择最近的行为边界和 marker。
 - 默认回归不得访问真实集群；`real_smoke` 与 `benchmark` 只能通过显式 pytest 选项运行。
 - 删除或合并测试前必须记录真实 mutation 及剩余测试的失败证据；不得以测试数量或覆盖率替代行为证据。

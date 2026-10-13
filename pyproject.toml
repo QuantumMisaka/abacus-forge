@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "abacus-forge"
 version = "0.1.0"
-description = "Minimal ABACUS execution substrate for prepare/run/collect/export primitives."
+description = "Protocol-neutral ABACUS prepare, modify, execute, collect, postprocess, and export library and CLI."
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
@@ -25,7 +25,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "packaging>=23",
     "pytest>=7,<9",
+    "tomli>=2; python_version < '3.11'",
 ]
 phonon = [
     "phonopy",
@@ -33,6 +35,10 @@ phonon = [
 
 [project.scripts]
 abacus-forge = "abacus_forge.cli:main"
+
+[project.urls]
+Repository = "https://github.com/QuantumMisaka/abacus-forge"
+Documentation = "https://github.com/QuantumMisaka/abacus-forge/blob/main/docs/README.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

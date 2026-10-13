@@ -53,7 +53,7 @@
 - [版本政策设计复核](evidence/2026-09-13-forge-engine-version-policy-review.md)、[Stage 0](evidence/2026-09-14-forge-engine-version-policy-stage0.md)、[Stage 1 package](evidence/2026-09-14-forge-stage1-package-gate.md)：分别查看设计、源码兼容和安装证据范围。
 - [统一候选 clean package](evidence/2026-09-27-unified-candidate-clean-package.md)：候选 wheel 与隔离环境，不代表所有 optional extra 完成。
 - [SCF fallback/native facts](evidence/2026-09-29-scf-fallback-native-facts.md)、[vacancy real smoke](evidence/2026-09-29-vacancy-real-smoke.md)：对应修正与实际运行记录，均不自动晋升 stable。
-- 更早的已结项材料见 [archive](../archive/)。仍有效的 SPEC 不因已经实现而移入历史归档。
+- 已结项评审、旧实施材料及迁出的工具任务报告见[历史归档索引](../archive/README.md)。仍有效的 SPEC 不因已经实现而移入历史归档；新的工具临时状态留在被忽略的本地目录。
 
 ## 跨仓迁移
 
