@@ -116,3 +116,14 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 - `dpdata` 在 Forge 生产源码未发现静态/动态使用，上层有真实使用。Paimon v1.2 的 abacustest 安装链与依赖声明不能证明 v1.3 W3 已独立承接它。已核对 W3 报告中的 Forge wheel 等解析入口和历史 clean-route lock；锁中存在 dpdata 只能证明该历史环境安装了它，不能证明依赖所有权或当前 kit 安装闭合。
 - Ruling：下一批优先解决 dpdata 的安装责任与候选验证，再决定 Forge 默认依赖调整；matplotlib/pymatgen 的 extra 拆分须有明确使用需求 — 当前绘图默认值和结构元数据会受影响 — 静默拆分会改变用户安装后的能力。
 - 后续只变更三个文档的状态与调查结论，生产代码、测试和包声明保持冻结候选一致。
+
+### 推送前收尾（用户确认继续，2026-10-13）
+
+工作流：L3，沿用既有隔离分支，起点 `c2f83c1`。用户确认此前建议的前三项，并顺带整理包简介。范围为历史材料、通用测试与 Python 3.10 测试兼容、示例说明及包元数据；CI 仍为后续事项，本步不推送远端。
+
+- [ ] 历史材料：将 Git 跟踪的 27 份 SDD 记录、3 份 Trae 审查材料及旧 AiiDA 评审归入 docs/archive，保留原始证据/原路径线索；修复已知导航和引用，忽略今后的工具临时状态。已批准 SPEC 的地位不变。
+- [ ] 测试与包：补通用 venv / dev 安装与测试入口；对 Python 3.10 无 tomllib 的收集失败建立真实基线，再以条件 dev 依赖和兼容读取修复；保留运行时最低版本及默认科学依赖。包简介改用当前操作名称并补官方仓库链接。
+- [ ] 示例：说明 NiO 输入、外部 PP/ORB 及 SAI Slurm 脚本边界；补可执行的本地 prepare/dry-run 路径，保留被结构测试使用的 STRU。
+- [ ] 控制器完成导航整合、历史材料完整性与链接检查、Python 3.10/当前 Python 的相称测试及包构建验证、独立复核和本地主线收口。
+
+分工：历史材料作者仅改原始历史文件、docs/archive、.gitignore 和必要历史引用；测试作者仅改 pyproject.toml、tests/test_package_contract.py、tests/README.md；示例作者仅改 examples 下说明及 docs/guide.md 的示例导航。控制器拥有 AGENTS、README、docs/README、docs/superpowers/README、本计划和统一提交。所有作者不得提交、操作共享 index 或再派生代理；共享工作区内不覆盖其他人的修改。
