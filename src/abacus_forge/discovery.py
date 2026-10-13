@@ -6,90 +6,23 @@ import dataclasses
 import json
 from typing import Any, Mapping
 
-from abacus_forge.contracts import (
-    JSONValue,
-    REQUEST_SCHEMA_VERSION,
-    CapabilityDescriptor,
-    ScfCollectRequest,
-    ScfExecuteRequest,
-    ScfModifyRequest,
-    ScfPrepareRequest,
-    AtstNebPrepareRequest,
-    AtstNebExecuteRequest,
-    AtstNebPostprocessRequest,
-)
-from abacus_forge.md_contracts import (
-    MdCollectRequest,
-    MdExecuteRequest,
-    MdModifyRequest,
-    MdPrepareRequest,
-)
-from abacus_forge.md_postprocess_contracts import MD_ANALYSIS_MODES, MdPostprocessRequest
-from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
-from abacus_forge.pyatb_contracts import (
-    _PYATB_NSPIN_HR_CARDINALITY,
-    PyatbBandCollectRequest,
-    PyatbBandExecuteRequest,
-    PyatbBandPrepareRequest,
-)
-from abacus_forge.export_contracts import ExportRequest
+from abacus_forge.contracts import JSONValue, REQUEST_SCHEMA_VERSION, CapabilityDescriptor
 from abacus_forge.errors import ForgeRequestError
-from abacus_forge.relax_contracts import (
-    RelaxCollectRequest,
-    RelaxExecuteRequest,
-    RelaxModifyRequest,
-    RelaxPrepareRequest,
+from abacus_forge.md_postprocess_contracts import MD_ANALYSIS_MODES
+from abacus_forge.pyatb_contracts import _PYATB_NSPIN_HR_CARDINALITY
+from abacus_forge.request_registry import (
+    ATST_NEB_REQUEST_TYPES,
+    EXPORT_REQUEST_TYPES,
+    MD_REQUEST_TYPES,
+    POSTPROCESS_REQUEST_TYPES,
+    PYATB_BAND_REQUEST_TYPES,
+    RELAX_REQUEST_TYPES,
+    REQUEST_TYPES_BY_CAPABILITY,
+    SCF_REQUEST_TYPES,
 )
-
 
 CAPABILITIES_SCHEMA_VERSION = "forge.capabilities/v1"
 SCHEMA_DISCOVERY_VERSION = "forge.schema-discovery/v1"
-
-SCF_REQUEST_TYPES = {
-    "prepare": ScfPrepareRequest,
-    "modify": ScfModifyRequest,
-    "execute": ScfExecuteRequest,
-    "collect": ScfCollectRequest,
-}
-ATST_NEB_REQUEST_TYPES = {
-    "prepare": AtstNebPrepareRequest,
-    "execute": AtstNebExecuteRequest,
-    "postprocess": AtstNebPostprocessRequest,
-}
-
-RELAX_REQUEST_TYPES = {
-    "prepare": RelaxPrepareRequest,
-    "modify": RelaxModifyRequest,
-    "execute": RelaxExecuteRequest,
-    "collect": RelaxCollectRequest,
-}
-MD_REQUEST_TYPES = {
-    "prepare": MdPrepareRequest,
-    "modify": MdModifyRequest,
-    "execute": MdExecuteRequest,
-    "collect": MdCollectRequest,
-    "postprocess": MdPostprocessRequest,
-}
-POSTPROCESS_REQUEST_TYPES = {
-    "band": {"postprocess": BandPostprocessRequest},
-    "dos": {"postprocess": DosPostprocessRequest},
-}
-PYATB_BAND_REQUEST_TYPES = {
-    "prepare": PyatbBandPrepareRequest,
-    "execute": PyatbBandExecuteRequest,
-    "collect": PyatbBandCollectRequest,
-}
-EXPORT_REQUEST_TYPES = {"export": ExportRequest}
-
-REQUEST_TYPES_BY_CAPABILITY = {
-    "scf": SCF_REQUEST_TYPES,
-    "relax": RELAX_REQUEST_TYPES,
-    "cell-relax": RELAX_REQUEST_TYPES,
-    "md": MD_REQUEST_TYPES,
-    **POSTPROCESS_REQUEST_TYPES,
-    "pyatb-band": PYATB_BAND_REQUEST_TYPES,
-    "export": EXPORT_REQUEST_TYPES,
-}
 
 REQUIRED_WIRE_FIELDS = {
     "prepare": frozenset({"schema_version", "operation", "operation_id", "workspace_rel", "structure_path_rel"}),

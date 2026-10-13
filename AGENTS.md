@@ -1,13 +1,13 @@
 # AGENTS.md
 
 本文件是 `ABACUS-Forge` 子项目的人类与 AI 开发第一入口，负责说明开发定位、边界、验证与文档路由。
-用户向说明与当前 CLI / Python API 用法请参阅 [README.md](README.md)，项目规划与路线图请参阅 [ROADMAP.md](ROADMAP.md)。详细的文档先行治理在 [docs/superpowers/README.md](docs/superpowers/README.md)。
+英文产品入口见 [README.md](README.md)，中文使用与参考文档从 [docs/README.md](docs/README.md) 进入。当前方向见 [ROADMAP.md](ROADMAP.md)，有效设计与计划见 [docs/superpowers/README.md](docs/superpowers/README.md)。
 
 ## 1. 开发者快速入口
-- **先看顺序**：`AGENTS.md -> README.md -> tests/`
+- **先看顺序**：`AGENTS.md -> docs/architecture.md -> owning SPEC/PLAN 与 tests/README.md`；用户用法查 README 和 docs/guide.md。
 - **开发定位**：`ABACUS-Forge` 是协议与平台无关的 ABACUS 科学计算快捷消费基座，同时服务人类研发者和 AI Agent（Codex、OpenCode，以及作为 ADAM-ABACUS 的 Paimon）。
 - **工作模式**：作为纯 Python 库和 Agent-first CLI 工具开发，向上提供单元化调用接口，不承担上层 workflow 编排职责。
-- **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`export` 的职责边界；`run` 仅作为兼容别名。
+- **核心原则**：所有新增能力必须落在薄包装基元内，遵循 `prepare`、`modify-*`、`execute`、`collect`、`postprocess`、`export` 的职责边界；`run` 仅作为兼容别名。
 - **成熟度原则**：仅有 mock/fixture 测试的 property pack 一律标记为实验性，不得冒充已通过真实 ABACUS 运行验证的稳定操作能力；科学结果是否可接受由上层人类/Agent 判断。
 
 ## 2. 本地开发与验证
@@ -27,7 +27,7 @@
 - Run `tests/test_contracts.py`, `tests/test_workspace.py`, and the owning API/result tests whenever contracts or workspace persistence change.
 - **开发习惯**：
   - 新增 CLI 时，必须同时补充对应 pytest 用例。
-  - 修改 `README.md` 中 CLI 示例时，必须核对 `--help` 与测试覆盖是否同步。
+  - 修改 README 或 `docs/guide.md` 中 CLI 示例时，必须核对 `--help` 与测试覆盖是否同步。
 
 ## 3. 严格的开发边界与禁止项
 为保证执行基座的轻量化与通用性，开发时必须严格遵守以下红线：
@@ -47,9 +47,10 @@
 - **`export`**：只负责将已有事实结果序列化或导出为调用方指定的 JSON/文件，不负责科学判定、展示、编排或平台化交付。
 
 ## 5. 文档职责与开发路由
-- **`README.md`**：面向科研用户和调用者；只记录当前能力、成熟度、安装与稳定用法。
+- **`README.md`**：英文产品入口；记录定位、安装、最小调用、能力成熟度和导航。
+- **`docs/README.md`、`guide.md`、`reference.md`、`architecture.md`**：中文导航、任务用法、当前接口/产物参考和现行代码职责；每类内容保留一个主要维护位置。
 - **`AGENTS.md`**：面向人类与 AI 开发者；只记录边界、验证和文档入口，不承载详细设计。
-- **`docs/superpowers/specs/*.html`**：公共 API/schema、workspace、CLI 协议、迁移或跨仓边界的规范源；批准后高于 plan 与 roadmap。
+- **`docs/superpowers/specs/`**：公共 API/schema、workspace、CLI 协议、迁移或跨仓边界的规范源；批准后高于 plan 与 roadmap。新建规范采用 Markdown；历史 HTML 保留原有地位，实际修订时按需迁移。HTML 阅读视图按需生成，回到 Markdown 源修改。
 - **`docs/superpowers/plans/*.md`**：从已批准 SPEC 推导的执行清单，不得反向发明或改变架构。
 - **`ROADMAP.md`**：方向和候选里程碑，不是 API 或持久化契约。
 

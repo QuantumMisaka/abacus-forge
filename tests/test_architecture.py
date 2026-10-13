@@ -10,7 +10,7 @@ from tests.support.process import run_cli
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "abacus_forge"
-README = ROOT / "README.md"
+USER_GUIDE = ROOT / "docs" / "guide.md"
 
 # These are upper-layer integrations.  Forge may provide compatibility
 # fixtures for some of them under tests, but production source must not import
@@ -147,6 +147,11 @@ def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
         graph, roots - {"abacus_forge.services"},
         frozenset({"abacus_forge.api", "abacus_forge.services"}),
     ) == []
+    assert dependency_violations(
+        graph,
+        {"abacus_forge.postprocess_services", "abacus_forge.postprocess_algorithms", "abacus_forge.band_postprocess"},
+        frozenset({"abacus_forge.api", "abacus_forge.unit_postprocess"}),
+    ) == [], "typed/shared postprocess must not depend on the legacy unit adapter"
     support = ast.parse((SOURCE_ROOT / "service_support.py").read_text(encoding="utf-8"))
     request_types = {
         alias.name for node in ast.walk(support) if isinstance(node, ast.ImportFrom)
@@ -237,8 +242,8 @@ def test_machine_discovery_advertises_only_band_and_dos_postprocess_operations()
         assert set(descriptor["inputs"]) == {"postprocess"}
 
 
-def test_readme_machine_request_examples_parse_through_real_cli(tmp_path: Path) -> None:
-    text = README.read_text(encoding="utf-8")
+def test_user_guide_machine_request_examples_parse_through_real_cli(tmp_path: Path) -> None:
+    text = USER_GUIDE.read_text(encoding="utf-8")
     section_match = re.search(r"^## Agent-first CLI\n(?P<section>.*?)(?=^## |\Z)", text, flags=re.MULTILINE | re.DOTALL)
     assert section_match is not None
     section = section_match.group("section")

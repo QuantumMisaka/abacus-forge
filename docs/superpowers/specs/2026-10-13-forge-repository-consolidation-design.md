@@ -1,10 +1,10 @@
 # Forge 文档与代码体系整理设计
 
-状态：设计方向已确认（2026-10-13）；文档重组与代码重构尚未实施。
+状态：设计方向已确认（2026-10-13）；用户随后授权以 subagent-driven-development 执行，进展和验收见[实施计划](../plans/2026-10-13-forge-repository-consolidation.md)。
 
 决策来源：本轮仓库审查后，用户选择“首轮保留已有公开能力和调用行为，将可废弃项单列”，并提出英文 README、中文详细文档及清晰的文档职责和指向。本文件固化这些决定与整理边界。
 
-上位规范：[契约优先重构](2026-09-01-forge-contract-first-rearchitecture-design.html)、[Service/Status](2026-09-02-forge-service-status-migration-design.html)。本设计不改变 operation、请求/结果 schema、workspace 持久化或跨仓责任。工作流：L3 设计收敛；后续关联实施以独立 PLAN 组织，本轮仅固化设计。
+上位规范：[契约优先重构](2026-09-01-forge-contract-first-rearchitecture-design.html)、[Service/Status](2026-09-02-forge-service-status-migration-design.html)。本设计不改变 operation、请求/结果 schema、workspace 持久化或跨仓责任。设计决策由本文维护，执行清单与证据由关联 PLAN 维护。
 
 ## 1. 整理目标与依据
 
@@ -36,7 +36,7 @@ README 采用英文，作为唯一维护的根级产品入口，不新增需要�
 
 命令、API 名称、字段、错误码和机器输出保留原文。历史证据、原始日志和已有规范不为了统一语言进行批量翻译；实质整理对应文档时再统一其说明语言。
 
-下表是目标组织；尚不存在的路径将在实施时建立。优先使用少量职责清晰的文档，只有内容规模或读者路径确有需要时再拆分专题。
+下表规定内容归属。优先使用少量职责清晰的文档，只有内容规模或读者路径确有需要时再拆分专题。
 
 | 位置 | 读者与回答的问题 | 内容边界 |
 | --- | --- | --- |

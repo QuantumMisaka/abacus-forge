@@ -1,169 +1,48 @@
-# Forge test portfolio
+# Forge 测试分层与门禁
 
-The default suite is deterministic and offline. Markers describe evidence,
-not implementation ownership:
+默认测试集离线运行。Portfolio marker 标记测试能证明的行为边界；新增根目录测试文件在 `tests/conftest.py` 中归类，其他测试须显式标记。收集时会报出未归类用例，避免正向 `-m` 选择静默遗漏。
 
-| Marker | Evidence boundary | Release role |
+| Marker | 行为与证据边界 | 用途 |
 | --- | --- | --- |
-| `core` | INPUT/STRU/KPT, structures, transformations, DOS data, source import boundaries | required PR gate |
-| `integration` | prepare/execute/collect/unit/task boundaries | required PR gate |
-| `cli` | CLI dispatch and process contracts | required PR gate |
-| `compat` | ABACUS/abacustest output compatibility | required migration gate |
-| `pyatb` | PyATB mapping and collection | required when PyATB bridge is enabled |
-| `composite` | local composite pack wiring | deterministic regression, not physics proof |
-| `experimental` | mock/fixture-only property packs | non-stable evidence |
-| `real_smoke` | seven supplied ABACUS workspace smokes (PW + LCAO) plus the external PyATB and ATST process smokes | opt-in release evidence |
-| `benchmark` | normalized migration projections | opt-in migration evidence |
+| `core` | 输入/结构/数据算法、请求记录与包元数据等局部契约 | 确定性 PR 回归 |
+| `integration` | prepare/execute/collect、service、workspace 审计与文件交接 | 确定性 PR 回归 |
+| `cli` | CLI 解码、派发及进程输出 | 确定性 PR 回归 |
+| `compat` | ABACUS/abacustest 兼容及可选解析器迁移约束 | 迁移证据 |
+| `pyatb` | PyATB handoff、manifest、typed operation | 启用 PyATB 桥接时必跑 |
+| `composite` | 本地复合任务与属性计算接线 | 确定性回归，不证明物理结果 |
+| `experimental` | 仅有 mock/fixture 的 property pack | 非稳定能力证据 |
+| `real_smoke` | 调用方提供引擎和工作区的真实进程 | 显式启用的操作发布证据 |
+| `benchmark` | 规范化迁移投影与 parser parity | 显式启用的迁移证据 |
 
-Commands:
+从仓库根目录运行：
 
 ```bash
-conda run -n paimon python -m pytest -q
-conda run -n paimon python -m pytest -q -m 'not experimental and not real_smoke and not benchmark'
-conda run -n paimon python -m pytest -q -m experimental
-conda run -n paimon python -m pytest -q --run-benchmark -m benchmark
-conda run -n paimon python -m pytest -q --run-real-smoke -m real_smoke
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider -m 'not experimental and not real_smoke and not benchmark'
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider -m experimental
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider --run-benchmark -m benchmark
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider --run-real-smoke -m real_smoke
 ```
 
-Engine/version policy Stage 0 parity uses the canonical `abacuslite` checkout
-as an explicit oracle. It is intentionally separate from the default suite and
-from real ABACUS execution:
+默认回归收集全部测试，但跳过 `real_smoke` 和 `benchmark`；正向 marker 选择不替代完整离线回归。真实计算的输入准备、逐项命令、环境变量、结果范围及已知版本差异统一见 [real-smoke 指南](real_smoke/README.md)。`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 是双轨发布门禁的既有例外：即使没有 `--run-real-smoke`，对应测试也不会因缺少外部输入而跳过，会明确失败；普通默认回归不要设置它。
+
+`benchmark/test_abacuslite_canonical_parity.py` 的 Stage 0 对照使用指定 canonical checkout 作为 oracle：
 
 ```bash
 export ABACUS_FORGE_CANONICAL_ABACUSLITE=/absolute/path/to/abacus-develop/interfaces/ASE_interface
-conda run -n paimon env PYTHONPATH=src \
-  python -m pytest -q --run-benchmark \
+conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  python -m pytest -q -p no:cacheprovider --run-benchmark \
   tests/benchmark/test_abacuslite_canonical_parity.py
 ```
 
-The gate compares `legacyio`/`latestio` energy, Fermi, force and stress facts
-for SCF, relax, cell-relax and MD, and covers output-only, truncated and
-non-converged logs, containment, version isolation, concurrency and append-only
-audit behavior. A checkout fixture is not an installable package or a native /
-optional-parser dual-track release gate.
+它比较 SCF、relax、cell-relax、MD 的 `legacyio`/`latestio` 事实及版本隔离、并发和审计边界。checkout fixture 不是可安装发布包，也不能代替 native/optional parser 双轨真实计算门禁。
 
-The legacy SCF smoke and typed SCF machine smoke are separate evidence
-surfaces. The legacy test calls the compatibility Python API; the typed test
-calls only the machine CLI and is the evidence for the typed SCF operation
-path. The typed SCF test copies the prepared workspace with links materialized,
-runs one `operation execute` and one `operation collect` request with distinct
-UUIDv4 operation IDs, and checks factual envelopes, audit events, manifest
-references, and contained artifact paths. It uses the shared
-`ABACUS_FORGE_REAL_SMOKE_WORKSPACE` and
-`ABACUS_FORGE_ABACUS_EXECUTABLE` values:
+## 按变更选择 owning tests
 
-```bash
-export ABACUS_FORGE_REAL_SMOKE_WORKSPACE=/absolute/path/to/prepared-forge-workspace
-export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
-conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
-  python -m pytest -q -p no:cacheprovider --run-real-smoke \
-  tests/real_smoke/test_abacus_smoke.py -k typed_scf
-```
+- 改动版本记录、workspace 持久化或跨 operation artifact 时，运行 `tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py tests/test_service_status.py`，并加入对应 API/result tests。`test_contracts.py` 管记录验证，`test_workspace.py` 管 append-only manifest/event，后面三项管结果投影和服务错误映射。
+- 改动机器 CLI transport 时，同时运行 `tests/test_machine_cli.py tests/test_cli_process.py`。前者管进程内解码/发现/派发，后者管 stdout/stderr/退出码与 API/进程一致性。
+- `tests/test_architecture.py` 管生产代码导入边界与当前用户指南中的机器 CLI 示例；示例仍通过实际 CLI 解析和执行 dry-run。`tests/fixtures/abacus-native-md` 是本地格式 fixture，不能充当真实执行或科学判断。
 
-The typed SCF and Relax smokes are opt-in and use only the machine CLI. The
-typed SCF gate checks the copied `inputs/INPUT` declares `calculation=scf` before
-the first execute call. The typed Relax gate copies a prepared workspace before
-running one `execute` and one `collect` request with different operation IDs;
-both calls use the long parent-process timeout. Set the shared executable and the
-Relax-specific workspace; `ABACUS_FORGE_RELAX_SMOKE_CAPABILITY` defaults to
-`relax` and accepts only `relax` or `cell-relax`:
+typed SCF/Relax service tests 保持执行、收集事实与科学判断分离：`scientific` 为 `unassessed`；`dry_run` 必须显式请求；typed 执行不会根据旧 `NORMAL END` 推断跳过。`run_many(skip_completed=True)` 属于 legacy composite 兼容接口，不属于 typed status 协议。
 
-```bash
-export ABACUS_FORGE_RELAX_SMOKE_WORKSPACE=/absolute/path/to/prepared-relax-workspace
-export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
-export ABACUS_FORGE_RELAX_SMOKE_CAPABILITY=relax
-conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
-  python -m pytest -q -p no:cacheprovider --run-real-smoke \
-  tests/real_smoke/test_abacus_smoke.py -k typed_relax
-```
-
-The typed Relax test has its own workspace gate and does not require the SCF
-workspace variable. Missing real-smoke inputs skip with a precise reason;
-supplied invalid paths, capabilities, or executables fail. These tests record
-serialized outcome/event/artifact facts only and do not assess physical
-convergence.
-
-The typed MD test is an independent, experimental machine-CLI gate. It uses
-`ABACUS_FORGE_MD_SMOKE_WORKSPACE` plus the shared
-`ABACUS_FORGE_ABACUS_EXECUTABLE`, copies a prepared workspace whose
-`inputs/INPUT` declares `calculation=md`, and runs one typed `execute` followed
-by one typed `collect`:
-
-```bash
-export ABACUS_FORGE_MD_SMOKE_WORKSPACE=/absolute/path/to/prepared-md-workspace
-export ABACUS_FORGE_ABACUS_EXECUTABLE=/absolute/path/to/abacus
-conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
-  python -m pytest -q -p no:cacheprovider --run-real-smoke \
-  tests/real_smoke/test_abacus_smoke.py -k typed_md
-```
-
-It checks native `running_md.log` parser facts, status, events, manifest and
-contained artifacts; it does not evaluate trajectory quality or any scientific
-threshold. `MD_dump` facts are collected as a separate factual projection.
-Missing MD-specific inputs skip, while supplied invalid paths or a non-MD
-workspace fail. The typed MD gate does not change legacy SCF/Relax smoke
-behavior. The supplied source must not already contain generated
-`running_md.log` or `MD_dump` files in collector-visible output areas (including
-the native `inputs/OUT.*` layout), so a
-no-op executable cannot pass by reusing an old MD result. Typed SCF and Relax
-use the same collector-aware guard for their `running_*.log` files (including
-`reports/`) and fallback `out.log`; Relax also guards final-structure outputs
-outside `inputs/` and `reports/` (native outputs under `inputs/OUT.*` are also
-guarded). Explicit non-generated `inputs/OUT.*` handoff assets remain allowed.
-This is a real-smoke input condition only; normal Forge
-execute/collect behavior is unchanged.
-
-When no external real workspace or executable is supplied, each focused typed
-selection skips and no real execution evidence is claimed. No smoke result is
-promoted to stable capability evidence; the current capabilities remain
-experimental until their own real gates and the remaining Stage 4 release
-conditions are complete.
-
-## Contract and workspace gate
-
-Changes to versioned records, workspace persistence, or operation-boundary
-artifacts must run the offline contract gate below, together with any owning
-API/result tests:
-
-```bash
-conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py tests/test_service_status.py
-```
-
-`tests/test_contracts.py` owns record validation, `tests/test_workspace.py`
-owns the append-only manifest and event paths, and
-`tests/test_result_contract.py` plus `tests/test_units.py` own result/API
-projections, and `tests/test_service_status.py` owns the typed service's public
-error and observation mapping. The v1 workspace manifest and event records are additive; legacy
-`forge-unit.json` and `forge-result.json` compatibility outputs remain covered
-by the unit tests.
-
-`tests/test_machine_cli.py` owns the in-process machine decoder, discovery,
-rendering, and service-dispatch contracts. `tests/test_cli_process.py` owns
-subprocess stdout/stderr/exit behavior and API/process parity. The two suites
-are the machine-path unit and process gates and should be run together for
-transport changes. `tests/test_architecture.py` owns the AST-only production
-import boundary and the current machine-surface documentation contracts; it
-is registered as `core`.
-
-`tests/fixtures/abacus-native-md` is a compact format fixture, not a science
-case. It covers the repository-local ABACUSTest `!FINAL_ETOT_IS` marker and
-the native ABACUS MD `running_md.log`/`MD_dump` shapes, including Ry-to-eV
-projection and workspace-relative typed artifact facts. The fixture does not
-provide real execution evidence or a physical acceptance judgment.
-
-The typed SCF and Relax service tests additionally own the migration boundary:
-`ForgeServices`/`RelaxServiceSet` return execution/collection facts and
-observations, and any legacy `scientific` projection remains `unassessed`.
-`dry_run` is explicit, and typed execution never infers a skip from an existing
-`NORMAL END` log. Relax collection keeps parser/file facts separate from
-scientific acceptance.
-`run_many(skip_completed=True)` remains covered as a legacy compatibility helper
-for composite tasks and is intentionally not part of the typed status protocol.
-
-Deleting or merging a test requires a named production mutation that the
-remaining test still catches. A passing count alone is not evidence.
-
-Evidence limits: `core`, `integration`, `cli`, and `composite` are deterministic
-PR gates; `compat` and `benchmark` are migration evidence; `real_smoke` is
-release evidence. None of these alone proves physical convergence or HPC
-scheduler correctness.
+删除或合并测试前，须记录具名 production mutation 和剩余测试仍失败的证据。测试通过数量不能替代行为证据。上述 marker 本身都不证明物理收敛或 HPC 调度正确性。

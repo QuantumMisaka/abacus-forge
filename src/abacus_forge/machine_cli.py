@@ -24,6 +24,9 @@ from abacus_forge.contracts import (
     canonical_relative_path,
 )
 from abacus_forge.discovery import capabilities_document, request_schema_document
+from abacus_forge.request_registry import (
+    ALL_REQUEST_TYPES_BY_CAPABILITY,
+)
 from abacus_forge.errors import (
     ForgeInternalError,
     ForgePathError,
@@ -58,50 +61,30 @@ from abacus_forge.relax_contracts import (
 )
 
 
-_SCF_DECODERS = {
-    "prepare": ScfPrepareRequest.from_dict,
-    "modify": ScfModifyRequest.from_dict,
-    "execute": ScfExecuteRequest.from_dict,
-    "collect": ScfCollectRequest.from_dict,
+def _decoders(request_types: Mapping[str, type]) -> dict[str, Any]:
+    return {operation: request_type.from_dict for operation, request_type in request_types.items()}
+
+
+# The cache preserves the relax/cell-relax alias while deriving every decoder
+# from the same request classes used by schema discovery.
+_DECODERS_BY_REQUEST_TYPES = {
+    id(request_types): _decoders(request_types)
+    for request_types in ALL_REQUEST_TYPES_BY_CAPABILITY.values()
 }
-_ATST_NEB_DECODERS = {
-    "prepare": AtstNebPrepareRequest.from_dict,
-    "execute": AtstNebExecuteRequest.from_dict,
-    "postprocess": AtstNebPostprocessRequest.from_dict,
-}
-_RELAX_DECODERS = {
-    "prepare": RelaxPrepareRequest.from_dict,
-    "modify": RelaxModifyRequest.from_dict,
-    "execute": RelaxExecuteRequest.from_dict,
-    "collect": RelaxCollectRequest.from_dict,
-}
-_MD_DECODERS = {
-    "prepare": MdPrepareRequest.from_dict,
-    "modify": MdModifyRequest.from_dict,
-    "execute": MdExecuteRequest.from_dict,
-    "collect": MdCollectRequest.from_dict,
-    "postprocess": MdPostprocessRequest.from_dict,
-}
-_POSTPROCESS_DECODERS = {
-    "band": {"postprocess": BandPostprocessRequest.from_dict},
-    "dos": {"postprocess": DosPostprocessRequest.from_dict},
-}
-_PYATB_BAND_DECODERS = {
-    "prepare": PyatbBandPrepareRequest.from_dict,
-    "execute": PyatbBandExecuteRequest.from_dict,
-    "collect": PyatbBandCollectRequest.from_dict,
-}
-_EXPORT_DECODERS = {"export": ExportRequest.from_dict}
 _CAPABILITY_DECODERS = {
-    "scf": _SCF_DECODERS,
-    "relax": _RELAX_DECODERS,
-    "cell-relax": _RELAX_DECODERS,
-    "atst-neb": _ATST_NEB_DECODERS,
-    "md": _MD_DECODERS,
-    **_POSTPROCESS_DECODERS,
-    "pyatb-band": _PYATB_BAND_DECODERS,
-    "export": _EXPORT_DECODERS,
+    capability: _DECODERS_BY_REQUEST_TYPES[id(request_types)]
+    for capability, request_types in ALL_REQUEST_TYPES_BY_CAPABILITY.items()
 }
+# Keep the historical module-level decoder aliases for direct consumers.
+_SCF_DECODERS = _CAPABILITY_DECODERS["scf"]
+_ATST_NEB_DECODERS = _CAPABILITY_DECODERS["atst-neb"]
+_RELAX_DECODERS = _CAPABILITY_DECODERS["relax"]
+_MD_DECODERS = _CAPABILITY_DECODERS["md"]
+_POSTPROCESS_DECODERS = {
+    capability: _CAPABILITY_DECODERS[capability] for capability in ("band", "dos")
+}
+_PYATB_BAND_DECODERS = _CAPABILITY_DECODERS["pyatb-band"]
+_EXPORT_DECODERS = _CAPABILITY_DECODERS["export"]
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,
     RelaxModifyRequest,

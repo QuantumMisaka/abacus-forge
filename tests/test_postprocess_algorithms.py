@@ -14,6 +14,8 @@ from abacus_forge.postprocess_algorithms import (
     process_band_files,
     process_dos_files,
 )
+from abacus_forge.unit_postprocess import postprocess_abacus_band
+from abacus_forge.workspace import Workspace
 
 
 def _json_text(value: object) -> str:
@@ -91,6 +93,33 @@ def test_process_band_files_explicitly_shifts_energy_columns_and_records_axis(tm
     assert rows[0][2] == "-1.5"
     assert rows[1][:2] == ["2", "0.5"]
     assert rows[1][2] == "-1.3"
+
+
+def test_band_outputs_preserve_per_file_prefixes_and_legacy_default_data(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "legacy").ensure_layout()
+    source_dir = workspace.outputs_dir / "OUT.ABACUS"
+    source_dir.mkdir()
+    one_prefix = source_dir / "BANDS_1.dat"
+    two_prefix = source_dir / "BANDS_2.dat"
+    one_prefix.write_text("0.0 -1.0 0.5\n0.5 -0.8 0.7\n", encoding="utf-8")
+    two_prefix.write_text("1 0.0 -1.2 0.4\n2 0.5 -1.0 0.6\n", encoding="utf-8")
+
+    legacy = postprocess_abacus_band(workspace, save_plot=False)
+    assert legacy["status"] == "completed"
+    assert (workspace.outputs_dir / "band.dat").read_text(encoding="utf-8").splitlines() == [
+        f"# {one_prefix}", "0 -1 0.5", "0.5 -0.8 0.7",
+        f"# {two_prefix}", "1 0 -1.2 0.4", "2 0.5 -1 0.6",
+    ]
+
+    typed = process_band_files(
+        [one_prefix, two_prefix], tmp_path / "typed", plot_emin=-2.0, plot_emax=2.0,
+        save_data=True, save_plot=False, energy_axis="fermi_relative", fermi_reference_ev=0.5,
+    )
+    assert typed.summary["num_bands"] == 2
+    assert (tmp_path / "typed/band.dat").read_text(encoding="utf-8").splitlines() == [
+        "# BANDS_1.dat", "0 -1.5 0", "0.5 -1.3 0.2",
+        "# BANDS_2.dat", "1 0 -1.7 -0.1", "2 0.5 -1.5 0.1",
+    ]
 
 
 def test_process_band_files_plots_one_path_column_with_multiple_bands(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

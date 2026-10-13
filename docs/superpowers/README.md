@@ -1,58 +1,75 @@
-# ABACUS-Forge 文档先行开发治理
+# Forge 设计、计划与证据
 
-本目录把架构决策与实施清单留在仓内，使人类开发者、Codex 和其他 AI 开发者消费同一份本地事实。它是轻量入口，不复制全局 Superpowers 指令；执行者仍须先读取根目录 `AGENTS.md` 与命中的 Skill。
+本目录保存本地规范源、执行清单与候选验证记录。先读根目录 [AGENTS.md](../../AGENTS.md)；使用文档从 [docs/README.md](../README.md) 进入，现行代码职责见[架构说明](../architecture.md)。规范是否有效由批准状态与适用范围决定，不由文件日期或是否已有实现决定。
 
-2026-10-13 [文档与代码体系整理设计](specs/2026-10-13-forge-repository-consolidation-design.md) 已固化本轮确认的方向：保留公开能力与调用行为、可废弃项单列、英文 README 与中文详细文档。整理实施尚未启动；本设计不改变下列已批准公共契约。新规范采用 Markdown，历史 HTML 规范继续有效。
+## 当前执行入口
 
-## Paimon v1.3 跨仓迁移导航
+| 工作 | 状态和入口 |
+| --- | --- |
+| 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批保留公开行为与默认依赖，可废弃项单列。 |
+| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成，可安装 optional extra、fresh package parity 和发布门禁仍开放。 |
+| 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。已有步骤保留候选绑定；真实 NEB、完整迁移与外部发布事项未全部验收。 |
 
-2026-09-29 总体设计入口位于 app-tools 仓 `toolbox/ABACUS/docs/superpowers/specs/2026-09-29-paimon-v1.3-backend-architecture.html`（当前工作区 checkout 为 `app-tools-forge`）。该 Reviewed / 实施基线汇总两个产品的定位、目标架构、开发参考、M0–M4 落地与验收模式；执行总表为同仓 `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md` 的 W0–W4，路径相对 `toolbox/ABACUS/`。
+## 有效设计基线
 
-Forge 继续独立交付，以下已批准的公共契约与能力专项 SPEC 仍拥有其范围。总体设计不批量覆盖这些契约，不将 Paimon 发布门槛施加到每次 Forge 发布。原有实现/证据 PLAN 保留原状态；未完成的跨仓依赖、adapter 与 benchmark 事项在迁移总表关联，optional abacuslite extra、Contract System 和 BEC 仍按各自设计推进。
+| 规范 | 适用范围 |
+| --- | --- |
+| [2026-09-01 契约优先重构](specs/2026-09-01-forge-contract-first-rearchitecture-design.html) | Approved；产品边界、契约和总体迁移。 |
+| [2026-09-02 Service/Status](specs/2026-09-02-forge-service-status-migration-design.html) | Approved；operation identity、受理、execution/collection、v1 CLI/error 与兼容迁移。仅在这些细化范围内优先于 09-01。 |
+| [Typed MD postprocess](specs/2026-09-10-forge-typed-md-postprocess-design.html) | Approved for this implementation thread；显式 trajectory 与独立后处理。 |
+| [Typed export](specs/2026-09-10-forge-typed-export-design.html) | Approved；显式 operation outcome 的事实序列化。 |
+| [PyATB artifact manifest](specs/2026-09-10-forge-typed-pyatb-artifact-manifest-design.html)、[nspin=4](specs/2026-09-10-forge-typed-pyatb-nspin4-design.html) | Approved；限定的 manifest 与 HR 路由。 |
+| [Engine/Version Policy](specs/2026-09-12-forge-engine-version-policy-design.html) | 设计已收口，Stage 0 已验证；后端配置、错误优先级与解析分工。未完成阶段按 PLAN 验收。 |
+| [2026-10-13 仓库整理](specs/2026-10-13-forge-repository-consolidation-design.md) | 用户确认的兼容整理与文档归属，不修改上述公共契约。 |
 
-## 文档层级
+## 草案与后继关系
 
-| 文档 | 读者 | 职责 | 是否可改变实现边界 |
-| --- | --- | --- | --- |
-| 根目录 `README.md` | 科研用户、调用者 | 当前能力、成熟度、安装和稳定用法 | 否 |
-| 根目录 `AGENTS.md` | 人类与 AI 开发者 | 边界、验证、文档路由和开发约束 | 否；只指向规范源 |
-| `specs/*.html` | 维护者、评审者 | 公共 API/schema、持久化 workspace、迁移和跨仓边界的规范源 | 是，批准后 |
-| `plans/*.md` | 实施者 | 从 SPEC 推导出的可执行任务、测试和提交检查点 | 否 |
-| `evidence/*.md` | 维护者、发布评审者 | 绑定候选提交的门禁命令、环境、结果与未决证据 | 否 |
-| `../archive/` | 回溯者 | 已结项或已取代的历史材料 | 否 |
+| 草案 | 当前地位 |
+| --- | --- |
+| [Contract System](specs/2026-09-29-forge-contract-system-design.html) | Draft；接续下列知识库提案，未批准、未实施。 |
+| [I/O Contract Knowledge Base](specs/2026-09-29-forge-io-contract-knowledge-base-design.html) | 历史 Draft；讨论由 Contract System 接续，保留原始依据。 |
+| [Typed BEC](specs/2026-09-29-forge-typed-bec-design.html) | Draft；显式阶段、解析和科学计算语义仍待收口，无实施 PLAN。 |
+| [Property manifest](specs/2026-09-10-forge-property-manifest-design.html) | 仍是 Draft；[计划](plans/2026-09-10-forge-property-manifest.md)已有 provisional 实现与复核，不能反推规范已获批准或能力已稳定。 |
 
-重构规范由两份已批准的本地 SPEC 共同构成：[契约优先重构 SPEC](./specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 定义产品边界与 contract-first 总体迁移；[Service/Status 细化 SPEC](./specs/2026-09-02-forge-service-status-migration-design.html) 冻结 operation identity、执行/收集状态、v1 CLI/error 协议与兼容迁移。后者仅在其细化范围内优先；未覆盖的边界仍以 2026-09-01 SPEC 为准。
+## 实现记录与历史计划
 
-## 路由
+下表按主题定位既有实现及其证据。历史任务模板中的未勾选项不自动等于当前待办；应结合该计划的状态、completion record 与绑定提交阅读。残余发布/跨仓门禁从上方当前入口追踪，不批量重写原始记录。
 
-| 级别 | 适用变化 | 必需产物与验证 |
-| --- | --- | --- |
-| L1 | 局部、可逆、无公共行为或架构变化的修复/文档勘误 | 最小 diff 与最近测试/文档检查 |
-| L2 | 有界行为变更、bugfix、局部重构 | 先建立行为证据；适用时 TDD 的 RED → GREEN → REFACTOR；运行拥有该行为的测试 |
-| L3α | 公共 API/schema、workspace 持久化、CLI 协议、adapter 边界或架构仍有决策 | `brainstorming` → HTML SPEC → 用户批准 → `writing-plans` → 执行 |
-| L3β | 用户已拍板且方案唯一的多步骤迁移 | `writing-plans`，在 plan 头部记录决策来源；用户批准后执行 |
+| 主题 | 计划/记录 |
+| --- | --- |
+| 基线与测试治理 | [基线统一](plans/2026-09-01-forge-baseline-unification.md)、[契约基础](plans/2026-09-01-forge-contract-foundation.md)、[测试组合治理](plans/2026-09-01-forge-test-portfolio-governance.md) |
+| Service、CLI 与操作 | [SCF](plans/2026-09-02-forge-service-status-scf.md)、[Agent-first CLI](plans/2026-09-04-forge-agent-first-cli.md)、[Relax](plans/2026-09-06-forge-relax-operations.md)、[MD](plans/2026-09-10-forge-typed-md-operations.md) |
+| 中立内核与输入资产 | [保真收敛](plans/2026-09-09-forge-core-fidelity.md)、[参照源码与取舍](plans/2026-09-09-forge-core-fidelity-references.md)、[显式资产](plans/2026-09-09-forge-typed-asset-materialization.md)、[PBE/ATST 边界](plans/2026-09-09-forge-default-pbe-and-atst-neb-boundary.md) |
+| 后处理与外部引擎 | [Band/DOS](plans/2026-09-10-forge-typed-postprocess.md)、[MD postprocess](plans/2026-09-10-forge-typed-md-postprocess.md)、[MD 复核修正](plans/2026-09-11-forge-md-postprocess-review-fixes.md)、[ATST adapter](plans/2026-09-09-forge-atst-neb-adapter.md) |
+| PyATB 与导出 | [Band handoff](plans/2026-09-10-forge-typed-pyatb-band.md)、[manifest](plans/2026-09-10-forge-typed-pyatb-artifact-manifest.md)、[nspin=4](plans/2026-09-10-forge-typed-pyatb-nspin4.md)、[可选 rR](plans/2026-09-11-forge-typed-pyatb-optional-rr.md)、[export](plans/2026-09-10-forge-typed-export.md) |
+| 解析、状态与前置条件 | [原生输出保真](plans/2026-09-10-forge-abacus-native-collection-fidelity.md)、[collection metadata](plans/2026-09-10-forge-typed-collection-metadata.md)、[Fermi 单位](plans/2026-09-12-forge-native-fermi-unit.md)、[calculation 校验](plans/2026-09-12-forge-typed-calculation-guards.md)、[normal_end](plans/2026-09-12-forge-typed-execute-normal-end.md) |
+| 历史集成与运行门禁 | [主线集成](plans/2026-09-11-forge-mainline-integration.md)、[maturity gates](plans/2026-09-11-forge-maturity-gates-integration.md)、[迁移事实](plans/2026-09-11-forge-core-migration-facts.md)、[SCF smoke](plans/2026-09-10-forge-typed-scf-real-smoke.md)、[MD smoke](plans/2026-09-11-forge-typed-md-real-smoke.md)、[freshness](plans/2026-09-11-forge-real-smoke-freshness.md) |
 
-对 L3，SPEC 与 PLAN 都必须落在本目录。PLAN 不得发明或推翻 SPEC；发现设计冲突时停止扩大实现，回到设计澄清并更新 SPEC。
+## 验证证据
 
-2026-09-13 [Engine/Version Policy SPEC](./specs/2026-09-12-forge-engine-version-policy-design.html) 已完成设计收口，新增后端配置、错误优先级与解析分工，保留既有 final 候选兼容；[分阶段 PLAN](./plans/2026-09-13-forge-engine-version-policy.md) 的 A 与 Stage 0（含 canonical checkout parity）已在开发分支推进，C/D 的可安装 extra、真实双轨和外部迁移仍待验收。
+证据只支持其中列出的代码版本、环境和行为范围；离线 fixture、真实进程和科学验收不可互相替代。当前测试运行方式见 [tests/README.md](../../tests/README.md)。
 
-## 日常门禁
+- [Stage 5 历史候选](evidence/2026-09-13-forge-stage5-evidence.md)：离线、package、process/real smoke 及未证明项。
+- [版本政策设计复核](evidence/2026-09-13-forge-engine-version-policy-review.md)、[Stage 0](evidence/2026-09-14-forge-engine-version-policy-stage0.md)、[Stage 1 package](evidence/2026-09-14-forge-stage1-package-gate.md)：分别查看设计、源码兼容和安装证据范围。
+- [统一候选 clean package](evidence/2026-09-27-unified-candidate-clean-package.md)：候选 wheel 与隔离环境，不代表所有 optional extra 完成。
+- [SCF fallback/native facts](evidence/2026-09-29-scf-fallback-native-facts.md)、[vacancy real smoke](evidence/2026-09-29-vacancy-real-smoke.md)：对应修正与实际运行记录，均不自动晋升 stable。
+- 更早的已结项材料见 [archive](../archive/)。仍有效的 SPEC 不因已经实现而移入历史归档。
 
-- 开始前：阅读 `AGENTS.md`、相关 README、最近 SPEC/PLAN 与拥有该行为的测试。
-- 修改可观察行为：先写会失败的回归或验收证据；只改文档/测试治理时记录基线和受影响门禁。
-- 提交前：运行 `git diff --check`、最小充分 pytest 命令、相关 CLI `--help` 或进程契约检查；默认回归不得访问网络、调度器、真实集群或用户工作目录。
-- 宣称稳定操作/解析能力前：除确定性测试外，必须有对应的 real smoke 证据；benchmark 和 fixture 不替代真实运行证据，科学判断由上层人类/Agent 完成。
-- 完成时：在 PR/提交说明或 PLAN 中写明命令和输出；不以覆盖率、测试数量或自评替代行为证据。
+## 跨仓迁移
 
-## 写作与生命周期
+Paimon v1.3 的 owner 在 app-tools 仓；当前工作区 checkout 名为 `app-tools-forge`。相对该仓 `toolbox/ABACUS/` 的入口：
 
-- 设计未定的 L3 使用 `specs/YYYY-MM-DD-<topic>-design.html`；不要在 README 或 AGENTS 中塞入详细设计。
-- 已批准设计的实施使用 `plans/YYYY-MM-DD-<topic>.md`，并包含准确的文件、接口、测试、命令和预期结果。
-- SPEC 被取代时保留原文件，在其顶部标记 superseded 并链接后继规范；不要删除历史决策。
-- 一个没有被 README、AGENTS、SPEC、PLAN 或测试引用的治理规则应被删除或下沉，避免入口文档膨胀。
+- `docs/superpowers/specs/2026-09-29-paimon-v1.3-backend-architecture.html`：Reviewed / 实施基线，定义两个产品的边界、开发参照和 M0–M4 验收。
+- `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md`：W0–W4 执行总表，维护 adapter、依赖、全链路 benchmark 和平台验收。
 
-## Forge 特有红线
+Forge 独立交付，Paimon 的发布门槛不自动成为每次 Forge 发布的门槛。Contract System、BEC 与 optional parser package 各有独立设计和验收。已结项 `paimon/` 只作历史证据，不是 Forge 运行时依赖或上级规范。
 
-- Forge 核心不承载 ATP/MCP/AiiDA/平台/调度器/UI 语义；可选 TUI 若实现，只能作为 Python API 或结构化 CLI envelope 之上的薄壳，Paimon adapter 只在上层消费 Forge 的协议无关事实。
-- 数字 Task-ID 与交互菜单不得成为核心 API/CLI 协议。
-- `abacus-agent-tools`、`abacustest`、`abacuslab`、`abacuscopilot`、PyATB 与 VASPKIT 是能力、兼容性或 UX 参考，不能成为绕过 Forge 边界的运行时捷径。
+## 文档生命周期与开发路由
+
+- 新建 SPEC 使用 `specs/YYYY-MM-DD-<topic>-design.md`，Markdown 是唯一可编辑源，HTML 按需生成阅读视图。历史 HTML 保持原有规范地位，实际修订时按需迁移。
+- PLAN 使用 `plans/YYYY-MM-DD-<topic>.md`，记录决策来源、文件责任、命令和验收边界；evidence 记录候选身份、环境、结果与未证明项。PLAN 和 evidence 不反向发明公共契约。
+- 已批准 SPEC 高于 PLAN/ROADMAP；后继只在声明范围内取代前序。被取代材料保留原文件和后继链接，Draft 与 provisional implementation 显式区分。
+- L1 做最近验证；L2 先建立行为证据，适用时 RED → GREEN → REFACTOR；L3α 先 brainstorming 与批准 SPEC，L3β 依据已确认决策 writing-plans。用户已授权的同范围执行不重复索取批准。
+- 提交前检查 diff、owning tests 及相关 CLI 示例；默认回归不访问真实集群。完成声明绑定当前候选的命令输出；真实运行只证明相应操作/解析，不承担科学判断。
+
+核心边界与禁止项集中维护在 [AGENTS.md](../../AGENTS.md)，本索引不再复制一套规则。

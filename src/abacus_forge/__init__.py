@@ -1,71 +1,41 @@
-"""ABACUS-Forge minimal execution substrate."""
+"""ABACUS-Forge public API, resolved on demand to keep focused imports light."""
 
-from abacus_forge.api import UnitModifyResult, UnitModifySpec, UnitPrepareResult, UnitSpec, collect, collect_unit, execute, execute_unit, export, modify_unit, prepare, prepare_unit, run
-from abacus_forge.band_data import BandData
-from abacus_forge.contracts import (ArtifactRecord, ArtifactRef, AtstNebExecuteRequest, AtstNebPostprocessRequest,
-    AtstNebPrepareRequest, CapabilityDescriptor, CheckRecord, ForgeErrorEnvelope, ForgeRequest, ForgeResultEnvelope,
-    MetricRecord, Observation, OperationOutcome, OperationRef, OperationStatus, ScfCollectRequest, ScfExecuteRequest,
-    ScfModifyRequest, ScfPrepareRequest)
-from abacus_forge.discovery import capabilities_document, request_schema_document
-from abacus_forge.export_contracts import EXPORT_SCHEMA_VERSION, ExportDocument, ExportRequest
-from abacus_forge.export_services import ExportService, ExportServiceProtocol, ExportServiceSet
-from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
-from abacus_forge.dos_data import DOSData, DOSFamilyData, LocalDOSData, PDOSData
-from abacus_forge.modify import modify_input, modify_kpt, modify_stru
-from abacus_forge.perturbation import perturb_structure
-from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
-from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
-from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
-from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
-from abacus_forge.md_postprocess_services import MdPostprocessService, MdPostprocessServiceProtocol, MdPostprocessServiceSet
-from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
-from abacus_forge.pyatb_contracts import PyatbBandCollectRequest, PyatbBandExecuteRequest, PyatbBandPrepareRequest
-from abacus_forge.pyatb_manifest import (
-    PYATB_MANIFEST_SCHEMA_VERSION,
-    PyatbManifest,
-    PyatbManifestEntry,
-    classify_pyatb_output,
-)
-from abacus_forge.property_manifest import (
-    PROPERTY_MANIFEST_SCHEMA_VERSION,
-    PropertyManifest,
-    PropertyManifestEntry,
-)
-from abacus_forge.pyatb_services import (
-    PyatbBandCollectService,
-    PyatbBandCollectServiceProtocol,
-    PyatbBandExecuteService,
-    PyatbBandExecuteServiceProtocol,
-    PyatbBandPrepareService,
-    PyatbBandPrepareServiceProtocol,
-    PyatbBandServiceSet,
-)
-from abacus_forge.postprocess_services import (
-    BandPostprocessService,
-    DosPostprocessService,
-    PostprocessService,
-    PostprocessServiceSet,
-)
-from abacus_forge.result import CollectionResult, RunResult, TaskResult
-from abacus_forge.services import (
-    CollectService,
-    ExecuteService,
-    ForgeServices,
-    ModifyService,
-    PrepareService,
-    ScfCollectService,
-    ScfExecuteService,
-    ScfModifyService,
-    ScfPrepareService,
-    ScfServiceSet,
-    RelaxServiceSet,
-    MdServiceSet,
-)
-from abacus_forge.atst_neb import AtstNebExecuteService, AtstNebPostprocessService, AtstNebPrepareService, AtstNebServiceSet
-from abacus_forge.runner import LocalRunner
-from abacus_forge.structure import AbacusStructure
-from abacus_forge.tasks import run_band, run_band_sequence, run_cell_relax, run_dos, run_dos_sequence, run_md, run_relax, run_scf, run_task
-from abacus_forge.workspace import Workspace
+from __future__ import annotations
+
+from importlib import import_module
+
+# These source modules are the original public import paths.
+_EXPORT_MODULES = {
+    'abacus_forge.api': ('UnitModifyResult', 'UnitModifySpec', 'UnitPrepareResult', 'UnitSpec', 'collect', 'collect_unit', 'execute', 'execute_unit', 'export', 'modify_unit', 'prepare', 'prepare_unit', 'run'),
+    'abacus_forge.band_data': ('BandData',),
+    'abacus_forge.contracts': ('ArtifactRecord', 'ArtifactRef', 'AtstNebExecuteRequest', 'AtstNebPostprocessRequest', 'AtstNebPrepareRequest', 'CapabilityDescriptor', 'CheckRecord', 'ForgeErrorEnvelope', 'ForgeRequest', 'ForgeResultEnvelope', 'MetricRecord', 'Observation', 'OperationOutcome', 'OperationRef', 'OperationStatus', 'ScfCollectRequest', 'ScfExecuteRequest', 'ScfModifyRequest', 'ScfPrepareRequest'),
+    'abacus_forge.discovery': ('capabilities_document', 'request_schema_document'),
+    'abacus_forge.export_contracts': ('EXPORT_SCHEMA_VERSION', 'ExportDocument', 'ExportRequest'),
+    'abacus_forge.export_services': ('ExportService', 'ExportServiceProtocol', 'ExportServiceSet'),
+    'abacus_forge.cube': ('CubeData', 'add_cubes', 'planar_average', 'subtract_cubes'),
+    'abacus_forge.dos_data': ('DOSData', 'DOSFamilyData', 'LocalDOSData', 'PDOSData'),
+    'abacus_forge.modify': ('modify_input', 'modify_kpt', 'modify_stru'),
+    'abacus_forge.perturbation': ('perturb_structure',),
+    'abacus_forge.pyatb': ('collect_pyatb', 'prepare_pyatb_band', 'run_pyatb'),
+    'abacus_forge.relax_contracts': ('RelaxCollectRequest', 'RelaxExecuteRequest', 'RelaxModifyRequest', 'RelaxPrepareRequest'),
+    'abacus_forge.md_contracts': ('MdCollectRequest', 'MdExecuteRequest', 'MdModifyRequest', 'MdPrepareRequest'),
+    'abacus_forge.md_postprocess_contracts': ('MdPostprocessRequest',),
+    'abacus_forge.md_postprocess_services': ('MdPostprocessService', 'MdPostprocessServiceProtocol', 'MdPostprocessServiceSet'),
+    'abacus_forge.postprocess_contracts': ('BandPostprocessRequest', 'DosPostprocessRequest'),
+    'abacus_forge.pyatb_contracts': ('PyatbBandCollectRequest', 'PyatbBandExecuteRequest', 'PyatbBandPrepareRequest'),
+    'abacus_forge.pyatb_manifest': ('PYATB_MANIFEST_SCHEMA_VERSION', 'PyatbManifest', 'PyatbManifestEntry', 'classify_pyatb_output'),
+    'abacus_forge.property_manifest': ('PROPERTY_MANIFEST_SCHEMA_VERSION', 'PropertyManifest', 'PropertyManifestEntry'),
+    'abacus_forge.pyatb_services': ('PyatbBandCollectService', 'PyatbBandCollectServiceProtocol', 'PyatbBandExecuteService', 'PyatbBandExecuteServiceProtocol', 'PyatbBandPrepareService', 'PyatbBandPrepareServiceProtocol', 'PyatbBandServiceSet'),
+    'abacus_forge.postprocess_services': ('BandPostprocessService', 'DosPostprocessService', 'PostprocessService', 'PostprocessServiceSet'),
+    'abacus_forge.result': ('CollectionResult', 'RunResult', 'TaskResult'),
+    'abacus_forge.services': ('CollectService', 'ExecuteService', 'ForgeServices', 'ModifyService', 'PrepareService', 'ScfCollectService', 'ScfExecuteService', 'ScfModifyService', 'ScfPrepareService', 'ScfServiceSet', 'RelaxServiceSet', 'MdServiceSet'),
+    'abacus_forge.atst_neb': ('AtstNebExecuteService', 'AtstNebPostprocessService', 'AtstNebPrepareService', 'AtstNebServiceSet'),
+    'abacus_forge.runner': ('LocalRunner',),
+    'abacus_forge.structure': ('AbacusStructure',),
+    'abacus_forge.tasks': ('run_band', 'run_band_sequence', 'run_cell_relax', 'run_dos', 'run_dos_sequence', 'run_md', 'run_relax', 'run_scf', 'run_task'),
+    'abacus_forge.workspace': ('Workspace',),
+}
+_EXPORT_SOURCES = {name: module for module, names in _EXPORT_MODULES.items() for name in names}
 
 __all__ = [
     "AbacusStructure",
@@ -193,3 +163,14 @@ __all__ = [
 ]
 
 __version__ = "0.1.0"
+
+def __getattr__(name: str):
+    module_name = _EXPORT_SOURCES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

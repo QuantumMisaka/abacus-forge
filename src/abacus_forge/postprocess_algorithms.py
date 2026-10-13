@@ -18,6 +18,11 @@ from typing import Any, Literal
 import numpy as np
 
 from abacus_forge.band_data import BandData
+from abacus_forge.band_postprocess import (
+    _band_energy_prefix as _band_prefix_columns,
+    _plot_band_data,
+    _write_band_table,
+)
 from abacus_forge.contracts import JSONValue
 from abacus_forge.dos_data import DOSData, PDOSData
 from abacus_forge.dos_postprocess import PDOSMode
@@ -79,17 +84,10 @@ def process_band_files(
     generated: list[Path] = []
     if save_data:
         data_path = _contained_output_path(base, "band.dat")
-        # Import lazily to reuse the compatibility writer without making the
-        # legacy module depend on this explicit algorithm module at import
-        # time.  The optional flag keeps legacy source comments unchanged.
-        from abacus_forge.unit_postprocess import _write_band_table
-
         _write_band_table(band_data, data_path, include_source_paths=False, energy_reference=reference)
         generated.append(data_path)
     if save_plot:
         plot_path = _contained_output_path(base, "band.png")
-        from abacus_forge.unit_postprocess import _plot_band_data
-
         try:
             _plot_band_data(band_data, plot_path, plot_emin=plot_emin, plot_emax=plot_emax, energy_reference=reference)
         except Exception as exc:
@@ -335,32 +333,6 @@ def _band_summary(data: BandData) -> dict[str, JSONValue]:
     ) if data.rows else 0
     summary["band_files"] = [path.name for path in data.paths]
     return _json_safe(summary)
-
-
-def _band_prefix_columns(rows: Sequence[Sequence[float]]) -> int:
-    """Recognize the explicit ABACUS k-index/path-distance prefixes.
-
-    Existing Forge fixtures use one leading path-distance column.  ABACUS
-    band rows can instead begin with a one-based k-point index followed by
-    path distance (for example ``1 0.0 -1.0 1.0``).  Requiring every row to
-    have an integer-like positive index and the first path distance to be zero
-    keeps this detector conservative for the legacy one-prefix shape.
-    """
-
-    if not rows or any(len(row) < 3 for row in rows):
-        return 1
-    indices = [row[0] for row in rows]
-    if not all(_is_integer_like(value) and value >= 1 for value in indices):
-        return 1
-    if not math.isclose(indices[0], 1.0, rel_tol=0.0, abs_tol=1e-12):
-        return 1
-    if not math.isclose(rows[0][1], 0.0, rel_tol=0.0, abs_tol=1e-12):
-        return 1
-    return 2
-
-
-def _is_integer_like(value: float) -> bool:
-    return math.isfinite(value) and math.isclose(value, round(value), rel_tol=0.0, abs_tol=1e-12)
 
 
 def _typed_total_dos(paths: Sequence[Path]) -> DOSData:
