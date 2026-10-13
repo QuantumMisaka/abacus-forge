@@ -2,11 +2,11 @@
 
 本目录保存本地规范源、执行清单与候选验证记录。先读根目录 [AGENTS.md](../../AGENTS.md)；使用文档从 [docs/README.md](../README.md) 进入，现行代码职责见[架构说明](../architecture.md)。规范是否有效由批准状态与适用范围决定，不由文件日期或是否已有实现决定。
 
-## 当前执行入口
+## 当前工作入口
 
 | 工作 | 状态和入口 |
 | --- | --- |
-| 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批保留公开行为与默认依赖，可废弃项单列。 |
+| 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，交付在隔离分支；保留公开行为与默认依赖，可废弃项单列。 |
 | Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成，可安装 optional extra、fresh package parity 和发布门禁仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。已有步骤保留候选绑定；真实 NEB、完整迁移与外部发布事项未全部验收。 |
 

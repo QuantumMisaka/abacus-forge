@@ -6,7 +6,7 @@
 
 | 事项 | 已有基础 | 仍需完成 | 维护入口 |
 | --- | --- | --- | --- |
-| 文档与代码体系收敛 | 用户已确认保留公开行为、英文 README、中文详细文档；本轮已进入实施。 | 加载/能力映射/公共算法与测试分类收敛、完整回归和独立审查。 | [本轮计划](docs/superpowers/plans/2026-10-13-forge-repository-consolidation.md) |
+| 文档与代码体系收敛 | 本轮文档、加载/能力映射、band 共享代码与测试分类整理已完成，并通过离线回归与独立审查；交付在隔离分支。 | 后续清理按下方候选单独调查与决策。 | [本轮计划](docs/superpowers/plans/2026-10-13-forge-repository-consolidation.md) |
 | Engine/Version Policy | native 兼容增量、离线 Stage 0 和 canonical checkout 四 capability parity 已集成；显式 PyATB handoff 支持新版 CSR 文件名。 | 可安装 abacuslite 版本与 exact extra、fresh environment 四 capability package parity，以及相应双轨发布证据。checkout 数值 parity 不替代可安装包验收。 | [版本政策计划](docs/superpowers/plans/2026-09-13-forge-engine-version-policy.md) |
 | 真实进程与能力成熟度 | SCF/Relax/cell-relax/MD、PyATB 及部分 packs 已有各自候选的运行证据；所有 typed capability 仍为 experimental。 | 完整 ATST NEB 真实 workflow、未覆盖 packs 的实际执行/解析，以及具体发布候选的证据绑定。 | [Stage 5 计划](docs/superpowers/plans/2026-09-13-forge-stage5-evidence-gates.md)、[真实 smoke 入口](tests/real_smoke/README.md) |
 | Paimon v1.3 上层迁移 | Forge 独立公共契约与局部 adapter/parity 证据已建立。 | 上层完整依赖与安装、全链路 benchmark、平台/生产验收由 Paimon owner 完成。 | [跨仓导航](docs/superpowers/README.md#跨仓迁移) |

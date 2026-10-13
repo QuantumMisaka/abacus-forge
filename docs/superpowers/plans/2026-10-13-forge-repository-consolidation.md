@@ -1,6 +1,6 @@
 # Forge 文档与代码体系整理实施计划
 
-状态：执行中。2026-10-13 用户已确认设计取舍，并要求以 subagent-driven-development 推进；本计划承接该授权，不重复索取同范围批准。
+状态：已完成并独立审查（2026-10-13），交付保留在隔离分支，尚未合入 main。用户已确认设计取舍并要求以 subagent-driven-development 推进；本计划承接该授权。
 
 设计：[文档与代码体系整理](../specs/2026-10-13-forge-repository-consolidation-design.md)。目标为英文产品 README、中文详细文档、明确的内容归属，以及保留公开行为的加载、能力映射、公共算法和测试分类收敛。
 
@@ -61,7 +61,7 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 - [x] 收敛 AGENTS、ROADMAP、`docs/superpowers/README.md`：Markdown 新规范、有效设计/草案/历史导航、当前专项入口及独立可废弃候选；保留上位规范地位和历史证据。
 - [x] 检查已知本仓和跨仓 README 链接，保留兼容锚点；标明旧 I/O Draft 与 Contract System Draft 的关系，不把独立草案修成批准设计。
 - [x] 统一检查各包完整 diff、文档链接和示例、架构与契约/workspace 门禁、默认全量离线回归、wheel/公开导入检查。
-- [ ] 冻结候选，独立整体审查，处理真实发现并复验；记录结果和剩余候选，保留工作区交付。
+- [x] 冻结候选，独立整体审查，处理真实发现并复验；记录结果和剩余候选，保留工作区交付。
 
 当前环境可用 `conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider`。全量测试统一由控制器在包集成后执行；各包先运行上述 focused suites，日志路径与实际结果回报控制器。文档验证按现有可执行检查或直接链接/锚点检查进行，不增设文档框架。
 
@@ -73,7 +73,7 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 
 ## 验收记录
 
-实现后的候选待最终独立整体审查；代码与测试结果如下。最终审查身份及结论在收口时补充。
+实现与测试候选为 `edf3f3c1d15fafa3e9314b86519ffd711c80d8d4`。独立终审绑定 `5c978b0c88b0654dc0a03e43f93eee4e42a72441 → edf3f3c1d15fafa3e9314b86519ffd711c80d8d4` 的完整 24 文件 diff，结论：未发现重要问题。后续收尾提交仅更新本计划及导航/路线图状态。
 
 | 检查 | 实际结果与范围 |
 | --- | --- |
@@ -89,3 +89,11 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 运行日志保存在执行机 `/tmp/forge-consolidation-full.log`、`/tmp/forge-consolidation-install.json`、`/tmp/forge_task2_{red,owning,final_imports}.log`、`/tmp/forge_task2_{baseline,candidate}.json`、`/tmp/forge-task3-{baseline,newtest-baseline,candidate-final}.log`。这些临时日志不是永久发布工件；上表记录本批范围与实际结果，历史 real-smoke 证据不被改写成当前候选的真实运行验收。
 
 本批没有执行真实 ABACUS/集群任务，也没有晋升 capability 成熟度。可安装 parser extra、真实 NEB、BEC/Contract System 草案与 Paimon 全链路迁移仍由原 owner 文档维护；它们不阻断本次兼容整理。
+
+
+### 最终冻结与复验
+
+- 独立文档 reviewer 复核了中文正文、补回的 CLI/Python 示例、两级路径与规范状态；独立 final reviewer 复核了公开导入兼容、映射/错误顺序、band 输出、测试门禁与整体边界。无未解决的重要发现。
+- 最终文档检查：13 份改动文档、153 个相对链接/锚点，0 错误；10 个 Python 代码块语法通过；`tests/test_architecture.py` 在最终示例上 **8 passed in 6.05s**。
+- 在冻结候选重新构建 wheel：`abacus_forge-0.1.0-py3-none-any.whl`，SHA-256 `e43f34889409f9814327bd4acba9d831edac9e1df532112eef1b04a35e4120fb`。该最终 wheel 的 package suites 再次 **16 passed in 0.10s**，无依赖 I/O 和复用科学依赖的独立 venv 安装检查再次通过。命令/原始输出见 `/tmp/forge-consolidation-wheel.log`、`/tmp/forge-consolidation-wheel-tests.log`、`/tmp/forge-consolidation-install.json`。
+- 验证后的代码、测试和示例未再修改；最后只更新完成记录。原工作区保留既有设计文档变更，未执行合并、推送或清理其他工作区。
