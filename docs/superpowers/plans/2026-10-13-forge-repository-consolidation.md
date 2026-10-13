@@ -124,7 +124,7 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 - [x] 历史材料：将 Git 跟踪的 27 份 SDD 记录、3 份 Trae 审查材料及旧 AiiDA 评审归入 docs/archive，保留原始证据/原路径线索；修复已知导航和引用，忽略今后的工具临时状态。已批准 SPEC 的地位不变。
 - [x] 测试与包：补通用 venv / dev 安装与测试入口；对 Python 3.10 无 tomllib 的收集失败建立真实基线，再以条件 dev 依赖和兼容读取修复；保留运行时最低版本及默认科学依赖。包简介改用当前操作名称并补官方仓库链接。
 - [x] 示例：说明 NiO 输入、外部 PP/ORB 及 SAI Slurm 脚本边界；补可执行的本地 prepare/dry-run 路径，保留被结构测试使用的 STRU。
-- [ ] 控制器完成导航整合、历史材料完整性与链接检查、Python 3.10/当前 Python 的相称测试及包构建验证、独立复核和本地主线收口。
+- [x] 控制器完成导航整合、历史材料完整性与链接检查、Python 3.10/当前 Python 的相称测试及包构建验证、独立复核和本地主线收口。
 
 分工：历史材料作者仅改原始历史文件、docs/archive、.gitignore 和必要历史引用；测试作者仅改 pyproject.toml、tests/test_package_contract.py、tests/README.md；示例作者仅改 examples 下说明及 docs/guide.md 的示例导航。控制器拥有 AGENTS、README、docs/README、docs/superpowers/README、本计划和统一提交。所有作者不得提交、操作共享 index 或再派生代理；共享工作区内不覆盖其他人的修改。
 
@@ -140,4 +140,4 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 
 证据位于执行机 `/tmp/forge_package_py310_{red,editable,green,pipcheck}.log`、`/tmp/forge_package_current_green.log`、`/tmp/forge-prepush-py310-full.log`、`/tmp/forge-prepush-wheel.log`、`/tmp/forge-prepush-wheel-py310.log`、`/tmp/forge-prepush-current.log` 及 `/tmp/forge-archive-move-manifest.json`。示例与 structure 的原始输出由作者工具返回并交给控制器复读，未额外落盘；临时日志不是永久发布工件。本批不新增持续集成服务或文档框架，后续依赖调整仍按 ROADMAP 候选独立处理。
 
-独立终审和本地主线集成待完成，证据与结论将在本节补记。
+独立终审绑定 `c2f83c1ebcef2afbaff38323d8f4b5f8aac5a7fd → a68728c49cd61c9ee5cd8825fdf540fad29ba7a4` 的完整 42 文件变更，结论为无重要问题。原工作区 main 已从 `c2f83c1` 快进至 `a68728c`；工作树干净，与已验收候选树一致，主线文档检查仍为 173 个链接/锚点、0 错误。复用同一代码/测试/包声明的全量与 wheel 证据，不重复运行无变化的回归。后续提交仅补记本段完成状态并快进合入；隔离分支及受管理工作区保留，未推送远端。
