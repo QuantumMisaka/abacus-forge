@@ -1,0 +1,17 @@
+=== n_max set to 0, automatically detect the images of chain by NEBTools ===
+Appears to be only one band in the images.
+=== NEB Barrier Analysis ===
+num: 0; Energy: -7052.5985155696 (eV)
+num: 1; Energy: -7052.219590237 (eV)
+num: 2; Energy: -7051.9015852666 (eV)
+num: 3; Energy: -7052.2221041369 (eV)
+num: 4; Energy: -7052.5983510753 (eV)
+Reaction Barrier and Energy Difference: (np.float64(0.6969303030000442), np.float64(0.00016449429949716432)) (eV)
+=== Extracting TS Structure ===
+TS structure is saved as /org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-ts-corrected.cif
+Warning: Failed to save /org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-ts-corrected.stru (format 'stru' not supported?): stru
+=== Plotting NEB Bands ===
+
+Processing band          0 /          1
+Wrote /org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-latest.traj and /org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-latest.extxyz
+Wrote /org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-init-chain.traj

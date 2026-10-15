@@ -1,0 +1,9 @@
+{
+  "python": "3.13.13 | packaged by conda-forge | (main, Apr  8 2026, 02:00:33) [GCC 14.3.0]",
+  "prefix": "/home/james/scratch/forge-cohp-closeout-20261015/venv",
+  "base_prefix": "/home/james/apps/miniforge3",
+  "forge_module": "/home/james/scratch/forge-cohp-closeout-20261015/venv/lib/python3.13/site-packages/abacus_forge/__init__.py",
+  "source_override": null,
+  "forge_root": null,
+  "venv_config": "home = /home/james/apps/miniforge3/bin\nimplementation = CPython\nuv = 0.12.4\nversion_info = 3.13.13\ninclude-system-site-packages = false\n"
+}

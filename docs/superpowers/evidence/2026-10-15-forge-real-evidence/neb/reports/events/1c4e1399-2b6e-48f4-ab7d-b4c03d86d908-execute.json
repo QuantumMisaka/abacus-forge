@@ -1,0 +1,80 @@
+{
+  "id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908",
+  "operation": "execute",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "config",
+          "media_type": "application/octet-stream",
+          "path_rel": "workflow.yaml",
+          "role": "input",
+          "sha256": "48524b17607131b153755375de8f746fbc78266dde4c472645f1ed4a1e2017ff",
+          "size_bytes": 1230,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "stdout_log",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stdout.log",
+          "role": "output",
+          "sha256": "2e9c80e14d01696ed9171dd12ad897446b7e6d3af81dc6a918686e5dcb992305",
+          "size_bytes": 691,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "stderr_log",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stderr.log",
+          "role": "output",
+          "sha256": "850b0854574df3e4c90f0b229c28c728a13f9bff4a194a3a5d1054b993f132cf",
+          "size_bytes": 107,
+          "stage": "atst-neb"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "config",
+            "operation_id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908"
+          },
+          {
+            "artifact_id": "stdout_log",
+            "operation_id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908"
+          },
+          {
+            "artifact_id": "stderr_log",
+            "operation_id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908"
+          }
+        ],
+        "command": [
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst",
+          "run",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/workflow.yaml",
+          "--check-input-timeout",
+          "120"
+        ],
+        "returncode": 0,
+        "stderr": "Starting NEB calculation\nUsing vendored abacuslite backend for ABACUS calculator.\nNEB calculation finished\n",
+        "timed_out": false
+      },
+      "metrics": [],
+      "operation": "execute",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "not_collected",
+        "execution": "completed",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

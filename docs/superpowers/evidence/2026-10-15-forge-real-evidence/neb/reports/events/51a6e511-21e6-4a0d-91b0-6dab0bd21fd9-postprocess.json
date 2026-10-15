@@ -1,0 +1,147 @@
+{
+  "id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9",
+  "operation": "postprocess",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "trajectory",
+          "media_type": "application/octet-stream",
+          "path_rel": "neb.traj",
+          "role": "input",
+          "sha256": "90ffec8d9fb9fc9f9d8d4cef6f46a7642fb55a394d43f26ebb9abfe31bb1b591",
+          "size_bytes": 58607,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/neb-summary.json",
+          "role": "output",
+          "sha256": "580d132c4c5cc5329e756c4cc52f3cc6dcb18c5892718ba0fa0cbdaf01562a21",
+          "size_bytes": 2318,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary_stdout",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stdout.log",
+          "role": "output",
+          "sha256": "daba83b4bdab05999f2597247d745bbf0593f0bb340a9b8a890a921ff682dd6c",
+          "size_bytes": 2319,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary_stderr",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stderr.log",
+          "role": "output",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "post_stdout",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stdout.log",
+          "role": "output",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "post_stderr",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stderr.log",
+          "role": "output",
+          "sha256": "2f115f2a993d5f370388c437a5fd6c422f627c87db3a58ce51ba70869b9bec98",
+          "size_bytes": 1457,
+          "stage": "atst-neb"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "trajectory",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          },
+          {
+            "artifact_id": "summary",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          },
+          {
+            "artifact_id": "summary_stdout",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          },
+          {
+            "artifact_id": "summary_stderr",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          },
+          {
+            "artifact_id": "post_stdout",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          },
+          {
+            "artifact_id": "post_stderr",
+            "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9"
+          }
+        ],
+        "postprocess_command": [
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst",
+          "neb",
+          "post",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/neb.traj",
+          "--output-prefix",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-ts",
+          "--write-latest",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-latest",
+          "--write-neb-init-chain",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-init-chain.traj",
+          "--plot",
+          "--plot-label",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/nebplots_chain",
+          "--n-max",
+          "5",
+          "--vib-thr",
+          "0.1"
+        ],
+        "postprocess_returncode": 1,
+        "returncode": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst\", line 3, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli.py\", line 37, in main\n    return importlib.import_module(_IMPLEMENTATION).main(arguments)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli_impl.py\", line 865, in main\n    args.func(args)\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli_impl.py\", line 386, in _neb_post_command\n    selected = select_post_neb_chain(images, n_max=args.n_max, strict=strict)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/utils/restart_helpers.py\", line 93, in select_post_neb_chain\n    return select_last_neb_chain(images, n_max + 2, strict=strict)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/utils/restart_helpers.py\", line 66, in select_last_neb_chain\n    raise ValueError(\nValueError: NEB trajectory contains 10 frame(s), not a whole number of bands with 7 images.\n",
+        "summary_command": [
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst",
+          "neb",
+          "summary",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/neb.traj",
+          "--n-max",
+          "5",
+          "--format",
+          "json",
+          "--output",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/reports/atst/neb-summary.json"
+        ],
+        "summary_returncode": 0
+      },
+      "metrics": [],
+      "operation": "postprocess",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "partial",
+        "execution": "failed",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "frames": 10,
+  "atoms_per_frame": 65,
+  "execution_status": {
+    "collection": "not_collected",
+    "execution": "completed",
+    "scientific": "unassessed"
+  },
+  "postprocess_status": {
+    "collection": "complete",
+    "execution": "completed",
+    "scientific": "unassessed"
+  },
+  "trajectory_sha256": "90ffec8d9fb9fc9f9d8d4cef6f46a7642fb55a394d43f26ebb9abfe31bb1b591",
+  "audit_events": 3,
+  "atst_manifest": {
+    "schema_version": "atst-artifacts-v1",
+    "workflow": "neb",
+    "metadata": {},
+    "stages": [
+      {
+        "name": "ordinary_neb_warmup",
+        "status": "complete",
+        "converged": false,
+        "role": "warmup",
+        "fmax": 0.2,
+        "fmax_unit": "eV/Angstrom",
+        "steps": 1,
+        "actual_steps": 1
+      },
+      {
+        "name": "ci_neb",
+        "status": "complete",
+        "converged": false,
+        "role": "final",
+        "criterion": "neb_fmax",
+        "fmax": 0.05,
+        "fmax_unit": "eV/Angstrom",
+        "steps": 1,
+        "actual_steps": 1
+      }
+    ],
+    "artifacts": [
+      {
+        "role": "trajectory",
+        "path": "neb.traj"
+      }
+    ]
+  }
+}

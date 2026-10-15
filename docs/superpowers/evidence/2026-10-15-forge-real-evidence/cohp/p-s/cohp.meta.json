@@ -1,0 +1,97 @@
+{
+  "method": "IAO-COHP",
+  "efermi_ev": 15.926862044,
+  "shift_toefermi": true,
+  "nspin": 1,
+  "icohp": {
+    "icohp": -0.6045951883997248,
+    "minus_icohp": 0.6045951883997248,
+    "integration": "occupied_discrete_state_sum",
+    "convention": "lobster-single-ordering",
+    "icohp_per_spin": [
+      -0.6045951883997248
+    ],
+    "icohp_both_orderings": -1.2091903767994496
+  },
+  "bond": {
+    "atom_i": 1,
+    "atom_j": 2,
+    "element_i": "Si",
+    "element_j": "Si",
+    "orbitals_i": "p",
+    "orbitals_j": "s",
+    "n_orbitals_i": 3,
+    "n_orbitals_j": 1,
+    "translation": [
+      -1,
+      -1,
+      -1
+    ],
+    "distance_ang": 2.4248709706783167,
+    "equivalent_images": 8,
+    "equivalent_spread_ev": 6.994405055138486e-15,
+    "bvk_dims": [
+      4,
+      4,
+      4
+    ],
+    "aliased_image_distance_ang": 9.997999140600724
+  },
+  "basis": {
+    "reference": "first zeta of each occupied valence shell (frozen semicore)",
+    "occupied_threshold": 0.5,
+    "n_iao": 8,
+    "n_frozen_bands": 0,
+    "species": {
+      "Si": {
+        "element": "Si",
+        "z_valence": 4,
+        "valence_shells": {
+          "s": 1,
+          "p": 1
+        },
+        "semicore_shells": {}
+      }
+    }
+  },
+  "phase_sign": 1,
+  "diagnostics": {
+    "orthonormality_ratio": 0.15448638260362696,
+    "eigen_ratio": 0.14515399557048464,
+    "echo_eigen_min": 0.9334190251270259,
+    "occupied_spilling_max": 2.7681945180546563e-08,
+    "frozen_character_min": null,
+    "frozen_occupation_min": null,
+    "semicore_top_ev": null,
+    "valence_bottom_ev": null,
+    "band_energy_sum_rule_dev_ev": 0.015970717633138065,
+    "phase_residual": 4.860587954347295e-08,
+    "phase_residual_other": 1.8096229399903074,
+    "n_electrons": 8.000000000058131,
+    "f_weighted_spilling": 0.00020436192141318928,
+    "energy_unit": "Ry",
+    "occupation_scale": 2.0,
+    "text_ndigits": 8,
+    "max_fractional_occupation": 0.13888885448259744
+  },
+  "curve": {
+    "de_ev": 0.01,
+    "sigma_ev": 0.1,
+    "unit": "dimensionless",
+    "columns": [
+      "Energy-E_Fermi(eV)",
+      "COHP"
+    ]
+  },
+  "nk_full": 64,
+  "notes": [
+    "存在分数占据（max f(1-f)=1.39e-01），带能求和律只作参考",
+    "时间反演展开：36 -> 64 个 k 点"
+  ],
+  "cautions": [],
+  "files": {
+    "shifted": "cohp_EminusEf.dat",
+    "plot": "cohp.png",
+    "bond_images": "cohp_bond_images.json"
+  }
+}

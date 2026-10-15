@@ -1,0 +1,14 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "atst-neb",
+  "operation": "postprocess",
+  "workspace_rel": ".",
+  "operation_id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9",
+  "trajectory_path_rel": "neb.traj",
+  "n_max": 5,
+  "summary_path_rel": "reports/atst/neb-summary.json",
+  "output_prefix": "outputs/atst/neb-ts",
+  "write_latest": true,
+  "write_neb_init_chain": true,
+  "plot": true
+}

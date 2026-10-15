@@ -62,9 +62,10 @@ hash and import/process output in the unified evidence record.
 
 ### Task 3: Run opt-in real process smoke gates
 
-**Status:** partial/unproven: the isolated ABACUS serial-PW SCF/cell-relax/MD, typed
-PyATB band process, and ATST process smoke now pass; a real ATST NEB workflow remains
-unproven.
+**Status:** partial: the isolated ABACUS serial-PW SCF/cell-relax/MD, typed
+PyATB band process, and ATST process smoke have candidate-bound evidence. The
+2026-10-15 follow-up adds bounded real ATST NEB execution and recovered
+postprocessing; the NEB path is not converged and is not a scientific result.
 
 **Files:** `tests/real_smoke/` and `docs/superpowers/evidence/2026-09-13-forge-stage5-evidence.md`。
 **Behavior:** 以 machine CLI 为主，使用人类提供的、无历史 generated output 的 prepared workspace，验证 Forge operation 的 process invocation、workspace containment、native parser facts、event 和 artifact refs。API parity 不在 real-smoke 中另造一条运行面，由离线 owning tests 覆盖。没有输入时精确 skip；输入无效时 fail。
@@ -81,6 +82,8 @@ unproven.
   `pyatb` 1.1.2（仓库 `80f7c2d`）进程返回零并生成声明的 band artifacts，collection
   只交付 parser facts，真实 PyATB properties 仍不在本门禁范围。
 - [x] 对 generated-output freshness、symlink/path containment、stdout/stderr 和 artifact provenance 保留失败证据。
+
+2026-10-15 增量：[真实运行证据](../evidence/2026-10-15-forge-real-evidence.md)绑定 Forge `43f5d4a` wheel、ATST 2.2.8、LTSv3.10.1 GPU。65 原子/5 图像的普通 NEB 与 CI-NEB 各实际执行 1 步，生成 10 帧真实轨迹；batch 因 harness 后处理参数错误为 FAILED，纠正 `n_max=3` 后仅重试 postprocess 成功，3 条原始审计均保留。该增量关闭有限步真实操作缺口，不追溯修改上述历史 dry-run 证据，也不声明收敛或 stable。
 
 ### Task 4: Establish Paimon v1.2 migration/benchmark evidence outside Forge policy
 

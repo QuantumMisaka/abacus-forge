@@ -1,0 +1,11 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "atst-neb",
+  "operation": "execute",
+  "workspace_rel": ".",
+  "operation_id": "b67d593c-f172-4e56-a5f8-2c2b757bead8",
+  "config_path_rel": "workflow.yaml",
+  "dry_run": false,
+  "check_input": true,
+  "timeout_seconds": 1800
+}

@@ -1,0 +1,13 @@
+{
+  "python": "/org/galileo-group/galileouser02/adam-opencode-runs/conda-envs/adam-abacus-min/bin/python",
+  "forge_module": "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/abacus_forge/__init__.py",
+  "atst_module": "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/__init__.py",
+  "versions": {
+    "abacus-forge": "0.1.0",
+    "atst-tools": "2.2.8",
+    "ase": "3.28.0",
+    "numpy": "2.4.6",
+    "scipy": "1.18.0",
+    "pydantic": "2.13.4"
+  }
+}

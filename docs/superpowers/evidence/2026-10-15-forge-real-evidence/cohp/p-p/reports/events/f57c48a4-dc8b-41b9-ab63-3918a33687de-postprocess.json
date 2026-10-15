@@ -1,0 +1,285 @@
+{
+  "id": "f57c48a4-dc8b-41b9-ab63-3918a33687de",
+  "operation": "postprocess",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "output-outputs-cohp-cohp-meta-json",
+          "media_type": "application/json",
+          "path_rel": "outputs/cohp/cohp.meta.json",
+          "role": "output",
+          "sha256": "4d84948aa1321297e88029e6e076f17b66223c3d75edb4b5a83c336411e8e0b3",
+          "size_bytes": 2395,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "output-outputs-cohp-cohp_eminusef-dat",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/cohp/cohp_EminusEf.dat",
+          "role": "output",
+          "sha256": "e322b3aab8973d82a6b0f5c565fa39b13058024df40e85069a6948fda0dbff76",
+          "size_bytes": 153890,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "output-outputs-cohp-cohp-png",
+          "media_type": "image/png",
+          "path_rel": "outputs/cohp/cohp.png",
+          "role": "output",
+          "sha256": "94f3c2d19b5133226df27aa667cf4869548865f5563ba9950dff5451a6709831",
+          "size_bytes": 58033,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "output-outputs-cohp-cohp_bond_images-json",
+          "media_type": "application/json",
+          "path_rel": "outputs/cohp/cohp_bond_images.json",
+          "role": "output",
+          "sha256": "b05291b0516737c13c1ee846810f489fd9a5952246a761f485afa6e5f439fd50",
+          "size_bytes": 2322,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "postprocess-report",
+          "media_type": "application/json",
+          "path_rel": "reports/postprocess/f57c48a4-dc8b-41b9-ab63-3918a33687de.json",
+          "role": "output",
+          "sha256": "de0491a7a37b0469609b25b6e0f52370da065aef33d202104eccbafa678b3060",
+          "size_bytes": 4083,
+          "stage": "postprocess"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "output-outputs-cohp-cohp-meta-json",
+            "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de"
+          },
+          {
+            "artifact_id": "output-outputs-cohp-cohp_eminusef-dat",
+            "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de"
+          },
+          {
+            "artifact_id": "output-outputs-cohp-cohp-png",
+            "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de"
+          },
+          {
+            "artifact_id": "output-outputs-cohp-cohp_bond_images-json",
+            "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de"
+          },
+          {
+            "artifact_id": "postprocess-report",
+            "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de"
+          }
+        ],
+        "capability": "cohp",
+        "cohp_meta": {
+          "basis": {
+            "n_frozen_bands": 0,
+            "n_iao": 8,
+            "occupied_threshold": 0.5,
+            "reference": "first zeta of each occupied valence shell (frozen semicore)",
+            "species": {
+              "Si": {
+                "element": "Si",
+                "semicore_shells": {},
+                "valence_shells": {
+                  "p": 1,
+                  "s": 1
+                },
+                "z_valence": 4
+              }
+            }
+          },
+          "bond": {
+            "aliased_image_distance_ang": 9.997999140600724,
+            "atom_i": 1,
+            "atom_j": 2,
+            "bvk_dims": [
+              4,
+              4,
+              4
+            ],
+            "distance_ang": 2.4248709706783167,
+            "element_i": "Si",
+            "element_j": "Si",
+            "equivalent_images": 8,
+            "equivalent_spread_ev": 8.43769498715119e-15,
+            "n_orbitals_i": 3,
+            "n_orbitals_j": 3,
+            "orbitals_i": "p",
+            "orbitals_j": "p",
+            "translation": [
+              -1,
+              -1,
+              -1
+            ]
+          },
+          "cautions": [],
+          "curve": {
+            "columns": [
+              "Energy-E_Fermi(eV)",
+              "COHP"
+            ],
+            "de_ev": 0.01,
+            "sigma_ev": 0.1,
+            "unit": "dimensionless"
+          },
+          "diagnostics": {
+            "band_energy_sum_rule_dev_ev": 0.015970717633138065,
+            "echo_eigen_min": 0.9334190251270259,
+            "eigen_ratio": 0.14515399557048464,
+            "energy_unit": "Ry",
+            "f_weighted_spilling": 0.00020436192141318928,
+            "frozen_character_min": null,
+            "frozen_occupation_min": null,
+            "max_fractional_occupation": 0.13888885448259744,
+            "n_electrons": 8.000000000058131,
+            "occupation_scale": 2.0,
+            "occupied_spilling_max": 2.7681945180546563e-08,
+            "orthonormality_ratio": 0.15448638260362696,
+            "phase_residual": 4.860587954347295e-08,
+            "phase_residual_other": 1.8096229399903074,
+            "semicore_top_ev": null,
+            "text_ndigits": 8,
+            "valence_bottom_ev": null
+          },
+          "efermi_ev": 15.926862044,
+          "files": {
+            "bond_images": "cohp_bond_images.json",
+            "plot": "cohp.png",
+            "shifted": "cohp_EminusEf.dat"
+          },
+          "icohp": {
+            "convention": "lobster-single-ordering",
+            "icohp": -1.764889487696483,
+            "icohp_both_orderings": -3.529778975392966,
+            "icohp_per_spin": [
+              -1.764889487696483
+            ],
+            "integration": "occupied_discrete_state_sum",
+            "minus_icohp": 1.764889487696483
+          },
+          "method": "IAO-COHP",
+          "nk_full": 64,
+          "notes": [
+            "\u5b58\u5728\u5206\u6570\u5360\u636e\uff08max f(1-f)=1.39e-01\uff09\uff0c\u5e26\u80fd\u6c42\u548c\u5f8b\u53ea\u4f5c\u53c2\u8003",
+            "\u65f6\u95f4\u53cd\u6f14\u5c55\u5f00\uff1a36 -> 64 \u4e2a k \u70b9"
+          ],
+          "nspin": 1,
+          "paths": {
+            "bond_images": "<path>",
+            "curve": "<path>",
+            "meta": "<path>",
+            "png": "<path>"
+          },
+          "phase_sign": 1,
+          "shift_toefermi": true
+        },
+        "generated_files": [
+          "cohp.meta.json",
+          "cohp_EminusEf.dat",
+          "cohp.png",
+          "cohp_bond_images.json"
+        ],
+        "generated_paths_rel": [
+          "outputs/cohp/cohp.meta.json",
+          "outputs/cohp/cohp_EminusEf.dat",
+          "outputs/cohp/cohp.png",
+          "outputs/cohp/cohp_bond_images.json"
+        ],
+        "output_dir_rel": "outputs/cohp",
+        "output_directory": "cohp",
+        "report_path_rel": "reports/postprocess/f57c48a4-dc8b-41b9-ab63-3918a33687de.json",
+        "selected_source_paths": [
+          "scf"
+        ],
+        "source_directory": "scf",
+        "summary": {
+          "atom_pair": [
+            1,
+            2
+          ],
+          "bond_distance_ang": 2.4248709706783167,
+          "cohp_method": "iao",
+          "method": "IAO-COHP",
+          "minus_icohp_ev": 1.764889487696483
+        }
+      },
+      "metrics": [],
+      "operation": "postprocess",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [
+      {
+        "name": "selected_source_paths",
+        "source": "parser",
+        "value": []
+      },
+      {
+        "name": "generated_files",
+        "source": "parser",
+        "value": [
+          "cohp.meta.json",
+          "cohp_EminusEf.dat",
+          "cohp.png",
+          "cohp_bond_images.json"
+        ]
+      },
+      {
+        "name": "generated_paths_rel",
+        "source": "parser",
+        "value": [
+          "outputs/cohp/cohp.meta.json",
+          "outputs/cohp/cohp_EminusEf.dat",
+          "outputs/cohp/cohp.png",
+          "outputs/cohp/cohp_bond_images.json"
+        ]
+      },
+      {
+        "name": "method",
+        "source": "parser",
+        "value": "IAO-COHP"
+      },
+      {
+        "name": "cohp_method",
+        "source": "parser",
+        "value": "iao"
+      },
+      {
+        "name": "atom_pair",
+        "source": "parser",
+        "value": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "minus_icohp_ev",
+        "source": "parser",
+        "value": 1.764889487696483
+      },
+      {
+        "name": "bond_distance_ang",
+        "source": "parser",
+        "value": 2.4248709706783167
+      }
+    ],
+    "operation_id": "f57c48a4-dc8b-41b9-ab63-3918a33687de",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

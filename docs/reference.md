@@ -16,7 +16,7 @@
 
 ### Typed capability 当前覆盖
 
-当前 machine discovery 的 capability 名为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`pyatb-band`、`export`。具体操作和 maturity 以 `capabilities` 返回的 descriptor 为准；当前已知边界如下：
+当前 machine discovery 的 capability 名为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band`、`export`。具体操作和 maturity 以 `capabilities` 返回的 descriptor 为准；当前已知边界如下：
 
 | Capability | Typed operations | 当前成熟度/边界 |
 | --- | --- | --- |
@@ -25,6 +25,7 @@
 | `md` | `prepare`, `modify`, `execute`, `collect`, `postprocess` | `experimental`。 |
 | `atst-neb` | `prepare`, `execute`, `postprocess` | `experimental`；委托外部 `atst` executable。 |
 | `band`, `dos` | `postprocess` | `experimental`；没有 typed band/DOS execute。 |
+| `cohp` | `postprocess` | `experimental`；IAO 方法，显式消费同一 workspace 内的已完成 LCAO SCF，不执行 SCF。 |
 | `pyatb-band` | `prepare`, `execute`, `collect` | `experimental`。 |
 | `export` | `export` | `experimental`。 |
 
@@ -110,6 +111,10 @@ PYTHONPATH=src python -m abacus_forge.cli operation collect \
 `BandPostprocessRequest` 和 `DosPostprocessRequest` 只作独立 typed `postprocess`。请求需声明 capability 和一个非空的 workspace-relative 源路径列表：band 使用 `source_paths_rel`，DOS 使用 `dos_paths_rel`，另可给 `pdos_path_rel`/`tdos_path_rel`。不存在隐式 collect、export 或上游 operation。
 
 纯进程内解析不声明 execution：成功、部分解析和 parser failure 的 `execution` 为 `not_run`；`collection` 描述 `complete`、`partial` 或 `missing_output`；`scientific` 固定 `unassessed`。结果含 parser facts、input/output artifacts（相对路径、SHA-256、size）和 append-only operation event。每个 admitted outcome 写入 operation report；request/precondition 错误不写该 report。旧的 `run_band`、`run_dos`、sequence helper 与 `abacus-forge band|dos` legacy task/sequence API 维持旧边界。
+
+### ATST NEB
+
+`atst-neb` 的 `execute` 请求中，`check_input=true` 只允许与 `dry_run=true` 一起使用；真实执行使用 `dry_run=false`、`check_input=false`。`postprocess.n_max` 按 ATST 定义表示中间图像数量，不包含两个端点：5 图像链应传 `3`。`execution=completed` 只说明外部进程成功，是否达到 NEB 力收敛阈值需另读 ATST 的 stage 记录；Forge 的 `scientific` 仍为 `unassessed`。
 
 ### PyATB band
 

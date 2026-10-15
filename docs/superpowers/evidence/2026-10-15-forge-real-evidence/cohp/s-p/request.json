@@ -1,0 +1,14 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "cohp",
+  "operation": "postprocess",
+  "operation_id": "b054faf2-1a63-4d14-b237-bbcb2c7c975c",
+  "workspace_rel": ".",
+  "method": "iao",
+  "scf_dir_rel": "scf",
+  "atom_i_index": 1,
+  "atom_j_index": 2,
+  "atom_i_orbs": "s",
+  "atom_j_orbs": "p",
+  "output_dir_rel": "outputs/cohp"
+}

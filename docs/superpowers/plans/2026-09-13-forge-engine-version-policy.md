@@ -91,6 +91,8 @@
 - [x] clean candidate wheel 的默认依赖集合与源码 checkout wheel/import/collect gate 已检查；当前不声明未发布的 `abacuslite` extra，Forge-only venv 对显式 optional 选择返回 `ParserPreconditionError`。由于当前索引没有可安装的 canonical 发布包，exact extra 与带依赖的 fresh-extra 验收仍保持未完成，详见 review evidence 第 12 节。
 - [ ] 发布候选必须满足对应矩阵，不能用 skip/xfail 代替已知限制的正向断言；发布动作另按实际授权执行。
 
+2026-10-15 发布包复查：显式 PyPI index 查询返回无匹配分发（exit 1），JSON endpoint 返回 HTTP 404；本地 canonical checkout 的 `1.0.0` 声明不作为已发布包。查询收据见[本轮证据](../evidence/2026-10-15-forge-real-evidence.md#abacuslite-发布包调查)。阶段 1 exact extra / fresh-extra 门继续开放，native 默认与依赖声明不变。
+
 ## D. 外部迁移交接
 
 Paimon 工具覆盖矩阵已由 `app-tools/toolbox/ABACUS` 建立并维护；generic

@@ -61,3 +61,5 @@ Ruling: 本轮优先闭合最新切片的本地验收 — 现有 W3 历史 kit �
 平台或发布门禁。真实 ABACUS/SAI 运行和外部发布继续按对应授权单独处理。
 
 完成记录：Forge wheel suites 16 passed；Paimon owning 195 passed / 3 skipped，最终 COHP 23 passed，完整 unit 7550 passed / 9 skipped / 57 deselected，本地治理通过。独立 GPT reviewer 未发现实现阻断问题；证据日志改用可跟踪扩展名并补充回放前置条件。结果与边界见[安装消费证据](../evidence/2026-10-15-forge-cohp-installed-consumption.md)。Forge 本轮仅修改文档，保留隔离分支；Paimon 实现已提交 `bab7d380d`，本地 kit 未传输或发布。
+
+后续真实输入验收（2026-10-15）：用户确认继续后，以同一 wheel 对 SAI job `1760372` 的完整 Si SCF 输入执行五组 IAO postprocess；总曲线与原始完整数据结果最大差 `4.77e-15`，s/p 分解 ICOHP 求和残差 `0.0 eV`。产物与 audit 均通过核对，详见[真实输入证据](../evidence/2026-10-15-forge-real-evidence.md#完整-si-scf-上的-cohp)。这是既有真实 SCF 输入的本轮后处理，不是新 SCF、legacy parity 或多材料科学验收。

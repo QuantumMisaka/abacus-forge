@@ -1,0 +1,178 @@
+{
+  "cases": {
+    "all-all": {
+      "icohp_ev": -3.0224776506888595,
+      "bond": {
+        "atom_i": 1,
+        "atom_j": 2,
+        "element_i": "Si",
+        "element_j": "Si",
+        "orbitals_i": "all",
+        "orbitals_j": "all",
+        "n_orbitals_i": 4,
+        "n_orbitals_j": 4,
+        "translation": [
+          -1,
+          -1,
+          -1
+        ],
+        "distance_ang": 2.4248709706783167,
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 1.865174681370263e-14,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "aliased_image_distance_ang": 9.997999140600724
+      },
+      "nk_full": 64,
+      "artifact_count": 5,
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "reference_curve_max_abs_diff": 4.773959005888173e-15
+    },
+    "s-s": {
+      "icohp_ev": -0.04897334039345078,
+      "bond": {
+        "atom_i": 1,
+        "atom_j": 2,
+        "element_i": "Si",
+        "element_j": "Si",
+        "orbitals_i": "s",
+        "orbitals_j": "s",
+        "n_orbitals_i": 1,
+        "n_orbitals_j": 1,
+        "translation": [
+          -1,
+          -1,
+          -1
+        ],
+        "distance_ang": 2.4248709706783167,
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 2.1371793224034263e-15,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "aliased_image_distance_ang": 9.997999140600724
+      },
+      "nk_full": 64,
+      "artifact_count": 5,
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      }
+    },
+    "s-p": {
+      "icohp_ev": -0.6040196341992011,
+      "bond": {
+        "atom_i": 1,
+        "atom_j": 2,
+        "element_i": "Si",
+        "element_j": "Si",
+        "orbitals_i": "s",
+        "orbitals_j": "p",
+        "n_orbitals_i": 1,
+        "n_orbitals_j": 3,
+        "translation": [
+          -1,
+          -1,
+          -1
+        ],
+        "distance_ang": 2.4248709706783167,
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 4.884981308350689e-15,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "aliased_image_distance_ang": 9.997999140600724
+      },
+      "nk_full": 64,
+      "artifact_count": 5,
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      }
+    },
+    "p-s": {
+      "icohp_ev": -0.6045951883997248,
+      "bond": {
+        "atom_i": 1,
+        "atom_j": 2,
+        "element_i": "Si",
+        "element_j": "Si",
+        "orbitals_i": "p",
+        "orbitals_j": "s",
+        "n_orbitals_i": 3,
+        "n_orbitals_j": 1,
+        "translation": [
+          -1,
+          -1,
+          -1
+        ],
+        "distance_ang": 2.4248709706783167,
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 6.994405055138486e-15,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "aliased_image_distance_ang": 9.997999140600724
+      },
+      "nk_full": 64,
+      "artifact_count": 5,
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      }
+    },
+    "p-p": {
+      "icohp_ev": -1.764889487696483,
+      "bond": {
+        "atom_i": 1,
+        "atom_j": 2,
+        "element_i": "Si",
+        "element_j": "Si",
+        "orbitals_i": "p",
+        "orbitals_j": "p",
+        "n_orbitals_i": 3,
+        "n_orbitals_j": 3,
+        "translation": [
+          -1,
+          -1,
+          -1
+        ],
+        "distance_ang": 2.4248709706783167,
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 8.43769498715119e-15,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "aliased_image_distance_ang": 9.997999140600724
+      },
+      "nk_full": 64,
+      "artifact_count": 5,
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      }
+    }
+  },
+  "orbital_partition_residual_ev": 0.0,
+  "scf_file_count": 126,
+  "python": "/home/james/scratch/forge-cohp-closeout-20261015/venv/bin/python"
+}

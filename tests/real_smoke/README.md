@@ -72,6 +72,8 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 
 ATST-tools NEB 门禁选择 ATST 2.2.4，执行 `atst neb make`、`atst run --dry-run`、`atst neb summary/post`，不启动 ABACUS。它只检查 process envelope、状态、contained summary/CIF artifact 与审计，不证明真实 NEB 执行或物理有效性。
 
+2026-10-15 另通过外层 harness 补充了 ATST 2.2.8 + ABACUS LTSv3.10.1 的有限步真实 NEB execute/postprocess 证据，见[运行记录与复现脚本](../../docs/superpowers/evidence/2026-10-15-forge-real-evidence.md#真实-atst-neb)。实际优化未收敛；两次 harness 参数错误及后处理恢复均保留。下方 pytest 仍为原有 dry-run/process 门禁，不代表新执行真实 NEB。
+
 ```bash
 export ABACUS_FORGE_ATST_EXECUTABLE=/absolute/path/to/atst
 conda run -n atst-dev env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \

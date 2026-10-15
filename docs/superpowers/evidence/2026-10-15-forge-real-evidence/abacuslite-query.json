@@ -1,0 +1,9 @@
+{
+  "date": "2026-10-15",
+  "index": "https://pypi.org/simple",
+  "command": "python -m pip index versions abacuslite --index-url https://pypi.org/simple",
+  "returncode": 1,
+  "json_endpoint": "https://pypi.org/pypi/abacuslite/json",
+  "http_status": 404,
+  "scope": "No published distribution found on queried PyPI index; local canonical checkout is not a published release."
+}

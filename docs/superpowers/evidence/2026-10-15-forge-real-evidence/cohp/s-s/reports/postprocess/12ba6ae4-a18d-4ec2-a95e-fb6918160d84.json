@@ -1,0 +1,150 @@
+{
+  "capability": "cohp",
+  "diagnostics": {
+    "capability": "cohp",
+    "cohp_meta": {
+      "basis": {
+        "n_frozen_bands": 0,
+        "n_iao": 8,
+        "occupied_threshold": 0.5,
+        "reference": "first zeta of each occupied valence shell (frozen semicore)",
+        "species": {
+          "Si": {
+            "element": "Si",
+            "semicore_shells": {},
+            "valence_shells": {
+              "p": 1,
+              "s": 1
+            },
+            "z_valence": 4
+          }
+        }
+      },
+      "bond": {
+        "aliased_image_distance_ang": 9.997999140600724,
+        "atom_i": 1,
+        "atom_j": 2,
+        "bvk_dims": [
+          4,
+          4,
+          4
+        ],
+        "distance_ang": 2.4248709706783167,
+        "element_i": "Si",
+        "element_j": "Si",
+        "equivalent_images": 8,
+        "equivalent_spread_ev": 2.1371793224034263e-15,
+        "n_orbitals_i": 1,
+        "n_orbitals_j": 1,
+        "orbitals_i": "s",
+        "orbitals_j": "s",
+        "translation": [
+          -1,
+          -1,
+          -1
+        ]
+      },
+      "cautions": [],
+      "curve": {
+        "columns": [
+          "Energy-E_Fermi(eV)",
+          "COHP"
+        ],
+        "de_ev": 0.01,
+        "sigma_ev": 0.1,
+        "unit": "dimensionless"
+      },
+      "diagnostics": {
+        "band_energy_sum_rule_dev_ev": 0.015970717633138065,
+        "echo_eigen_min": 0.9334190251270259,
+        "eigen_ratio": 0.14515399557048464,
+        "energy_unit": "Ry",
+        "f_weighted_spilling": 0.00020436192141318928,
+        "frozen_character_min": null,
+        "frozen_occupation_min": null,
+        "max_fractional_occupation": 0.13888885448259744,
+        "n_electrons": 8.000000000058131,
+        "occupation_scale": 2.0,
+        "occupied_spilling_max": 2.7681945180546563e-08,
+        "orthonormality_ratio": 0.15448638260362696,
+        "phase_residual": 4.860587954347295e-08,
+        "phase_residual_other": 1.8096229399903074,
+        "semicore_top_ev": null,
+        "text_ndigits": 8,
+        "valence_bottom_ev": null
+      },
+      "efermi_ev": 15.926862044,
+      "files": {
+        "bond_images": "cohp_bond_images.json",
+        "plot": "cohp.png",
+        "shifted": "cohp_EminusEf.dat"
+      },
+      "icohp": {
+        "convention": "lobster-single-ordering",
+        "icohp": -0.04897334039345078,
+        "icohp_both_orderings": -0.09794668078690157,
+        "icohp_per_spin": [
+          -0.04897334039345078
+        ],
+        "integration": "occupied_discrete_state_sum",
+        "minus_icohp": 0.04897334039345078
+      },
+      "method": "IAO-COHP",
+      "nk_full": 64,
+      "notes": [
+        "\u5b58\u5728\u5206\u6570\u5360\u636e\uff08max f(1-f)=1.39e-01\uff09\uff0c\u5e26\u80fd\u6c42\u548c\u5f8b\u53ea\u4f5c\u53c2\u8003",
+        "\u65f6\u95f4\u53cd\u6f14\u5c55\u5f00\uff1a36 -> 64 \u4e2a k \u70b9"
+      ],
+      "nspin": 1,
+      "paths": {
+        "bond_images": "<path>",
+        "curve": "<path>",
+        "meta": "<path>",
+        "png": "<path>"
+      },
+      "phase_sign": 1,
+      "shift_toefermi": true
+    },
+    "generated_files": [
+      "cohp.meta.json",
+      "cohp_EminusEf.dat",
+      "cohp.png",
+      "cohp_bond_images.json"
+    ],
+    "generated_paths_rel": [
+      "outputs/cohp/cohp.meta.json",
+      "outputs/cohp/cohp_EminusEf.dat",
+      "outputs/cohp/cohp.png",
+      "outputs/cohp/cohp_bond_images.json"
+    ],
+    "output_dir_rel": "outputs/cohp",
+    "output_directory": "cohp",
+    "selected_source_paths": [
+      "scf"
+    ],
+    "source_directory": "scf",
+    "summary": {
+      "atom_pair": [
+        1,
+        2
+      ],
+      "bond_distance_ang": 2.4248709706783167,
+      "cohp_method": "iao",
+      "method": "IAO-COHP",
+      "minus_icohp_ev": 0.04897334039345078
+    }
+  },
+  "operation": "postprocess",
+  "schema_version": "forge.postprocess-report/v1",
+  "summary": {
+    "atom_pair": [
+      1,
+      2
+    ],
+    "bond_distance_ang": 2.4248709706783167,
+    "cohp_method": "iao",
+    "method": "IAO-COHP",
+    "minus_icohp_ev": 0.04897334039345078
+  },
+  "workspace_rel": "."
+}

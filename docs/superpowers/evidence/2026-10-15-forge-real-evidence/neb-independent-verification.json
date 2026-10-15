@@ -1,0 +1,7 @@
+{
+  "operation_count": 3,
+  "all_artifact_hashes_valid": true,
+  "trajectory_frames": 10,
+  "max_position_change_angstrom": 0.013274570912692954,
+  "finite_energies_forces": true
+}

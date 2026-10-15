@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst", line 3, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli.py", line 37, in main
+    return importlib.import_module(_IMPLEMENTATION).main(arguments)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli_impl.py", line 865, in main
+    args.func(args)
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/scripts/cli_impl.py", line 386, in _neb_post_command
+    selected = select_post_neb_chain(images, n_max=args.n_max, strict=strict)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/utils/restart_helpers.py", line 93, in select_post_neb_chain
+    return select_last_neb_chain(images, n_max + 2, strict=strict)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/org/galileo-group/galileouser02/forge-real-evidence-20261015/pythonlib/atst_tools/utils/restart_helpers.py", line 66, in select_last_neb_chain
+    raise ValueError(
+ValueError: NEB trajectory contains 10 frame(s), not a whole number of bands with 7 images.

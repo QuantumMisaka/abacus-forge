@@ -1,0 +1,3 @@
+Starting NEB calculation
+Using vendored abacuslite backend for ABACUS calculator.
+NEB calculation finished

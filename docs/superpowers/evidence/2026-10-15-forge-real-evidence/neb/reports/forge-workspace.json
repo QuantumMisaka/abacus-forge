@@ -1,0 +1,21 @@
+{
+  "events": [
+    {
+      "id": "1c4e1399-2b6e-48f4-ab7d-b4c03d86d908",
+      "operation": "execute",
+      "path_rel": "reports/events/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-execute.json"
+    },
+    {
+      "id": "51a6e511-21e6-4a0d-91b0-6dab0bd21fd9",
+      "operation": "postprocess",
+      "path_rel": "reports/events/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-postprocess.json"
+    },
+    {
+      "id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541",
+      "operation": "postprocess",
+      "path_rel": "reports/events/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-postprocess.json"
+    }
+  ],
+  "schema_version": "forge.workspace/v1",
+  "workspace_rel": "."
+}

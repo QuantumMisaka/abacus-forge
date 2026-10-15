@@ -1,0 +1,338 @@
+{
+  "neb/postprocess-corrected-request.json": {
+    "archive": "neb/postprocess-corrected-request.json",
+    "sha256": "ed1314d721ba551166e4d94881a3c0e8a4a530d0748559cc2b3a99e273b92a16"
+  },
+  "neb/execute-request.json": {
+    "archive": "neb/execute-request.json",
+    "sha256": "ac867a1550a7b8a18e71fc0d3fa08d8ab0bd673868cebc4493f252f3319ee657"
+  },
+  "neb/atst_artifacts.json": {
+    "archive": "neb/atst_artifacts.json",
+    "sha256": "99f8048046a207b42e5973502cc0ea47aaac97dfb57a4c11747490e83856f648"
+  },
+  "neb/executable.txt": {
+    "archive": "neb/executable.txt",
+    "sha256": "a60468e3c0071f80a858397acf0836806d04ddc841e30333ca879649a53e266d"
+  },
+  "neb/postprocess-response.json": {
+    "archive": "neb/postprocess-response.json",
+    "sha256": "acbf29a928c8d56ba02a55700149e865eb97420d6b62ac1169497b41a4cbc757"
+  },
+  "neb/acceptance.json": {
+    "archive": "neb/acceptance.json",
+    "sha256": "f2f621875aab82295ceb9a7089e3f5a5e59c0c5b7ea701f3a77be64b0d8a67e5"
+  },
+  "neb/runtime.json": {
+    "archive": "neb/runtime.json",
+    "sha256": "ccebcbde003af7a5aa16508485e19b32c21f8325a6b6ac9b8275833431dbb475"
+  },
+  "neb/postprocess-stderr.txt": {
+    "archive": "neb/postprocess-stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/modules.txt": {
+    "archive": "neb/modules.txt",
+    "sha256": "a36a5fd47de6d62ef90314a39da7558f379ab9494e818ef930da7ade7578a27c"
+  },
+  "neb/execute-stderr.txt": {
+    "archive": "neb/execute-stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/postprocess-corrected-stderr.txt": {
+    "archive": "neb/postprocess-corrected-stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/postprocess-corrected-response.json": {
+    "archive": "neb/postprocess-corrected-response.json",
+    "sha256": "7e5bdf124bcf56070c5f2784579fb45662aa95bcb698ef3b54f39fc2e5b26278"
+  },
+  "neb/abacus-version.txt": {
+    "archive": "neb/abacus-version.txt",
+    "sha256": "75250c1c511a749a9573b257103690a929014ed5e0f4fb7ddd278aa1e074d8f4"
+  },
+  "neb/workflow.yaml": {
+    "archive": "neb/workflow.yaml",
+    "sha256": "48524b17607131b153755375de8f746fbc78266dde4c472645f1ed4a1e2017ff"
+  },
+  "neb/postprocess-request.json": {
+    "archive": "neb/postprocess-request.json",
+    "sha256": "753f55e4596b0d78aa4f3f60e11f66c542057854382bff07df0814caa8e3f124"
+  },
+  "neb/gpu.txt": {
+    "archive": "neb/gpu.txt",
+    "sha256": "4586615858cc86d35b7a4432e2d64c0fe28db9350a12bb7cedd50b6ff823544c"
+  },
+  "neb/neb.traj": {
+    "archive": "neb/neb.traj",
+    "sha256": "90ffec8d9fb9fc9f9d8d4cef6f46a7642fb55a394d43f26ebb9abfe31bb1b591"
+  },
+  "neb/execute-response.json": {
+    "archive": "neb/execute-response.json",
+    "sha256": "a01761b922c6a861d9f2f5a3f6d228aa6ed53a53e9cea27b31fbdf623fa189f7"
+  },
+  "neb/reports/.forge-operation.lock": {
+    "archive": "neb/reports/.forge-operation.lock",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/reports/forge-workspace.json": {
+    "archive": "neb/reports/forge-workspace.json",
+    "sha256": "0f3c0e0576264e6cccfab534305630eb17df8a7cc6cae7bb7baeca2758380ae4"
+  },
+  "neb/reports/.forge-workspace.lock": {
+    "archive": "neb/reports/.forge-workspace.lock",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/outputs/atst/neb-latest.traj": {
+    "archive": "neb/outputs/atst/neb-latest.traj",
+    "sha256": "5bcfa471ea9cc035d82606f8de47eeb53616cae49a78360af050846775c44082"
+  },
+  "neb/outputs/atst/neb-ts-corrected.cif": {
+    "archive": "neb/outputs/atst/neb-ts-corrected.cif",
+    "sha256": "06f079ab30097945cf9b91bd8207670f0c4b8ff3eded56a936f1089a924da85e"
+  },
+  "neb/outputs/atst/nebplots_chain.pdf": {
+    "archive": "neb/outputs/atst/nebplots_chain.pdf",
+    "sha256": "13ace2fbfc2a7798dff870dd2f46aa0483b18a92387eb4d76d5a9e73c3d1372f"
+  },
+  "neb/outputs/atst/neb-latest.extxyz": {
+    "archive": "neb/outputs/atst/neb-latest.extxyz",
+    "sha256": "b3f706c628ac2bfbfc676f6fa79155148b431a7b6620f32dae7ce02d2fd2aa01"
+  },
+  "neb/outputs/atst/neb-init-chain.traj": {
+    "archive": "neb/outputs/atst/neb-init-chain.traj",
+    "sha256": "5bcfa471ea9cc035d82606f8de47eeb53616cae49a78360af050846775c44082"
+  },
+  "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stderr.log": {
+    "archive": "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stderr.log.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/reports/atst/neb-summary-corrected.json": {
+    "archive": "neb/reports/atst/neb-summary-corrected.json",
+    "sha256": "f3bc1069fb51ee06497b0b89fd416036e0689da173e1851ae8c3fa879bf8751c"
+  },
+  "neb/reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stdout.log": {
+    "archive": "neb/reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stdout.log.txt",
+    "sha256": "2e9c80e14d01696ed9171dd12ad897446b7e6d3af81dc6a918686e5dcb992305"
+  },
+  "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stdout.log": {
+    "archive": "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stdout.log.txt",
+    "sha256": "da2c7558fa47374155b29bdea26824914e563d192a16eef0bb4929489fdabbdc"
+  },
+  "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stdout.log": {
+    "archive": "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stdout.log.txt",
+    "sha256": "daba83b4bdab05999f2597247d745bbf0593f0bb340a9b8a890a921ff682dd6c"
+  },
+  "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stderr.log": {
+    "archive": "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stderr.log.txt",
+    "sha256": "2f115f2a993d5f370388c437a5fd6c422f627c87db3a58ce51ba70869b9bec98"
+  },
+  "neb/reports/atst/neb-summary.json": {
+    "archive": "neb/reports/atst/neb-summary.json",
+    "sha256": "580d132c4c5cc5329e756c4cc52f3cc6dcb18c5892718ba0fa0cbdaf01562a21"
+  },
+  "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stderr.log": {
+    "archive": "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stderr.log.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stdout.log": {
+    "archive": "neb/reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stdout.log.txt",
+    "sha256": "d0d973a796516f2f39ad183d34e85468c0b720e94b242108f3c81d9e9c5dc950"
+  },
+  "neb/reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stderr.log": {
+    "archive": "neb/reports/atst/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-stderr.log.txt",
+    "sha256": "850b0854574df3e4c90f0b229c28c728a13f9bff4a194a3a5d1054b993f132cf"
+  },
+  "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stdout.log": {
+    "archive": "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-post-stdout.log.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stderr.log": {
+    "archive": "neb/reports/atst/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-summary-stderr.log.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "neb/reports/events/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-postprocess.json": {
+    "archive": "neb/reports/events/51a6e511-21e6-4a0d-91b0-6dab0bd21fd9-postprocess.json",
+    "sha256": "903b7db1df51535673d2f3c7fc8f46f806b112b52b7ce526ce476bb6199a298a"
+  },
+  "neb/reports/events/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-execute.json": {
+    "archive": "neb/reports/events/1c4e1399-2b6e-48f4-ab7d-b4c03d86d908-execute.json",
+    "sha256": "eba1673cb8cdd4d02de3444af131a0697cafead7bd8d7d77739162cfec718099"
+  },
+  "neb/reports/events/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-postprocess.json": {
+    "archive": "neb/reports/events/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-postprocess.json",
+    "sha256": "2ac40cb4097092693100e8fbe55e0d48ff7ee7166c2f11dfa09d6b44b74c5fd9"
+  },
+  "sacct.txt": {
+    "archive": "neb-platform/sacct.txt",
+    "sha256": "8b8f2d351ae15a7f680457fd61f9b4b294a8dd1fa4707ad41b3218040e000fde"
+  },
+  "candidate-sha256.txt": {
+    "archive": "neb-platform/candidate-sha256.txt",
+    "sha256": "91d68848b5bf998f6440e401c9c030874cc2cd277357c484bb0c51d10aa502ae"
+  },
+  "postprocess-resume.txt": {
+    "archive": "neb-platform/postprocess-resume.txt",
+    "sha256": "80a6b9025a5047c973ac10453c41585b39dc3f9e784d0ea3fd7c77eed31cae76"
+  },
+  "slurm-1804117.out": {
+    "archive": "neb-platform/slurm-1804117.out",
+    "sha256": "3120b8920ad099fc2eda080f9ea9b96a440149c382536c0b11cf7f64c9f5643c"
+  },
+  "slurm-1804129.out": {
+    "archive": "neb-platform/slurm-1804129.out",
+    "sha256": "63c23e9941b3d8d5a21d7d6553505184c75c0b75205f19bef098f0b8676e1bf4"
+  },
+  "neb_run.py": {
+    "archive": "neb-platform/neb_run.py",
+    "sha256": "9b7f2fe1d8f5c46abe408e4cca235915d781cce91adfee1655f91bc25cfde1f6"
+  },
+  "neb_resume.py": {
+    "archive": "neb-platform/neb_resume.py",
+    "sha256": "cf32ce60a3805c173e258ad3cccfc302c9246ca29e2254baaced48b257585a0d"
+  },
+  "failed-1804117/execute-request.json": {
+    "archive": "neb-platform/failed-1804117/execute-request.json",
+    "sha256": "163b47bebc0d79845c256af128dc5e0617f344373e62150dc5f2aa5176068865"
+  },
+  "failed-1804117/execute-response.json": {
+    "archive": "neb-platform/failed-1804117/execute-response.json",
+    "sha256": "c60c69efccddacb05ce3fd28c41d53207eefc0359b3dd73fa47f8f7e771ea30e"
+  },
+  "failed-1804117/neb_run.py": {
+    "archive": "neb-platform/failed-1804117/neb_run.py",
+    "sha256": "896eb4bc07f4c4f70295d6c3ac9e8046385aad36241e35a3e04d57a7ce7669d0"
+  },
+  "failed-1804117/runtime.json": {
+    "archive": "neb-platform/failed-1804117/runtime.json",
+    "sha256": "ccebcbde003af7a5aa16508485e19b32c21f8325a6b6ac9b8275833431dbb475"
+  },
+  "neb/run_neb/endpoint_initial/INPUT": {
+    "archive": "neb-engine/endpoint_initial/INPUT",
+    "sha256": "c93b84f9c6ef993c463678491a42fd8fe15c79e7d4ea9c282bb8ffb897192c8b"
+  },
+  "neb/run_neb/endpoint_initial/KPT": {
+    "archive": "neb-engine/endpoint_initial/KPT",
+    "sha256": "92b917107d9df11da28a465cc4900f3574956a057ddf9f7ad125e75c956ec508"
+  },
+  "neb/run_neb/endpoint_initial/abacus.out": {
+    "archive": "neb-engine/endpoint_initial/abacus.out",
+    "sha256": "5c816006d007dab863643093bfeb19330f9b606c26ef9ecb0fc2d5cfd4c6ddbf"
+  },
+  "neb/run_neb/endpoint_initial/STRU": {
+    "archive": "neb-engine/endpoint_initial/STRU",
+    "sha256": "92fb466d082a9d57cd3eb0541994de108a76d622263eb1968ec2b20a8f2ee986"
+  },
+  "neb/run_neb/endpoint_final/INPUT": {
+    "archive": "neb-engine/endpoint_final/INPUT",
+    "sha256": "c93b84f9c6ef993c463678491a42fd8fe15c79e7d4ea9c282bb8ffb897192c8b"
+  },
+  "neb/run_neb/endpoint_final/KPT": {
+    "archive": "neb-engine/endpoint_final/KPT",
+    "sha256": "92b917107d9df11da28a465cc4900f3574956a057ddf9f7ad125e75c956ec508"
+  },
+  "neb/run_neb/endpoint_final/abacus.out": {
+    "archive": "neb-engine/endpoint_final/abacus.out",
+    "sha256": "57c5375f7bae20f745c53e195cda630e18fe7514de81056f17d1966ec125ef87"
+  },
+  "neb/run_neb/endpoint_final/STRU": {
+    "archive": "neb-engine/endpoint_final/STRU",
+    "sha256": "d5a04139dc11e2792dc77294535660749bbcb447fb5c9720ee4fb028e57cece9"
+  },
+  "neb/run_neb/endpoint_final/OUT.ABACUS/INPUT": {
+    "archive": "neb-engine/endpoint_final/OUT.ABACUS/INPUT",
+    "sha256": "a24904d37295f7cd1ff357581ebded33b39a567b25761b76eeaa9c17f5b50de7"
+  },
+  "neb/run_neb/endpoint_final/OUT.ABACUS/running_scf.log": {
+    "archive": "neb-engine/endpoint_final/OUT.ABACUS/running_scf.log.txt",
+    "sha256": "fb09eaeb83a91e8605a85c244017cffee4c93986736aad05d24b866c50580566"
+  },
+  "engine-identity.json": {
+    "archive": "neb-platform/engine-identity.json",
+    "sha256": "64571e0767bcb534543a9ab441135cb8693fb317430582f23d6a187bd73b3670"
+  },
+  "neb.sbatch": {
+    "archive": "neb-platform/neb.sbatch",
+    "sha256": "c60ad10c03f61dc3e734995c01f98b503bc12dd7f7163366a4bf7fe2f8843d91"
+  },
+  "neb/run_neb/image_002/INPUT": {
+    "archive": "neb-engine/image_002/INPUT",
+    "sha256": "c93b84f9c6ef993c463678491a42fd8fe15c79e7d4ea9c282bb8ffb897192c8b"
+  },
+  "neb/run_neb/image_002/KPT": {
+    "archive": "neb-engine/image_002/KPT",
+    "sha256": "92b917107d9df11da28a465cc4900f3574956a057ddf9f7ad125e75c956ec508"
+  },
+  "neb/run_neb/image_002/abacus.out": {
+    "archive": "neb-engine/image_002/abacus.out",
+    "sha256": "ab37223f99c8409c2216ee76e7f8855ef24536f43c337f884db890b66b75a6f1"
+  },
+  "neb/run_neb/image_002/STRU": {
+    "archive": "neb-engine/image_002/STRU",
+    "sha256": "103a28dad9850710e5cc33a3a293a8811b2e959fe6f3e803483ee8c985130beb"
+  },
+  "neb/run_neb/image_001/INPUT": {
+    "archive": "neb-engine/image_001/INPUT",
+    "sha256": "c93b84f9c6ef993c463678491a42fd8fe15c79e7d4ea9c282bb8ffb897192c8b"
+  },
+  "neb/run_neb/image_001/KPT": {
+    "archive": "neb-engine/image_001/KPT",
+    "sha256": "92b917107d9df11da28a465cc4900f3574956a057ddf9f7ad125e75c956ec508"
+  },
+  "neb/run_neb/image_001/abacus.out": {
+    "archive": "neb-engine/image_001/abacus.out",
+    "sha256": "7d3de35f57360ba49adbefdd310c81bd8711736f70266a5b4e85f2062ec4d88a"
+  },
+  "neb/run_neb/image_001/STRU": {
+    "archive": "neb-engine/image_001/STRU",
+    "sha256": "de1c3f8080442df2e4645bf68a0a88ff0eb0beb52a141b8b1fe0bf4a6c3dbea3"
+  },
+  "neb/run_neb/image_003/INPUT": {
+    "archive": "neb-engine/image_003/INPUT",
+    "sha256": "c93b84f9c6ef993c463678491a42fd8fe15c79e7d4ea9c282bb8ffb897192c8b"
+  },
+  "neb/run_neb/image_003/KPT": {
+    "archive": "neb-engine/image_003/KPT",
+    "sha256": "92b917107d9df11da28a465cc4900f3574956a057ddf9f7ad125e75c956ec508"
+  },
+  "neb/run_neb/image_003/abacus.out": {
+    "archive": "neb-engine/image_003/abacus.out",
+    "sha256": "b674626c72d3213950fbda70ee2f7ddd10571dac89e830b925e30cd8467d68b3"
+  },
+  "neb/run_neb/image_003/STRU": {
+    "archive": "neb-engine/image_003/STRU",
+    "sha256": "19092eb63e457194123c09f51bd6b2ba147b423bff298625d95fb6dbe444a328"
+  },
+  "neb/run_neb/image_003/OUT.ABACUS/INPUT": {
+    "archive": "neb-engine/image_003/OUT.ABACUS/INPUT",
+    "sha256": "a24904d37295f7cd1ff357581ebded33b39a567b25761b76eeaa9c17f5b50de7"
+  },
+  "neb/run_neb/image_003/OUT.ABACUS/running_scf.log": {
+    "archive": "neb-engine/image_003/OUT.ABACUS/running_scf.log.txt",
+    "sha256": "3ef87f50f3247db04baac9bfdab97c7b80ea10ccab11d71e545965c20b06f7fb"
+  },
+  "neb/run_neb/image_001/OUT.ABACUS/INPUT": {
+    "archive": "neb-engine/image_001/OUT.ABACUS/INPUT",
+    "sha256": "a24904d37295f7cd1ff357581ebded33b39a567b25761b76eeaa9c17f5b50de7"
+  },
+  "neb/run_neb/image_001/OUT.ABACUS/running_scf.log": {
+    "archive": "neb-engine/image_001/OUT.ABACUS/running_scf.log.txt",
+    "sha256": "04da52b381c4f2b34cd241c359f26b22472161bca1585cb8f66d42d2b9854ae7"
+  },
+  "neb/run_neb/image_002/OUT.ABACUS/INPUT": {
+    "archive": "neb-engine/image_002/OUT.ABACUS/INPUT",
+    "sha256": "a24904d37295f7cd1ff357581ebded33b39a567b25761b76eeaa9c17f5b50de7"
+  },
+  "neb/run_neb/image_002/OUT.ABACUS/running_scf.log": {
+    "archive": "neb-engine/image_002/OUT.ABACUS/running_scf.log.txt",
+    "sha256": "b8b673105523525eafe99f0a006262613b206b844bfdb47bba83513523265bca"
+  },
+  "neb/run_neb/endpoint_initial/OUT.ABACUS/INPUT": {
+    "archive": "neb-engine/endpoint_initial/OUT.ABACUS/INPUT",
+    "sha256": "a24904d37295f7cd1ff357581ebded33b39a567b25761b76eeaa9c17f5b50de7"
+  },
+  "neb/run_neb/endpoint_initial/OUT.ABACUS/running_scf.log": {
+    "archive": "neb-engine/endpoint_initial/OUT.ABACUS/running_scf.log.txt",
+    "sha256": "12712a3b776dcef728685dda63745a5463b241398b33c00840d0794661659d20"
+  }
+}

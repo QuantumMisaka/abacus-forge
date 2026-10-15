@@ -1,0 +1,217 @@
+{
+  "id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541",
+  "operation": "postprocess",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "trajectory",
+          "media_type": "application/octet-stream",
+          "path_rel": "neb.traj",
+          "role": "input",
+          "sha256": "90ffec8d9fb9fc9f9d8d4cef6f46a7642fb55a394d43f26ebb9abfe31bb1b591",
+          "size_bytes": 58607,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/neb-summary-corrected.json",
+          "role": "output",
+          "sha256": "f3bc1069fb51ee06497b0b89fd416036e0689da173e1851ae8c3fa879bf8751c",
+          "size_bytes": 2907,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary_stdout",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stdout.log",
+          "role": "output",
+          "sha256": "d0d973a796516f2f39ad183d34e85468c0b720e94b242108f3c81d9e9c5dc950",
+          "size_bytes": 2908,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "summary_stderr",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-summary-stderr.log",
+          "role": "output",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "post_stdout",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stdout.log",
+          "role": "output",
+          "sha256": "da2c7558fa47374155b29bdea26824914e563d192a16eef0bb4929489fdabbdc",
+          "size_bytes": 1146,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "post_stderr",
+          "media_type": "application/octet-stream",
+          "path_rel": "reports/atst/2d7e66cf-b52e-4aac-bf65-b5e8f919e541-post-stderr.log",
+          "role": "output",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "atst-147c660b1ea7",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/atst/neb-init-chain.traj",
+          "role": "output",
+          "sha256": "5bcfa471ea9cc035d82606f8de47eeb53616cae49a78360af050846775c44082",
+          "size_bytes": 29743,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "atst-9ff13b310eeb",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/atst/neb-latest.extxyz",
+          "role": "output",
+          "sha256": "b3f706c628ac2bfbfc676f6fa79155148b431a7b6620f32dae7ce02d2fd2aa01",
+          "size_bytes": 40375,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "atst-4cca2331784d",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/atst/neb-latest.traj",
+          "role": "output",
+          "sha256": "5bcfa471ea9cc035d82606f8de47eeb53616cae49a78360af050846775c44082",
+          "size_bytes": 29743,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "atst-f3fd46edcf4f",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/atst/neb-ts-corrected.cif",
+          "role": "output",
+          "sha256": "06f079ab30097945cf9b91bd8207670f0c4b8ff3eded56a936f1089a924da85e",
+          "size_bytes": 6353,
+          "stage": "atst-neb"
+        },
+        {
+          "availability": "available",
+          "id": "atst-1bf2ef470377",
+          "media_type": "application/octet-stream",
+          "path_rel": "outputs/atst/nebplots_chain.pdf",
+          "role": "output",
+          "sha256": "13ace2fbfc2a7798dff870dd2f46aa0483b18a92387eb4d76d5a9e73c3d1372f",
+          "size_bytes": 16242,
+          "stage": "atst-neb"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "trajectory",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "summary",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "summary_stdout",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "summary_stderr",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "post_stdout",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "post_stderr",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "atst-147c660b1ea7",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "atst-9ff13b310eeb",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "atst-4cca2331784d",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "atst-f3fd46edcf4f",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          },
+          {
+            "artifact_id": "atst-1bf2ef470377",
+            "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541"
+          }
+        ],
+        "postprocess_command": [
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst",
+          "neb",
+          "post",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/neb.traj",
+          "--output-prefix",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-ts-corrected",
+          "--write-latest",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-latest",
+          "--write-neb-init-chain",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/neb-init-chain.traj",
+          "--plot",
+          "--plot-label",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/outputs/atst/nebplots_chain",
+          "--n-max",
+          "3",
+          "--vib-thr",
+          "0.1"
+        ],
+        "postprocess_returncode": 0,
+        "returncode": 0,
+        "stderr": "",
+        "summary_command": [
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/bin/atst",
+          "neb",
+          "summary",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/neb.traj",
+          "--n-max",
+          "3",
+          "--format",
+          "json",
+          "--output",
+          "/org/galileo-group/galileouser02/forge-real-evidence-20261015/neb/reports/atst/neb-summary-corrected.json"
+        ],
+        "summary_returncode": 0
+      },
+      "metrics": [],
+      "operation": "postprocess",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "completed",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "2d7e66cf-b52e-4aac-bf65-b5e8f919e541",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}
