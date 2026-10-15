@@ -606,3 +606,30 @@ def test_cohp_accepts_explicit_out_dir_inside_scf_root(tmp_path: Path) -> None:
     result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
     assert isinstance(result, OperationOutcome)
     assert result.envelope.status.collection == "complete"
+
+
+@pytest.mark.parametrize("directory_key", ["pseudo_dir", "orbital_dir"])
+def test_cohp_rejects_absolute_pp_orb_directory_instead_of_fallback(
+    tmp_path: Path, directory_key: str
+) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    input_path = job / "scf/INPUT"
+    input_path.write_text(
+        input_path.read_text(encoding="utf-8")
+        + f"{directory_key} /tmp/does-not-matter\n",
+        encoding="utf-8",
+    )
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(341),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.execution == "failed"
+    assert result.envelope.status.collection == "partial"
+    diagnostics = result.envelope.diagnostics["parse_error"]
+    assert "absolute resource directory" in diagnostics
+    assert "relative to scf_dir" in diagnostics

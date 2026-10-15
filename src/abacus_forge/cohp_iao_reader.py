@@ -478,6 +478,11 @@ def resolve_input_file(
         folder = Path(directory)
         if not folder.is_absolute():
             candidates.append(base / folder / name)
+        else:
+            raise ValueError(
+                f"{name} uses an absolute resource directory; Forge COHP requires "
+                "a directory relative to scf_dir"
+            )
     candidates.append(base / name)
     for candidate in candidates:
         try:
