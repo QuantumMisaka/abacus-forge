@@ -11,7 +11,7 @@ COHP parity, claim Paimon target-path migration, or close W3/W4.
 
 - Repository: `/home/james/work/sidereus/workplace/abacus-forge`
 - Branch: `feature/cohp-postprocess`
-- Implementation commit: `9cca6248c7e968aaa1c5c6d824af91a00dd6c057`
+- Implementation commit: `121158874defd6d9c112f05c16cb1d0474c57a83`
 - Base Forge: `main@7b7b23e8d3464f40cbae6a8d1662031c4a7f9712` (remote ancestor
   `5c978b0c88b0654dc0a03e43f93eee4e42a72441` is not this slice's direct base)
 - Numeric implementation provenance: Paimon v2 `origin/main@52798406d`
@@ -38,7 +38,8 @@ The Forge migration also repairs workspace containment: PP/ORB references
 resolve only inside `scf_dir_rel`; INPUT/STRU/OUT/kpoints/log/H/S/WFC/S(R)
 must be regular contained files; explicit `out_dir_rel` must be a real
 directory strictly beneath `scf_dir_rel`; logical symlink aliases, process-CWD
-fallback, reserved audit overlap, and input/output overlap are rejected.
+fallback, absolute PP/ORB directories, reserved audit overlap, and
+input/output overlap are rejected.
 Machine CLI discovery, schema, decoder, direct-service/API parity, operation
 guard, durable report/events, and output-artifact admission are covered by
 tests.  No legacy `abacus-cohp-lcao` subprocess bridge is implemented in W1.
@@ -57,7 +58,8 @@ conda run --no-capture-output -n abacus-env pytest \
   tests/test_architecture.py -q
 ```
 
-Result after containment repair and new boundary regressions: **458 passed**.
+Result after containment, absolute-directory, and new boundary regressions:
+**460 passed**.
 
 2. Default offline regression:
 
@@ -65,7 +67,8 @@ Result after containment repair and new boundary regressions: **458 passed**.
 conda run --no-capture-output -n abacus-env pytest -q
 ```
 
-Result: **1468 passed / 34 skipped**, with third-party warnings retained.
+Pre-absolute-directory result: **1468 passed / 34 skipped**, with third-party
+warnings retained.  Post-containment result was `1475 passed / 34 skipped`.
 
 Post-repair full offline regression:
 
@@ -73,7 +76,7 @@ Post-repair full offline regression:
 conda run --no-capture-output -n abacus-env pytest -q
 ```
 
-Result: **1475 passed / 34 skipped**.
+Result: **1477 passed / 34 skipped**.
 
 3. `git diff --check` on this implementation had no whitespace errors before
 commit.  Raw ABACUS fixture bytes are preserved and are not reformatted.
