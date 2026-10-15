@@ -432,17 +432,58 @@ class KPointData:
     wg: list[np.ndarray]
 
 
-def resolve_input_file(base: Path, directory: str | None, name: str) -> Path | None:
-    """PP/ORB file lookup: ``pseudo_dir``/``orbital_dir`` (relative to the run
-    dir when relative), then the run dir itself."""
+def _regular_contained_file(root: Path, path: Path, label: str) -> Path:
+    """Return one regular file, rejecting symlink aliases and root escape."""
+    resolved_root = root.resolve()
+    if path.is_symlink() or not path.is_file():
+        raise FileNotFoundError(f"{label} 不存在或不是常规文件：{path}")
+    resolved = path.resolve(strict=True)
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as error:
+        raise ValueError(f"{label} 必须留在 bounded SCF root 内：{path.name}") from error
+    return path
+
+
+def _contained_directory(root: Path, path: Path, label: str) -> Path:
+    """Return a real directory contained beneath ``root``."""
+    resolved_root = root.resolve()
+    if path.is_symlink() or not path.is_dir():
+        raise FileNotFoundError(f"{label} 不存在或不是目录：{path}")
+    resolved = path.resolve(strict=True)
+    if resolved == resolved_root:
+        raise ValueError(f"{label} 不能就是 bounded SCF root：{path}")
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as error:
+        raise ValueError(f"{label} 必须留在 bounded SCF root 内：{path.name}") from error
+    return path
+
+
+def resolve_input_file(
+    base: Path,
+    directory: str | None,
+    name: str,
+    *,
+    allowed_root: Path,
+) -> Path | None:
+    """Resolve PP/ORB files inside the bounded SCF root only.
+
+    ABACUS INPUT may historically contain absolute directories or names that
+    happen to exist in a process CWD.  Forge postprocess is workspace-local,
+    so both forms are deliberately invisible here.
+    """
     candidates = []
     if directory:
         folder = Path(directory)
-        candidates.append(folder / name if folder.is_absolute() else base / folder / name)
-    candidates += [base / name, Path(name)]
+        if not folder.is_absolute():
+            candidates.append(base / folder / name)
+    candidates.append(base / name)
     for candidate in candidates:
-        if candidate.is_file():
-            return candidate
+        try:
+            return _regular_contained_file(allowed_root, candidate, name)
+        except (FileNotFoundError, ValueError):
+            continue
     return None
 
 
@@ -451,10 +492,14 @@ class AbacusLcaoRun:
 
     def __init__(self, run_dir: Path, out_dir: Path | None = None):
         self.run_dir = Path(run_dir).resolve()
+        self._allowed_root = self.run_dir
+        input_path = _regular_contained_file(self.run_dir, self.run_dir / "INPUT", "INPUT")
+        stru_path = _regular_contained_file(self.run_dir, self.run_dir / "STRU", "STRU")
         self.out_dir = Path(out_dir) if out_dir else self.run_dir / "OUT.ABACUS"
+        _contained_directory(self.run_dir, self.out_dir, "OUT directory")
         if not self.out_dir.is_dir():
             raise FileNotFoundError(f"未找到 {self.out_dir}")
-        self.params = read_input_params(self.run_dir / "INPUT")
+        self.params = read_input_params(input_path)
         p = self.params
         if p.get("basis_type", "lcao").lower() != "lcao":
             raise ValueError(f"basis_type={p.get('basis_type')}：IAO-COHP 只处理 LCAO")
@@ -465,24 +510,36 @@ class AbacusLcaoRun:
         if p.get("gamma_only", "0").lower() in ("1", "true", "t"):
             raise ValueError("gamma_only=1 的输出没有 k 分辨矩阵，IAO-COHP 需要 gamma_only 0（Γ 点可用 KPT 1 1 1）")
         self.ndigits = text_ndigits(p)
-        self.stru = read_stru(self.run_dir / "STRU")
+        self.stru = read_stru(stru_path)
         orb_paths, self.zval, self.upf_element = {}, {}, {}
         for sp in self.stru.species:
-            orb = resolve_input_file(self.run_dir, p.get("orbital_dir"), self.stru.orb_files[sp])
+            orb = resolve_input_file(
+                self.run_dir,
+                p.get("orbital_dir"),
+                self.stru.orb_files[sp],
+                allowed_root=self._allowed_root,
+            )
             if orb is None:
                 raise FileNotFoundError(f"找不到 {sp} 的轨道文件 {self.stru.orb_files[sp]}")
             orb_paths[sp] = orb
-            pp = resolve_input_file(self.run_dir, p.get("pseudo_dir"), self.stru.pp_files[sp] or "")
+            pp = resolve_input_file(
+                self.run_dir,
+                p.get("pseudo_dir"),
+                self.stru.pp_files[sp] or "",
+                allowed_root=self._allowed_root,
+            )
             if pp is None:
                 raise FileNotFoundError(f"找不到 {sp} 的赝势文件 {self.stru.pp_files[sp]}")
             self.zval[sp], self.upf_element[sp] = read_upf_header(pp)
         self.layout = build_layout(self.stru, orb_paths)
-        kinfo = read_kpoints(self.out_dir / "kpoints")
+        kpoints_path = _regular_contained_file(
+            self.run_dir, self.out_dir / "kpoints", "kpoints"
+        )
+        kinfo = read_kpoints(kpoints_path)
         self.kfrac, self.kweight = kinfo["kfrac"], kinfo["weights"]
         self.full_k, self.full_map = kinfo["full_k"], kinfo["full_map"]
         log = self.out_dir / "running_scf.log"
-        if not log.is_file():
-            raise FileNotFoundError(f"缺少 {log}")
+        _regular_contained_file(self.run_dir, log, "running_scf.log")
         ef, up, dw = read_fermi_ev(log)
         self.efermi_ev = ef
         self.ef_spin = [ef] * self.nspin
@@ -525,18 +582,22 @@ class AbacusLcaoRun:
 
     def _file(self, name: str) -> Path:
         path = self.out_dir / name
-        if path.is_file():
-            return path
+        try:
+            return _regular_contained_file(self.run_dir, path, name)
+        except (FileNotFoundError, ValueError):
+            pass
         prefixed = sorted(self.out_dir.glob(f"*_{name}"))
         if prefixed:
-            return prefixed[-1]
+            return _regular_contained_file(self.run_dir, prefixed[-1], name)
         raise FileNotFoundError(f"缺少 {self.out_dir / name}")
 
     def overlap_r_path(self) -> Path | None:
         for name in ("data-SR-sparse_SPIN0.csr", "sr_nao.csr"):
             path = self.out_dir / name
-            if path.is_file():
-                return path
+            try:
+                return _regular_contained_file(self.run_dir, path, name)
+            except (FileNotFoundError, ValueError):
+                continue
         return None
 
     def iter_kpoints(self) -> Iterator[KPointData]:

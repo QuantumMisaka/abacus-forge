@@ -35,6 +35,10 @@ Out of W1 scope:
 - Workspace inputs: `scf_dir_rel` plus optional `out_dir_rel`.  The directory
   is an explicit bounded root; the kernel may resolve the standard artifacts
   inside it, including INPUT/STRU/KPT/ORBITAL/UPF references and OUT artifacts.
+- Forge path admission is strict: `out_dir_rel`, when present, must be a real
+  directory strictly beneath `scf_dir_rel`; PP/ORB references resolve only
+  inside `scf_dir_rel`; symlink aliases, process-CWD fallback, absolute input
+  directories, reserved audit overlap, and output/input overlap are rejected.
 - Selectors: `atom_i_index` and `atom_j_index` are ABACUS 1-based atom numbers;
   orbital selectors use the existing Paimon IAO syntax (`all`, `s`, `3p`, `pz,s`).
 - Outputs, relative to `output_dir_rel` (default `outputs`):

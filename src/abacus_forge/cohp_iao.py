@@ -271,8 +271,18 @@ def check_iao_species(inputs_dir: Path) -> dict[str, ShellSpec]:
     stru = read_stru(inputs_dir / "STRU")
     zval, element, counts = {}, {}, {}
     for sp in stru.species:
-        pp = resolve_input_file(inputs_dir, params.get("pseudo_dir"), stru.pp_files[sp] or "")
-        orb = resolve_input_file(inputs_dir, params.get("orbital_dir"), stru.orb_files[sp])
+        pp = resolve_input_file(
+            inputs_dir,
+            params.get("pseudo_dir"),
+            stru.pp_files[sp] or "",
+            allowed_root=inputs_dir,
+        )
+        orb = resolve_input_file(
+            inputs_dir,
+            params.get("orbital_dir"),
+            stru.orb_files[sp],
+            allowed_root=inputs_dir,
+        )
         if pp is None or orb is None:
             raise FileNotFoundError(f"找不到 {sp} 的赝势或轨道文件（{stru.pp_files[sp]}, {stru.orb_files[sp]}）")
         zval[sp], element[sp] = read_upf_header(pp)

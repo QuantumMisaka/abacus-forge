@@ -479,3 +479,130 @@ def test_cohp_service_rejects_mismatched_typed_request(tmp_path: Path) -> None:
 
     assert isinstance(result, ForgeErrorEnvelope)
     assert result.error_class == "request.invalid"
+
+
+def _extract_cohp_fixture(job: Path) -> None:
+    scf = job / "scf"
+    scf.mkdir(parents=True)
+    with tarfile.open(COHP_FIXTURE) as archive:
+        archive.extractall(scf, filter="data")
+    extracted = scf / "si_prim_4k"
+    for path in extracted.iterdir():
+        path.replace(scf / path.name)
+    extracted.rmdir()
+
+
+def test_cohp_rejects_pp_orb_outside_declared_scf_root(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (job / "scf/Si.upf").replace(outside / "Si.upf")
+    (next((job / "scf").glob("*.orb"))).replace(outside / "orb")
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(334),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.execution == "failed"
+    assert result.envelope.status.collection == "partial"
+    assert "找不到 Si 的轨道文件" in result.envelope.diagnostics["parse_error"]
+
+
+def test_cohp_rejects_symlinked_pseudopotential(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    external_upf = outside / "Si.upf"
+    external_upf.write_text("external", encoding="utf-8")
+    (job / "scf/Si.upf").unlink()
+    (job / "scf/Si.upf").symlink_to(external_upf)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(335),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.execution == "failed"
+    assert "Si.upf" in result.envelope.diagnostics["parse_error"]
+
+
+def test_cohp_rejects_logical_scf_symlink_alias_before_admission(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    (job / "scf").rename(job / "real-scf")
+    (job / "scf").symlink_to(job / "real-scf", target_is_directory=True)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(336),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+    assert not (job / "reports/events").exists()
+
+
+def test_cohp_rejects_out_dir_symlink_to_reports(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    (job / "reports").mkdir()
+    (job / "scf/out-link").symlink_to(job / "reports", target_is_directory=True)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(337),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+        out_dir_rel="scf/out-link",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.path"
+    assert not (job / "outputs/cohp").exists()
+
+
+def test_cohp_rejects_out_dir_equal_to_output_dir(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(338),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+        out_dir_rel="outputs/cohp",
+        output_dir_rel="outputs/cohp",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"
+
+
+def test_cohp_missing_out_directory_is_precondition_after_admission(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(339),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+    )
+    (job / "scf/OUT.ABACUS").rename(job / "hidden-out")
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert (job / "reports/claims").is_dir()
+
+
+def test_cohp_accepts_explicit_out_dir_inside_scf_root(tmp_path: Path) -> None:
+    job = tmp_path / "job"
+    _extract_cohp_fixture(job)
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(340),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+        out_dir_rel="scf/OUT.ABACUS",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"

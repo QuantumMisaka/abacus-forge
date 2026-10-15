@@ -238,8 +238,14 @@ def _run_cohp_postprocess(
     """Run COHP with directory admission and the shared durable outcome path."""
     try:
         workspace = context.workspace(request.workspace_rel)
+        raw_scf_dir = workspace.root / request.scf_dir_rel
         scf_dir = context.workspace_path(workspace, request.scf_dir_rel, "scf_dir_rel")
         output_dir = context.workspace_path(workspace, request.output_dir_rel, "output_dir_rel")
+        raw_out_dir = (
+            workspace.root / request.out_dir_rel
+            if request.out_dir_rel is not None
+            else None
+        )
         out_dir = (
             context.workspace_path(workspace, request.out_dir_rel, "out_dir_rel")
             if request.out_dir_rel is not None
@@ -247,9 +253,13 @@ def _run_cohp_postprocess(
         )
         report_rel = f"{_REPORT_DIRECTORY}/{request.operation_id}.json"
         report_path = context.workspace_path(workspace, report_rel, "postprocess report")
-        _reject_symlink_components(workspace, scf_dir, "scf_dir_rel")
+        _reject_symlink_components(workspace, raw_scf_dir, "scf_dir_rel")
         if _is_reserved(workspace, scf_dir):
             raise ForgePathError("scf_dir_rel must not overlap Forge audit paths")
+        if raw_out_dir is not None:
+            _reject_symlink_components(workspace, raw_out_dir, "out_dir_rel")
+            if _is_reserved(workspace, out_dir):
+                raise ForgePathError("out_dir_rel must not overlap Forge audit paths")
         _preflight_paths(
             workspace=workspace,
             source_paths=(),
@@ -264,17 +274,33 @@ def _run_cohp_postprocess(
         )
         resolved_scf = scf_dir.resolve(strict=False)
         resolved_output = output_dir.resolve(strict=False)
+        resolved_out = out_dir.resolve(strict=False) if out_dir is not None else None
         if (
             resolved_scf == resolved_output
             or resolved_scf in resolved_output.parents
             or resolved_output in resolved_scf.parents
         ):
             raise ForgeRequestError("cohp output directory must not overlap scf_dir_rel")
+        if resolved_out is not None and (
+            resolved_out == resolved_output
+            or resolved_out in resolved_output.parents
+            or resolved_output in resolved_out.parents
+        ):
+            raise ForgeRequestError("cohp output directory must not overlap out_dir_rel")
+        if resolved_out is not None and (
+            resolved_out == resolved_scf or not resolved_out.is_relative_to(resolved_scf)
+        ):
+            raise ForgeRequestError("out_dir_rel must remain inside scf_dir_rel")
 
         with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
             if not scf_dir.is_dir() or scf_dir.is_symlink():
                 raise ForgePreconditionError(
                     f"scf_dir_rel directory not found: {request.scf_dir_rel}"
+                )
+            effective_out_dir = out_dir if out_dir is not None else scf_dir / "OUT.ABACUS"
+            if not effective_out_dir.is_dir() or effective_out_dir.is_symlink():
+                raise ForgePreconditionError(
+                    "OUT.ABACUS directory not found in scf_dir_rel"
                 )
             output_state = _output_state(output_dir, _cohp_output_names())
             call = algorithm or _process_cohp_files
