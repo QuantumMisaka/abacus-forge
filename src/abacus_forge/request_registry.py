@@ -17,7 +17,11 @@ from abacus_forge.md_contracts import (
     MdPrepareRequest,
 )
 from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
-from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.postprocess_contracts import (
+    BandPostprocessRequest,
+    CohpPostprocessRequest,
+    DosPostprocessRequest,
+)
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
     PyatbBandExecuteRequest,
@@ -56,6 +60,7 @@ MD_REQUEST_TYPES = {
 }
 POSTPROCESS_REQUEST_TYPES = {
     "band": {"postprocess": BandPostprocessRequest},
+    "cohp": {"postprocess": CohpPostprocessRequest},
     "dos": {"postprocess": DosPostprocessRequest},
 }
 PYATB_BAND_REQUEST_TYPES = {

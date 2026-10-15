@@ -26,6 +26,7 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_package_contract.py": ("core",),
     "test_package_metadata_drift.py": ("core",),
     "test_postprocess_algorithms.py": ("core",),
+    "test_cohp_iao.py": ("core",),
     "test_api.py": ("integration",),
     "test_tasks.py": ("integration",),
     "test_units.py": ("integration",),

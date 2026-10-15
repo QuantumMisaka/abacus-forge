@@ -67,7 +67,7 @@ The Python example prepares and collects; it does not start ABACUS. See the [usa
 
 ## Capability maturity
 
-Capabilities exposed through multiple APIs do not necessarily share the same contract or maturity. The current typed capability descriptors mark SCF, Relax, cell-relax, MD, band/DOS postprocess, PyATB band handoff, ATST-NEB, and typed export as experimental. Property packs are also experimental and have not each completed real ABACUS operation and parsing validation. Existing real-process smoke evidence checks process and artifact behavior; it does not establish scientific acceptance or automatically promote a capability to stable.
+Capabilities exposed through multiple APIs do not necessarily share the same contract or maturity. The current typed capability descriptors mark SCF, Relax, cell-relax, MD, band/DOS/COHP postprocess, PyATB band handoff, ATST-NEB, and typed export as experimental. Property packs are also experimental and have not each completed real ABACUS operation and parsing validation. Existing real-process smoke evidence checks process and artifact behavior; it does not establish scientific acceptance or automatically promote a capability to stable.
 
 The typed band and DOS capabilities currently provide `postprocess` only. They do not provide typed band or DOS execution. Legacy task, unit, and sequence entry points remain available with their existing behavior.
 
@@ -103,6 +103,12 @@ See the [CLI workflows](docs/guide.md#cli-workflows).
 #### Typed band/DOS postprocess (experimental)
 
 See [typed band/DOS postprocess](docs/guide.md#typed-banddos-postprocess).
+
+<a id="typed-cohp-postprocess-experimental"></a>
+<a id="typed-cohppostprocessexperimental"></a>
+#### Typed COHP postprocess (experimental)
+
+See [typed COHP postprocess](docs/guide.md#typed-cohp-postprocess).
 
 <a id="typed-export-experimental"></a>
 <a id="typed-exportexperimental"></a>

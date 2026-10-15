@@ -22,6 +22,7 @@ from abacus_forge.dos_postprocess import PDOSMode
 _POSTPROCESS_OPERATION = "postprocess"
 _PDOS_MODES = frozenset({"species", "species+shell", "species+orbital", "atom", "atoms"})
 _ENERGY_AXES = frozenset({"source", "fermi_relative"})
+_COHP_METHODS = frozenset({"iao"})
 
 
 def _canonical_file_path(value: object, field_name: str) -> str:
@@ -43,6 +44,24 @@ def _canonical_directory_path(value: object, field_name: str) -> str:
         return canonical_relative_path(value)
     except ValueError as error:
         raise ValueError(f"{field_name} must be a canonical relative path") from error
+
+
+def _optional_directory_path(value: object, field_name: str) -> str | None:
+    if value is None:
+        return None
+    return _canonical_directory_path(value, field_name)
+
+
+def _positive_atom_index(value: object, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{field_name} must be a positive 1-based ABACUS atom index")
+    return value
+
+
+def _orbital_selector(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > 128 or any(ch.isspace() for ch in value):
+        raise ValueError(f"{field_name} must be a non-empty orbital selector without whitespace")
+    return value
 
 
 def _canonical_file_paths(value: object, field_name: str) -> tuple[str, ...]:
@@ -101,22 +120,12 @@ def _suffix(value: object) -> str | None:
 class _PostprocessRequest(OperationRef):
     """Shared identity and strict wire decoding for typed postprocess requests."""
 
-    capability: ClassVar[Literal["band", "dos"]]
+    capability: ClassVar[str]
     schema_version: str = REQUEST_SCHEMA_VERSION
-    energy_axis: Literal["source", "fermi_relative"] = "source"
-    fermi_reference_ev: float | None = None
 
     def __post_init__(self) -> None:
         OperationRef.__post_init__(self)
         _require_schema_version(self.schema_version, REQUEST_SCHEMA_VERSION)
-        if self.energy_axis not in _ENERGY_AXES:
-            raise ValueError("energy_axis must be 'source' or 'fermi_relative'")
-        if self.energy_axis == "fermi_relative":
-            if self.fermi_reference_ev is None:
-                raise ValueError("fermi_reference_ev is required for fermi_relative energy_axis")
-            object.__setattr__(self, "fermi_reference_ev", _finite_number(self.fermi_reference_ev, "fermi_reference_ev"))
-        elif self.fermi_reference_ev is not None:
-            raise ValueError("fermi_reference_ev is only valid for fermi_relative energy_axis")
 
     def to_dict(self) -> dict[str, JSONValue]:
         return {
@@ -125,8 +134,6 @@ class _PostprocessRequest(OperationRef):
             "operation": self.operation,
             "operation_id": self.operation_id,
             "workspace_rel": self.workspace_rel,
-            "energy_axis": self.energy_axis,
-            "fermi_reference_ev": self.fermi_reference_ev,
         }
 
     @classmethod
@@ -143,7 +150,33 @@ class _PostprocessRequest(OperationRef):
 
 
 @dataclass(frozen=True, slots=True)
-class BandPostprocessRequest(_PostprocessRequest):
+class _EnergyPostprocessRequest(_PostprocessRequest):
+    """Shared energy-axis contract for band and DOS projections."""
+
+    energy_axis: Literal["source", "fermi_relative"] = "source"
+    fermi_reference_ev: float | None = None
+
+    def __post_init__(self) -> None:
+        _PostprocessRequest.__post_init__(self)
+        if self.energy_axis not in _ENERGY_AXES:
+            raise ValueError("energy_axis must be 'source' or 'fermi_relative'")
+        if self.energy_axis == "fermi_relative":
+            if self.fermi_reference_ev is None:
+                raise ValueError("fermi_reference_ev is required for fermi_relative energy_axis")
+            object.__setattr__(self, "fermi_reference_ev", _finite_number(self.fermi_reference_ev, "fermi_reference_ev"))
+        elif self.fermi_reference_ev is not None:
+            raise ValueError("fermi_reference_ev is only valid for fermi_relative energy_axis")
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            **_PostprocessRequest.to_dict(self),
+            "energy_axis": self.energy_axis,
+            "fermi_reference_ev": self.fermi_reference_ev,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BandPostprocessRequest(_EnergyPostprocessRequest):
     """Request to parse and render explicitly selected ABACUS band files."""
 
     capability: ClassVar[Literal["band"]] = "band"
@@ -155,7 +188,7 @@ class BandPostprocessRequest(_PostprocessRequest):
     save_plot: bool = True
 
     def __post_init__(self) -> None:
-        _PostprocessRequest.__post_init__(self)
+        _EnergyPostprocessRequest.__post_init__(self)
         object.__setattr__(self, "source_paths_rel", _canonical_file_paths(self.source_paths_rel, "source_paths_rel"))
         object.__setattr__(self, "output_dir_rel", _canonical_directory_path(self.output_dir_rel, "output_dir_rel"))
         emin = _finite_number(self.plot_emin, "plot_emin")
@@ -172,7 +205,7 @@ class BandPostprocessRequest(_PostprocessRequest):
         return _POSTPROCESS_OPERATION
 
     def to_dict(self) -> dict[str, JSONValue]:
-        payload = _PostprocessRequest.to_dict(self)
+        payload = _EnergyPostprocessRequest.to_dict(self)
         payload.update(
             {
                 "source_paths_rel": list(self.source_paths_rel),
@@ -191,7 +224,7 @@ class BandPostprocessRequest(_PostprocessRequest):
 
 
 @dataclass(frozen=True, slots=True)
-class DosPostprocessRequest(_PostprocessRequest):
+class DosPostprocessRequest(_EnergyPostprocessRequest):
     """Request to parse and render explicitly selected ABACUS DOS families."""
 
     capability: ClassVar[Literal["dos"]] = "dos"
@@ -210,7 +243,7 @@ class DosPostprocessRequest(_PostprocessRequest):
     suffix: str | None = None
 
     def __post_init__(self) -> None:
-        _PostprocessRequest.__post_init__(self)
+        _EnergyPostprocessRequest.__post_init__(self)
         object.__setattr__(self, "dos_paths_rel", _canonical_file_paths(self.dos_paths_rel, "dos_paths_rel"))
         object.__setattr__(self, "pdos_path_rel", _optional_file_path(self.pdos_path_rel, "pdos_path_rel"))
         object.__setattr__(self, "tdos_path_rel", _optional_file_path(self.tdos_path_rel, "tdos_path_rel"))
@@ -235,7 +268,7 @@ class DosPostprocessRequest(_PostprocessRequest):
         return _POSTPROCESS_OPERATION
 
     def to_dict(self) -> dict[str, JSONValue]:
-        payload = _PostprocessRequest.to_dict(self)
+        payload = _EnergyPostprocessRequest.to_dict(self)
         payload.update(
             {
                 "dos_paths_rel": list(self.dos_paths_rel),
@@ -260,4 +293,57 @@ class DosPostprocessRequest(_PostprocessRequest):
         return cls._from_dict(payload)
 
 
-__all__ = ["BandPostprocessRequest", "DosPostprocessRequest"]
+@dataclass(frozen=True, slots=True)
+class CohpPostprocessRequest(_PostprocessRequest):
+    """Request for one bond-resolved COHP postprocess on completed LCAO outputs."""
+
+    capability: ClassVar[Literal["cohp"]] = "cohp"
+    method: Literal["iao"] = "iao"
+    scf_dir_rel: str = ""
+    out_dir_rel: str | None = None
+    atom_i_index: int = 1
+    atom_j_index: int = 2
+    atom_i_orbs: str = "all"
+    atom_j_orbs: str = "all"
+    output_dir_rel: str = "outputs"
+
+    def __post_init__(self) -> None:
+        _PostprocessRequest.__post_init__(self)
+        if self.method not in _COHP_METHODS:
+            raise ValueError("method must be 'iao'")
+        object.__setattr__(self, "scf_dir_rel", _canonical_directory_path(self.scf_dir_rel, "scf_dir_rel"))
+        object.__setattr__(self, "out_dir_rel", _optional_directory_path(self.out_dir_rel, "out_dir_rel"))
+        object.__setattr__(self, "atom_i_index", _positive_atom_index(self.atom_i_index, "atom_i_index"))
+        object.__setattr__(self, "atom_j_index", _positive_atom_index(self.atom_j_index, "atom_j_index"))
+        object.__setattr__(self, "atom_i_orbs", _orbital_selector(self.atom_i_orbs, "atom_i_orbs"))
+        object.__setattr__(self, "atom_j_orbs", _orbital_selector(self.atom_j_orbs, "atom_j_orbs"))
+        object.__setattr__(self, "output_dir_rel", _canonical_directory_path(self.output_dir_rel, "output_dir_rel"))
+        if self.atom_i_index == self.atom_j_index:
+            raise ValueError("atom_i_index and atom_j_index must identify different atoms")
+
+    @property
+    def operation(self) -> Literal["postprocess"]:
+        return _POSTPROCESS_OPERATION
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _PostprocessRequest.to_dict(self)
+        payload.update(
+            {
+                "method": self.method,
+                "scf_dir_rel": self.scf_dir_rel,
+                "out_dir_rel": self.out_dir_rel,
+                "atom_i_index": self.atom_i_index,
+                "atom_j_index": self.atom_j_index,
+                "atom_i_orbs": self.atom_i_orbs,
+                "atom_j_orbs": self.atom_j_orbs,
+                "output_dir_rel": self.output_dir_rel,
+            }
+        )
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> CohpPostprocessRequest:
+        return cls._from_dict(payload)
+
+
+__all__ = ["BandPostprocessRequest", "CohpPostprocessRequest", "DosPostprocessRequest"]

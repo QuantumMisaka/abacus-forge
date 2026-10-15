@@ -93,6 +93,15 @@ _DOS_DESCRIPTOR = CapabilityDescriptor(
     artifact_roles=("input", "output"),
     optional_dependencies=(),
 )
+_COHP_DESCRIPTOR = CapabilityDescriptor(
+    name="cohp",
+    maturity="experimental",
+    engine="abacus",
+    operations=("postprocess",),
+    inputs={"postprocess": ("lcao_scf_workspace",)},
+    artifact_roles=("output",),
+    optional_dependencies=(),
+)
 _PYATB_BAND_DESCRIPTOR = CapabilityDescriptor(
     name="pyatb-band",
     maturity="experimental",
@@ -293,6 +302,19 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "fermi_reference_ev": {"type": ["number", "null"], "default": None},
             }
         )
+    elif capability == "cohp" and operation == "postprocess":
+        properties.update(
+            {
+                "method": {"type": "string", "enum": ["iao"], "default": "iao"},
+                "scf_dir_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN},
+                "out_dir_rel": {"type": ["string", "null"], "pattern": _CANONICAL_WORKSPACE_PATTERN, "default": None},
+                "atom_i_index": {"type": "integer", "minimum": 1, "default": 1},
+                "atom_j_index": {"type": "integer", "minimum": 1, "default": 2},
+                "atom_i_orbs": {"type": "string", "minLength": 1, "maxLength": 128, "default": "all"},
+                "atom_j_orbs": {"type": "string", "minLength": 1, "maxLength": 128, "default": "all"},
+                "output_dir_rel": {"type": "string", "pattern": _CANONICAL_WORKSPACE_PATTERN, "default": "outputs"},
+            }
+        )
     elif capability == "md" and operation == "postprocess":
         properties.update(
             {
@@ -486,6 +508,8 @@ def _representative_request(capability: str, operation: str) -> Any:
         kwargs["source_paths_rel"] = ("BANDS_1.dat",)
     elif capability == "dos" and operation == "postprocess":
         kwargs["dos_paths_rel"] = ("DOS1_smearing.dat",)
+    elif capability == "cohp" and operation == "postprocess":
+        kwargs["scf_dir_rel"] = "scf"
     elif capability == "md" and operation == "postprocess":
         kwargs.update({"trajectory_path_rel": "outputs/md.traj", "analysis": ("rdf",)})
     elif capability == "export" and operation == "export":
@@ -497,7 +521,7 @@ def _representative_request(capability: str, operation: str) -> Any:
                 "destination_path_rel": "exports/result.json",
             }
         )
-    if capability not in {"scf", "band", "dos", "pyatb-band"} and not (
+    if capability not in {"scf", "band", "cohp", "dos", "pyatb-band"} and not (
         capability == "md" and operation == "postprocess"
     ):
         kwargs["capability"] = capability
@@ -555,6 +579,8 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         required.append("source_paths_rel")
     elif capability == "dos" and operation == "postprocess":
         required.append("dos_paths_rel")
+    elif capability == "cohp" and operation == "postprocess":
+        required.append("scf_dir_rel")
     elif capability == "md" and operation == "postprocess":
         required.extend(["trajectory_path_rel", "analysis"])
     elif capability == "export" and operation == "export":
@@ -639,6 +665,7 @@ def capabilities_document() -> dict[str, JSONValue]:
                     _MD_DESCRIPTOR,
                     _BAND_DESCRIPTOR,
                     _DOS_DESCRIPTOR,
+                    _COHP_DESCRIPTOR,
                     _PYATB_BAND_DESCRIPTOR,
                     _EXPORT_DESCRIPTOR,
                 )

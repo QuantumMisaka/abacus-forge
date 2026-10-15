@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import io
 import json
+import tarfile
 from pathlib import Path
 
 from abacus_forge import (
     BandPostprocessRequest,
+    CohpPostprocessRequest,
     ForgeResultEnvelope,
     OperationOutcome,
     OperationStatus,
@@ -36,6 +38,34 @@ def _workspace(root: Path) -> None:
     job = root / "job"
     job.mkdir(parents=True)
     write_sample_band_artifacts(job / "inputs", include_plot=False)
+
+
+def _cohp_workspace(root: Path) -> None:
+    job = root / "job"
+    scf = job / "scf"
+    scf.mkdir(parents=True)
+    fixture = Path(__file__).parent / "fixtures" / "cohp-iao" / "si_prim_4k.tar.gz"
+    with tarfile.open(fixture) as archive:
+        archive.extractall(scf, filter="data")
+    extracted = scf / "si_prim_4k"
+    for path in extracted.iterdir():
+        path.replace(scf / path.name)
+    extracted.rmdir()
+
+
+def _cohp_payload(operation_id: str, *, workspace_rel: str = "job") -> dict[str, object]:
+    return {
+        "schema_version": "forge.request/v1",
+        "capability": "cohp",
+        "operation": "postprocess",
+        "operation_id": operation_id,
+        "workspace_rel": workspace_rel,
+        "method": "iao",
+        "scf_dir_rel": "scf",
+        "atom_i_index": 1,
+        "atom_j_index": 2,
+        "output_dir_rel": "outputs/cohp",
+    }
 
 
 def _normalize(value: object, *, operation_id: str, root: Path) -> object:
@@ -93,6 +123,32 @@ def test_machine_cli_postprocess_matches_direct_service_facts_in_isolated_worksp
 
     assert process.returncode == 0, process.stdout + process.stderr
     machine = OperationOutcome.from_dict(json.loads(process.stdout))
+    assert _normalize(machine.to_dict(), operation_id=cli_id, root=cli_root) == _normalize(
+        direct.to_dict(), operation_id=api_id, root=api_root
+    )
+
+
+def test_machine_cli_cohp_postprocess_matches_direct_service(tmp_path: Path) -> None:
+    api_root, cli_root = tmp_path / "api", tmp_path / "cli"
+    _cohp_workspace(api_root)
+    _cohp_workspace(cli_root)
+    api_id = "123e4567-e89b-42d3-a456-426614174341"
+    cli_id = "123e4567-e89b-42d3-a456-426614174342"
+    request = CohpPostprocessRequest.from_dict(_cohp_payload(api_id))
+    direct = PostprocessServiceSet.default(workspace_root=api_root).cohp.postprocess(request)
+    assert isinstance(direct, OperationOutcome)
+
+    process = run_cli(
+        "operation",
+        "postprocess",
+        "--stdin",
+        cwd=cli_root,
+        input_text=json.dumps(_cohp_payload(cli_id)),
+    )
+
+    assert process.returncode == 0, process.stdout + process.stderr
+    machine = OperationOutcome.from_dict(json.loads(process.stdout))
+    assert machine.envelope.status.collection == "complete"
     assert _normalize(machine.to_dict(), operation_id=cli_id, root=cli_root) == _normalize(
         direct.to_dict(), operation_id=api_id, root=api_root
     )

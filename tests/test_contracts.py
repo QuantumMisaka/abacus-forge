@@ -10,6 +10,7 @@ import pytest
 from abacus_forge import contracts
 from abacus_forge import (
     BandPostprocessRequest,
+    CohpPostprocessRequest,
     DosPostprocessRequest,
     MdPostprocessRequest,
     RelaxCollectRequest,
@@ -527,7 +528,8 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     payload = capabilities_document()
     assert payload["schema_version"] == "forge.capabilities/v1"
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "cohp",
+        "pyatb-band", "export",
     ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
@@ -542,7 +544,8 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert payload["capabilities"][4]["artifact_roles"] == ["input", "provenance_manifest", "output"]
     assert payload["capabilities"][5]["operations"] == ["postprocess"]
     assert payload["capabilities"][6]["operations"] == ["postprocess"]
-    assert payload["capabilities"][7]["operations"] == ["prepare", "execute", "collect"]
+    assert payload["capabilities"][7]["name"] == "cohp"
+    assert payload["capabilities"][8]["operations"] == ["prepare", "execute", "collect"]
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:
@@ -988,6 +991,19 @@ POSTPROCESS_REQUEST_CASES = (
             "suffix": "selected",
         },
     ),
+    (
+        CohpPostprocessRequest,
+        {
+            "method": "iao",
+            "scf_dir_rel": "scf",
+            "out_dir_rel": None,
+            "atom_i_index": 1,
+            "atom_j_index": 2,
+            "atom_i_orbs": "all",
+            "atom_j_orbs": "all",
+            "output_dir_rel": "outputs/cohp",
+        },
+    ),
 )
 
 
@@ -1033,11 +1049,13 @@ def test_postprocess_energy_axis_defaults_and_requires_finite_reference(request_
 def test_postprocess_request_registries_are_separate_from_legacy_scf() -> None:
     expected = {
         "band": {"postprocess": BandPostprocessRequest},
+        "cohp": {"postprocess": CohpPostprocessRequest},
         "dos": {"postprocess": DosPostprocessRequest},
     }
     assert POSTPROCESS_REQUEST_TYPES == expected
     assert REQUEST_TYPES_BY_CAPABILITY["band"] is POSTPROCESS_REQUEST_TYPES["band"]
     assert REQUEST_TYPES_BY_CAPABILITY["dos"] is POSTPROCESS_REQUEST_TYPES["dos"]
+    assert REQUEST_TYPES_BY_CAPABILITY["cohp"] is POSTPROCESS_REQUEST_TYPES["cohp"]
     assert "postprocess" not in SCF_REQUEST_TYPES
     assert set(contracts._OPERATIONS) == {"prepare", "modify", "execute", "collect", "export"}
 
@@ -1076,6 +1094,13 @@ def test_md_postprocess_request_registry_is_typed_and_capability_scoped() -> Non
         (DosPostprocessRequest, "suffix", "a\\b"),
         (DosPostprocessRequest, "suffix", "."),
         (DosPostprocessRequest, "suffix", ".."),
+        (CohpPostprocessRequest, "method", "legacy"),
+        (CohpPostprocessRequest, "scf_dir_rel", []),
+        (CohpPostprocessRequest, "out_dir_rel", "../outside"),
+        (CohpPostprocessRequest, "atom_i_index", 0),
+        (CohpPostprocessRequest, "atom_j_index", True),
+        (CohpPostprocessRequest, "atom_i_orbs", ""),
+        (CohpPostprocessRequest, "atom_j_orbs", "s d"),
     ],
 )
 def test_postprocess_requests_reject_invalid_paths_types_bounds_and_suffix(
@@ -1089,6 +1114,9 @@ def test_postprocess_requests_reject_invalid_paths_types_bounds_and_suffix(
     if request_type is DosPostprocessRequest:
         base.pop("source_paths_rel")
         base["dos_paths_rel"] = ["DOS1_smearing.dat"]
+    if request_type is CohpPostprocessRequest:
+        base.pop("source_paths_rel")
+        base["scf_dir_rel"] = "scf"
     with pytest.raises(ValueError, match=field):
         request_type(**{**base, field: value})
 

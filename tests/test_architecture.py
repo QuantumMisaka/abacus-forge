@@ -205,7 +205,8 @@ def test_machine_discovery_advertises_experimental_capabilities() -> None:
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert [item["name"] for item in payload["capabilities"]] == [
-        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "pyatb-band", "export",
+        "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "cohp",
+        "pyatb-band", "export",
     ]
     for capability in payload["capabilities"][:3]:
         assert capability["maturity"] == "experimental"
@@ -222,7 +223,7 @@ def test_machine_discovery_advertises_experimental_capabilities() -> None:
     assert md["engine"] == "abacus"
     assert md["operations"] == ["prepare", "modify", "execute", "collect", "postprocess"]
     assert md["artifact_roles"] == ["input", "provenance_manifest", "output"]
-    pyatb_band = payload["capabilities"][7]
+    pyatb_band = payload["capabilities"][8]
     assert pyatb_band["maturity"] == "experimental"
     assert pyatb_band["engine"] == "pyatb"
     assert pyatb_band["operations"] == ["prepare", "execute", "collect"]

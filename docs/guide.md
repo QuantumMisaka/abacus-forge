@@ -198,7 +198,7 @@ PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis 
 
 ## Agent-first CLI
 
-机器调用面提供 `operation`、`schema` 和 `capabilities`。每次 `operation` 只执行一个请求；多 operation 的衔接由调用方负责。当前 discovery 列出 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`pyatb-band` 和 `export`。operation 支持范围由 capability 决定：typed band 和 DOS 仅支持 `postprocess`；typed export 仅支持 `export`；typed PyATB band 支持 `prepare`、`execute`、`collect`；`md` 支持 `prepare`、`modify`、`execute`、`collect` 和 `postprocess`。每种能力当前的字段和成熟度以 discovery/schema 返回为准。
+机器调用面提供 `operation`、`schema` 和 `capabilities`。每次 `operation` 只执行一个请求；多 operation 的衔接由调用方负责。当前 discovery 列出 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band` 和 `export`。operation 支持范围由 capability 决定：typed band、DOS 和 COHP 仅支持 `postprocess`；typed export 仅支持 `export`；typed PyATB band 支持 `prepare`、`execute`、`collect`；`md` 支持 `prepare`、`modify`、`execute`、`collect` 和 `postprocess`。每种能力当前的字段和成熟度以 discovery/schema 返回为准。
 
 请求可从文件读取：
 
@@ -394,6 +394,34 @@ from abacus_forge import BandPostprocessRequest, PostprocessServiceSet
 
 request = BandPostprocessRequest.from_dict(band_payload)
 result = PostprocessServiceSet.default(workspace_root=".").band.postprocess(request)
+```
+
+## Typed COHP postprocess
+
+Typed `cohp` 是实验性的 postprocess-only capability。W1 只实现 `method="iao"`，要求调用方显式提供已完成 LCAO SCF 的 workspace-relative 目录；Forge 不准备输入、不执行 ABACUS、不判断 SCF 复用，也不做科学验收。
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "cohp",
+  "operation": "postprocess",
+  "operation_id": "123e4567-e89b-42d3-a456-426614174102",
+  "workspace_rel": "runs/Si_cohp",
+  "method": "iao",
+  "scf_dir_rel": "scf",
+  "out_dir_rel": null,
+  "atom_i_index": 1,
+  "atom_j_index": 2,
+  "atom_i_orbs": "all",
+  "atom_j_orbs": "all",
+  "output_dir_rel": "outputs/cohp"
+}
+```
+
+成功后固定生成 `outputs/cohp/cohp.meta.json`、`cohp_EminusEf.dat`、`cohp.png` 和 `cohp_bond_images.json`，并写入 postprocess report。请求/schema 可能随 W1 演进；最终字段以 `schema cohp postprocess` 为准。
+
+```bash
+PYTHONPATH=src python -m abacus_forge.cli operation postprocess --request cohp-request.json
 ```
 
 ## Typed PyATB band handoff

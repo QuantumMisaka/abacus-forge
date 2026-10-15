@@ -38,14 +38,20 @@ from abacus_forge.postprocess_algorithms import (
     process_band_files,
     process_dos_files,
 )
-from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.cohp_iao import run_iao_cohp
+from abacus_forge.postprocess_contracts import (
+    BandPostprocessRequest,
+    CohpPostprocessRequest,
+    DosPostprocessRequest,
+)
 from abacus_forge.service_support import ServiceContext
 from abacus_forge.workspace import Workspace
 
 
-PostprocessRequest = BandPostprocessRequest | DosPostprocessRequest
+PostprocessRequest = BandPostprocessRequest | CohpPostprocessRequest | DosPostprocessRequest
 ServiceResult = OperationOutcome | ForgeErrorEnvelope
 BandAlgorithm = Callable[..., ExplicitPostprocessResult]
+CohpAlgorithm = Callable[..., ExplicitPostprocessResult]
 DosAlgorithm = Callable[..., ExplicitPostprocessResult]
 
 
@@ -137,6 +143,23 @@ class DosPostprocessService:
         )
 
 
+class CohpPostprocessService:
+    """Typed service for one explicit completed LCAO workspace."""
+
+    def __init__(self, context: ServiceContext, *, algorithm: CohpAlgorithm | None = None) -> None:
+        self._context = context
+        self._algorithm = algorithm
+
+    def postprocess(self, request: PostprocessRequest) -> ServiceResult:
+        if not isinstance(request, CohpPostprocessRequest):
+            return self._context.error("request.invalid", "expected CohpPostprocessRequest", request)
+        return _run_cohp_postprocess(
+            context=self._context,
+            request=request,
+            algorithm=self._algorithm,
+        )
+
+
 class PostprocessServiceSet:
     """Band and DOS services sharing one context and admission path."""
 
@@ -146,16 +169,195 @@ class PostprocessServiceSet:
         workspace_root: str | Path = ".",
         context: ServiceContext | None = None,
         band_algorithm: BandAlgorithm | None = None,
+        cohp_algorithm: CohpAlgorithm | None = None,
         dos_algorithm: DosAlgorithm | None = None,
     ) -> None:
         shared_context = context if context is not None else ServiceContext(workspace_root=workspace_root)
         self._context = shared_context
         self.band: PostprocessService = BandPostprocessService(shared_context, algorithm=band_algorithm)
+        self.cohp: PostprocessService = CohpPostprocessService(shared_context, algorithm=cohp_algorithm)
         self.dos: PostprocessService = DosPostprocessService(shared_context, algorithm=dos_algorithm)
 
     @classmethod
     def default(cls, workspace_root: str | Path = ".") -> "PostprocessServiceSet":
         return cls(workspace_root=workspace_root)
+
+
+def _process_cohp_files(
+    scf_dir: Path,
+    out_dir: Path | None,
+    output_dir: Path,
+    *,
+    atom_i_index: int,
+    atom_j_index: int,
+    atom_i_orbs: str,
+    atom_j_orbs: str,
+) -> ExplicitPostprocessResult:
+    try:
+        meta = run_iao_cohp(
+            scf_dir=scf_dir,
+            out_dir=out_dir,
+            atom_i_index=atom_i_index,
+            atom_j_index=atom_j_index,
+            atom_i_orbs=atom_i_orbs,
+            atom_j_orbs=atom_j_orbs,
+            work_dir=output_dir,
+            output_prefix="cohp",
+        )
+    except (OSError, RuntimeError, ValueError) as error:
+        raise PostprocessParseError(_safe_error_message(error)) from error
+    generated = tuple(output_dir / name for name in _cohp_output_names())
+    primary = meta.get("icohp", {})
+    bond = meta.get("bond", {})
+    minus_icohp = primary.get("minus_icohp") if isinstance(primary, Mapping) else None
+    summary: dict[str, JSONValue] = {
+        "method": meta.get("method"),
+        "cohp_method": "iao",
+        "atom_pair": [atom_i_index, atom_j_index],
+        "minus_icohp_ev": minus_icohp,
+        "bond_distance_ang": bond.get("distance_ang") if isinstance(bond, Mapping) else None,
+    }
+    diagnostics: dict[str, JSONValue] = {
+        "cohp_meta": _safe_json_mapping(meta),
+        "source_directory": scf_dir.name,
+        "output_directory": output_dir.name,
+    }
+    return ExplicitPostprocessResult(
+        summary=summary,
+        diagnostics=diagnostics,
+        generated_paths=generated,
+    )
+
+
+def _run_cohp_postprocess(
+    *,
+    context: ServiceContext,
+    request: CohpPostprocessRequest,
+    algorithm: CohpAlgorithm | None,
+) -> ServiceResult:
+    """Run COHP with directory admission and the shared durable outcome path."""
+    try:
+        workspace = context.workspace(request.workspace_rel)
+        scf_dir = context.workspace_path(workspace, request.scf_dir_rel, "scf_dir_rel")
+        output_dir = context.workspace_path(workspace, request.output_dir_rel, "output_dir_rel")
+        out_dir = (
+            context.workspace_path(workspace, request.out_dir_rel, "out_dir_rel")
+            if request.out_dir_rel is not None
+            else None
+        )
+        report_rel = f"{_REPORT_DIRECTORY}/{request.operation_id}.json"
+        report_path = context.workspace_path(workspace, report_rel, "postprocess report")
+        _reject_symlink_components(workspace, scf_dir, "scf_dir_rel")
+        if _is_reserved(workspace, scf_dir):
+            raise ForgePathError("scf_dir_rel must not overlap Forge audit paths")
+        _preflight_paths(
+            workspace=workspace,
+            source_paths=(),
+            source_paths_rel=(),
+            optional_paths=(),
+            optional_paths_rel=(),
+            output_dir=output_dir,
+            output_dir_rel=request.output_dir_rel,
+            output_names=_cohp_output_names(),
+            report_path=report_path,
+            report_raw_path=workspace.root / report_rel,
+        )
+        resolved_scf = scf_dir.resolve(strict=False)
+        resolved_output = output_dir.resolve(strict=False)
+        if (
+            resolved_scf == resolved_output
+            or resolved_scf in resolved_output.parents
+            or resolved_output in resolved_scf.parents
+        ):
+            raise ForgeRequestError("cohp output directory must not overlap scf_dir_rel")
+
+        with workspace.operation_guard(request.operation_id, request.operation) as owner_token:
+            if not scf_dir.is_dir() or scf_dir.is_symlink():
+                raise ForgePreconditionError(
+                    f"scf_dir_rel directory not found: {request.scf_dir_rel}"
+                )
+            output_state = _output_state(output_dir, _cohp_output_names())
+            call = algorithm or _process_cohp_files
+            try:
+                result = call(
+                    scf_dir,
+                    out_dir,
+                    output_dir,
+                    atom_i_index=request.atom_i_index,
+                    atom_j_index=request.atom_j_index,
+                    atom_i_orbs=request.atom_i_orbs,
+                    atom_j_orbs=request.atom_j_orbs,
+                )
+            except PostprocessParseError as error:
+                generated_rel = _changed_generated_paths(
+                    workspace, output_dir, _cohp_output_names(), before=output_state
+                )
+                generated = _paths_from_relative_names(workspace, generated_rel)
+                diagnostics = _failure_diagnostics(
+                    request=request,
+                    source_paths_rel=[request.scf_dir_rel],
+                    output_dir_rel=request.output_dir_rel,
+                    error=error,
+                    capability="cohp",
+                    generated_paths=generated_rel,
+                )
+                return _persist_outcome(
+                    context=context,
+                    workspace=workspace,
+                    request=request,
+                    owner_token=owner_token,
+                    source_paths=(),
+                    source_paths_rel=(),
+                    generated_paths=generated,
+                    report_path=report_path,
+                    report_rel=report_rel,
+                    summary={},
+                    diagnostics=diagnostics,
+                    capability="cohp",
+                    status=OperationStatus(
+                        execution="failed", scientific="unassessed", collection="partial"
+                    ),
+                )
+
+            diagnostics = _success_diagnostics(
+                result=result,
+                request=request,
+                source_paths_rel=[request.scf_dir_rel],
+                output_dir_rel=request.output_dir_rel,
+                workspace=workspace,
+                output_dir=output_dir,
+                capability="cohp",
+            )
+            generated_paths = tuple(result.generated_paths)
+            _validate_generated_paths(workspace, output_dir, generated_paths, _cohp_output_names())
+            usable = _has_usable_result(result, capability="cohp", request=request)
+            collection = _collection_status(
+                result,
+                capability="cohp",
+                request=request,
+                usable=usable,
+                output_dir=output_dir,
+                output_names=_cohp_output_names(),
+            )
+            return _persist_outcome(
+                context=context,
+                workspace=workspace,
+                request=request,
+                owner_token=owner_token,
+                source_paths=(),
+                source_paths_rel=(),
+                generated_paths=generated_paths,
+                report_path=report_path,
+                report_rel=report_rel,
+                summary=result.summary,
+                diagnostics=diagnostics,
+                capability="cohp",
+                status=OperationStatus(
+                    execution="not_run", scientific="unassessed", collection=collection
+                ),
+            )
+    except Exception as error:
+        return context.error_from_exception(error, request)
 
 
 def _run_postprocess(
@@ -371,6 +573,15 @@ def _run_postprocess(
             )
     except Exception as error:
         return context.error_from_exception(error, request)
+
+
+def _cohp_output_names() -> tuple[str, ...]:
+    return (
+        "cohp.meta.json",
+        "cohp_EminusEf.dat",
+        "cohp.png",
+        "cohp_bond_images.json",
+    )
 
 
 def _preflight_paths(
@@ -827,6 +1038,9 @@ def _has_usable_result(
 ) -> bool:
     if capability == "band":
         return bool(result.summary.get("num_points", 0))
+    if capability == "cohp":
+        value = result.summary.get("minus_icohp_ev")
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
     if isinstance(request, DosPostprocessRequest):
         total = result.summary.get("total_dos")
         projected = result.summary.get("projected_dos")
@@ -923,6 +1137,11 @@ def _postprocess_observations(
     for name in ("num_points", "num_kpoints", "num_bands", "num_columns"):
         if name in summary:
             values[name] = summary[name]
+    for name in (
+        "method", "cohp_method", "atom_pair", "minus_icohp_ev", "bond_distance_ang"
+    ):
+        if name in summary:
+            values[name] = summary[name]
     total = summary.get("total_dos")
     if isinstance(total, dict):
         for name in ("points", "spin_channels", "energy_min", "energy_max"):
@@ -938,6 +1157,7 @@ def _postprocess_observations(
 
 __all__ = [
     "BandPostprocessService",
+    "CohpPostprocessService",
     "DosPostprocessService",
     "PostprocessService",
     "PostprocessServiceSet",

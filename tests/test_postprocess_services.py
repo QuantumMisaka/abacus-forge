@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tarfile
 from pathlib import Path
 
 import pytest
 
 from abacus_forge import (
     BandPostprocessRequest,
+    CohpPostprocessRequest,
     DosPostprocessRequest,
     ForgeErrorEnvelope,
     OperationOutcome,
@@ -19,6 +21,7 @@ from abacus_forge.band_data import write_sample_band_artifacts
 from abacus_forge.dos_data import write_sample_dos_artifacts, write_sample_dos_family_artifacts
 from abacus_forge.machine_cli import exit_code_for
 from abacus_forge.postprocess_algorithms import ExplicitPostprocessResult
+from abacus_forge.postprocess_contracts import CohpPostprocessRequest
 
 
 def _operation_id(number: int) -> str:
@@ -67,6 +70,23 @@ def _dos_request(operation_id: str, **updates: object) -> DosPostprocessRequest:
     }
     values.update(updates)
     return DosPostprocessRequest(**values)
+
+
+COHP_FIXTURE = Path(__file__).parent / "fixtures" / "cohp-iao" / "si_prim_4k.tar.gz"
+
+
+@pytest.fixture
+def cohp_workspace(tmp_path: Path) -> Path:
+    job = tmp_path / "job"
+    scf = job / "scf"
+    scf.mkdir(parents=True)
+    with tarfile.open(COHP_FIXTURE) as archive:
+        archive.extractall(scf, filter="data")
+    extracted = scf / "si_prim_4k"
+    for path in extracted.iterdir():
+        path.replace(scf / path.name)
+    extracted.rmdir()
+    return tmp_path
 
 
 def _event_files(workspace: Workspace) -> list[Path]:
@@ -398,3 +418,64 @@ def test_service_set_rejects_mismatched_typed_requests(tmp_path: Path) -> None:
     assert band_result.error_class == "request.invalid"
     assert isinstance(dos_result, ForgeErrorEnvelope)
     assert dos_result.error_class == "request.invalid"
+
+
+def test_cohp_postprocess_service_writes_four_declared_artifacts(
+    cohp_workspace: Path,
+) -> None:
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(331),
+        workspace_rel="job",
+        scf_dir_rel="scf",
+        output_dir_rel="outputs/cohp",
+    )
+    result = PostprocessServiceSet.default(workspace_root=cohp_workspace).cohp.postprocess(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.envelope.status.collection == "complete"
+    generated = {
+        artifact.path_rel
+        for artifact in result.envelope.artifacts
+        if artifact.role == "output"
+    }
+    assert generated == {
+        "outputs/cohp/cohp.meta.json",
+        "outputs/cohp/cohp_EminusEf.dat",
+        "outputs/cohp/cohp.png",
+        "outputs/cohp/cohp_bond_images.json",
+        f"reports/postprocess/{_operation_id(331)}.json",
+    }
+    diagnostics = result.envelope.diagnostics["summary"]
+    assert diagnostics["method"] == "IAO-COHP"
+    assert isinstance(diagnostics["minus_icohp_ev"], float)
+    assert diagnostics["minus_icohp_ev"] > 0
+    assert (cohp_workspace / "job/outputs/cohp/cohp.png").stat().st_size > 0
+    report_rel = result.envelope.diagnostics["report_path_rel"]
+    report = json.loads((cohp_workspace / "job" / report_rel).read_text(encoding="utf-8"))
+    assert report["capability"] == "cohp"
+    assert len(_event_files(Workspace(cohp_workspace / "job"))) == 1
+
+
+def test_cohp_postprocess_missing_directory_fails_after_durable_admission(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "job").mkdir()
+    request = CohpPostprocessRequest(
+        operation_id=_operation_id(332),
+        workspace_rel="job",
+        scf_dir_rel="missing",
+    )
+    result = PostprocessServiceSet.default(workspace_root=tmp_path).cohp.postprocess(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert (tmp_path / "job/reports/claims").is_dir()
+
+
+def test_cohp_service_rejects_mismatched_typed_request(tmp_path: Path) -> None:
+    (tmp_path / "job").mkdir()
+    services = PostprocessServiceSet.default(workspace_root=tmp_path)
+    result = services.cohp.postprocess(_band_request(_operation_id(333)))
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "request.invalid"

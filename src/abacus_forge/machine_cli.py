@@ -42,7 +42,11 @@ from abacus_forge.parser_backend import normalize_output_version
 from abacus_forge.md_contracts import MdCollectRequest, MdExecuteRequest, MdModifyRequest, MdPrepareRequest
 from abacus_forge.md_postprocess_contracts import MdPostprocessRequest
 from abacus_forge.md_postprocess_services import MdPostprocessServiceSet
-from abacus_forge.postprocess_contracts import BandPostprocessRequest, DosPostprocessRequest
+from abacus_forge.postprocess_contracts import (
+    BandPostprocessRequest,
+    CohpPostprocessRequest,
+    DosPostprocessRequest,
+)
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
     PyatbBandExecuteRequest,
@@ -81,7 +85,7 @@ _ATST_NEB_DECODERS = _CAPABILITY_DECODERS["atst-neb"]
 _RELAX_DECODERS = _CAPABILITY_DECODERS["relax"]
 _MD_DECODERS = _CAPABILITY_DECODERS["md"]
 _POSTPROCESS_DECODERS = {
-    capability: _CAPABILITY_DECODERS[capability] for capability in ("band", "dos")
+    capability: _CAPABILITY_DECODERS[capability] for capability in ("band", "cohp", "dos")
 }
 _PYATB_BAND_DECODERS = _CAPABILITY_DECODERS["pyatb-band"]
 _EXPORT_DECODERS = _CAPABILITY_DECODERS["export"]
@@ -331,6 +335,8 @@ def _dispatch(operation: str, request: object, services: object) -> ServiceResul
     if operation == "postprocess" and isinstance(services, PostprocessServiceSet):
         if isinstance(request, BandPostprocessRequest):
             service = services.band
+        elif isinstance(request, CohpPostprocessRequest):
+            service = services.cohp
         elif isinstance(request, DosPostprocessRequest):
             service = services.dos
         else:
@@ -502,7 +508,7 @@ def run_machine_cli(
             service_set = services
         elif isinstance(request, (AtstNebPrepareRequest, AtstNebExecuteRequest, AtstNebPostprocessRequest)):
             service_set = atst_services if atst_services is not None else AtstNebServiceSet.default(workspace_root=Path(cwd))
-        elif isinstance(request, (BandPostprocessRequest, DosPostprocessRequest)):
+        elif isinstance(request, (BandPostprocessRequest, CohpPostprocessRequest, DosPostprocessRequest)):
             service_set = PostprocessServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, MdPostprocessRequest):
             service_set = MdPostprocessServiceSet.default(workspace_root=Path(cwd))
