@@ -9,7 +9,7 @@
 | 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，已合入本地 main；保留公开行为与默认依赖，可废弃项单列。 |
 | Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成，可安装 optional extra、fresh package parity 和发布门禁仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。已有步骤保留候选绑定；真实 NEB、完整迁移与外部发布事项未全部验收。 |
-| COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已进入实现验证；legacy bridge、Paimon 迁移、parity 和 clean-install未闭合。 |
+| COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费和 Si IAO 迁移等价已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 
 ## 有效设计基线
 

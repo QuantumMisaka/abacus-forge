@@ -1,12 +1,13 @@
 # ABACUS-Forge 路线图
 
-本页维护当前重点和待决候选，更新于 2026-10-13。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
+本页维护当前重点和待决候选，更新于 2026-10-15。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
 
 ## 当前重点与未完成验收
 
 | 事项 | 已有基础 | 仍需完成 | 维护入口 |
 | --- | --- | --- | --- |
 | 文档与代码体系收敛 | 文档、加载/能力映射、band 共享代码与测试分类整理已完成，并通过离线回归与独立审查；已合入本地 main。 | 后续清理按下方调查结论与触发条件推进。 | [本轮计划](docs/superpowers/plans/2026-10-13-forge-repository-consolidation.md) |
+| COHP IAO 后处理 | typed postprocess W1 已合入；Paimon W2 已接线，当前 wheel/ZIP 无 system-site 后处理消费与 Si fixture 迁移等价通过。 | 当前候选真实引擎/平台验收、更广材料覆盖；legacy COHP parity 另行验收。 | [安装消费证据](docs/superpowers/evidence/2026-10-15-forge-cohp-installed-consumption.md) |
 | Engine/Version Policy | native 兼容增量、离线 Stage 0 和 canonical checkout 四 capability parity 已集成；显式 PyATB handoff 支持新版 CSR 文件名。 | 可安装 abacuslite 版本与 exact extra、fresh environment 四 capability package parity，以及相应双轨发布证据。checkout 数值 parity 不替代可安装包验收。 | [版本政策计划](docs/superpowers/plans/2026-09-13-forge-engine-version-policy.md) |
 | 真实进程与能力成熟度 | SCF/Relax/cell-relax/MD、PyATB 及部分 packs 已有各自候选的运行证据；所有 typed capability 仍为 experimental。 | 完整 ATST NEB 真实 workflow、未覆盖 packs 的实际执行/解析，以及具体发布候选的证据绑定。 | [Stage 5 计划](docs/superpowers/plans/2026-09-13-forge-stage5-evidence-gates.md)、[真实 smoke 入口](tests/real_smoke/README.md) |
 | Paimon v1.3 上层迁移 | Forge 独立公共契约与局部 adapter/parity 证据已建立。 | 上层完整依赖与安装、全链路 benchmark、平台/生产验收由 Paimon owner 完成。 | [跨仓导航](docs/superpowers/README.md#跨仓迁移) |
