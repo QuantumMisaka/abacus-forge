@@ -36,7 +36,8 @@ from typing import Iterator
 
 import numpy as np
 
-RY_TO_EV = 13.605693122994
+from abacus_forge.constants import RY_TO_EV
+
 BOHR_TO_ANG = 0.529177210903
 
 _NUM_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eEdD][-+]?\d+)?")

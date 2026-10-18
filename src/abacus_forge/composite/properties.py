@@ -13,6 +13,7 @@ import numpy as np
 from abacus_forge.api import collect
 from abacus_forge.composite.common import artifacts_under, ensure_root, require_prepared_inputs, run_subtasks, write_subtask, write_task_result
 from abacus_forge.collection_results import contained_source
+from abacus_forge.constants import RY_TO_EV
 from abacus_forge.cube import CubeData, add_cubes, planar_average, subtract_cubes
 from abacus_forge.input_io import read_input
 from abacus_forge.modify import modify_stru
@@ -255,13 +256,18 @@ def post_workfunc(workspace: str | Path, *, vacuum_axis: str = "auto") -> TaskRe
     root = ensure_root(workspace)
     sub = Workspace(root.root / "workfunc" / "scf")
     potential, _ = _find_first(sub.root, ["ElecStaticPot.cube", "*Pot*.cube", "*.cube"], workspace_root=root.root)
-    diagnostics = {"potential_cube": str(potential) if potential else None}
+    diagnostics = {
+        "potential_cube": str(potential) if potential else None,
+        "potential_cube_unit": "Ry",
+    }
     if potential is None:
         summary = {"work_function_ev": None}
         path = write_task_result(root, "reports/metrics_workfunc.json", summary)
         return TaskResult("workfunc", root.root, "degraded", summary=summary, artifacts={str(path.relative_to(root.root)): str(path)}, diagnostics=diagnostics)
     axis = _axis_index(vacuum_axis, sub)
-    profile = planar_average(potential, axis=axis)
+    # ABACUS writes ElecStaticPot.cube in Rydberg
+    # (docs/advanced/elec_properties/potential.md); the summary is reported in eV.
+    profile = [float(value) * RY_TO_EV for value in planar_average(potential, axis=axis)]
     collected = collect(sub)
     fermi = collected.metrics.get("fermi_energy")
     vacuum_level = max(profile) if profile else None

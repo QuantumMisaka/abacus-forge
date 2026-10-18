@@ -32,6 +32,9 @@ from abacus_forge.input_io import read_input, write_input
 from abacus_forge.modify import modify_stru
 from abacus_forge.structure import AbacusStructure
 
+# ABACUS writes ElecStaticPot.cube in Rydberg; expectations use the literal value.
+_RY_TO_EV = 13.605693122994
+
 
 def test_modify_stru_supports_vacancy_indices_and_cli_supercell(tmp_path: Path, capsys) -> None:
     atoms = Atoms(
@@ -312,12 +315,30 @@ def test_workfunc_prepare_and_postprocess(tmp_path: Path) -> None:
     assert params["dip_cor_flag"] == "1"
 
     _write_completed_stdout(subdir, energy=-1.0, fermi=4.0)
-    _write_cube(subdir / "outputs" / "ElecStaticPot.cube", [8.0, 10.0])
+    # ElecStaticPot.cube is written in Rydberg by ABACUS.
+    _write_cube(subdir / "outputs" / "ElecStaticPot.cube", [8.0 / _RY_TO_EV, 10.0 / _RY_TO_EV])
     posted = post_workfunc(workspace.root, vacuum_axis="c")
 
     assert posted.status == "completed"
-    assert posted.summary["vacuum_level_ev"] == 10.0
-    assert posted.summary["work_function_ev"] == 6.0
+    assert posted.summary["vacuum_level_ev"] == pytest.approx(10.0)
+    assert posted.summary["work_function_ev"] == pytest.approx(6.0)
+
+
+def test_workfunc_converts_rydberg_potential_cube_to_ev(tmp_path: Path) -> None:
+    workspace = _prepared_workspace(tmp_path / "workfunc-ry")
+    prepare_workfunc(workspace.root, vacuum_axis="c")
+    subdir = workspace.root / "workfunc" / "scf"
+    _write_completed_stdout(subdir, energy=-1.0, fermi=4.0)
+    # 0.25 Ry and 0.5 Ry planes; only the maximum sets the vacuum level.
+    _write_cube(subdir / "outputs" / "ElecStaticPot.cube", [0.25, 0.5])
+    posted = post_workfunc(workspace.root, vacuum_axis="c")
+
+    assert posted.status == "completed"
+    assert posted.summary["planar_average"] == pytest.approx(
+        [0.25 * _RY_TO_EV, 0.5 * _RY_TO_EV]
+    )
+    assert posted.summary["vacuum_level_ev"] == pytest.approx(0.5 * _RY_TO_EV)
+    assert posted.summary["work_function_ev"] == pytest.approx(0.5 * _RY_TO_EV - 4.0)
 
 
 def test_vacancy_prepare_and_postprocess(tmp_path: Path) -> None:
