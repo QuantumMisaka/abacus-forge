@@ -1,0 +1,64 @@
+{
+  "schema_version": "forge.stage1-package-provenance/v2",
+  "status": "published_release_bound",
+  "public_exact_release_available": true,
+  "forge_optional_extra_declared": true,
+  "recorded_at": "2026-10-19",
+  "history": {
+    "supersedes": "2026-09-14-forge-stage1-package-provenance.json",
+    "reason": "abacuslite 1.1.0 was published to PyPI on 2026-10-18 (UTC+08:00); the local-oracle-only stage is closed. The superseded record stays frozen and is not rewritten."
+  },
+  "abacuslite_release": {
+    "package_name": "abacuslite",
+    "package_version": "1.1.0",
+    "source_repository": "https://github.com/QuantumMisaka/abacuslite",
+    "tag": "v1.1.0",
+    "tag_commit": "94a26e4c7f31ed817eac36c871ff74a7b7abe418",
+    "wheel_filename": "abacuslite-1.1.0-py3-none-any.whl",
+    "wheel_sha256": "c3e4504e9c9f5bceb69f70c79290e7843037ca72f625c5f66258e14d110f0ff3",
+    "sdist_filename": "abacuslite-1.1.0.tar.gz",
+    "sdist_sha256": "79a85f09a37e68ca97ba35f0a620bc888ace092bfd0fdfc533320498d46956e3",
+    "requires_python": ">=3.10",
+    "upload_time_utc": "2026-10-17T17:58:00.583873Z",
+    "runtime_files": {
+      "count": 8,
+      "all_equal_tag_source": true
+    }
+  },
+  "forge_extra": {
+    "name": "abacuslite",
+    "requirement": "abacuslite==1.1.0",
+    "default_dependencies_unchanged": true
+  },
+  "forge_candidate": {
+    "repository": "abacus-forge",
+    "revision": "43f5d4a274bb7106f1572dcaab122f7f29c7456b",
+    "packaged_source_equal_to_revision": true,
+    "package_name": "abacus-forge",
+    "package_version": "0.1.0",
+    "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "c06eb0abbd24b10658660d77efc1ef508a0d448283b1022134894b9209c83459",
+    "build_command": "python -m pip wheel --no-deps --no-build-isolation -w /tmp/fw .",
+    "artifact_binding": {
+      "forge_revision": "43f5d4a274bb7106f1572dcaab122f7f29c7456b",
+      "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+      "wheel_sha256": "c06eb0abbd24b10658660d77efc1ef508a0d448283b1022134894b9209c83459"
+    },
+    "packaged_source_equal_through": "ce308997e9f991f687dbef31f5c79895e275bb1f"
+  },
+  "rebind_plan": {
+    "target_pin": "abacuslite==1.2.0",
+    "status": "pending_upstream_release",
+    "requires_four_capability_parity_rerun": true,
+    "rule": "1.2.0 发布后同一轮 rebind pyproject extra、本 provenance、oracle 版本断言与 README/reference 说明，并重跑四 capability parity；不重复推导中间版本。1.2.0 的 PP/ORB env fallback 是新增功能，不得回写成 1.1.x 补丁。"
+  },
+  "evidence": {
+    "fresh_venv_four_capability_parity": "docs/superpowers/evidence/2026-10-19-forge-abacuslite-exact-extra.md",
+    "wheel_files_vs_tag": "8/8 abacuslite runtime files byte-identical between the published wheel and v1.1.0 source",
+    "notes": [
+      "本地 main 上 43f5d4a 之后的 3 个提交均为 docs/证据，src/ 未变；candidate 对打包源的唯一改动是 pyproject 的 exact extra 声明，wheel SHA-256 绑定该结果。",
+      "Forge 的 src/ 自 43f5d4a 起未变；本候选 wheel 与 2026-10-15 的 e2379f04 不同，是构建工具链差异，不是源码差异。重新构建的消费者必须重新记录自己的 wheel SHA-256。",
+      "本记录只证明已发布 abacuslite 的 exact extra、安装态四 capability 字段投影与离线回归；不证明 develop/LTS 真实引擎双轨发布证据，也不证明科学可接受性。"
+    ]
+  }
+}

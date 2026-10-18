@@ -9,7 +9,7 @@
 | 工作 | 状态和入口 |
 | --- | --- |
 | 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，已合入本地 main；保留公开行为与默认依赖，可废弃项单列。 |
-| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成，可安装 optional extra、fresh package parity 和发布门禁仍开放。 |
+| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.1.0 已发布，Forge 已声明 `abacus-forge[abacuslite]` exact extra 并通过安装态四 capability parity，见[本轮证据](evidence/2026-10-19-forge-abacuslite-exact-extra.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json)。目标 pin 1.2.0 的 rebind 与 develop/LTS 双轨真实发布证据仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 
@@ -59,6 +59,7 @@
 - [2026-10-15 真实输入与 NEB](evidence/2026-10-15-forge-real-evidence.md)：完整 Si SCF 的 COHP 五组回放、有限步真实 NEB 与后处理恢复、abacuslite 发布包查询；明确保留失败和未收敛状态。
 - [版本政策设计复核](evidence/2026-09-13-forge-engine-version-policy-review.md)、[Stage 0](evidence/2026-09-14-forge-engine-version-policy-stage0.md)、[Stage 1 package](evidence/2026-09-14-forge-stage1-package-gate.md)：分别查看设计、源码兼容和安装证据范围。
 - [统一候选 clean package](evidence/2026-09-27-unified-candidate-clean-package.md)：候选 wheel 与隔离环境，不代表所有 optional extra 完成。
+- [abacuslite 1.1.0 exact extra](evidence/2026-10-19-forge-abacuslite-exact-extra.md)、[provenance](evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json)：已发布包绑定、安装态四 capability parity、缺包 fail-closed 与 1.2.0 rebind 记账；不含 develop/LTS 真实引擎双轨证据。
 - [SCF fallback/native facts](evidence/2026-09-29-scf-fallback-native-facts.md)、[vacancy real smoke](evidence/2026-09-29-vacancy-real-smoke.md)：对应修正与实际运行记录，均不自动晋升 stable。
 - 已结项评审、旧实施材料及迁出的工具任务报告见[历史归档索引](../archive/README.md)。仍有效的 SPEC 不因已经实现而移入历史归档；新的工具临时状态留在被忽略的本地目录。
 
