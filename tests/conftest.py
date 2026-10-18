@@ -137,7 +137,13 @@ def pytest_configure(config: pytest.Config) -> None:
         validate_wheel_install,
     )
 
-    import abacus_forge
+    try:
+        import abacus_forge
+    except ImportError as error:
+        raise pytest.UsageError(
+            f"{INSTALLED_PACKAGE_ONLY_ENV}=1 requires an installed abacus-forge "
+            f"distribution: {error}"
+        ) from error
 
     try:
         validate_wheel_install(abacus_forge)

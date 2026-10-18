@@ -17,7 +17,7 @@
 
 ## 变更
 
-- `pyproject.toml`：声明 `[project.optional-dependencies] abacuslite = ["abacuslite==1.1.0"]`；默认依赖集合不变。
+- `pyproject.toml`：**新增**（added，相对 `ce30899`）`[project.optional-dependencies] abacuslite = ["abacuslite==1.1.0"]`；默认依赖列表未变，`abacuslite` 不进入默认 wheel 依赖。
 - `tests/benchmark/test_abacuslite_canonical_parity.py`：oracle 改为“环境变量指定的包目录 → 已安装 `abacuslite` 包”，canonical 日志改由 `ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES` 提供（兼容历史 `abacuslite/io/testfiles`）；新增 `test_canonical_oracle_binds_the_declared_abacuslite_pin`，断言 oracle 版本等于 `pyproject.toml` 的 exact pin。ABACUS 已删除 vendored 插件，旧的 `interfaces/ASE_interface` oracle 路径不再可用。
 - `tests/conftest.py`、`tests/support/installed_package.py`：新增 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`，该模式下不把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径；显式拒绝 editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`），同时接受仓库内 `.venv` 里的正常 wheel 安装。新增 `tests/test_installed_package_mode.py` 覆盖两向用例。
 - `tests/test_package_contract.py`：新增发布物 provenance 绑定断言（版本、tag、wheel/sdist 哈希、extra 与 pin 一致、默认依赖不含 abacuslite、候选 wheel 哈希、1.2.0 rebind 记账）；旧测试被替换，删除前已记录 mutation 证据（见下）。
@@ -32,7 +32,7 @@ python -m pip wheel --no-deps --no-build-isolation -w /tmp/fw .
 # abacus_forge-0.1.0-py3-none-any.whl  sha256 c06eb0abbd24b10658660d77efc1ef508a0d448283b1022134894b9209c83459
 ABACUS_FORGE_WHEEL=/tmp/fw/abacus_forge-0.1.0-py3-none-any.whl \
   python -m pytest -q -p no:cacheprovider
-# 1479 passed, 33 skipped in 99.06s
+# 1489 passed, 33 skipped in 88.29s
 ```
 
 ### 新门禁的 mutation 证据
@@ -78,8 +78,10 @@ MISSING_PACKAGE_FAIL_CLOSED: abacuslite package is required for parser_backend=a
 
 - wheel 安装（fresh venv）：guard 接受，四 capability parity **16 passed**。
 - editable 安装（同一 venv，`pip install -e . --no-deps`）：guard 拒绝，输出 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 requires a wheel install: abacus-forge is installed in editable mode`。
-- 仓库内 `venv/` wheel 安装：guard 接受，`abacus_forge` 解析到 `<repo>/venv/lib/python3.13/site-packages/abacus_forge/__init__.py`，用例收集 **7 tests collected**。
-- 单元用例：editable（direct_url / egg-link）拒绝、仓库内 `.venv` wheel 接受、清单外导入拒绝、无文件清单拒绝、configure 把校验失败转成 `pytest.UsageError`。
+- 仓库内 `venv/` wheel 安装：guard 接受，`abacus_forge` 解析到 `<repo>/venv/lib/python3.13/site-packages/abacus_forge/__init__.py`，用例收集 **10 tests collected**。
+- 单元用例（`tests/test_installed_package_mode.py`，10 个）：PEP 660 editable 拒绝、真实 legacy 元数据（`importlib.metadata.PathDistribution` + 真实 `.egg-info`/`.egg-link`）拒绝、无 egg-link 的 source-tree egg-info 拒绝、仓库内 `.venv` wheel 接受、清单外导入拒绝、无文件清单拒绝，以及 configure 的三种失败（校验失败、缺包 `ImportError`、缺 distribution 元数据 `PackageNotFoundError`）都转成 `pytest.UsageError`。
+
+第二轮 review 补充：legacy editable 的实际元数据是 `.egg-info` 而不是 `.egg-link` 路径，检测改为在 `sys.path` 上查找真实 `*.egg-link` 并核对其 target 等于 `.egg-info` 的父目录；无 egg-link 的 source-tree egg-info 也拒绝。缺包与缺元数据从 pytest internal error 改为 `pytest.UsageError`。
 
 ## 证据边界
 
@@ -94,7 +96,7 @@ MISSING_PACKAGE_FAIL_CLOSED: abacuslite package is required for parser_backend=a
 ## 观察与风险
 
 - **wheel 哈希随工具链变化**：Forge `src/` 自 `43f5d4a` 未变，但本次 wheel 为 `c06eb0ab…`，与 2026-10-15 的 `e2379f04…` 不同（构建环境/hatchling 版本不同）。任何消费者重新构建都必须重新记录自己的 wheel SHA-256，不能复用旧值。
-- **一次负载下的测试超时**：并行做其他构建时，全量回归出现 2 个 `tests/test_cli_process.py` 子进程 30s 超时；单独重跑该文件 41 passed（58.66s），随后干净全量 1479 passed。判定为负载相关偶发，不作为产品失败，但发布候选验收应在无并发负载时重跑。
+- **一次负载下的测试超时**：并行做其他构建时，全量回归出现 2 个 `tests/test_cli_process.py` 子进程 30s 超时；单独重跑该文件 41 passed（58.66s），随后干净全量 1489 passed。判定为负载相关偶发，不作为产品失败，但发布候选验收应在无并发负载时重跑。
 - **extra 名是跨仓接口**：`abacus-forge[abacuslite]` 已在 pyproject 落地；Paimon W3 的 lock/kit 需自行确认新增 `seekpath` 等依赖的影响，本批未改其配置。
 
 ## 1.2.0 rebind 记账（未执行）

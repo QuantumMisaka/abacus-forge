@@ -28,6 +28,8 @@
   "forge_extra": {
     "name": "abacuslite",
     "requirement": "abacuslite==1.1.0",
+    "change_kind": "added",
+    "scope": "project.optional-dependencies",
     "default_dependencies_unchanged": true
   },
   "forge_candidate": {

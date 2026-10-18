@@ -92,6 +92,8 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
     forge_extra = record["forge_extra"]
     assert forge_extra["name"] == extra_name
     assert forge_extra["requirement"] == requirement
+    assert forge_extra["change_kind"] == "added"
+    assert forge_extra["scope"] == "project.optional-dependencies"
     assert forge_extra["default_dependencies_unchanged"] is True
 
     # The built candidate is bound to its source revision and artifact hash.

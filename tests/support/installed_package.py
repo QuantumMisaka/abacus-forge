@@ -2,15 +2,17 @@
 
 ``ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`` exists to validate a built wheel, so
 the guard must reject any installation mode that executes source: editable
-installs (PEP 660 ``direct_url.json`` or legacy ``.egg-link``) and imports that
-resolve outside the installed distribution.  A wheel installed into a virtual
-environment inside the repository is legitimate; the check therefore compares
-against the distribution's own file list rather than the repository root.
+installs (PEP 660 ``direct_url.json`` or legacy ``setup.py develop`` egg-links)
+and imports that resolve outside the installed distribution.  A wheel installed
+into a virtual environment inside the repository is legitimate; the check
+therefore compares against the distribution's own file list rather than the
+repository root.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from importlib import metadata
 from pathlib import Path
 from typing import Any
@@ -36,14 +38,63 @@ def _direct_url(dist: Any) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def is_editable_install(dist: Any) -> bool:
-    """Return True for editable installs, including legacy egg-link records."""
+def egg_link_targets() -> dict[Path, Path]:
+    """Map every legacy ``*.egg-link`` on ``sys.path`` to its target directory."""
+
+    targets: dict[Path, Path] = {}
+    for entry in sys.path:
+        if not entry:
+            continue
+        directory = Path(entry)
+        if not directory.is_dir():
+            continue
+        try:
+            links = sorted(directory.glob("*.egg-link"))
+        except OSError:
+            continue
+        for link in links:
+            try:
+                lines = link.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            first = lines[0].strip() if lines else ""
+            if not first:
+                continue
+            target = Path(first).expanduser()
+            if not target.is_absolute():
+                target = link.parent / target
+            targets[link.resolve()] = target.resolve()
+    return targets
+
+
+def non_wheel_reason(dist: Any) -> str | None:
+    """Return why ``dist`` is not a wheel install, or ``None`` for a wheel."""
 
     path = getattr(dist, "_path", None)
-    if path is not None and str(path).endswith(".egg-link"):
-        return True
+    metadata_dir = Path(path) if path is not None else None
+    if metadata_dir is not None and metadata_dir.name.endswith(".egg-link"):
+        return f"legacy egg-link metadata {metadata_dir}"
+
     direct_url = _direct_url(dist)
-    return bool(direct_url and direct_url.get("dir_info", {}).get("editable"))
+    if direct_url and direct_url.get("dir_info", {}).get("editable"):
+        return f"PEP 660 editable direct_url for {DISTRIBUTION_NAME}"
+
+    if metadata_dir is not None and metadata_dir.name.endswith(".egg-info"):
+        project_root = metadata_dir.parent.resolve()
+        for link, target in egg_link_targets().items():
+            if target == project_root:
+                return f"legacy egg-link {link} points at {target}"
+        return (
+            f"source-tree egg-info {metadata_dir} without a wheel RECORD; "
+            "run a wheel install instead of setup.py develop"
+        )
+    return None
+
+
+def is_editable_install(dist: Any) -> bool:
+    """Return True for every editable/develop installation mode."""
+
+    return non_wheel_reason(dist) is not None
 
 
 def installed_python_files(dist: Any) -> set[Path]:
@@ -60,12 +111,19 @@ def installed_python_files(dist: Any) -> set[Path]:
 def validate_wheel_install(module: Any, dist: Any | None = None) -> None:
     """Fail unless ``module`` comes from a wheel-installed distribution."""
 
-    distribution = dist if dist is not None else metadata.distribution(DISTRIBUTION_NAME)
-    if is_editable_install(distribution):
+    try:
+        distribution = dist if dist is not None else metadata.distribution(DISTRIBUTION_NAME)
+    except metadata.PackageNotFoundError as error:
         raise NotWheelInstalledError(
-            f"{DISTRIBUTION_NAME} is installed in editable mode; "
-            "install the built wheel instead of the source checkout"
+            f"{DISTRIBUTION_NAME} distribution metadata was not found; install the built wheel"
+        ) from error
+
+    reason = non_wheel_reason(distribution)
+    if reason is not None:
+        raise NotWheelInstalledError(
+            f"{DISTRIBUTION_NAME} is not a wheel install ({reason})"
         )
+
     installed = installed_python_files(distribution)
     if not installed:
         raise NotWheelInstalledError(
