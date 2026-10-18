@@ -35,16 +35,18 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cach
 
 默认回归收集全部测试，但跳过 `real_smoke` 和 `benchmark`；正向 marker 选择不替代完整离线回归。真实计算的输入准备、逐项命令、环境变量、结果范围及已知版本差异统一见 [real-smoke 指南](real_smoke/README.md)。`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 是双轨发布门禁的既有例外：即使没有 `--run-real-smoke`，对应测试也不会因缺少外部输入而跳过，会明确失败；普通默认回归不要设置它。
 
-`benchmark/test_abacuslite_canonical_parity.py` 的 Stage 0 对照使用指定 canonical checkout 作为 oracle：
+`benchmark/test_abacuslite_canonical_parity.py` 的 Stage 0 对照默认使用已安装的 `abacuslite` 作为 oracle（`pip install '.[abacuslite]'`，当前 pin `1.1.0`）。也可以显式指定源码目录，此时 `ABACUS_FORGE_CANONICAL_ABACUSLITE` 指向包含 `abacuslite` 包的目录（例如独立仓 `abacuslite` 的 `src/`）。canonical 日志由 abacuslite 的 test fixture 提供：`ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES` 指向 `testfiles` 目录；历史布局 `abacuslite/io/testfiles` 仍然兼容。发布 wheel 不带这些日志，所以安装态运行必须显式给 fixtures 路径。
 
 ```bash
-export ABACUS_FORGE_CANONICAL_ABACUSLITE=/absolute/path/to/abacus-develop/interfaces/ASE_interface
+export ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES=/absolute/path/to/abacuslite/tests/fixtures/io/testfiles
 conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
   python -m pytest -q -p no:cacheprovider --run-benchmark \
   tests/benchmark/test_abacuslite_canonical_parity.py
 ```
 
-它比较 SCF、relax、cell-relax、MD 的 `legacyio`/`latestio` 事实及版本隔离、并发和审计边界。checkout fixture 不是可安装发布包，也不能代替 native/optional parser 双轨真实计算门禁。
+其中 `test_canonical_oracle_binds_the_declared_abacuslite_pin` 断言 oracle 版本等于 `pyproject.toml` 声明的 exact pin，避免用旧包或旧 checkout 冒充。它比较 SCF、relax、cell-relax、MD 的 `legacyio`/`latestio` 事实及版本隔离、并发和审计边界。这项离线 parity 不替代 native/optional parser 双轨真实计算门禁。
+
+要在已安装 wheel（而不是源码 checkout）上跑测试，显式设置 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`：conftest 不再把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径。editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`）和不在清单内的导入都会直接失败；仓库内 `.venv` 里正常安装的 wheel 则被接受。该模式不能替代带真实引擎的双轨发布证据。
 
 ## 按变更选择 owning tests
 

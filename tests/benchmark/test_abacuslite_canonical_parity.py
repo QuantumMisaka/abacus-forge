@@ -1,15 +1,19 @@
-"""Stage 0 parity checks against the canonical ABACUS abacuslite fixtures.
+"""Stage 0 parity checks against abacuslite's canonical ABACUS fixtures.
 
-These checks deliberately run only when ``--run-benchmark`` is requested and
-the caller provides ``ABACUS_FORGE_CANONICAL_ABACUSLITE``.  The environment
-variable points at the checkout directory that contains the canonical
-``abacuslite`` package (normally ``interfaces/ASE_interface`` in
-``abacus-develop``).
+These checks deliberately run only when ``--run-benchmark`` is requested.  The
+oracle is the published ``abacuslite`` distribution by default, or the source
+directory named by ``ABACUS_FORGE_CANONICAL_ABACUSLITE`` (a directory that
+contains an ``abacuslite`` package, for example the standalone repository's
+``src/``).  Canonical logs are supplied by ``abacuslite``'s test fixtures:
+``ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES`` points at the ``testfiles``
+directory, and the historical in-package layout (``abacuslite/io/testfiles``)
+is still accepted when present.
 """
 
 from __future__ import annotations
 
 import importlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -27,18 +31,85 @@ from abacus_forge.workspace import Workspace
 
 
 _CANONICAL_ENV = "ABACUS_FORGE_CANONICAL_ABACUSLITE"
+_FIXTURES_ENV = "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES"
 _KBAR_TO_CANONICAL_STRESS = 0.0006241504912713559
 
 
 @pytest.fixture(scope="module")
 def canonical_root() -> Path:
     raw = os.environ.get(_CANONICAL_ENV)
-    if not raw:
-        pytest.skip(f"set {_CANONICAL_ENV} to run canonical abacuslite parity")
-    root = Path(raw).expanduser().resolve()
-    if not (root / "abacuslite").is_dir():
-        pytest.skip(f"{_CANONICAL_ENV} must contain an abacuslite package: {root}")
+    if raw:
+        root = Path(raw).expanduser().resolve()
+        if not (root / "abacuslite").is_dir():
+            pytest.fail(f"{_CANONICAL_ENV} must contain an abacuslite package: {root}")
+        return root
+    try:
+        module = importlib.import_module("abacuslite")
+    except ImportError:
+        pytest.skip(
+            f"install the abacuslite extra or set {_CANONICAL_ENV} to run "
+            "canonical abacuslite parity"
+        )
+    return Path(module.__file__).resolve().parent.parent
+
+
+@pytest.fixture(scope="module")
+def canonical_fixtures(canonical_root: Path) -> Path:
+    raw = os.environ.get(_FIXTURES_ENV)
+    if raw:
+        root = Path(raw).expanduser().resolve()
+    else:
+        root = canonical_root / "abacuslite" / "io" / "testfiles"
+    if not root.is_dir():
+        pytest.skip(
+            f"set {_FIXTURES_ENV} to abacuslite's testfiles directory; "
+            f"published wheels do not ship canonical logs ({root})"
+        )
     return root
+
+
+def _declared_abacuslite_pin() -> str:
+    """Return the exact abacuslite version declared by the Forge extra."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10
+        import tomli as tomllib
+
+    project = tomllib.loads((Path(__file__).resolve().parents[2] / "pyproject.toml").read_text("utf-8"))
+    declared = [
+        str(item)
+        for values in project["project"].get("optional-dependencies", {}).values()
+        for item in values
+        if str(item).lower().startswith("abacuslite")
+    ]
+    assert len(declared) == 1, declared
+    requirement = declared[0]
+    assert requirement.lower().startswith("abacuslite==")
+    return requirement.split("==", 1)[1].split(";", 1)[0].strip()
+
+
+def _oracle_version(root: Path) -> str | None:
+    try:
+        return importlib.metadata.version("abacuslite")
+    except importlib.metadata.PackageNotFoundError:
+        pyproject = root.parent / "pyproject.toml"
+        if pyproject.is_file():
+            try:
+                import tomllib
+            except ModuleNotFoundError:  # Python 3.10
+                import tomli as tomllib
+
+            return tomllib.loads(pyproject.read_text("utf-8")).get("project", {}).get("version")
+        return None
+
+
+@pytest.mark.benchmark
+def test_canonical_oracle_binds_the_declared_abacuslite_pin(canonical_root: Path) -> None:
+    declared = _declared_abacuslite_pin()
+    observed = _oracle_version(canonical_root)
+    if observed is None:
+        pytest.skip("cannot prove the oracle version; provide an installed or versioned source oracle")
+    assert observed == declared, f"oracle abacuslite {observed!r} != declared pin {declared!r}"
 
 
 def _canonical_module(root: Path, backend: str) -> Any:
@@ -144,13 +215,14 @@ def _assert_frames_close(actual: Any, expected: list[list[float]]) -> None:
 def test_forge_matches_canonical_abacuslite_for_four_capabilities(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
     capability: str,
     version: str,
     backend: str,
     fixture: str,
 ) -> None:
     module = _canonical_module(canonical_root, backend)
-    fixture_path = canonical_root / "abacuslite" / "io" / "testfiles" / fixture
+    fixture_path = canonical_fixtures / fixture
     workspace = _fixture_workspace(tmp_path, fixture_path, capability, version)
     log_path = workspace.outputs_dir / f"running_{capability}.log"
 
@@ -187,8 +259,9 @@ def test_forge_matches_canonical_abacuslite_for_four_capabilities(
 def test_alternate_versions_share_one_process_without_cross_contamination(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
-    fixture_dir = canonical_root / "abacuslite" / "io" / "testfiles"
+    fixture_dir = canonical_fixtures
     cases = [
         ("v3.10.1", "legacyio", "lcao-symm0-nspin2-multik-relax_"),
         ("v3.11.0-beta8+56", "latestio", "lcao-symm0-nspin2-multik-relax"),
@@ -221,10 +294,11 @@ def test_alternate_versions_share_one_process_without_cross_contamination(
 def test_output_only_collect_without_auxiliary_files_matches_canonical(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
     backend = "latestio"
     version = "v3.11.0-beta8+56"
-    fixture = canonical_root / "abacuslite" / "io" / "testfiles" / "lcao-symm1-nspin1-multik-scf"
+    fixture = canonical_fixtures / "lcao-symm1-nspin1-multik-scf"
     workspace = _fixture_workspace(tmp_path, fixture, "scf", version, include_input=False)
     log_path = workspace.outputs_dir / "running_scf.log"
     expected = _direct_oracle(_canonical_module(canonical_root, backend), log_path)
@@ -245,9 +319,10 @@ def test_output_only_collect_without_auxiliary_files_matches_canonical(
 def test_truncated_log_keeps_confirmed_backend_facts_without_fallback(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
     version = "v3.11.0-beta8+56"
-    fixture = canonical_root / "abacuslite" / "io" / "testfiles" / "lcao-symm0-nspin2-multik-relax"
+    fixture = canonical_fixtures / "lcao-symm0-nspin2-multik-relax"
 
     def truncate(content: str) -> str:
         marker = "#TOTAL-FORCE"
@@ -278,9 +353,10 @@ def test_truncated_log_keeps_confirmed_backend_facts_without_fallback(
 def test_nonconverged_log_retains_numeric_parity_and_partial_status(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
     version = "v3.11.0-beta8+56"
-    fixture = canonical_root / "abacuslite" / "io" / "testfiles" / "lcao-symm0-nspin2-multik-relax"
+    fixture = canonical_fixtures / "lcao-symm0-nspin2-multik-relax"
     workspace = _fixture_workspace(
         tmp_path,
         fixture,
@@ -343,12 +419,13 @@ def test_ambiguous_and_outside_logs_do_not_dispatch_optional_backend(
 def test_two_workspaces_can_collect_concurrently_with_version_isolation(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
     cases = [
         ("v3.10.1", "legacyio", "lcao-symm0-nspin2-multik-relax_"),
         ("v3.11.0-beta8+56", "latestio", "lcao-symm0-nspin2-multik-relax"),
     ]
-    fixture_dir = canonical_root / "abacuslite" / "io" / "testfiles"
+    fixture_dir = canonical_fixtures
     _canonical_module(canonical_root, "legacyio")
     _canonical_module(canonical_root, "latestio")
 
@@ -369,9 +446,10 @@ def test_two_workspaces_can_collect_concurrently_with_version_isolation(
 def test_read_only_domain_files_and_append_only_audit_are_preserved(
     tmp_path: Path,
     canonical_root: Path,
+    canonical_fixtures: Path,
 ) -> None:
     version = "v3.11.0-beta8+56"
-    fixture = canonical_root / "abacuslite" / "io" / "testfiles" / "lcao-symm1-nspin1-multik-scf"
+    fixture = canonical_fixtures / "lcao-symm1-nspin1-multik-scf"
     workspace = _fixture_workspace(tmp_path, fixture, "scf", version)
     domain_paths = [workspace.inputs_dir / "INPUT", workspace.outputs_dir / "running_scf.log"]
     for path in domain_paths:

@@ -16,6 +16,12 @@ The optional phonon pack requires `phonopy`:
 python -m pip install '.[phonon]'
 ```
 
+The optional `abacuslite` parser backend requires the published `abacuslite` package. The extra pins the exact verified release:
+
+```bash
+python -m pip install '.[abacuslite]'
+```
+
 Running an ABACUS calculation also requires an ABACUS executable available to the local process and the pseudopotential and, where needed, orbital files referenced by the input. Forge does not provide these external assets or install ABACUS.
 
 To inspect the installed command surface without ABACUS inputs:

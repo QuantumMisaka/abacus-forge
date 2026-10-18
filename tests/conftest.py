@@ -8,7 +8,15 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
-if str(SRC) not in sys.path:
+INSTALLED_PACKAGE_ONLY_ENV = "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY"
+
+
+def _uses_installed_package_only() -> bool:
+    """Opt-in mode for proving a built wheel, not the source checkout, is tested."""
+    return os.environ.get(INSTALLED_PACKAGE_ONLY_ENV) == "1"
+
+
+if not _uses_installed_package_only() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 
@@ -25,6 +33,7 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_export_contracts.py": ("core",),
     "test_package_contract.py": ("core",),
     "test_package_metadata_drift.py": ("core",),
+    "test_installed_package_mode.py": ("core",),
     "test_postprocess_algorithms.py": ("core",),
     "test_cohp_iao.py": ("core",),
     "test_api.py": ("integration",),
@@ -116,6 +125,32 @@ _REAL_SMOKE_ENV_BY_TEST: dict[str, tuple[str, ...]] = {
 
 _DUAL_TRACK_TEST_NAME = "test_native_and_abacuslite_collect_real_output_parity"
 _DUAL_TRACK_RELEASE_GATE_ENV = "ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX"
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if not _uses_installed_package_only():
+        return
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tests.support.installed_package import (
+        NotWheelInstalledError,
+        validate_wheel_install,
+    )
+
+    try:
+        import abacus_forge
+    except ImportError as error:
+        raise pytest.UsageError(
+            f"{INSTALLED_PACKAGE_ONLY_ENV}=1 requires an installed abacus-forge "
+            f"distribution: {error}"
+        ) from error
+
+    try:
+        validate_wheel_install(abacus_forge)
+    except NotWheelInstalledError as error:
+        raise pytest.UsageError(
+            f"{INSTALLED_PACKAGE_ONLY_ENV}=1 requires a wheel install: {error}"
+        ) from error
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

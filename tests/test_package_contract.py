@@ -1,8 +1,8 @@
 """Installability contract for the optional abacuslite parser dependency.
 
-The canonical checkout is a Stage 0 oracle, not an installable dependency.
-This test keeps the Stage 1 boundary executable without claiming that a
-published abacuslite release exists.
+``abacuslite`` is an optional extra pinned to the published 1.1.0 release and
+must never enter the default dependency set.  The provenance record binds that
+pin to the registry artifact and books the next pin as an explicit rebind item.
 """
 
 from __future__ import annotations
@@ -26,7 +26,10 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROVENANCE = ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
+PROVENANCE = ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json"
+HISTORICAL_PROVENANCE = (
+    ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
+)
 GPLV3_CLASSIFIER = "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
 
 
@@ -35,43 +38,82 @@ def _project_metadata() -> dict[str, object]:
         return tomllib.load(stream)["project"]
 
 
-def test_local_source_wheel_provenance_is_an_explicit_oracle_binding() -> None:
-    """Bind every local oracle wheel to its source and candidate revision."""
+def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> None:
+    """Bind the optional parser extra to the published abacuslite artifact."""
 
     record = json.loads(PROVENANCE.read_text(encoding="utf-8"))
-    assert record["schema_version"] == "forge.stage1-package-provenance/v1"
-    assert record["status"] == "local_oracle_only"
-    assert record["public_exact_release_available"] is False
-    assert record["forge_optional_extra_declared"] is False
+    assert record["schema_version"] == "forge.stage1-package-provenance/v2"
+    assert record["status"] == "published_release_bound"
+    assert record["public_exact_release_available"] is True
+    assert record["forge_optional_extra_declared"] is True
+    assert record["history"]["supersedes"] == HISTORICAL_PROVENANCE.name
+    assert HISTORICAL_PROVENANCE.is_file()
 
-    source = record["canonical_source"]
-    assert re.fullmatch(r"[0-9a-f]{40}", source["commit"])
-    assert source["package_name"] == "abacuslite"
-    assert source["package_version"] == "1.0.0"
-    assert source["wheel_filename"] == "abacuslite-1.0.0-py3-none-any.whl"
-    assert re.fullmatch(r"[0-9a-f]{64}", source["wheel_sha256"])
-    assert "pip wheel" in source["build_command"]
-    assert "--no-deps" in source["build_command"]
+    # The superseded record stays frozen as the local-oracle-only stage.
+    historical = json.loads(HISTORICAL_PROVENANCE.read_text(encoding="utf-8"))
+    assert historical["status"] == "local_oracle_only"
+    assert historical["public_exact_release_available"] is False
+    assert historical["forge_optional_extra_declared"] is False
 
+    release = record["abacuslite_release"]
+    assert release["package_name"] == "abacuslite"
+    assert release["package_version"] == "1.1.0"
+    assert release["tag"] == "v1.1.0"
+    assert release["tag_commit"] == "94a26e4c7f31ed817eac36c871ff74a7b7abe418"
+    assert release["source_repository"] == "https://github.com/QuantumMisaka/abacuslite"
+    assert release["wheel_filename"] == "abacuslite-1.1.0-py3-none-any.whl"
+    assert release["wheel_sha256"] == (
+        "c3e4504e9c9f5bceb69f70c79290e7843037ca72f625c5f66258e14d110f0ff3"
+    )
+    assert release["sdist_filename"] == "abacuslite-1.1.0.tar.gz"
+    assert release["sdist_sha256"] == (
+        "79a85f09a37e68ca97ba35f0a620bc888ace092bfd0fdfc533320498d46956e3"
+    )
+    assert release["requires_python"] == ">=3.10"
+    runtime = release["runtime_files"]
+    assert runtime["count"] == 8
+    assert runtime["all_equal_tag_source"] is True
+    assert re.fullmatch(r"[0-9a-f]{64}", release["wheel_sha256"])
+    assert re.fullmatch(r"[0-9a-f]{64}", release["sdist_sha256"])
+
+    # The declared extra must be exactly this published version.
+    project = _project_metadata()
+    optional = project.get("optional-dependencies", {})
+    declared = [
+        (str(extra), str(item))
+        for extra, values in optional.items()
+        for item in values
+        if str(item).lower().startswith("abacuslite")
+    ]
+    assert len(declared) == 1
+    extra_name, requirement = declared[0]
+    assert requirement == f"abacuslite=={release['package_version']}"
+    assert project["dependencies"].count("abacuslite") == 0
+    forge_extra = record["forge_extra"]
+    assert forge_extra["name"] == extra_name
+    assert forge_extra["requirement"] == requirement
+    assert forge_extra["change_kind"] == "added"
+    assert forge_extra["scope"] == "project.optional-dependencies"
+    assert forge_extra["default_dependencies_unchanged"] is True
+
+    # The built candidate is bound to its source revision and artifact hash.
     forge = record["forge_candidate"]
     assert re.fullmatch(r"[0-9a-f]{40}", forge["revision"])
     assert forge["package_name"] == "abacus-forge"
-    assert forge["package_version"] == "0.1.0"
+    assert forge["package_version"] == project["version"]
     assert forge["wheel_filename"] == "abacus_forge-0.1.0-py3-none-any.whl"
     assert re.fullmatch(r"[0-9a-f]{64}", forge["wheel_sha256"])
-    assert "pip wheel" in forge["build_command"]
-    assert "--no-deps" in forge["build_command"]
-
-    assert source["artifact_binding"] == {
-        "canonical_commit": source["commit"],
-        "wheel_filename": source["wheel_filename"],
-        "wheel_sha256": source["wheel_sha256"],
-    }
     assert forge["artifact_binding"] == {
         "forge_revision": forge["revision"],
         "wheel_filename": forge["wheel_filename"],
         "wheel_sha256": forge["wheel_sha256"],
     }
+
+    # The next pin is booked explicitly instead of being re-derived later.
+    rebind = record["rebind_plan"]
+    assert rebind["target_pin"] == "abacuslite==1.2.0"
+    assert rebind["requires_four_capability_parity_rerun"] is True
+    assert rebind["status"] == "pending_upstream_release"
 
 
 def test_abacuslite_extra_is_exactly_pinned_if_declared() -> None:
