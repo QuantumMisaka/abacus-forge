@@ -33,6 +33,7 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_export_contracts.py": ("core",),
     "test_package_contract.py": ("core",),
     "test_package_metadata_drift.py": ("core",),
+    "test_installed_package_mode.py": ("core",),
     "test_postprocess_algorithms.py": ("core",),
     "test_cohp_iao.py": ("core",),
     "test_api.py": ("integration",),
@@ -129,14 +130,21 @@ _DUAL_TRACK_RELEASE_GATE_ENV = "ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX"
 def pytest_configure(config: pytest.Config) -> None:
     if not _uses_installed_package_only():
         return
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tests.support.installed_package import (
+        NotWheelInstalledError,
+        validate_wheel_install,
+    )
+
     import abacus_forge
 
-    resolved = Path(abacus_forge.__file__).resolve()
-    if resolved.is_relative_to(ROOT):
+    try:
+        validate_wheel_install(abacus_forge)
+    except NotWheelInstalledError as error:
         raise pytest.UsageError(
-            f"{INSTALLED_PACKAGE_ONLY_ENV}=1 must import an installed abacus-forge "
-            f"distribution, not the source checkout ({resolved})"
-        )
+            f"{INSTALLED_PACKAGE_ONLY_ENV}=1 requires a wheel install: {error}"
+        ) from error
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

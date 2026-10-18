@@ -19,7 +19,7 @@
 
 - `pyproject.toml`：声明 `[project.optional-dependencies] abacuslite = ["abacuslite==1.1.0"]`；默认依赖集合不变。
 - `tests/benchmark/test_abacuslite_canonical_parity.py`：oracle 改为“环境变量指定的包目录 → 已安装 `abacuslite` 包”，canonical 日志改由 `ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES` 提供（兼容历史 `abacuslite/io/testfiles`）；新增 `test_canonical_oracle_binds_the_declared_abacuslite_pin`，断言 oracle 版本等于 `pyproject.toml` 的 exact pin。ABACUS 已删除 vendored 插件，旧的 `interfaces/ASE_interface` oracle 路径不再可用。
-- `tests/conftest.py`：新增 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`，该模式下不把 `src/` 插入 `sys.path`，并在 `abacus_forge` 仍解析到本仓源码时直接失败，防止用源码 checkout 冒充已安装包。
+- `tests/conftest.py`、`tests/support/installed_package.py`：新增 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`，该模式下不把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径；显式拒绝 editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`），同时接受仓库内 `.venv` 里的正常 wheel 安装。新增 `tests/test_installed_package_mode.py` 覆盖两向用例。
 - `tests/test_package_contract.py`：新增发布物 provenance 绑定断言（版本、tag、wheel/sdist 哈希、extra 与 pin 一致、默认依赖不含 abacuslite、候选 wheel 哈希、1.2.0 rebind 记账）；旧测试被替换，删除前已记录 mutation 证据（见下）。
 - `docs/superpowers/README.md`、`ROADMAP.md`、`README.md`、`docs/reference.md`、`tests/README.md`：更新 extra 安装方式、oracle 运行方式和 Engine/Version Policy 状态。
 
@@ -69,6 +69,17 @@ MISSING_PACKAGE_FAIL_CLOSED: abacuslite package is required for parser_backend=a
 ```
 
 即未安装可选包时按既有 `precondition.missing` 失败，不回退 native。
+
+### P2 修正：installed-only guard（独立 review 后）
+
+首版 guard 只比较导入路径是否在本仓根目录下，导致两个方向都错：别的 checkout 的 editable 安装能通过（实际执行源码），而仓库内 `.venv` 里的合法 wheel 安装被拒绝。修正为按 `importlib.metadata` 的 distribution 文件清单校验，并显式拒绝 editable。
+
+端到端复核（同一份 wheel，`c06eb0ab…`）：
+
+- wheel 安装（fresh venv）：guard 接受，四 capability parity **16 passed**。
+- editable 安装（同一 venv，`pip install -e . --no-deps`）：guard 拒绝，输出 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 requires a wheel install: abacus-forge is installed in editable mode`。
+- 仓库内 `venv/` wheel 安装：guard 接受，`abacus_forge` 解析到 `<repo>/venv/lib/python3.13/site-packages/abacus_forge/__init__.py`，用例收集 **7 tests collected**。
+- 单元用例：editable（direct_url / egg-link）拒绝、仓库内 `.venv` wheel 接受、清单外导入拒绝、无文件清单拒绝、configure 把校验失败转成 `pytest.UsageError`。
 
 ## 证据边界
 
