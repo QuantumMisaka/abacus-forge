@@ -1,0 +1,64 @@
+{
+  "modules": {
+    "abacus_forge": "/home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+    "pyatb": "/home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/__init__.py",
+    "pyatb.interface_python": "/home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/interface_python.cpython-312-x86_64-linux-gnu.so"
+  },
+  "mpi_version": [
+    4,
+    1
+  ],
+  "native_extension_sha256": "67cf695bb0721c160609205cd2a39cf029e6c8da8037d32ddebc8168d4d78914",
+  "native_ldd": [
+    "\tlinux-vdso.so.1 (0x00007325a41b6000)",
+    "\tlibopenblas-r0-f650aae0-79ec02b5.3.3.so => /home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/../pyatb.libs/libopenblas-r0-f650aae0-79ec02b5.3.3.so (0x00007325a1600000)",
+    "\tlibgomp-135f3c8f.so.1.0.0 => /home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/../pyatb.libs/libgomp-135f3c8f.so.1.0.0 (0x00007325a15a4000)",
+    "\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007325a1200000)",
+    "\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007325a14bb000)",
+    "\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007325a405c000)",
+    "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007325a0e00000)",
+    "\t/lib64/ld-linux-x86-64.so.2 (0x00007325a41b8000)",
+    "\tlibgfortran-91cc3cb1-55e3eb67.so.3.0.0 => /home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/../pyatb.libs/libgfortran-91cc3cb1-55e3eb67.so.3.0.0 (0x00007325a0400000)",
+    "\tlibquadmath-96973f99-934c22de.so.0.0.0 => /home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/../pyatb.libs/libquadmath-96973f99-934c22de.so.0.0.0 (0x000073259fe00000)"
+  ],
+  "python": "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/python",
+  "python_version": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+  "venv_config": "home = /home/james/apps/miniforge3/envs/abacus-env/bin\ninclude-system-site-packages = false\nversion = 3.12.13\nexecutable = /home/james/apps/miniforge3/envs/abacus-env/bin/python3.12\ncommand = /home/james/apps/miniforge3/envs/abacus-env/bin/python -m venv /home/james/scratch/forge-pyatb-installed-20261019/venv\n",
+  "versions": {
+    "abacus-forge": "0.1.0",
+    "matplotlib": "3.11.2",
+    "mpi4py": "4.1.2",
+    "numpy": "2.5.4",
+    "pyatb": "1.1.2.dev0+5f7e132",
+    "pytest": "8.4.2",
+    "scipy": "1.18.1"
+  },
+  "wheels": {
+    "abacus-forge": {
+      "installed_direct_url": {
+        "archive_info": {
+          "hash": "sha256=72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903",
+          "hashes": {
+            "sha256": "72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903"
+          }
+        },
+        "url": "file:///home/james/scratch/forge-pyatb-installed-20261019/wheels/abacus_forge-0.1.0-py3-none-any.whl"
+      },
+      "path": "/home/james/scratch/forge-pyatb-installed-20261019/wheels/abacus_forge-0.1.0-py3-none-any.whl",
+      "sha256": "72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903"
+    },
+    "pyatb": {
+      "installed_direct_url": {
+        "archive_info": {
+          "hash": "sha256=8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03",
+          "hashes": {
+            "sha256": "8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03"
+          }
+        },
+        "url": "file:///home/james/scratch/forge-pyatb-wheel-20261019/repaired/pyatb-1.1.2.dev0%2B5f7e132-cp312-cp312-manylinux_2_39_x86_64.whl"
+      },
+      "path": "/home/james/scratch/forge-pyatb-wheel-20261019/repaired/pyatb-1.1.2.dev0+5f7e132-cp312-cp312-manylinux_2_39_x86_64.whl",
+      "sha256": "8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03"
+    }
+  }
+}

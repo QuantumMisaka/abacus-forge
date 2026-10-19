@@ -1,0 +1,37 @@
+{
+  "forge_installed": {
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge",
+    "environment": {"ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1"},
+    "argv": [
+      "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/python",
+      "-m", "pytest", "--import-mode=importlib", "-o", "pythonpath=",
+      "tests/test_pyatb.py", "tests/test_pyatb_typed.py", "tests/test_pyatb_manifest.py",
+      "tests/test_contracts.py", "tests/test_workspace.py", "tests/test_machine_cli.py", "-q"
+    ],
+    "exit_code": 0,
+    "result": "539 passed, 10 third-party ASE/NumPy deprecation warnings in 5.28s",
+    "log": "forge-installed-tests.log"
+  },
+  "pyatb_installed": {
+    "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/pyatb-wheel-suite",
+    "environment": {
+      "LD_LIBRARY_PATH": "/home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/site-packages/pyatb.libs",
+      "PYATB_NATIVE_TEST_LIBS": "-L/home/james/scratch/forge-pyatb-wheel-20261019/linklib -lopenblas -llapacke -Wl,-rpath,/home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/site-packages/pyatb.libs"
+    },
+    "argv": [
+      "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/python",
+      "-c",
+      "import mpi4py.MPI; import pyatb.interface_python; import pytest; raise SystemExit(pytest.main([\"--import-mode=importlib\", \"-q\", \"tests\"]))"
+    ],
+    "exit_code": 0,
+    "result": "77 passed, no skips in 38.11s",
+    "log": "pyatb-installed-tests.log",
+    "note": "Original test corpus copied unchanged. The separately compiled C++ optical regression uses pinned Eigen and selected C++ sources plus external BLAS/LAPACKE; its result is distinct from the installed extension exercised by the band replay. Real mpi4py and installed interface_python were preloaded to bypass the original conftest's fallback dummies."
+  },
+  "pip_check": {
+    "argv": ["/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/python", "-m", "pip", "check"],
+    "exit_code": 0,
+    "result": "No broken requirements found.",
+    "log": "pip-check.log"
+  }
+}

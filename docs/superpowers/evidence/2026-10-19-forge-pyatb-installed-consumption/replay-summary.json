@@ -1,0 +1,244 @@
+{
+  "forge_commit": "be1c0bc7ccf3d966288b59cafd890e8db4eb03ee",
+  "forge_install_direct_url": {
+    "archive_info": {
+      "hash": "sha256=72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903",
+      "hashes": {
+        "sha256": "72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903"
+      }
+    },
+    "url": "file:///home/james/scratch/forge-pyatb-installed-20261019/wheels/abacus_forge-0.1.0-py3-none-any.whl"
+  },
+  "forge_module": "/home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+  "forge_wheel": "/home/james/scratch/forge-pyatb-installed-20261019/wheels/abacus_forge-0.1.0-py3-none-any.whl",
+  "forge_wheel_sha256": "72ebfcd3289347822b586fc985bd425f108c160d147723400548bb6a6ba43903",
+  "pyatb_executable": "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/pyatb",
+  "pyatb_executable_sha256": "4ed337c16dc398fd11e821500dc0a052d5842c85a8b0112de926e4c37f74e986",
+  "pyatb_install_direct_url": {
+    "archive_info": {
+      "hash": "sha256=8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03",
+      "hashes": {
+        "sha256": "8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03"
+      }
+    },
+    "url": "file:///home/james/scratch/forge-pyatb-wheel-20261019/repaired/pyatb-1.1.2.dev0%2B5f7e132-cp312-cp312-manylinux_2_39_x86_64.whl"
+  },
+  "pyatb_module": "/home/james/scratch/forge-pyatb-installed-20261019/venv/lib/python3.12/site-packages/pyatb/__init__.py",
+  "pyatb_wheel": "/home/james/scratch/forge-pyatb-wheel-20261019/repaired/pyatb-1.1.2.dev0+5f7e132-cp312-cp312-manylinux_2_39_x86_64.whl",
+  "pyatb_wheel_sha256": "8f39ec01bb35ba4a473f99e85a8bc30ddbcf04e8fffa3e8f0a21e683285e6f03",
+  "python": "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/python",
+  "tracks": {
+    "develop": {
+      "audit_events": 3,
+      "band_max_abs_diff_eV": 0.0,
+      "band_shape": [
+        6,
+        26
+      ],
+      "operations": {
+        "collect": {
+          "artifacts": 3,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "collect",
+              "--request",
+              "collect-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/develop",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [
+            {
+              "kind": "reported",
+              "name": "band_gap",
+              "source_artifact_id": "artifact-efecf1e41205",
+              "unit": "eV",
+              "value": 0.5348
+            }
+          ],
+          "operation_id": "8c71cc7e-c060-4028-836d-ccb53c045576",
+          "status": {
+            "collection": "complete",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          }
+        },
+        "execute": {
+          "artifacts": 2,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "execute",
+              "--request",
+              "execute-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/develop",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [
+            {
+              "kind": "runtime",
+              "name": "returncode",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 0
+            },
+            {
+              "kind": "runtime",
+              "name": "omp_threads",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 1
+            }
+          ],
+          "operation_id": "17050946-d692-4e12-a9c5-b05d84596780",
+          "status": {
+            "collection": "not_collected",
+            "execution": "completed",
+            "scientific": "unassessed"
+          }
+        },
+        "prepare": {
+          "artifacts": 7,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "prepare",
+              "--request",
+              "prepare-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/develop",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [],
+          "operation_id": "9cdda650-21eb-4b1f-9f0e-a8ba1e10426c",
+          "status": {
+            "collection": "not_collected",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          }
+        }
+      },
+      "source_sha256": {
+        "STRU": "363e2ff2171fbcbbecf09e872ca9f0567c8f80cb476bd0f86e71e7ae9d2ff0d0",
+        "hrs1_nao.csr": "8733d47dd6a24b2cdcddd88ce998c8eb61e8b8f035add425b6b7e03c3828a311",
+        "rr.csr": "3c3a1a6b86f7d1a659007b1841dde9a6214c4ccf57f7b1b541334ff26e2e3a95",
+        "sr_nao.csr": "08cd467b09893fd1544a17e01652f201b28225ecd29c9de0409b1c25cbc98d9b"
+      },
+      "source_unchanged": true
+    },
+    "lts": {
+      "audit_events": 3,
+      "band_max_abs_diff_eV": 0.0,
+      "band_shape": [
+        6,
+        26
+      ],
+      "operations": {
+        "collect": {
+          "artifacts": 3,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "collect",
+              "--request",
+              "collect-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/lts",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [
+            {
+              "kind": "reported",
+              "name": "band_gap",
+              "source_artifact_id": "artifact-efecf1e41205",
+              "unit": "eV",
+              "value": 0.5348
+            }
+          ],
+          "operation_id": "aa8a17d6-88a5-4075-adc4-3bf5e2d806f3",
+          "status": {
+            "collection": "complete",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          }
+        },
+        "execute": {
+          "artifacts": 2,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "execute",
+              "--request",
+              "execute-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/lts",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [
+            {
+              "kind": "runtime",
+              "name": "returncode",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 0
+            },
+            {
+              "kind": "runtime",
+              "name": "omp_threads",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 1
+            }
+          ],
+          "operation_id": "77694753-c708-4c9f-ab8f-a79c2c13119f",
+          "status": {
+            "collection": "not_collected",
+            "execution": "completed",
+            "scientific": "unassessed"
+          }
+        },
+        "prepare": {
+          "artifacts": 7,
+          "invocation": {
+            "command": [
+              "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/abacus-forge",
+              "operation",
+              "prepare",
+              "--request",
+              "prepare-request.json"
+            ],
+            "cwd": "/home/james/scratch/forge-pyatb-installed-20261019/relocated/output/lts",
+            "pythonpath_unset": true,
+            "returncode": 0
+          },
+          "metrics": [],
+          "operation_id": "a135e29b-0192-4d4b-be47-455cfb6805ea",
+          "status": {
+            "collection": "not_collected",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          }
+        }
+      },
+      "source_sha256": {
+        "STRU": "363e2ff2171fbcbbecf09e872ca9f0567c8f80cb476bd0f86e71e7ae9d2ff0d0",
+        "data-HR-sparse_SPIN0.csr": "5f187455960a3c7ed2d3c7b68492e0e666799dad356c889db68d8e37d86a3ff6",
+        "data-SR-sparse_SPIN0.csr": "15ed7bae1fb95a65d038c96a3ded39911cc1ccdafc0dd4ba672ca99c8bc9893a",
+        "data-rR-sparse.csr": "8cfbc0b88ab08510c4965aca723cd156e9f9cae4bf50c9b027765baa4f69d929"
+      },
+      "source_unchanged": true
+    }
+  }
+}

@@ -4,7 +4,7 @@
 
 ## 当前工作入口
 
-当前优先闭合完整 PyATB 候选的安装态 develop/LTS 消费，再交接 Paimon v1.3 W3，见[主线下一切片](plans/2026-09-13-forge-engine-version-policy.md#返回-forge-主线下一执行切片)。PyATB 本地 `sidereus-adam@5f7e132` 的源码修复与 77 项回归已完成，上游 PR #36–#38 已提交；完整候选 wheel 安装消费仍开放。历史交接见[集成基线](evidence/2026-10-19-forge-pyatb-sidereus-baseline.md)。
+完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。下一步沿[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#p1把通过的组合交给-paimon-v13)推进 Paimon 显式 SCF 矩阵输出/readiness 交接与 W3 匹配环境；默认策略、其它平台和发布仍开放。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
@@ -17,7 +17,7 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | 工作 | 状态和入口 |
 | --- | --- |
 | 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，已合入本地 main；保留公开行为与默认依赖，可废弃项单列。 |
-| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。当前 wheel + 发布 parser 的指定 PW/nspin=1 八格真实双轨 parity 已补齐，见 [10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；更多配置及双轨 PyATB 交接仍开放。 |
+| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。当前 wheel + 发布 parser 的指定 PW/nspin=1 八格真实双轨 parity 已补齐，见 [10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；PyATB 指定两轨 Si/nspin=1 的完整包消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)；更多配置与上层交接仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 

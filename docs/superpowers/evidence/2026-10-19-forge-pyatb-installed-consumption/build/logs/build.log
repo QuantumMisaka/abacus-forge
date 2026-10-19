@@ -1,0 +1,406 @@
+* Getting build dependencies for wheel...
+* Building wheel...
+running bdist_wheel
+running build
+running build_py
+creating build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/_typing.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/init_tb.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/constants.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/parallel.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/main.py -> build/lib.linux-x86_64-cpython-312/pyatb
+copying src/pyatb/timer.py -> build/lib.linux-x86_64-cpython-312/pyatb
+creating build/lib.linux-x86_64-cpython-312/pyatb/tools
+copying src/pyatb/tools/band.py -> build/lib.linux-x86_64-cpython-312/pyatb/tools
+copying src/pyatb/tools/dosplot.py -> build/lib.linux-x86_64-cpython-312/pyatb/tools
+copying src/pyatb/tools/smearing.py -> build/lib.linux-x86_64-cpython-312/pyatb/tools
+copying src/pyatb/tools/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/tools
+copying src/pyatb/tools/plot_utils.py -> build/lib.linux-x86_64-cpython-312/pyatb/tools
+creating build/lib.linux-x86_64-cpython-312/pyatb/integration
+copying src/pyatb/integration/grid_integrate_3d.py -> build/lib.linux-x86_64-cpython-312/pyatb/integration
+copying src/pyatb/integration/generator.py -> build/lib.linux-x86_64-cpython-312/pyatb/integration
+copying src/pyatb/integration/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/integration
+copying src/pyatb/integration/adaptive_integral.py -> build/lib.linux-x86_64-cpython-312/pyatb/integration
+creating build/lib.linux-x86_64-cpython-312/pyatb/tb
+copying src/pyatb/tb/solver.py -> build/lib.linux-x86_64-cpython-312/pyatb/tb
+copying src/pyatb/tb/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/tb
+copying src/pyatb/tb/tb.py -> build/lib.linux-x86_64-cpython-312/pyatb/tb
+copying src/pyatb/tb/multixr.py -> build/lib.linux-x86_64-cpython-312/pyatb/tb
+creating build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/bandunfolding.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/fermi_surface.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/surface_state.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/reduce_basis_check.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/find_nodes.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/band_structure.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/orbital_selection.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/bandunfolding_spin_texture.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/pdos.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/fat_band.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/cohp.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/surface_state_old_version.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/jdos.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/spin_texture.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+copying src/pyatb/fermi/fermi_energy.py -> build/lib.linux-x86_64-cpython-312/pyatb/fermi
+creating build/lib.linux-x86_64-cpython-312/pyatb/kpt
+copying src/pyatb/kpt/kpoint_tools.py -> build/lib.linux-x86_64-cpython-312/pyatb/kpt
+copying src/pyatb/kpt/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/kpt
+copying src/pyatb/kpt/kpoint_generator.py -> build/lib.linux-x86_64-cpython-312/pyatb/kpt
+creating build/lib.linux-x86_64-cpython-312/pyatb/transport
+copying src/pyatb/transport/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/transport
+copying src/pyatb/transport/boltz_transport.py -> build/lib.linux-x86_64-cpython-312/pyatb/transport
+creating build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/abacus_read_xr.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/input.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/abacus_read_stru.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/wannier90_read_tb.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+copying src/pyatb/io/default_input.py -> build/lib.linux-x86_64-cpython-312/pyatb/io
+creating build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_blocks.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_generator_legacy.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_generator.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_models.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_utils.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/input_parsers.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+copying src/pyatb/easy_use/stru_analyzer.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use
+creating build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/chirality.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/polarization.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/drude_weight.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/berry_curvature.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/shg.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/wilson_loop.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/berry_curvature_dipole.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/orbital_magnetization.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/pockels.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/optical_conductivity.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/second_order_static.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/cpge.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/anc.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/shift_current.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/chern_num.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/shc.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+copying src/pyatb/berry/ahc.py -> build/lib.linux-x86_64-cpython-312/pyatb/berry
+creating build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources
+copying src/pyatb/easy_use/sources/hamgnn.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources
+copying src/pyatb/easy_use/sources/base.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources
+copying src/pyatb/easy_use/sources/__init__.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources
+copying src/pyatb/easy_use/sources/abacus.py -> build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources
+running build_ext
+building 'pyatb.interface_python' extension
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/band_structure_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/band_structure_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/bandunfolding_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/bandunfolding_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/bandunfolding_solver.cpp: In member function ‘void bandunfolding_solver::output_spectral_weight(base_data&, const Eigen::MatrixXd&, const double&, const int&, const int&, const int&, Eigen::MatrixXd&, Eigen::MatrixXd&)’:
+src/cpp/core/bandunfolding_solver.cpp:43:9: warning: unused variable ‘atom_type’ [-Wunused-variable]
+   43 |     int atom_type = Base_Data.atom.size();
+      |         ^~~~~~~~~
+src/cpp/core/bandunfolding_solver.cpp: In member function ‘void bandunfolding_solver::output_spectral_weight_of_spin_texture(base_data&, const Eigen::MatrixXd&, const double&, const int&, const int&, const int&, Eigen::MatrixXd&, Eigen::MatrixXd&, Eigen::MatrixXd&, Eigen::MatrixXd&, Eigen::MatrixXd&)’:
+src/cpp/core/bandunfolding_solver.cpp:184:9: warning: unused variable ‘atom_type’ [-Wunused-variable]
+  184 |     int atom_type = Base_Data.atom.size();
+      |         ^~~~~~~~~
+src/cpp/core/bandunfolding_solver.cpp: In member function ‘Eigen::MatrixXd bandunfolding_solver::generate_GVectors_pw(const double&)’:
+src/cpp/core/bandunfolding_solver.cpp:336:13: warning: unused variable ‘n7’ [-Wunused-variable]
+  336 |         int n7 = 0;
+      |             ^~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/base_data.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/base_data.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/berry_connection_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_connection_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/berry_curvature_dipole_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_curvature_dipole_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/berry_curvature_dipole_solver.cpp: In member function ‘Eigen::MatrixXd berry_curvature_dipole_solver::get_bcd(base_data&, const Eigen::MatrixXd&, const int&)’:
+src/cpp/core/berry_curvature_dipole_solver.cpp:23:9: warning: unused variable ‘basis_num’ [-Wunused-variable]
+   23 |     int basis_num = Base_Data.get_basis_num();
+      |         ^~~~~~~~~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/berry_curvature_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_curvature_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/berry_phase_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_phase_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/cell_atom.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/cell_atom.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/cell_atom.cpp: In member function ‘Eigen::MatrixXcd cell_atom::produce_local_basis_in_pw(const Eigen::Vector3d&, const Eigen::MatrixXd&)’:
+src/cpp/core/cell_atom.cpp:68:9: warning: unused variable ‘index’ [-Wunused-variable]
+   68 |     int index = 0;
+      |         ^~~~~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/linear_response.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/linear_response.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/math_integral.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/math_integral.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/math_sphbes.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/math_sphbes.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/optical_conductivity_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/optical_conductivity_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/pockels_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/pockels_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/pockels_solver.cpp: In member function ‘Eigen::MatrixXcd pockels_solver::get_pockels(base_data&, const Eigen::MatrixXd&, const int&)’:
+src/cpp/core/pockels_solver.cpp:27:9: warning: unused variable ‘basis_num’ [-Wunused-variable]
+   27 |     int basis_num = Base_Data.get_basis_num();
+      |         ^~~~~~~~~
+src/cpp/core/pockels_solver.cpp: In member function ‘Eigen::MatrixXcd pockels_solver::get_pockels_ik(base_data&, const Eigen::VectorXcd&)’:
+src/cpp/core/pockels_solver.cpp:198:33: warning: variable ‘s1’ set but not used [-Wunused-but-set-variable]
+  198 |                 complex<double> s1 = -(omega1)/omegas;
+      |                                 ^~
+src/cpp/core/pockels_solver.cpp:199:33: warning: variable ‘s2’ set but not used [-Wunused-but-set-variable]
+  199 |                 complex<double> s2 = (omega2)/omegas;
+      |                                 ^~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/second_harmonic_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/second_harmonic_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/second_harmonic_solver.cpp: In member function ‘Eigen::MatrixXcd second_harmonic_solver::get_second_harmonic(base_data&, const Eigen::MatrixXd&, const int&, const float&)’:
+src/cpp/core/second_harmonic_solver.cpp:28:9: warning: unused variable ‘basis_num’ [-Wunused-variable]
+   28 |     int basis_num = Base_Data.get_basis_num();
+      |         ^~~~~~~~~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/second_order_static_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/second_order_static_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/second_order_static_solver.cpp: In member function ‘Eigen::MatrixXcd second_order_static_solver::get_second_order_static(base_data&, const Eigen::MatrixXd&, const int&, const float&)’:
+src/cpp/core/second_order_static_solver.cpp:14:9: warning: unused variable ‘basis_num’ [-Wunused-variable]
+   14 |     int basis_num = Base_Data.get_basis_num();
+      |         ^~~~~~~~~
+src/cpp/core/second_order_static_solver.cpp: In member function ‘Eigen::MatrixXcd second_order_static_solver::get_static_ik(base_data&, const Eigen::VectorXcd&, const float&)’:
+src/cpp/core/second_order_static_solver.cpp:102:18: warning: unused variable ‘eta’ [-Wunused-variable]
+  102 |     const double eta = 0.05;
+      |                  ^~~
+src/cpp/core/second_order_static_solver.cpp:103:18: warning: unused variable ‘range’ [-Wunused-variable]
+  103 |     const double range = 2;
+      |                  ^~~~~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/shift_current_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/shift_current_solver.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/shift_current_solver.cpp: In member function ‘Eigen::MatrixXd shift_current_solver::get_shift_current_conductivity(base_data&, const Eigen::MatrixXd&, const int&, const int&, const int&)’:
+src/cpp/core/shift_current_solver.cpp:45:9: warning: unused variable ‘basis_num’ [-Wunused-variable]
+   45 |     int basis_num = Base_Data.get_basis_num();
+      |         ^~~~~~~~~
+src/cpp/core/shift_current_solver.cpp: In member function ‘Eigen::MatrixXd shift_current_solver::get_shift_current_conductivity_ik(base_data&, const Eigen::VectorXcd&, const int&, const int&)’:
+src/cpp/core/shift_current_solver.cpp:162:13: warning: unused variable ‘interval’ [-Wunused-variable]
+  162 |         int interval = int(5 * eta / domega);
+      |             ^~~~~~~~
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/surface_green_iter.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/surface_green_iter.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/tools.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/tools.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/velocity_solver.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/velocity_solver.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/core/xr_operation.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/core/xr_operation.o -fvisibility=hidden -g0 -fopenmp
+src/cpp/core/xr_operation.cpp: In static member function ‘static void xr_operation::Fourier_R_to_k_SurfaceState_bulk_Xk(base_data&, const int&, const Eigen::MatrixXd&, const int&, std::vector<Eigen::Matrix<std::complex<double>, -1, -1> >&, const Eigen::MatrixXcd&)’:
+src/cpp/core/xr_operation.cpp:385:46: warning: ‘a’ may be used uninitialized [-Wmaybe-uninitialized]
+  385 |                     double kR = k_direct_coor(ik, a) *  temp_R_direct_coor(i, a) + k_direct_coor(ik, b) *  temp_R_direct_coor(i, b);
+      |                                 ~~~~~~~~~~~~~^~~~~~~
+src/cpp/core/xr_operation.cpp:359:9: note: ‘a’ was declared here
+  359 |     int a, b;
+      |         ^
+src/cpp/core/xr_operation.cpp:385:97: warning: ‘b’ may be used uninitialized [-Wmaybe-uninitialized]
+  385 |                     double kR = k_direct_coor(ik, a) *  temp_R_direct_coor(i, a) + k_direct_coor(ik, b) *  temp_R_direct_coor(i, b);
+      |                                                                                    ~~~~~~~~~~~~~^~~~~~~
+src/cpp/core/xr_operation.cpp:359:12: note: ‘b’ was declared here
+  359 |     int a, b;
+      |            ^
+src/cpp/core/xr_operation.cpp: In static member function ‘static void xr_operation::Fourier_R_to_k_SurfaceState_bulk_Xk_1k(base_data&, const int&, const Eigen::VectorXd&, const int&, std::vector<Eigen::Matrix<std::complex<double>, -1, 1> >&, const Eigen::MatrixXcd&)’:
+src/cpp/core/xr_operation.cpp:504:67: warning: ‘a’ may be used uninitialized [-Wmaybe-uninitialized]
+  504 |                 double kR = k_direct_coor(a) *  temp_R_direct_coor(i, a) + k_direct_coor(b) *  temp_R_direct_coor(i, b);
+      |                                                 ~~~~~~~~~~~~~~~~~~^~~~~~
+src/cpp/core/xr_operation.cpp:480:9: note: ‘a’ was declared here
+  480 |     int a, b;
+      |         ^
+In file included from eigen/Eigen/Core:277,
+                 from eigen/Eigen/Dense:1,
+                 from eigen/Eigen/Eigen:1,
+                 from src/cpp/core/use_eigen.h:12,
+                 from src/cpp/core/tools.h:5,
+                 from src/cpp/core/base_data.h:7,
+                 from src/cpp/core/xr_operation.h:4,
+                 from src/cpp/core/xr_operation.cpp:1:
+In member function ‘Eigen::internal::evaluator<Eigen::PlainObjectBase<Derived> >::CoeffReturnType Eigen::internal::evaluator<Eigen::PlainObjectBase<Derived> >::coeff(Eigen::Index) const [with Derived = Eigen::Matrix<double, -1, 1>]’,
+    inlined from ‘Eigen::DenseCoeffsBase<Derived, 0>::CoeffReturnType Eigen::DenseCoeffsBase<Derived, 0>::coeff(Eigen::Index) const [with Derived = Eigen::Matrix<double, -1, 1>]’ at eigen/Eigen/src/Core/DenseCoeffsBase.h:145:59,
+    inlined from ‘Eigen::DenseCoeffsBase<Derived, 0>::CoeffReturnType Eigen::DenseCoeffsBase<Derived, 0>::operator()(Eigen::Index) const [with Derived = Eigen::Matrix<double, -1, 1>]’ at eigen/Eigen/src/Core/DenseCoeffsBase.h:182:19,
+    inlined from ‘static void xr_operation::Fourier_R_to_k_SurfaceState_bulk_Xk_1k(base_data&, const int&, const Eigen::VectorXd&, const int&, std::vector<Eigen::Matrix<std::complex<double>, -1, 1> >&, const Eigen::MatrixXcd&)’ at src/cpp/core/xr_operation.cpp:504:89:
+eigen/Eigen/src/Core/CoreEvaluators.h:213:21: warning: ‘b’ may be used uninitialized [-Wmaybe-uninitialized]
+  213 |     return m_d.data[index];
+      |                     ^~~~~
+src/cpp/core/xr_operation.cpp: In static member function ‘static void xr_operation::Fourier_R_to_k_SurfaceState_bulk_Xk_1k(base_data&, const int&, const Eigen::VectorXd&, const int&, std::vector<Eigen::Matrix<std::complex<double>, -1, 1> >&, const Eigen::MatrixXcd&)’:
+src/cpp/core/xr_operation.cpp:480:12: note: ‘b’ was declared here
+  480 |     int a, b;
+      |            ^
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -Isrc/cpp/core -Isrc/cpp/interface_python -Ieigen -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/lib/python3.12/site-packages/pybind11/include -I/home/james/scratch/forge-pyatb-wheel-20261019/build-venv/include -I/home/james/apps/miniforge3/envs/abacus-env/include/python3.12 -c src/cpp/interface_python/interface_python.cpp -o build/temp.linux-x86_64-cpython-312/src/cpp/interface_python/interface_python.o -fvisibility=hidden -g0 -fopenmp
+g++ -pthread -B /home/james/apps/miniforge3/envs/abacus-env/compiler_compat -fno-strict-overflow -Wsign-compare -DNDEBUG -O2 -Wall -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -fPIC -O2 -isystem /home/james/apps/miniforge3/envs/abacus-env/include -shared -Wl,-rpath,/home/james/apps/miniforge3/envs/abacus-env/lib -Wl,-rpath-link,/home/james/apps/miniforge3/envs/abacus-env/lib -L/home/james/apps/miniforge3/envs/abacus-env/lib -Wl,-rpath,/home/james/apps/miniforge3/envs/abacus-env/lib -Wl,-rpath-link,/home/james/apps/miniforge3/envs/abacus-env/lib -L/home/james/apps/miniforge3/envs/abacus-env/lib -L/home/james/scratch/forge-pyatb-wheel-20261019/linklib build/temp.linux-x86_64-cpython-312/src/cpp/core/band_structure_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/bandunfolding_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/base_data.o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_connection_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_curvature_dipole_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_curvature_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/berry_phase_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/cell_atom.o build/temp.linux-x86_64-cpython-312/src/cpp/core/linear_response.o build/temp.linux-x86_64-cpython-312/src/cpp/core/math_integral.o build/temp.linux-x86_64-cpython-312/src/cpp/core/math_sphbes.o build/temp.linux-x86_64-cpython-312/src/cpp/core/optical_conductivity_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/pockels_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/second_harmonic_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/second_order_static_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/shift_current_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/surface_green_iter.o build/temp.linux-x86_64-cpython-312/src/cpp/core/tools.o build/temp.linux-x86_64-cpython-312/src/cpp/core/velocity_solver.o build/temp.linux-x86_64-cpython-312/src/cpp/core/xr_operation.o build/temp.linux-x86_64-cpython-312/src/cpp/interface_python/interface_python.o -lopenblas -llapacke -o build/lib.linux-x86_64-cpython-312/pyatb/interface_python.cpython-312-x86_64-linux-gnu.so -lgomp
+installing to build/bdist.linux-x86_64/wheel
+running install
+running install_lib
+creating build/bdist.linux-x86_64/wheel
+creating build/bdist.linux-x86_64/wheel/pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/tools/band.py -> build/bdist.linux-x86_64/wheel/./pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/tools/dosplot.py -> build/bdist.linux-x86_64/wheel/./pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/tools/smearing.py -> build/bdist.linux-x86_64/wheel/./pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/tools/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/tools/plot_utils.py -> build/bdist.linux-x86_64/wheel/./pyatb/tools
+copying build/lib.linux-x86_64-cpython-312/pyatb/_typing.py -> build/bdist.linux-x86_64/wheel/./pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/integration
+copying build/lib.linux-x86_64-cpython-312/pyatb/integration/grid_integrate_3d.py -> build/bdist.linux-x86_64/wheel/./pyatb/integration
+copying build/lib.linux-x86_64-cpython-312/pyatb/integration/generator.py -> build/bdist.linux-x86_64/wheel/./pyatb/integration
+copying build/lib.linux-x86_64-cpython-312/pyatb/integration/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/integration
+copying build/lib.linux-x86_64-cpython-312/pyatb/integration/adaptive_integral.py -> build/bdist.linux-x86_64/wheel/./pyatb/integration
+copying build/lib.linux-x86_64-cpython-312/pyatb/init_tb.py -> build/bdist.linux-x86_64/wheel/./pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/tb
+copying build/lib.linux-x86_64-cpython-312/pyatb/tb/solver.py -> build/bdist.linux-x86_64/wheel/./pyatb/tb
+copying build/lib.linux-x86_64-cpython-312/pyatb/tb/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/tb
+copying build/lib.linux-x86_64-cpython-312/pyatb/tb/tb.py -> build/bdist.linux-x86_64/wheel/./pyatb/tb
+copying build/lib.linux-x86_64-cpython-312/pyatb/tb/multixr.py -> build/bdist.linux-x86_64/wheel/./pyatb/tb
+copying build/lib.linux-x86_64-cpython-312/pyatb/constants.py -> build/bdist.linux-x86_64/wheel/./pyatb
+copying build/lib.linux-x86_64-cpython-312/pyatb/parallel.py -> build/bdist.linux-x86_64/wheel/./pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/bandunfolding.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/fermi_surface.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/surface_state.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/reduce_basis_check.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/find_nodes.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/band_structure.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/orbital_selection.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/bandunfolding_spin_texture.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/pdos.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/fat_band.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/cohp.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/surface_state_old_version.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/jdos.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/spin_texture.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/fermi/fermi_energy.py -> build/bdist.linux-x86_64/wheel/./pyatb/fermi
+copying build/lib.linux-x86_64-cpython-312/pyatb/interface_python.cpython-312-x86_64-linux-gnu.so -> build/bdist.linux-x86_64/wheel/./pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/kpt
+copying build/lib.linux-x86_64-cpython-312/pyatb/kpt/kpoint_tools.py -> build/bdist.linux-x86_64/wheel/./pyatb/kpt
+copying build/lib.linux-x86_64-cpython-312/pyatb/kpt/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/kpt
+copying build/lib.linux-x86_64-cpython-312/pyatb/kpt/kpoint_generator.py -> build/bdist.linux-x86_64/wheel/./pyatb/kpt
+creating build/bdist.linux-x86_64/wheel/pyatb/transport
+copying build/lib.linux-x86_64-cpython-312/pyatb/transport/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/transport
+copying build/lib.linux-x86_64-cpython-312/pyatb/transport/boltz_transport.py -> build/bdist.linux-x86_64/wheel/./pyatb/transport
+copying build/lib.linux-x86_64-cpython-312/pyatb/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb
+copying build/lib.linux-x86_64-cpython-312/pyatb/main.py -> build/bdist.linux-x86_64/wheel/./pyatb
+copying build/lib.linux-x86_64-cpython-312/pyatb/timer.py -> build/bdist.linux-x86_64/wheel/./pyatb
+creating build/bdist.linux-x86_64/wheel/pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/abacus_read_xr.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/input.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/abacus_read_stru.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/wannier90_read_tb.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+copying build/lib.linux-x86_64-cpython-312/pyatb/io/default_input.py -> build/bdist.linux-x86_64/wheel/./pyatb/io
+creating build/bdist.linux-x86_64/wheel/pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_blocks.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+creating build/bdist.linux-x86_64/wheel/pyatb/easy_use/sources
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources/hamgnn.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use/sources
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources/base.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use/sources
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use/sources
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/sources/abacus.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use/sources
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_generator_legacy.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_generator.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_models.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_utils.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/input_parsers.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+copying build/lib.linux-x86_64-cpython-312/pyatb/easy_use/stru_analyzer.py -> build/bdist.linux-x86_64/wheel/./pyatb/easy_use
+creating build/bdist.linux-x86_64/wheel/pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/chirality.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/polarization.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/drude_weight.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/berry_curvature.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/shg.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/wilson_loop.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/berry_curvature_dipole.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/orbital_magnetization.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/__init__.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/pockels.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/optical_conductivity.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/second_order_static.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/cpge.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/anc.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/shift_current.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/chern_num.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/shc.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+copying build/lib.linux-x86_64-cpython-312/pyatb/berry/ahc.py -> build/bdist.linux-x86_64/wheel/./pyatb/berry
+running install_egg_info
+running egg_info
+creating src/pyatb.egg-info
+writing src/pyatb.egg-info/PKG-INFO
+writing dependency_links to src/pyatb.egg-info/dependency_links.txt
+writing entry points to src/pyatb.egg-info/entry_points.txt
+writing requirements to src/pyatb.egg-info/requires.txt
+writing top-level names to src/pyatb.egg-info/top_level.txt
+writing manifest file 'src/pyatb.egg-info/SOURCES.txt'
+reading manifest file 'src/pyatb.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'src/pyatb.egg-info/SOURCES.txt'
+Copying src/pyatb.egg-info to build/bdist.linux-x86_64/wheel/./pyatb-1.1.2.dev0+5f7e132-py3.12.egg-info
+running install_scripts
+creating build/bdist.linux-x86_64/wheel/pyatb-1.1.2.dev0+5f7e132.dist-info/WHEEL
+creating '/home/james/scratch/forge-pyatb-wheel-20261019/dist/.tmp-8amvmf6c/pyatb-1.1.2.dev0+5f7e132-cp312-cp312-linux_x86_64.whl' and adding 'build/bdist.linux-x86_64/wheel' to it
+adding 'pyatb/__init__.py'
+adding 'pyatb/_typing.py'
+adding 'pyatb/constants.py'
+adding 'pyatb/init_tb.py'
+adding 'pyatb/interface_python.cpython-312-x86_64-linux-gnu.so'
+adding 'pyatb/main.py'
+adding 'pyatb/parallel.py'
+adding 'pyatb/timer.py'
+adding 'pyatb/berry/__init__.py'
+adding 'pyatb/berry/ahc.py'
+adding 'pyatb/berry/anc.py'
+adding 'pyatb/berry/berry_curvature.py'
+adding 'pyatb/berry/berry_curvature_dipole.py'
+adding 'pyatb/berry/chern_num.py'
+adding 'pyatb/berry/chirality.py'
+adding 'pyatb/berry/cpge.py'
+adding 'pyatb/berry/drude_weight.py'
+adding 'pyatb/berry/optical_conductivity.py'
+adding 'pyatb/berry/orbital_magnetization.py'
+adding 'pyatb/berry/pockels.py'
+adding 'pyatb/berry/polarization.py'
+adding 'pyatb/berry/second_order_static.py'
+adding 'pyatb/berry/shc.py'
+adding 'pyatb/berry/shg.py'
+adding 'pyatb/berry/shift_current.py'
+adding 'pyatb/berry/wilson_loop.py'
+adding 'pyatb/easy_use/__init__.py'
+adding 'pyatb/easy_use/input_blocks.py'
+adding 'pyatb/easy_use/input_generator.py'
+adding 'pyatb/easy_use/input_generator_legacy.py'
+adding 'pyatb/easy_use/input_models.py'
+adding 'pyatb/easy_use/input_parsers.py'
+adding 'pyatb/easy_use/input_utils.py'
+adding 'pyatb/easy_use/stru_analyzer.py'
+adding 'pyatb/easy_use/sources/__init__.py'
+adding 'pyatb/easy_use/sources/abacus.py'
+adding 'pyatb/easy_use/sources/base.py'
+adding 'pyatb/easy_use/sources/hamgnn.py'
+adding 'pyatb/fermi/__init__.py'
+adding 'pyatb/fermi/band_structure.py'
+adding 'pyatb/fermi/bandunfolding.py'
+adding 'pyatb/fermi/bandunfolding_spin_texture.py'
+adding 'pyatb/fermi/cohp.py'
+adding 'pyatb/fermi/fat_band.py'
+adding 'pyatb/fermi/fermi_energy.py'
+adding 'pyatb/fermi/fermi_surface.py'
+adding 'pyatb/fermi/find_nodes.py'
+adding 'pyatb/fermi/jdos.py'
+adding 'pyatb/fermi/orbital_selection.py'
+adding 'pyatb/fermi/pdos.py'
+adding 'pyatb/fermi/reduce_basis_check.py'
+adding 'pyatb/fermi/spin_texture.py'
+adding 'pyatb/fermi/surface_state.py'
+adding 'pyatb/fermi/surface_state_old_version.py'
+adding 'pyatb/integration/__init__.py'
+adding 'pyatb/integration/adaptive_integral.py'
+adding 'pyatb/integration/generator.py'
+adding 'pyatb/integration/grid_integrate_3d.py'
+adding 'pyatb/io/__init__.py'
+adding 'pyatb/io/abacus_read_stru.py'
+adding 'pyatb/io/abacus_read_xr.py'
+adding 'pyatb/io/default_input.py'
+adding 'pyatb/io/input.py'
+adding 'pyatb/io/wannier90_read_tb.py'
+adding 'pyatb/kpt/__init__.py'
+adding 'pyatb/kpt/kpoint_generator.py'
+adding 'pyatb/kpt/kpoint_tools.py'
+adding 'pyatb/tb/__init__.py'
+adding 'pyatb/tb/multixr.py'
+adding 'pyatb/tb/solver.py'
+adding 'pyatb/tb/tb.py'
+adding 'pyatb/tools/__init__.py'
+adding 'pyatb/tools/band.py'
+adding 'pyatb/tools/dosplot.py'
+adding 'pyatb/tools/plot_utils.py'
+adding 'pyatb/tools/smearing.py'
+adding 'pyatb/transport/__init__.py'
+adding 'pyatb/transport/boltz_transport.py'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/licenses/LICENSE'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/METADATA'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/WHEEL'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/entry_points.txt'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/top_level.txt'
+adding 'pyatb-1.1.2.dev0+5f7e132.dist-info/RECORD'
+removing build/bdist.linux-x86_64/wheel
+WARNING Normalizing '1.1.2.dev+5f7e132' to '1.1.2.dev0+5f7e132'
+Successfully built pyatb-1.1.2.dev0+5f7e132-cp312-cp312-linux_x86_64.whl
