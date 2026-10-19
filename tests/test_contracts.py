@@ -563,7 +563,13 @@ def test_atst_neb_requests_round_trip_strictly() -> None:
             type(request).from_dict({**payload, "unknown": True})
 
 
-def test_atst_neb_defaults_match_atst_tools_224() -> None:
+def test_atst_neb_defaults_match_atst_tools_230() -> None:
+    """ATST 2.3.0 keeps the adapter defaults: n_images=5, check_input=120, vib_thr=0.10.
+
+    Re-checked against the atst-tools 2.3.0 source (``reverse_config.n_images``,
+    ``api.models.check_input_timeout``, and the ``neb post --vib-thr`` default)
+    when the adapter defaults were re-verified for ATST 2.3.0.
+    """
     from abacus_forge.contracts import AtstNebExecuteRequest, AtstNebPostprocessRequest, AtstNebPrepareRequest
 
     prepare = AtstNebPrepareRequest(operation_id=OPERATION_ID, workspace_rel=".", init_structure_path_rel="a.cif", final_structure_path_rel="b.cif")
