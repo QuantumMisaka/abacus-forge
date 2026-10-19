@@ -130,3 +130,7 @@ Paimon v1.3 迁移完成。
 ## 2026-10-19 PyATB 修复候选接续
 
 用户授权继续后，在 PyATB 独立分支修复 H/S reader 和 ABACUS 输入 R 并集对齐。39 项测试通过，复用前轮两轨矩阵，安装态 Forge 的 prepare/execute/collect 均通过；未重跑 ABACUS。候选运行使用源码与已有 native extension，尚非新 wheel。已安装旧包不变，下一步为 PyATB 候选构建验收与消费版本绑定；本地源码候选验收不替代发布组合门，详见上述候选验收。
+
+## 2026-10-19：用户指定 PyATB sidereus-adam 集成基线
+
+CSR 修复已合入本地 `sidereus-adam@dad27b5`；完整 47 项测试和 develop/LTS Si 矩阵回放通过。新 wheel 与安装消费绑定仍开放。COHP 差距由 PyATB 独立修复，不改变 Forge IAO 契约；详见[集成记录](../evidence/2026-10-19-forge-pyatb-sidereus-baseline.md)。

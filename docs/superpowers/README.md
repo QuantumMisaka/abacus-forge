@@ -4,7 +4,7 @@
 
 ## 当前工作入口
 
-PyATB 本地 CSR 修复候选已通过两轨 Si/nspin=1 消费；新 wheel 构建/发布与消费版本绑定仍待完成，见[候选验收](evidence/2026-10-19-forge-pyatb-reader-closure.md)。
+PyATB CSR 修复已集成本地 `sidereus-adam@dad27b5`，47 项测试与两轨 Si/nspin=1 消费通过；新 wheel 构建/发布与消费版本绑定仍待完成，见[集成基线与 COHP 差距](evidence/2026-10-19-forge-pyatb-sidereus-baseline.md)。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
