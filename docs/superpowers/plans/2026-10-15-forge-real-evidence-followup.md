@@ -4,7 +4,7 @@
 
 规范依据：[COHP W1](../specs/2026-10-15-forge-cohp-postprocess-design.md)、[Stage 5](2026-09-13-forge-stage5-evidence-gates.md)、[版本政策](2026-09-13-forge-engine-version-policy.md)和[ATST adapter](2026-09-09-forge-atst-neb-adapter.md)。保持单 operation、显式产物与追加审计契约；外层验收脚本拥有运行顺序和站点设置。
 
-2026-10-19 状态接续：本页的发布包查询保留 10-15 历史事实；`abacuslite==1.2.0` 已完成 [exact extra 与安装态验收](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)，不再等待首次发布。ATST 2.3.0 当前仅完成 adapter 默认值源码复核，真实 NEB 证据仍绑定 2.2.8。
+2026-10-19 状态接续：本页的发布包查询保留 10-15 历史事实；`abacuslite==1.2.0` 已完成 [exact extra 与安装态验收](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)，不再等待首次发布。ATST 2.3.0 已完成[安装态 CLI 与上游真实轨迹消费回放](../evidence/2026-10-19-forge-atst-upstream-replay.md)，按用户决定不默认重复上游 NEB；本页原始新算证据仍绑定 2.2.8。
 
 ## 交付清单
 
