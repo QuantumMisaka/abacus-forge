@@ -114,7 +114,7 @@ Ownership：`tests/conftest.py`、`tests/test_architecture.py`、上述两个测
 
 - `suppress_legacy_events` 无本仓调用，但有可观察的 prepare/modify 事件抑制行为；`claim_v1_operation` 是少量代码的兼容转发。保留两者，避免用接口破坏换取有限的行数减少。
 - `dpdata` 在 Forge 生产源码未发现静态/动态使用，上层有真实使用。Paimon v1.2 的 abacustest 安装链与依赖声明不能证明 v1.3 W3 已独立承接它。已核对 W3 报告中的 Forge wheel 等解析入口和历史 clean-route lock；锁中存在 dpdata 只能证明该历史环境安装了它，不能证明依赖所有权或当前 kit 安装闭合。
-- Ruling：下一批优先解决 dpdata 的安装责任与候选验证，再决定 Forge 默认依赖调整；matplotlib/pymatgen 的 extra 拆分须有明确使用需求 — 当前绘图默认值和结构元数据会受影响 — 静默拆分会改变用户安装后的能力。
+- 后继裁决（2026-10-19）：用户明确保留 dpdata 默认依赖，取消此前优先调查移除的待办；此前调查结论作为历史事实保留。matplotlib/pymatgen 的 extra 拆分须有明确使用需求 — 当前绘图默认值和结构元数据会受影响 — 静默拆分会改变用户安装后的能力。
 - 后续只变更三个文档的状态与调查结论，生产代码、测试和包声明保持冻结候选一致。
 
 ### 推送前收尾（用户确认继续，2026-10-13）

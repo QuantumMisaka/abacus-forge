@@ -4,13 +4,21 @@
 
 **Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-14 Stage 0 状态版本。
 
-**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。本轮已完成并集成 A/B；选定 real smoke 与完整双轨候选证据已记录，exact installable extra 与外部迁移仍未验收。
+**Authorization:** 用户在系统性审查后要求“进行收口”并以本 SPEC 推进 PLAN 与 subagent-driven development。当时完成并集成 A/B；后继包验收状态见下方 2026-10-19 更新，外部迁移保持独立。
 
 **Architecture:** 复用 collection 来源选择、共同事实提取与 typed 投影；只替换主日志电子标量/力/应力读取层。配置置于 service 实例，CLI 调用同一 service；error schema、final 候选、legacy surface 和 workspace 审计保持原契约。
 
 **Verification:** 默认离线 owning tests、API/CLI parity、schema/admission/event 回归；真实双轨与 extra 安装是分阶段显式验收。
 
-## 当前实施状态（2026-09-14）
+## 当前状态（2026-10-19）
+
+- 已完成：发布包 `abacuslite==1.2.0` exact extra、fresh venv 安装、四 capability 的安装态 fixture parity（16 passed）与缺包 fail-closed，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。该变更已由 `d8d1a74` 合入本地 main。
+- 仍开放：当前发布包绑定的 develop/LTS × SCF/relax/cell-relax/MD 八格真实引擎矩阵，以及适用的双轨 PyATB 交接证据。已有 checkout 或 fixture 对照不替代这些验证。
+- 外部迁移：Paimon 的完整依赖、Benchmark 与平台验收由 Paimon owning PLAN 维护，不阻止 Forge 已验证能力的独立交付。
+
+下方 09-14/10-15 的检查数量、缺包与未发布描述保留为历史快照；发布包阻塞以本节和 C 阶段勾选更新为准。
+
+## 历史实施状态（2026-09-14）
 
 本轮实现保留 native 默认，未修改 v1 request JSON、workspace schema、错误 envelope 字段、final-structure 候选或 legacy `collect()`。代码已从 subagent worktree 集成到 main：`6654001` 提供 Stage 0 backend/collector/service/CLI 实现，`cf5b2774283254c91d00f94bdee690bbfc3c9ae8` 修复 LocalRunner 绝对 `PATH` 预检语义；[Stage 0 evidence](../evidence/2026-09-14-forge-engine-version-policy-stage0.md) 绑定 canonical checkout parity 与离线回归结果。
 
@@ -83,8 +91,8 @@
 
 依赖 B 验收完成。职责文件：`pyproject.toml`、包安装/architecture owning tests、`tests/real_smoke/`、README 与新的候选 evidence。
 
-- [ ] 核验当时实际可安装的 canonical 发布包，选择已验证的 exact pin；源码 checkout 可用不代表 extra 已交付。
-- [ ] 默认 clean wheel 保持现有依赖集合；extra 在 fresh venv 执行四 capability fixture collect，验证显式选择与缺包失败。
+- [x] 2026-10-19 核验已发布 `abacuslite==1.2.0`，exact pin 与源码/发布物身份见上述 rebind 证据。
+- [x] 2026-10-19 默认依赖集合不变；extra 在 fresh venv 完成四 capability fixture collect、安装来源检查与缺包失败验证。
 - [x] package-contract regression 要求未来声明的 `abacuslite` extra 只能包含单一精确 `abacuslite==<version>`，并禁止进入默认依赖；在没有公开 release 时保持不声明 extra（`tests/test_package_contract.py`）。
 - [x] 候选 wheel 与源码的 Name/Version、完整 extra 集合及 abacuslite exact pin/extra 归属一致性已补强；合成漂移负例先失败后通过，并覆盖大小写不敏感 header 与合法折行 continuation，真实 wheel owning suites `17 passed`。见 Stage 1 package-gate evidence；不关闭 published package/fresh-extra 门。
 - [x] canonical checkout-backed native/abacuslite 数值矩阵已执行：`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 下 develop/LTS × `scf`/`relax`/`cell-relax`/`md` 八个单元均通过，结果与矩阵摘要见 review evidence 第 11 节；门禁要求的 executable SHA-256、track/basis/nspin 和 input identity 均已提供。该矩阵不替代 exact published package/fresh-extra 验收。

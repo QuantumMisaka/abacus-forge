@@ -37,7 +37,7 @@ COHP 的共同 NAO 输入、IAO 选择来源及局限见[方法溯源](docs/supe
 
 | 候选 | 调查结论与当前处置 | 下一步触发条件 |
 | --- | --- | --- |
-| 默认依赖 `dpdata` | **优先评估迁移，当前保留。** Forge 生产源码未检出引用；Paimon 的结构/轨迹工具直接使用。v1.3 历史 lock 包含它，但尚未证实上层安装声明独立承接该依赖。 | Paimon W3 明确直接专业依赖，验证当前候选的干净安装；Forge 完成移除依赖的候选安装/消费检查，并说明对其他安装消费者的影响。 |
+| 默认依赖 `dpdata` | **保留，不列为移除候选。** 2026-10-19 用户确认该库会持续用于 ABACUS 数据处理；当前默认依赖保持不变。 | 无移除任务；后续数据能力按具体需求复用。 |
 | `api.suppress_legacy_events` | **保留兼容行为，降低清理优先级。** 无本仓或已查上层调用；它仍是可导入的上下文管理器，仅抑制 prepare_unit/modify_unit 事件，退出后恢复状态，并非无行为的空接口。 | 出现实际迁移需求时，先核对外部用途并刻画事件抑制范围，再决定兼容窗口。 |
 | `Workspace.claim_v1_operation` | **保留轻量兼容别名。** 生产服务使用 operation_guard；三个 workspace 测试仍经别名保护 stale claim、owner token 和 tombstone 行为。 | 下次实质修改 admission 时核对外部使用；新行为测试优先覆盖 operation_guard，别名的兼容处置另行决定。 |
 | 科学功能依赖的 extra 拆分 | **维持默认安装。** ASE/NumPy 支撑核心结构与数据；matplotlib 被默认开启的 band/DOS 绘图使用；pymatgen 支撑标准化并影响 prepare 对称性元数据。 | 有明确分层安装需求时，设计默认能力与降级语义，验证各安装组合；仅延迟 import 不足以支持改为 extra。 |

@@ -6,6 +6,8 @@
 
 首轮源码已交付至新仓 `main`，实现提交 `e984c44`。[包 CI](https://github.com/QuantumMisaka/abacuslite/actions/runs/38855256056) 的 Python 3.10/3.12 环境均通过 wheel 与 sdist 重建安装验证，每组 97 通过、11 跳过；跳过包括 9 个真实引擎用例及 2 个上游占位用例。本地已安装候选包的 Forge parity 为 15 通过，ATST profile/input 检查为 32 通过。消费检查只调整 scratch 测试副本的夹具位置或显式 vendored import；未修改消费者生产代码，不能据此宣布跨仓迁移或真实引擎验收完成。
 
+2026-10-19 后继状态：独立包已发布 1.2.0，Forge exact extra 与安装态 parser 验收已完成，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。本页以下保留 10-16 设计讨论，不再将正式发行列为当前阻塞；ABACUS 上游兼容层及全部生产接入仍需各自证据。
+
 ## 已定方向与待确认项
 
 已确定独立 `QuantumMisaka/abacuslite` 源码仓库与 Python 包；不再将源码维护位置列为待决事项。首轮采用保留公开 import 的抽取、通用补丁归并、只读解析和实例级 reader 隔离，候选版本为 `1.1.0rc1`。

@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+2026-10-19 已有分支集成与文档状态收口见[本轮计划](plans/2026-10-19-forge-branch-document-closeout.md)。`dpdata` 按用户决定保留默认依赖。
+
 2026-10-15 用户确认继续文档、COHP 完整输入、真实 NEB 和 parser 发布包调查，执行入口见[真实验收推进计划](plans/2026-10-15-forge-real-evidence-followup.md)。
 
 | 工作 | 状态和入口 |
@@ -32,7 +34,7 @@
 
 | 草案 | 当前地位 |
 | --- | --- |
-| [abacuslite 插件维护位置与独立分发](specs/2026-10-16-abacuslite-independent-plugin-design.md) | 独立仓库与首轮包建设已批准，包内规范迁至 QuantumMisaka/abacuslite；此处保留设计历史与跨仓候选方案。ABACUS 兼容层、正式发行及生产接入尚未完成。 |
+| [abacuslite 插件维护位置与独立分发](specs/2026-10-16-abacuslite-independent-plugin-design.md) | 独立仓库与首轮包建设已批准，包内规范迁至 QuantumMisaka/abacuslite；此处保留设计历史与跨仓候选方案。正式 1.2.0 发布及 Forge 安装消费已有证据；ABACUS 兼容层与更广生产接入不能由此推定完成。 |
 | [Contract System](specs/2026-09-29-forge-contract-system-design.html) | Draft；接续下列知识库提案，未批准、未实施。 |
 | [I/O Contract Knowledge Base](specs/2026-09-29-forge-io-contract-knowledge-base-design.html) | 历史 Draft；讨论由 Contract System 接续，保留原始依据。 |
 | [Typed BEC](specs/2026-09-29-forge-typed-bec-design.html) | Draft；显式阶段、解析和科学计算语义仍待收口，无实施 PLAN。 |
