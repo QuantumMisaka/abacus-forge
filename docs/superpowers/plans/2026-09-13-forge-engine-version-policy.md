@@ -43,24 +43,29 @@ P0 结果：完整 PyATB wheel 与 Forge `be1c0bc` 的 CPython 3.12 fresh venv �
 
 Ruling: 先验证 CPython 3.12 本地完整候选 — 复用现有真实输入和可用构建工具链，独立于上游 PR 合并 — 该 wheel 不证明其它 Python/平台可安装，Paimon kit 的 Python 版本需单独绑定。
 
-### P1：把通过的组合交给 Paimon v1.3
+### P1：把通过的组合交给 Paimon v1.3（2026-10-20 接续）
 
-只读核对 `app-tools-forge@9eedd082d`：最新本地 kit 已固定 Forge `20dc2eb`、ATST 2.3.0 和 abacuslite 1.2.0；无 system-site 安装及 14/15 默认路由已验证。对应 owner 证据为 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-19-paimon-forge-pin-20dc2eb/README.md`。
+2026-10-19 只读核对 `app-tools-forge@9eedd082d`：最新本地 kit 已固定 Forge `20dc2eb`、ATST 2.3.0 和 abacuslite 1.2.0；无 system-site 安装及 14/15 默认路由已验证。对应 owner 证据为 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-19-paimon-forge-pin-20dc2eb/README.md`。
 
 - `pyatb-band=unsupported_default` 来自 `default_env=null` 的 explicit-only 政策，且该 clean kit 尚未装入 PyATB；不能把它解释成 CSR 执行失败或通过改门禁消除 PARTIAL。
 - 先把 P0 的完整 PyATB 包交给 W3 专业依赖安装，再验证现有显式 PyATB 路由；是否转为默认由 Paimon owner 按产品策略决定。
 - `20dc2eb..5723c42` 的 Forge 包内源码仅有 COHP 方法描述/docstring 差异，没有 ATST 数值默认或执行逻辑差异。当前 pin 有历史差距，但不能因此声称消费了过期 ATST 行为；只有实际需纳入的代码/契约变化才触发 rebind。
 - Paimon 实质开发前按工作区要求同步最新 v2 基线；候选 ZIP/kit、完整专业依赖、真实引擎、同输入 Benchmark 与平台验收继续归 W2/W3/W4。当前不改 v1.2。
 
-本轮只读交接核查补充：现有 Paimon Forge SCF 路径在 `abacus_scf.py` 拒绝 `matrix_output != "none"`；`toolkits/pyatb_runtime.py` 的 `_discover_matrix_files` 仅识别旧 CSR 文件名。已有真实 Forge SCF workspace 包含输入、输出和审计，但没有 Paimon 的 `abacus_worker_scf` producer、`consumer_ready=passed` 与 `output_profile_actual_*` inventory；不能机械转换 collect envelope 冒充完整 ATP 证据。
+2026-10-19 只读交接核查（下述缺口由 10-20 接续处理）：当时 Paimon Forge SCF 路径在 `abacus_scf.py` 拒绝 `matrix_output != "none"`；`toolkits/pyatb_runtime.py` 的 `_discover_matrix_files` 仅识别旧 CSR 文件名。已有真实 Forge SCF workspace 包含输入、输出和审计，但没有 Paimon 的 `abacus_worker_scf` producer、`consumer_ready=passed` 与 `output_profile_actual_*` inventory；不能机械转换 collect envelope 冒充完整 ATP 证据。
 
 该 W2 范围已由 Paimon 的 `2026-08-25-electronic-state-output-pyatb-l2-design.html`（`matrix_output=none|hs|hsr`、actual/readiness）和 `2026-09-13-paimon-v1.3-forge-migration.md` 覆盖，优先在原规范与原计划内实施。develop 命名兼容应绑定通过的 PyATB 版本与矩阵行为证据，不能仅扩展 glob 就宣称可消费。
 
-因此 P1 拆为独立门禁：
+P1 的有界接续结果（2026-10-20）：Paimon v3 已合入发布后的 v2 `502aa3e7a`，从 `ad68dc155` 实施 SCF 显式矩阵输出、实际 inventory/readiness 和 native 文件名发现。现有 Forge `20dc2eb` 安装包足以提供本切片的单元操作；没有新增 Forge 公共契约或编排逻辑。用户授权及验收细节由 Paimon 原 PLAN/报告维护。
 
-- [ ] W3 安装候选：交接 P0 wheel/hash/依赖与解释器绑定；CPython 3.12 wheel 不可直接装入当前 CPython 3.13 kit，需独立 3.12 候选或另建 3.13 wheel。
-- [ ] W2 显式交接适配：按 owner 规范补齐 Forge SCF 的显式矩阵输出及真实 inventory/readiness，再兼容 develop 新文件名；保持 producer 和严格输入检查，不合成通过标记。
-- [ ] W3/W4 真实 Tool 验收：从 Paimon 自己产生的完成 SCF work_dir 调用显式 PyATB route，之后再验收成对 Benchmark/平台。现有 `run_forge_scf_for_atp` 会执行 SCF，没有已支持的无执行补证命令；不为本轮 Forge P0 默认重算。
+- [x] W3 本机安装候选：在新的无 system-site CPython 3.12 环境安装 P0 完整 PyATB wheel、Paimon 已固定的 Forge wheel 及既有基础依赖；81 个发行包一致性/native import 通过。当前 Paimon ZIP 已在该环境回放；产品 CPython 3.13 kit、PyATB 发布 pin 和其它系统仍开放。
+- [x] W2 显式交接：公开 Forge SCF 的 `hs|hsr` 请求在执行副本上物化；真实正常结束、收敛与 nspin 库存形成 ATP readiness。共同发现函数兼容 develop 新名称，保持旧命名策略；歧义拒绝。
+- [x] 本地真实 Tool 链：Si nspin=1，develop/LTS 分别从新源副本 SCF 到显式 PyATB band；源不变、无 legacy import、两轨 6×26 band 数组相同。源码后补齐候选 ZIP 解包回放与无旧包 package runtime gate，均通过；ZIP SHA-256 `f796507ed3993fc06d48cc13b99f2ee7e8a103b2ad2805b706fd74903b5ec466`。
+- [ ] W3/W4 交付验收：正式 kit/SIF 与发布 pin、其它自旋/材料、成对 Benchmark 和平台验收；PyATB 保持 explicit-only，默认路由 PARTIAL 不变。optical L2 的 native 文件复制另行处理。
+
+Paimon 实现与本地证据已提交为 `d77907e77`（`codex/paimon-v3-1276-handoff`），独立终审通过；最终定向回归 234 passed，完整首轮的四项失败已逐项修复并在该范围复测。
+
+Paimon owner 报告（相对 Forge 仓根目录）：`../app-tools-forge/toolbox/ABACUS/docs/reports/2026-10-20-paimon-forge-scf-pyatb.md`；原始包、源码/引擎摘要、调用脚本与完整工件在该报告链接的 evidence 目录。本轮独立复核与整体门禁状态以 owner 报告为准，P1 全部交付门禁尚未关闭。
 
 ### P2：能力扩展按真实消费缺口排队
 
