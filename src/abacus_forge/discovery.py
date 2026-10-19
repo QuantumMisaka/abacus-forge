@@ -305,7 +305,13 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     elif capability == "cohp" and operation == "postprocess":
         properties.update(
             {
-                "method": {"type": "string", "enum": ["iao"], "default": "iao"},
+                "method": {
+                    "type": "string", "enum": ["iao"], "default": "iao",
+                    "description": (
+                        "IAO-COHP constructed from ABACUS NAO/LCAO outputs; "
+                        "direct NAO-COHP is not supported."
+                    ),
+                },
                 "scf_dir_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_WORKSPACE_PATTERN},
                 "out_dir_rel": {"type": ["string", "null"], "pattern": _CANONICAL_WORKSPACE_PATTERN, "default": None},
                 "atom_i_index": {"type": "integer", "minimum": 1, "default": 1},

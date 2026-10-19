@@ -25,7 +25,7 @@
 | `md` | `prepare`, `modify`, `execute`, `collect`, `postprocess` | `experimental`。 |
 | `atst-neb` | `prepare`, `execute`, `postprocess` | `experimental`；委托外部 `atst` executable。 |
 | `band`, `dos` | `postprocess` | `experimental`；没有 typed band/DOS execute。 |
-| `cohp` | `postprocess` | `experimental`；IAO 方法，显式消费同一 workspace 内的已完成 LCAO SCF，不执行 SCF。 |
+| `cohp` | `postprocess` | `experimental`；IAO-COHP（`method="iao"`），显式消费同一 workspace 内的已完成 LCAO SCF；不执行 SCF，不含直接 NAO-COHP。 |
 | `pyatb-band` | `prepare`, `execute`, `collect` | `experimental`。 |
 | `export` | `export` | `experimental`。 |
 

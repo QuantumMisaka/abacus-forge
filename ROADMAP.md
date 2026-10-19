@@ -1,6 +1,6 @@
 # ABACUS-Forge 路线图
 
-本页维护当前重点和待决候选，更新于 2026-10-15。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
+本页维护当前重点和待决候选，更新于 2026-10-19。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
 
 ## 当前重点与未完成验收
 
@@ -13,6 +13,17 @@
 | Paimon v1.3 上层迁移 | Forge 独立公共契约与局部 adapter/parity 证据已建立。 | 上层完整依赖与安装、全链路 benchmark、平台/生产验收由 Paimon owner 完成。 | [跨仓导航](docs/superpowers/README.md#跨仓迁移) |
 
 LTS cell-relax 的历史 partial 个案来自多个有效最终结构候选的歧义，不能简单归因于“不写 STRU_FINAL”。原始运行结果保留，纠正后的诊断见版本政策计划的“C 阶段 native real-smoke 证据（2026-09-13）”。
+
+## 集成推进重点
+
+以人类与 Agent 共用的 Python/CLI 契约、事实结果和显式产物交接体现平台价值。
+优先闭合已有能力的独立消费、Paimon 默认链和干净安装，再按真实需求扩展能力。
+`abacustools` 纳入底层格式、算法与使用场景参考；专业引擎继续由 abacuslite、
+ATST、PyATB 等各自维护。参考不自动成为运行时依赖。
+
+既有规范复核、仓库责任和建议顺序见[集成参考复核](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md#integration-review-20261019)，
+COHP 的共同 NAO 输入、IAO 选择来源及局限见[方法溯源](docs/superpowers/plans/2026-09-09-forge-core-fidelity-references.md#cohp-provenance-20261019)。
+执行状态仍由上表 owning PLAN 与 Paimon W0–W4 维护，不建立第二套总计划。
 
 ## 独立设计候选
 

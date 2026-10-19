@@ -73,6 +73,7 @@ flowchart TD
 | ABACUS 对应版本源码与真实输出 | INPUT/STRU/KPT、日志标记、单位与产物格式的依据；按 producer 版本绑定证据。 | 由输出观察替代科学验收。 |
 | Paimon v1.2 / `app-tools` | 结构与结果交付兼容、上层所需事实和迁移 parity。 | ATP、tool_data、平台文件发布、科学 policy。 |
 | `abacustest` | 历史输入归一化、指标解析与兼容 fixture。 | 厚 workflow 和运行时依赖。 |
+| `abacustools` | 输入/结构保真、LTS/develop 解析、后处理与性质阶段交接的独立参考；[采纳范围与 COHP 方法溯源](superpowers/plans/2026-09-09-forge-core-fidelity-references.md#integration-review-20261019)。 | 整包依赖、作业调度、workflow 编排、交互菜单及其不同的错误/回退语义。 |
 | `abacuslab` / `abacuscopilot` | 输入模板、能力组织、解析和 UX 的局部参考。 | 整套编排与产品交互状态。 |
 | PyATB / atst-tools | 对应引擎的明确输入、输出与进程契约。 | 引擎安装、站点调度与上层 workflow。 |
 | 已结项 `paimon/` AiiDA 项目 | 历史设计与能力抽取证据。 | AiiDA Group、Node UUID 和上级规范地位。 |

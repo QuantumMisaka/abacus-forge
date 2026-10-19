@@ -295,7 +295,7 @@ class DosPostprocessRequest(_EnergyPostprocessRequest):
 
 @dataclass(frozen=True, slots=True)
 class CohpPostprocessRequest(_PostprocessRequest):
-    """Request for one bond-resolved COHP postprocess on completed LCAO outputs."""
+    """Request for bond-resolved IAO-COHP on completed ABACUS NAO/LCAO outputs."""
 
     capability: ClassVar[Literal["cohp"]] = "cohp"
     method: Literal["iao"] = "iao"

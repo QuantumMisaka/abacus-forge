@@ -400,6 +400,13 @@ result = PostprocessServiceSet.default(workspace_root=".").band.postprocess(requ
 
 Typed `cohp` 是实验性的 postprocess-only capability。W1 只实现 `method="iao"`，要求调用方显式提供已完成 LCAO SCF 的 workspace-relative 目录；Forge 不准备输入、不执行 ABACUS、不判断 SCF 复用，也不做科学验收。
 
+这里的 COHP 是晶体轨道 Hamilton 布居分析，IAO 是从原 NAO 空间构造的轨道表示，
+因此当前方法称为 **IAO-COHP**。直接 NAO-COHP 与 IAO-COHP 都可以读取 ABACUS
+LCAO 的 H/S 和波函数；区别在轨道表示与键分解，不能仅凭输入文件相同判断方法等价。
+当前 typed 接口不接受 `method="nao"` 或 `method="legacy"`，也不提供自动方法切换。
+`cohp.meta.json` 中的 `method="IAO-COHP"` 标识结果方法；与外部结果比较前还需
+核对单位、spin、单/双序、周期像、展宽与积分约定。
+
 ```json
 {
   "schema_version": "forge.request/v1",

@@ -67,3 +67,20 @@ The capability is `experimental` and engine `abacus`.  Its optional dependency
 list is empty: this slice is pure Python with NumPy/Matplotlib, which are
 already Forge dependencies.  Legacy/external engine dependencies require a
 separate packaging decision.
+
+
+## Method terminology clarification (2026-10-19)
+
+Confirmed by QuantumMisaka: distinguish **direct NAO-COHP** from **IAO-COHP**.
+COHP is the population analysis; IAO specifies the orbital construction used
+for that analysis. Both routes can consume ABACUS NAO Hamiltonian, overlap and
+wavefunction data. W1 implements IAO-COHP only; the capability remains `cohp`,
+the request method remains `iao`, and result metadata identifies `IAO-COHP`.
+
+The inspected direct paths in `abacus-cohp-lcao`, `abacustools` and the local
+PyATB checkout share the direct orbital-block contraction. This does not prove
+common code ancestry or equal numerical output: units, spin degeneracy,
+pair ordering, k weights, broadening, occupation/integration and periodic-image
+conventions must be matched separately. No direct-NAO request value or default
+method change is introduced by this clarification. See the
+[reference and method review](../plans/2026-09-09-forge-core-fidelity-references.md#cohp-provenance-20261019).

@@ -13,6 +13,8 @@
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 
+2026-10-19 用户要求以可复用集成基座为重点并纳入 `abacustools`。既有 SPEC/PLAN 的职责复核、工作区参考分工、COHP 方法来源与建议推进顺序见[参考复核](plans/2026-09-09-forge-core-fidelity-references.md#integration-review-20261019)。这是参考与导航更新，不改变 Approved/Draft 状态。
+
 ## 有效设计基线
 
 | 规范 | 适用范围 |

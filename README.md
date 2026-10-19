@@ -114,7 +114,7 @@ See [typed band/DOS postprocess](docs/guide.md#typed-banddos-postprocess).
 <a id="typed-cohppostprocessexperimental"></a>
 #### Typed COHP postprocess (experimental)
 
-See [typed COHP postprocess](docs/guide.md#typed-cohp-postprocess).
+The typed `cohp` capability currently provides **IAO-COHP** (`method="iao"`): COHP evaluated in an IAO representation constructed from ABACUS NAO outputs. Direct NAO-COHP is not implemented by this typed capability. See [typed COHP postprocess](docs/guide.md#typed-cohp-postprocess).
 
 <a id="typed-export-experimental"></a>
 <a id="typed-exportexperimental"></a>
