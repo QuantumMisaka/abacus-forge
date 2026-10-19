@@ -94,3 +94,5 @@ conda run -n abacus-env env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 ```
 
 这些 smoke 不能替代平台、workflow、调度器、完整 Paimon Benchmark 或科学有效性验证。各能力在各自真实门禁和 Stage 4 剩余发布条件满足前仍标为实验性。
+
+2026-10-19 后继：用户确认优先复用 ATST 上游真实 NEB 验收。串行/并行实算轨迹已通过当前安装态 Forge/ATST 的后处理、产物和审计回放，见[交接证据](../../docs/superpowers/evidence/2026-10-19-forge-atst-upstream-replay.md)。Forge 不默认重跑上游算法验收，仅在接口变化且既有证据不足时补最小真实执行测试。

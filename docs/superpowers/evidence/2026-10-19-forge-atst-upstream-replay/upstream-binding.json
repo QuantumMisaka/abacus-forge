@@ -1,0 +1,20 @@
+{
+  "atst_checkout": "f2870917af09f8248c9950bd609d1f77680f4921",
+  "producer_candidate": "49c8626a9d85858f7022fc7a732cbb01d871298a",
+  "producer_abacuslite": "1.1.0",
+  "producer_job": "1848462",
+  "consumer_tag": "b8c3218ade7380116d3fbc2162cf11bb7a8dded8",
+  "consumer_abacuslite": "1.2.0",
+  "consumer_wheel_sha256": "80a5e2422176df48bfdcc1e88bd66a11cdcb953c735ae86fe62cb91004fd5729",
+  "unchanged_paths": [
+    "src/atst_tools/scripts",
+    "src/atst_tools/runtime",
+    "src/atst_tools/api/runner.py",
+    "src/atst_tools/mep/neb.py"
+  ],
+  "runtime_diff": "diff --git a/src/atst_tools/calculators/abacuslite_backend.py b/src/atst_tools/calculators/abacuslite_backend.py\nindex 03a8334..0e60793 100644\n--- a/src/atst_tools/calculators/abacuslite_backend.py\n+++ b/src/atst_tools/calculators/abacuslite_backend.py\n@@ -17,7 +17,7 @@ BackendSource = Literal[\"external\"]\n def _load_abacuslite_backend():\n     if find_spec(\"abacuslite\") is None:\n         raise ModuleNotFoundError(\n-            \"abacuslite is required by ATST-Tools; install abacuslite>=1.1.0,<2\",\n+            \"abacuslite is required by ATST-Tools; install abacuslite>=1.2.0,<2\",\n             name=\"abacuslite\",\n         )\n     from abacuslite import Abacus, AbacusProfile\ndiff --git a/src/atst_tools/external/ASE_interface/README.md b/src/atst_tools/external/ASE_interface/README.md\nindex 847959b..a3841ee 100644\n--- a/src/atst_tools/external/ASE_interface/README.md\n+++ b/src/atst_tools/external/ASE_interface/README.md\n@@ -1,6 +1,6 @@\n # ABACUS ASE interface compatibility paths\n \n-ATST-Tools uses the independently installed `abacuslite>=1.1.0,<2` package.\n+ATST-Tools uses the independently installed `abacuslite>=1.2.0,<2` package.\n The `abacuslite/` Python modules here only forward historical import paths to\n that installed package. They contain no calculator or parser implementation.\n In particular, `atst_tools.external.ASE_interface.abacuslite.io.generalio`\n",
+  "upstream_reports": {
+    "docs/reports/ABACUSLITE_230_CLOSEOUT_2026-10-19.md": "e20f556e03026c0910b778a2449fd5bdf5b047e143efcc73e2ff7ad0ba7448b7",
+    "docs/releases/RELEASE_NOTES_2.3.0.md": "dfd4eb63b3e5be58c8eb8f4a94a8dc854b430c85446287befe355f4ca6df1ee2"
+  }
+}

@@ -1,0 +1,928 @@
+{
+  "archive_sha256": "4565d61aa42e7ed1878b44d754728bc27e7d0f5148b129599fb3392a5e7bb3e7",
+  "python": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/bin/python",
+  "atst_executable": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/bin/atst",
+  "versions": {
+    "abacus-forge": "0.1.0",
+    "atst-tools": "2.3.0",
+    "abacuslite": "1.2.0"
+  },
+  "no_engine_execution": true,
+  "outcomes": {
+    "neb_serial": {
+      "status": {
+        "collection": "complete",
+        "execution": "completed",
+        "scientific": "unassessed"
+      },
+      "input_sha256": {
+        "neb.traj": "f513d7c9211071990a54a1bb49fb70806a8487fee38668a1d8d3931cfb591bcf",
+        "config_neb_serial.json": "05d06a343f73f8c532bde3089de87987f212f8a076e532895d5c1eeedb3abf18",
+        "evidence.json": "22ef85ffecf68d3c44dc85e725134806969b947b9d9d312f462707e1d64cc376",
+        "atst_artifacts.json": "ad4421e6ef0c3960a90835467154be815094b52b6a82fb6faec8799dff732123",
+        "api_neb_serial.json": "b52e82a8640fb165464bacdaf63190e194cebc54e5ae2a4327e79c822a729758"
+      },
+      "image_count": 4,
+      "n_max": 2,
+      "artifact_count": 11,
+      "audit_events": 1,
+      "source_unchanged": true,
+      "summary_matches_upstream_energy_and_force": true,
+      "upstream_checks": {
+        "api_status": "complete",
+        "backend_source": "external",
+        "image_count": 4,
+        "images": [
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7399999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.003018618888,
+                0.0,
+                0.0
+              ],
+              [
+                0.7599999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.009203276562000002,
+                0.0,
+                0.0
+              ],
+              [
+                0.7799999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7999999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          }
+        ],
+        "is_root": true,
+        "manifest": "atst_artifacts.json",
+        "mpi_world_size": 1,
+        "persisted_band": [
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6977727009,
+            "force_max_ev_per_angstrom": 0.3997207694,
+            "forces_ev_per_angstrom": [
+              [
+                -0.3997207694,
+                0.0,
+                0.0
+              ],
+              [
+                0.3997207694,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7399999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6993649282,
+            "force_max_ev_per_angstrom": 0.2015561054,
+            "forces_ev_per_angstrom": [
+              [
+                0.2015561054,
+                0.0,
+                0.0
+              ],
+              [
+                -0.2015561054,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.003018618888,
+                0.0,
+                0.0
+              ],
+              [
+                0.7599999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6934703506,
+            "force_max_ev_per_angstrom": 0.6454095254,
+            "forces_ev_per_angstrom": [
+              [
+                0.6454095254,
+                0.0,
+                0.0
+              ],
+              [
+                -0.6454095254,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.009203276562000002,
+                0.0,
+                0.0
+              ],
+              [
+                0.7799999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6622831149,
+            "force_max_ev_per_angstrom": 1.4653088721,
+            "forces_ev_per_angstrom": [
+              [
+                1.4653088721,
+                0.0,
+                0.0
+              ],
+              [
+                -1.4653088721,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7999999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          }
+        ],
+        "persisted_band_raw_matches": [
+          [
+            "cases/neb_serial/abacus_run/endpoint_initial/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_serial/abacus_run/image_001/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_serial/abacus_run/image_002/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_serial/abacus_run/endpoint_final/OUT.ABACUS/running_scf.log"
+          ]
+        ],
+        "profiles": [
+          {
+            "energy_eV": -31.6977727009,
+            "forces": [
+              [
+                -0.3997207694,
+                0.0,
+                0.0
+              ],
+              [
+                0.3997207694,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 0
+          },
+          {
+            "energy_eV": -31.6993649282,
+            "forces": [
+              [
+                0.2015561054,
+                0.0,
+                0.0
+              ],
+              [
+                -0.2015561054,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 1
+          },
+          {
+            "energy_eV": -31.6934703506,
+            "forces": [
+              [
+                0.6454095254,
+                0.0,
+                0.0
+              ],
+              [
+                -0.6454095254,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 2
+          },
+          {
+            "energy_eV": -31.6622831149,
+            "forces": [
+              [
+                1.4653088721,
+                0.0,
+                0.0
+              ],
+              [
+                -1.4653088721,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 3
+          }
+        ],
+        "raw_logs": [
+          "cases/neb_serial/abacus_run/endpoint_initial/OUT.ABACUS/running_scf.log",
+          "cases/neb_serial/abacus_run/image_002/OUT.ABACUS/running_scf.log",
+          "cases/neb_serial/abacus_run/image_001/OUT.ABACUS/running_scf.log",
+          "cases/neb_serial/abacus_run/endpoint_final/OUT.ABACUS/running_scf.log"
+        ],
+        "workflow": "neb"
+      }
+    },
+    "neb_parallel": {
+      "status": {
+        "collection": "complete",
+        "execution": "completed",
+        "scientific": "unassessed"
+      },
+      "input_sha256": {
+        "neb.traj": "f513d7c9211071990a54a1bb49fb70806a8487fee38668a1d8d3931cfb591bcf",
+        "config_neb_parallel.json": "4da9e72e948897be9556ba1dee83f3c8e7ed9df3ff8fdb6ccc9b74ed7929dc86",
+        "evidence.json": "16c51139f2aec107ba317936e9cf1a2ba675ff01ee9c5bc0ef54f699bc01479a",
+        "atst_artifacts.json": "ad4421e6ef0c3960a90835467154be815094b52b6a82fb6faec8799dff732123",
+        "api_neb_parallel.json": "2583ed1366261f8a92ee027fcfe96d316d98e592efd57896b86c83760aee3f5f"
+      },
+      "image_count": 4,
+      "n_max": 2,
+      "artifact_count": 11,
+      "audit_events": 1,
+      "source_unchanged": true,
+      "summary_matches_upstream_energy_and_force": true,
+      "upstream_checks": {
+        "api_status": "complete",
+        "backend_source": "external",
+        "image_count": 4,
+        "images": [
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7399999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.003018618888,
+                0.0,
+                0.0
+              ],
+              [
+                0.7599999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.009203276562000002,
+                0.0,
+                0.0
+              ],
+              [
+                0.7799999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7999999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          }
+        ],
+        "is_root": true,
+        "manifest": "atst_artifacts.json",
+        "mpi_world_size": 2,
+        "persisted_band": [
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6977727009,
+            "force_max_ev_per_angstrom": 0.3997207694,
+            "forces_ev_per_angstrom": [
+              [
+                -0.3997207694,
+                0.0,
+                0.0
+              ],
+              [
+                0.3997207694,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7399999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6993649282,
+            "force_max_ev_per_angstrom": 0.2015561054,
+            "forces_ev_per_angstrom": [
+              [
+                0.2015561054,
+                0.0,
+                0.0
+              ],
+              [
+                -0.2015561054,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.003018618888,
+                0.0,
+                0.0
+              ],
+              [
+                0.7599999507233743,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6934703506,
+            "force_max_ev_per_angstrom": 0.6454095254,
+            "forces_ev_per_angstrom": [
+              [
+                0.6454095254,
+                0.0,
+                0.0
+              ],
+              [
+                -0.6454095254,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.009203276562000002,
+                0.0,
+                0.0
+              ],
+              [
+                0.7799999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          },
+          {
+            "cell_angstrom": [
+              [
+                9.999999334099654,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                9.999999334099654,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                9.999999334099654
+              ]
+            ],
+            "energy_ev": -31.6622831149,
+            "force_max_ev_per_angstrom": 1.4653088721,
+            "forces_ev_per_angstrom": [
+              [
+                1.4653088721,
+                0.0,
+                0.0
+              ],
+              [
+                -1.4653088721,
+                0.0,
+                0.0
+              ]
+            ],
+            "natoms": 2,
+            "positions_angstrom": [
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.7999999507233744,
+                0.0,
+                0.0
+              ]
+            ],
+            "symbols": [
+              "H",
+              "H"
+            ]
+          }
+        ],
+        "persisted_band_raw_matches": [
+          [
+            "cases/neb_parallel/abacus_run/endpoint_initial/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_parallel/abacus_run/image_001/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_parallel/abacus_run/image_002/OUT.ABACUS/running_scf.log"
+          ],
+          [
+            "cases/neb_parallel/abacus_run/endpoint_final/OUT.ABACUS/running_scf.log"
+          ]
+        ],
+        "profiles": [
+          {
+            "energy_eV": -31.6977727009,
+            "forces": [
+              [
+                -0.3997207694,
+                0.0,
+                0.0
+              ],
+              [
+                0.3997207694,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 0
+          },
+          {
+            "energy_eV": -31.6993649282,
+            "forces": [
+              [
+                0.2015561054,
+                0.0,
+                0.0
+              ],
+              [
+                -0.2015561054,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 1
+          },
+          {
+            "energy_eV": null,
+            "forces": null,
+            "image": 2
+          },
+          {
+            "energy_eV": -31.6622831149,
+            "forces": [
+              [
+                1.4653088721,
+                0.0,
+                0.0
+              ],
+              [
+                -1.4653088721,
+                0.0,
+                0.0
+              ]
+            ],
+            "image": 3
+          }
+        ],
+        "raw_logs": [
+          "cases/neb_parallel/abacus_run/endpoint_initial/OUT.ABACUS/running_scf.log",
+          "cases/neb_parallel/abacus_run/image_002/OUT.ABACUS/running_scf.log",
+          "cases/neb_parallel/abacus_run/image_001/OUT.ABACUS/running_scf.log",
+          "cases/neb_parallel/abacus_run/endpoint_final/OUT.ABACUS/running_scf.log"
+        ],
+        "workflow": "neb"
+      }
+    }
+  }
+}

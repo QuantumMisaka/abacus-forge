@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
+
 双轨与 ATST 2.3.0 接续验证见[计划](plans/2026-10-19-forge-dual-track-atst230.md)与[实测记录](evidence/2026-10-19-forge-dual-track-atst230.md)。
 
 2026-10-19 已有分支集成与文档状态收口见[本轮计划](plans/2026-10-19-forge-branch-document-closeout.md)。`dpdata` 按用户决定保留默认依赖。
