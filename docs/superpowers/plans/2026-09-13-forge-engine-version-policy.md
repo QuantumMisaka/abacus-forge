@@ -13,7 +13,7 @@
 ## 当前状态（2026-10-19）
 
 - 已完成：发布包 `abacuslite==1.2.0` exact extra、fresh venv 安装、四 capability 的安装态 fixture parity（16 passed）与缺包 fail-closed，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。该变更已由 `d8d1a74` 合入本地 main。
-- 仍开放：当前发布包绑定的 develop/LTS × SCF/relax/cell-relax/MD 八格真实引擎矩阵，以及适用的双轨 PyATB 交接证据。已有 checkout 或 fixture 对照不替代这些验证。
+- 已补齐：当前 Forge wheel + 发布 abacuslite 1.2.0 的指定 develop/LTS × PW SCF/relax/cell-relax/MD 八格真实运行与 parser parity，见 [10-19 实测](../evidence/2026-10-19-forge-dual-track-atst230.md)。LTS 两种 relax 的 partial 状态保留。更广版本/配置与双轨 PyATB 交接仍开放。
 - 外部迁移：Paimon 的完整依赖、Benchmark 与平台验收由 Paimon owning PLAN 维护，不阻止 Forge 已验证能力的独立交付。
 
 下方 09-14/10-15 的检查数量、缺包与未发布描述保留为历史快照；发布包阻塞以本节和 C 阶段勾选更新为准。

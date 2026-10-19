@@ -1159,3 +1159,22 @@ def test_operation_process_uses_frozen_exit_classes(tmp_path: Path) -> None:
             assert payload["envelope"]["status"]["execution"] == "failed"
         if scenario == "internal":
             assert payload["error"]["class"] == "persistence.failure"
+
+
+@pytest.mark.parametrize('mode', ['parent', 'override'])
+def test_installed_cli_child_cannot_inherit_source_path(monkeypatch, tmp_path, mode):
+    """The installed gate must isolate child imports, including caller overrides."""
+    from tests.support import process as helper
+    monkeypatch.delenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', raising=False)
+    monkeypatch.setenv('PYTHONPATH', str(tmp_path / 'untrusted-source'))
+    options = {}
+    if mode == 'parent':
+        monkeypatch.setenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', '1')
+    else:
+        options['env'] = {'ABACUS_FORGE_INSTALLED_PACKAGE_ONLY': '1', 'PYTHONPATH': str(tmp_path / 'override')}
+    calls = []
+    monkeypatch.setattr(helper.subprocess, 'run', lambda command, **kwargs: calls.append((command, kwargs)))
+    helper.run_cli('--help', **options)
+    command, kwargs = calls[0]
+    assert command[:4] == [sys.executable, '-I', '-m', 'abacus_forge.cli']
+    assert 'PYTHONPATH' not in kwargs['env']

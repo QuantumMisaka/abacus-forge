@@ -1,0 +1,63 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_installed_cli_child_cannot_inherit_source_path[parent] __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ef35ec1c2c0>
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2909/test_installed_cli_child_canno0')
+mode = 'parent'
+
+    @pytest.mark.parametrize('mode', ['parent', 'override'])
+    def test_installed_cli_child_cannot_inherit_source_path(monkeypatch, tmp_path, mode):
+        """The installed gate must isolate child imports, including caller overrides."""
+        from tests.support import process as helper
+        monkeypatch.delenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', raising=False)
+        monkeypatch.setenv('PYTHONPATH', str(tmp_path / 'untrusted-source'))
+        options = {}
+        if mode == 'parent':
+            monkeypatch.setenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', '1')
+        else:
+            options['env'] = {'ABACUS_FORGE_INSTALLED_PACKAGE_ONLY': '1', 'PYTHONPATH': str(tmp_path / 'override')}
+        calls = []
+        monkeypatch.setattr(helper.subprocess, 'run', lambda command, **kwargs: calls.append((command, kwargs)))
+        helper.run_cli('--help', **options)
+        command, kwargs = calls[0]
+>       assert command[:4] == [sys.executable, '-I', '-m', 'abacus_forge.cli']
+E       AssertionError: assert ['/home/james...li', '--help'] == ['/home/james...us_forge.cli']
+E
+E         At index 1 diff: '-m' != '-I'
+E         Use -v to get more diff
+
+tests/test_cli_process.py:1179: AssertionError
+________ test_installed_cli_child_cannot_inherit_source_path[override] _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ef35ec1ffb0>
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2909/test_installed_cli_child_canno1')
+mode = 'override'
+
+    @pytest.mark.parametrize('mode', ['parent', 'override'])
+    def test_installed_cli_child_cannot_inherit_source_path(monkeypatch, tmp_path, mode):
+        """The installed gate must isolate child imports, including caller overrides."""
+        from tests.support import process as helper
+        monkeypatch.delenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', raising=False)
+        monkeypatch.setenv('PYTHONPATH', str(tmp_path / 'untrusted-source'))
+        options = {}
+        if mode == 'parent':
+            monkeypatch.setenv('ABACUS_FORGE_INSTALLED_PACKAGE_ONLY', '1')
+        else:
+            options['env'] = {'ABACUS_FORGE_INSTALLED_PACKAGE_ONLY': '1', 'PYTHONPATH': str(tmp_path / 'override')}
+        calls = []
+        monkeypatch.setattr(helper.subprocess, 'run', lambda command, **kwargs: calls.append((command, kwargs)))
+        helper.run_cli('--help', **options)
+        command, kwargs = calls[0]
+>       assert command[:4] == [sys.executable, '-I', '-m', 'abacus_forge.cli']
+E       AssertionError: assert ['/home/james...li', '--help'] == ['/home/james...us_forge.cli']
+E
+E         At index 1 diff: '-m' != '-I'
+E         Use -v to get more diff
+
+tests/test_cli_process.py:1179: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_cli_process.py::test_installed_cli_child_cannot_inherit_source_path[parent]
+FAILED tests/test_cli_process.py::test_installed_cli_child_cannot_inherit_source_path[override]
+2 failed, 41 deselected in 0.90s
+ERROR conda.cli.main_run:execute(148): `conda run python -m pytest -q tests/test_cli_process.py -k installed_cli_child` failed. (See above for error)

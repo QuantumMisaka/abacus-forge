@@ -46,7 +46,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 
 其中 `test_canonical_oracle_binds_the_declared_abacuslite_pin` 断言 oracle 版本等于 `pyproject.toml` 声明的 exact pin，避免用旧包或旧 checkout 冒充。它比较 SCF、relax、cell-relax、MD 的 `legacyio`/`latestio` 事实及版本隔离、并发和审计边界。这项离线 parity 不替代 native/optional parser 双轨真实计算门禁。
 
-要在已安装 wheel（而不是源码 checkout）上跑测试，显式设置 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`：conftest 不再把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径。editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`）和不在清单内的导入都会直接失败；仓库内 `.venv` 里正常安装的 wheel 则被接受。该模式不能替代带真实引擎的双轨发布证据。
+要在已安装 wheel（而不是源码 checkout）上跑测试，显式设置 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`：conftest 不再把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径。editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`）和不在清单内的导入都会直接失败；仓库内 `.venv` 里正常安装的 wheel 则被接受。`tests.support.process.run_cli` 在该模式下也清空子进程 PYTHONPATH 并启用 `-I`，确保 CLI 消费安装包；普通开发模式继续注入源码路径。该模式不能替代带真实引擎的双轨发布证据。
 
 ## 按变更选择 owning tests
 

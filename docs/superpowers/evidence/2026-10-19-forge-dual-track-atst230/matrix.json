@@ -1,0 +1,94 @@
+[
+  {
+    "track": "develop",
+    "capability": "scf",
+    "version": "v3.11.0-beta8",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus_std_para",
+    "executable_sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "86c6ed3de0425bd2fe0951c767cea1af6f24d9bab56cbd4040a3b5e9ddd1fe7d",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/scf"
+  },
+  {
+    "track": "develop",
+    "capability": "relax",
+    "version": "v3.11.0-beta8",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus_std_para",
+    "executable_sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/relax",
+    "input_calculation": "relax",
+    "rewrite_input_calculation": true
+  },
+  {
+    "track": "develop",
+    "capability": "cell-relax",
+    "version": "v3.11.0-beta8",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus_std_para",
+    "executable_sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/cell-relax"
+  },
+  {
+    "track": "develop",
+    "capability": "md",
+    "version": "v3.11.0-beta8",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus_std_para",
+    "executable_sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "42421a240c8ba3e0bc4e3cc9ba463d75bbd4ccb4d3ba62c9f18eb3dbb142c4db",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/md"
+  },
+  {
+    "track": "lts",
+    "capability": "scf",
+    "version": "v3.10.1",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus",
+    "executable_sha256": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "86c6ed3de0425bd2fe0951c767cea1af6f24d9bab56cbd4040a3b5e9ddd1fe7d",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/scf"
+  },
+  {
+    "track": "lts",
+    "capability": "relax",
+    "version": "v3.10.1",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus",
+    "executable_sha256": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/relax",
+    "input_calculation": "relax",
+    "rewrite_input_calculation": true
+  },
+  {
+    "track": "lts",
+    "capability": "cell-relax",
+    "version": "v3.10.1",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus",
+    "executable_sha256": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/cell-relax"
+  },
+  {
+    "track": "lts",
+    "capability": "md",
+    "version": "v3.10.1",
+    "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus",
+    "executable_sha256": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "basis": "pw",
+    "nspin": 1,
+    "input_identity": "42421a240c8ba3e0bc4e3cc9ba463d75bbd4ccb4d3ba62c9f18eb3dbb142c4db",
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/md"
+  }
+]

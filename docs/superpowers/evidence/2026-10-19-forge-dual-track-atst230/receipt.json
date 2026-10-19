@@ -1,0 +1,23 @@
+{
+  "python": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/bin/python",
+  "forge": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+  "abacuslite": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/abacuslite/__init__.py",
+  "versions": {
+    "abacus-forge": "0.1.0",
+    "abacuslite": "1.2.0",
+    "atst-tools": "2.3.0",
+    "pytest": "9.1.1"
+  },
+  "repo_revision": "1cc82ab64dc4d70d6aea5378cc980563d502f4f8",
+  "command": [
+    "/home/james/scratch/forge-dual-track-atst230-20261019/venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "--run-real-smoke",
+    "tests/real_smoke/test_abacuslite_dual_track.py",
+    "--basetemp",
+    "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest"
+  ],
+  "exit_code": 0
+}

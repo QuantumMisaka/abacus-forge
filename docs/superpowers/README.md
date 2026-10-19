@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+双轨与 ATST 2.3.0 接续验证见[计划](plans/2026-10-19-forge-dual-track-atst230.md)与[实测记录](evidence/2026-10-19-forge-dual-track-atst230.md)。
+
 2026-10-19 已有分支集成与文档状态收口见[本轮计划](plans/2026-10-19-forge-branch-document-closeout.md)。`dpdata` 按用户决定保留默认依赖。
 
 2026-10-15 用户确认继续文档、COHP 完整输入、真实 NEB 和 parser 发布包调查，执行入口见[真实验收推进计划](plans/2026-10-15-forge-real-evidence-followup.md)。
@@ -11,7 +13,7 @@
 | 工作 | 状态和入口 |
 | --- | --- |
 | 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，已合入本地 main；保留公开行为与默认依赖，可废弃项单列。 |
-| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。develop/LTS 双轨真实发布证据仍开放。 |
+| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。当前 wheel + 发布 parser 的指定 PW/nspin=1 八格真实双轨 parity 已补齐，见 [10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；更多配置及双轨 PyATB 交接仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 

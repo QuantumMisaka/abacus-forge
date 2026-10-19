@@ -1,0 +1,42 @@
+{
+  "scf": {
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/scf",
+    "files": {
+      "inputs/INPUT": "c874a7c8a3a8deca660e4cfcd1830309f88f7a1feee54bb72d40179c963a7bc0",
+      "inputs/KPT": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+      "inputs/STRU": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+      "pseudos/Si.upf": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282"
+    },
+    "identity": "86c6ed3de0425bd2fe0951c767cea1af6f24d9bab56cbd4040a3b5e9ddd1fe7d"
+  },
+  "relax": {
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/relax",
+    "files": {
+      "inputs/INPUT": "5227d39ce0f5e6472e9022e299c2c6261a0734c8c8a5a16145edcdfa702a1293",
+      "inputs/KPT": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+      "inputs/STRU": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+      "pseudos/Si.upf": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282"
+    },
+    "identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf"
+  },
+  "cell-relax": {
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/cell-relax",
+    "files": {
+      "inputs/INPUT": "5227d39ce0f5e6472e9022e299c2c6261a0734c8c8a5a16145edcdfa702a1293",
+      "inputs/KPT": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+      "inputs/STRU": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+      "pseudos/Si.upf": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282"
+    },
+    "identity": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf"
+  },
+  "md": {
+    "workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/sources/md",
+    "files": {
+      "inputs/INPUT": "2530be486fb1f5f8b23e921674a0bd2191a36b3aaa61382b3b588db926a2ca49",
+      "inputs/KPT": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+      "inputs/STRU": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+      "pseudos/Si.upf": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282"
+    },
+    "identity": "42421a240c8ba3e0bc4e3cc9ba463d75bbd4ccb4d3ba62c9f18eb3dbb142c4db"
+  }
+}

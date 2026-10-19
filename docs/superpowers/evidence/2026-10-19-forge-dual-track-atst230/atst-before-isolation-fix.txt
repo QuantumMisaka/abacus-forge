@@ -1,0 +1,15 @@
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+tests/real_smoke/test_atst_smoke.py::test_atst_neb_machine_process_smoke
+  /home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 7 warnings in 12.57s

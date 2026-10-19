@@ -22,7 +22,15 @@ def run_cli(
     merged_env["PYTHONPATH"] = source_path + os.pathsep + merged_env.get("PYTHONPATH", "")
     if env:
         merged_env.update(env)
-    command: Sequence[str] = [sys.executable, "-m", "abacus_forge.cli", *(str(arg) for arg in args)]
+    # Installed acceptance must apply to the CLI child as well as pytest.
+    # Isolated mode also excludes the working directory and user site-packages.
+    installed_only = merged_env.get("ABACUS_FORGE_INSTALLED_PACKAGE_ONLY") == "1"
+    if installed_only:
+        merged_env.pop("PYTHONPATH", None)
+    command: Sequence[str] = [
+        sys.executable, *(["-I"] if installed_only else []),
+        "-m", "abacus_forge.cli", *(str(arg) for arg in args),
+    ]
     options: dict[str, object] = {
         "cwd": cwd,
         "env": merged_env,

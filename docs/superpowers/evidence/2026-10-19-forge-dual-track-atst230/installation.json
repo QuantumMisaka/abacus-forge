@@ -1,0 +1,23 @@
+{
+  "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+  "prefix": "/home/james/scratch/forge-dual-track-atst230-20261019/venv",
+  "modules": {
+    "abacus_forge": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+    "abacuslite": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/abacuslite/__init__.py",
+    "atst_tools": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/atst_tools/__init__.py"
+  },
+  "distributions": {
+    "abacus-forge": {
+      "version": "0.1.0",
+      "direct_url": "{\"url\":\"file:///home/james/scratch/forge-dual-track-atst230-20261019/wheels/abacus_forge-0.1.0-py3-none-any.whl\",\"archive_info\":{}}"
+    },
+    "abacuslite": {
+      "version": "1.2.0",
+      "direct_url": "{\"url\":\"file:///home/james/scratch/forge-dual-track-atst230-20261019/wheels/abacuslite-1.2.0-py3-none-any.whl\",\"archive_info\":{}}"
+    },
+    "atst-tools": {
+      "version": "2.3.0",
+      "direct_url": "{\"url\":\"file:///home/james/scratch/forge-dual-track-atst230-20261019/wheels/atst_tools-2.3.0-py3-none-any.whl\",\"archive_info\":{}}"
+    }
+  }
+}

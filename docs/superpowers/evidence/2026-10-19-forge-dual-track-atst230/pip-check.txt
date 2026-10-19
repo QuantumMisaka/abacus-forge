@@ -1,0 +1,3 @@
+Using Python 3.12.13 environment at: /home/james/scratch/forge-dual-track-atst230-20261019/venv
+Checked 63 packages in 1ms
+All installed packages are compatible
