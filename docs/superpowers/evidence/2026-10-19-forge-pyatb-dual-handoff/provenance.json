@@ -1,0 +1,54 @@
+{
+  "forge_base": "a072413",
+  "installed_source_matches": 69,
+  "engines": {
+    "develop": {
+      "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus",
+      "sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+      "log_sha256": "4ede5f02be7ecfa335538871c3f3e3bc820e899a1d0963e33f431e3c86e1ed6f",
+      "log_header": [
+        "                                                                                     ",
+        "                              ABACUS v3.11.0-beta8",
+        "",
+        "               Atomic-orbital Based Ab-initio Computation at UStc                    ",
+        "",
+        "                     Website: http://abacus.ustc.edu.cn/                             ",
+        "               Documentation: https://abacus.deepmodeling.com/                       ",
+        "                  Repository: https://github.com/abacusmodeling/abacus-develop       ",
+        "                              https://github.com/deepmodeling/abacus-develop         ",
+        "                      Commit: 94576a801 (Mon Aug 31 18:04:16 2026 +0800)",
+        "",
+        "    Start Time is Mon Oct 19 21:00:38 2026"
+      ]
+    },
+    "lts": {
+      "executable": "/home/james/work/sidereus/workplace/abacus-packages/abacus-LTS/build-mpi-lcao/install/bin/abacus",
+      "sha256": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+      "log_sha256": "e927a60984c49740e0a60a063f262b98c76324b451cc9c529f3a7b852811d4d9",
+      "log_header": [
+        "                                                                                     ",
+        "                              ABACUS v3.10.1",
+        "",
+        "               Atomic-orbital Based Ab-initio Computation at UStc                    ",
+        "",
+        "                     Website: http://abacus.ustc.edu.cn/                             ",
+        "               Documentation: https://abacus.deepmodeling.com/                       ",
+        "                  Repository: https://github.com/abacusmodeling/abacus-develop       ",
+        "                              https://github.com/deepmodeling/abacus-develop         ",
+        "                      Commit: f71921fe8 (Fri Nov 21 13:49:34 2025 +0800)",
+        "",
+        "    Start Time is Mon Oct 19 21:00:50 2026"
+      ]
+    }
+  },
+  "failed_develop": {
+    "status": {
+      "collection": "not_collected",
+      "execution": "failed",
+      "scientific": "unassessed"
+    },
+    "failure_class": "nonzero_exit",
+    "audit_events": 2,
+    "artifact_hashes_verified": true
+  }
+}

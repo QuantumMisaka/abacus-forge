@@ -13,7 +13,7 @@
 ## 当前状态（2026-10-19）
 
 - 已完成：发布包 `abacuslite==1.2.0` exact extra、fresh venv 安装、四 capability 的安装态 fixture parity（16 passed）与缺包 fail-closed，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。该变更已由 `d8d1a74` 合入本地 main。
-- 已补齐：当前 Forge wheel + 发布 abacuslite 1.2.0 的指定 develop/LTS × PW SCF/relax/cell-relax/MD 八格真实运行与 parser parity，见 [10-19 实测](../evidence/2026-10-19-forge-dual-track-atst230.md)。LTS 两种 relax 的 partial 状态保留。更广版本/配置与双轨 PyATB 交接仍开放。
+- 已补齐：当前 Forge wheel + 发布 abacuslite 1.2.0 的指定 develop/LTS × PW SCF/relax/cell-relax/MD 八格真实运行与 parser parity，见 [10-19 实测](../evidence/2026-10-19-forge-dual-track-atst230.md)。LTS 两种 relax 的 partial 状态保留。更广版本/配置仍开放。PyATB LTS nspin=1 交接通过；develop 新 CSR 内容格式触发 PyATB 1.1.2 reader 的 IndexError，双轨门保持开放，见[交接定位](../evidence/2026-10-19-forge-pyatb-dual-handoff.md)。
 - 外部迁移：Paimon 的完整依赖、Benchmark 与平台验收由 Paimon owning PLAN 维护，不阻止 Forge 已验证能力的独立交付。
 
 下方 09-14/10-15 的检查数量、缺包与未发布描述保留为历史快照；发布包阻塞以本节和 C 阶段勾选更新为准。
@@ -122,3 +122,7 @@ Paimon v1.3 迁移完成。
 可选 backend 未通过时继续以 native 为默认，不提交自动 fallback；调用方可使用新 operation ID 显式选择 native。已写 admission/event 不删除或改写。若可行性调查要求改变公共事实、final 候选或 error schema，先回到 SPEC；内部模块布局、fixture 和容差细化由实施者依据证据完成。
 
 当前已完成 A、离线 B、native real-smoke 复核和完整 optional numerical release matrix；C 的 exact extra/fresh dependency install 与 D 的外部迁移仍未验收，不能由本轮通过推断为已交付。
+
+## 2026-10-19 PyATB 接续结果
+
+按用户继续推进授权完成两轨 Si 矩阵生成和安装态消费调查。LTS prepare/execute/collect 通过，develop prepare 通过但 PyATB reader 失败；101 项离线回归通过。修复 owner 为 PyATB，下一步使用已归档 HR/SR/rR 补格式读取兼容后重放，不默认重跑 ABACUS。A 阶段双轨复选框保持未完成，详见上述交接定位。

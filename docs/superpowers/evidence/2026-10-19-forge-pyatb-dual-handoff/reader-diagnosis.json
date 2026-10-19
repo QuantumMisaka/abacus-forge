@@ -1,0 +1,21 @@
+{
+  "pyatb_version": "1.1.2",
+  "reader": "/home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/site-packages/pyatb/io/abacus_read_xr.py",
+  "reader_sha256": "05823673741e9d6e06d88536e204b09a039f019fb3fc2b82cf4554e62a90833a",
+  "cases": {
+    "develop": {
+      "success": false,
+      "error_type": "IndexError",
+      "error": "list index out of range",
+      "source": "/home/james/scratch/forge-pyatb-dual-handoff-20261019/consumption-final/develop/source/hrs1_nao.csr",
+      "sha256": "8733d47dd6a24b2cdcddd88ce998c8eb61e8b8f035add425b6b7e03c3828a311",
+      "tested_filename": "data-HR-sparse_SPIN0.csr"
+    },
+    "lts": {
+      "success": true,
+      "source": "/home/james/scratch/forge-pyatb-dual-handoff-20261019/lts-consumption/lts/source/data-HR-sparse_SPIN0.csr",
+      "sha256": "5f187455960a3c7ed2d3c7b68492e0e666799dad356c889db68d8e37d86a3ff6",
+      "tested_filename": "data-HR-sparse_SPIN0.csr"
+    }
+  }
+}

@@ -118,6 +118,8 @@ PYTHONPATH=src python -m abacus_forge.cli operation collect \
 
 ### PyATB band
 
+运行兼容性：Forge 支持显式交接新旧矩阵文件名，但文件内容仍须被所选 PyATB reader 支持。2026-10-19 指定构建实测中，LTS nspin=1 完整交接通过；develop 新 CSR 内容在 PyATB 1.1.2 reader 中失败，单纯重命名无效。当前可用范围和可复现输入见[双轨交接记录](superpowers/evidence/2026-10-19-forge-pyatb-dual-handoff.md)。
+
 `pyatb-band` 请求要求结构、HR、SR（可选 rR）、Fermi energy 和 line-mode K 点等由调用方显式提供的 workspace-relative inputs。prepare 默认 link workspace 内来源，`handoff_mode="copy"` 时复制；不接受绝对路径/跨 workspace 来源，不扫描 SCF 目录或从 log 推断 Fermi energy。
 
 `nspin` 支持 1、2、4：1/4 各需要一个 HR 文件，2 需要两个；三者共享一个 SR。nspin=4 的 HR 在 manifest 标为 `matrix_hr/shared`。仅提供 rR 时生成 `rR_route` 并记为 `matrix_rr/shared`。输出包括 `inputs/STRU`、`inputs/pyatb_sources/<basename>`、`inputs/Input`、`inputs/KPT_band`。manifest entry 引用相同 envelope 中的 artifact，记录有限的 kind/spin、source/target、SHA-256；缺失或越界资源进入 `missing` 并带原因，不扫描目录。执行只启动一个本地 PyATB process；收集默认读取 `inputs/Out/Band_Structure/band_info.dat`，也可显式提供 band data/picture paths。可解析 `band_gap` 是 `reported` metric，不表示科学结论。旧 `prepare_pyatb_band`、`run_pyatb`、`collect_pyatb` 和 `run_band_sequence(..., backend="pyatb")` 保留自动 SCF discovery/兼容行为。

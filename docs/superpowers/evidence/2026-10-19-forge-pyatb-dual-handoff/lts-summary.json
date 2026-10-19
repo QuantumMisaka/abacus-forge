@@ -1,0 +1,73 @@
+{
+  "forge_version": "0.1.0",
+  "forge_module": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+  "python": "/home/james/scratch/forge-dual-track-atst230-20261019/venv/bin/python",
+  "pyatb_executable": "/home/james/apps/miniforge3/envs/abacus-env/bin/pyatb",
+  "pyatb_executable_sha256": "6ef9dc93d784bffdb3e0340c2a2523f032b9636a61bac46b22d869d0706c8944",
+  "tracks": {
+    "lts": {
+      "source_workspace": "/home/james/scratch/forge-pyatb-dual-handoff-20261019/lts/test_typed_lcao_matrices_machi0/typed-lcao-smoke",
+      "source_sha256": {
+        "STRU": "363e2ff2171fbcbbecf09e872ca9f0567c8f80cb476bd0f86e71e7ae9d2ff0d0",
+        "data-HR-sparse_SPIN0.csr": "5f187455960a3c7ed2d3c7b68492e0e666799dad356c889db68d8e37d86a3ff6",
+        "data-SR-sparse_SPIN0.csr": "15ed7bae1fb95a65d038c96a3ded39911cc1ccdafc0dd4ba672ca99c8bc9893a",
+        "data-rR-sparse.csr": "8cfbc0b88ab08510c4965aca723cd156e9f9cae4bf50c9b027765baa4f69d929"
+      },
+      "fermi_energy_eV": 6.793680865,
+      "operations": {
+        "prepare": {
+          "status": {
+            "collection": "not_collected",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          },
+          "artifacts": 7,
+          "metrics": []
+        },
+        "execute": {
+          "status": {
+            "collection": "not_collected",
+            "execution": "completed",
+            "scientific": "unassessed"
+          },
+          "artifacts": 2,
+          "metrics": [
+            {
+              "kind": "runtime",
+              "name": "returncode",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 0
+            },
+            {
+              "kind": "runtime",
+              "name": "omp_threads",
+              "source_artifact_id": null,
+              "unit": null,
+              "value": 1
+            }
+          ]
+        },
+        "collect": {
+          "status": {
+            "collection": "complete",
+            "execution": "not_run",
+            "scientific": "unassessed"
+          },
+          "artifacts": 3,
+          "metrics": [
+            {
+              "kind": "reported",
+              "name": "band_gap",
+              "source_artifact_id": "artifact-efecf1e41205",
+              "unit": "eV",
+              "value": 0.5348
+            }
+          ]
+        }
+      },
+      "source_unchanged": true,
+      "audit_events": 3
+    }
+  }
+}
