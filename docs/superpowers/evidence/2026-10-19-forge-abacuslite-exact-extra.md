@@ -99,6 +99,6 @@ MISSING_PACKAGE_FAIL_CLOSED: abacuslite package is required for parser_backend=a
 - **一次负载下的测试超时**：并行做其他构建时，全量回归出现 2 个 `tests/test_cli_process.py` 子进程 30s 超时；单独重跑该文件 41 passed（58.66s），随后干净全量 1489 passed。判定为负载相关偶发，不作为产品失败，但发布候选验收应在无并发负载时重跑。
 - **extra 名是跨仓接口**：`abacus-forge[abacuslite]` 已在 pyproject 落地；Paimon W3 的 lock/kit 需自行确认新增 `seekpath` 等依赖的影响，本批未改其配置。
 
-## 1.2.0 rebind 记账（未执行）
+## 1.2.0 rebind 记账（已执行）
 
-目标 pin 为 `abacuslite==1.2.0`（PP/ORB env fallback 属新增功能，不是 1.1.x 补丁）。1.2.0 发布后在同一轮内完成：更新 `pyproject.toml` exact pin、本 provenance、oracle 版本断言与 README/reference 说明，重跑四 capability parity 与缺包门禁，并重新绑定发布物哈希。不重复推导中间版本，不把 1.2.0 的新功能回写成 1.1.x。
+1.2.0 于 2026-10-19 发布后已按同一轮 rebind 完成：`pyproject.toml` exact pin、provenance、oracle 版本断言、文档与四 capability parity 一起更新，未重复推导中间版本。执行记录见 [1.2.0 rebind 证据](2026-10-19-forge-abacuslite-1.2.0-rebind.md)与 [1.2.0 provenance](2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。本文的 1.1.0 身份与结果保持冻结。
