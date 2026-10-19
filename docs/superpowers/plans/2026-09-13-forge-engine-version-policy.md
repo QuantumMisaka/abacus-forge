@@ -43,6 +43,7 @@ P0 结果：完整 PyATB wheel 与 Forge `be1c0bc` 的 CPython 3.12 fresh venv �
 
 Ruling: 先验证 CPython 3.12 本地完整候选 — 复用现有真实输入和可用构建工具链，独立于上游 PR 合并 — 该 wheel 不证明其它 Python/平台可安装，Paimon kit 的 Python 版本需单独绑定。
 
+<a id="paimon-pyatb-handoff"></a>
 ### P1：把通过的组合交给 Paimon v1.3（2026-10-20 接续）
 
 2026-10-19 只读核对 `app-tools-forge@9eedd082d`：最新本地 kit 已固定 Forge `20dc2eb`、ATST 2.3.0 和 abacuslite 1.2.0；无 system-site 安装及 14/15 默认路由已验证。对应 owner 证据为 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-19-paimon-forge-pin-20dc2eb/README.md`。
@@ -66,6 +67,12 @@ P1 的有界接续结果（2026-10-20）：Paimon v3 已合入发布后的 v2 `5
 Paimon 实现与本地证据已提交为 `d77907e77`（`codex/paimon-v3-1276-handoff`），独立终审通过；最终定向回归 234 passed，完整首轮的四项失败已逐项修复并在该范围复测。
 
 Paimon owner 报告（相对 Forge 仓根目录）：`../app-tools-forge/toolbox/ABACUS/docs/reports/2026-10-20-paimon-forge-scf-pyatb.md`；原始包、源码/引擎摘要、调用脚本与完整工件在该报告链接的 evidence 目录。本轮独立复核与整体门禁状态以 owner 报告为准，P1 全部交付门禁尚未关闭。
+
+#### 跨会话衔接（2026-10-20，只读核对）
+
+用户确认已有另一 Agent 接手相关工作。本轮核对 `app-tools-forge@89d774c91`：`d77907e77` 已在该分支历史中；后继提交维护 Benchmark 容差、候选交付包、SAI 清单及环境 receipt。其 owner 入口为 `toolbox/ABACUS/docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`。该记录说明执行器仍缺 Forge 派发、工具绑定与数值事实提取，尚未提交真实 Benchmark 作业；这属于执行器接线缺口，不能据此判定 Forge 科学基元失败。
+
+本会话只维护 Forge 的既有交接证据与入口，不并发改写 Paimon Benchmark harness、候选身份或 SAI 执行记录。可独立承接的后续项是完整 PyATB 候选在目标解释器/系统上的安装验证，或 Forge 已有 capability 的更广自旋/材料消费证据。开始目标环境构建前，从 Paimon owner 确定实际 Python 与运行时 ABI；仅在本机另建 cp313 wheel 并不能证明适配 SAI。当前没有新建包、替换冻结候选或启动额外实算。
 
 ### P2：能力扩展按真实消费缺口排队
 

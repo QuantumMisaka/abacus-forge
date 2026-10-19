@@ -4,7 +4,7 @@
 
 ## 当前工作入口
 
-完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。下一步沿[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#p1把通过的组合交给-paimon-v13)推进 Paimon 显式 SCF 矩阵输出/readiness 交接与 W3 匹配环境；默认策略、其它平台和发布仍开放。
+完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。后续由 Paimon owner 推进 Benchmark 执行器与目标环境交付；本机 CPython 3.12 证据不扩展为 SAI、CPython 3.13 或完整发布通过。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
@@ -80,6 +80,7 @@ Paimon v1.3 的 owner 在 app-tools 仓；当前工作区 checkout 名为 `app-t
 
 - `docs/superpowers/specs/2026-09-29-paimon-v1.3-backend-architecture.html`：Reviewed / 实施基线，定义两个产品的边界、开发参照和 M0–M4 验收。
 - `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md`：W0–W4 执行总表，维护 adapter、依赖、全链路 benchmark 和平台验收。
+- `docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`：正在由另一工作会话推进的 Benchmark 阈值、执行器、候选交付包与 SAI 验收；当前进度以其 owner 记录为准。
 
 Forge 独立交付，Paimon 的发布门槛不自动成为每次 Forge 发布的门槛。Contract System、BEC 与 optional parser package 各有独立设计和验收。已结项 `paimon/` 只作历史证据，不是 Forge 运行时依赖或上级规范。
 
