@@ -26,8 +26,11 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROVENANCE = ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json"
-HISTORICAL_PROVENANCE = (
+PROVENANCE = ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json"
+PREVIOUS_RELEASE_PROVENANCE = (
+    ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json"
+)
+LOCAL_ORACLE_PROVENANCE = (
     ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
 )
 GPLV3_CLASSIFIER = "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
@@ -46,28 +49,36 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
     assert record["status"] == "published_release_bound"
     assert record["public_exact_release_available"] is True
     assert record["forge_optional_extra_declared"] is True
-    assert record["history"]["supersedes"] == HISTORICAL_PROVENANCE.name
-    assert HISTORICAL_PROVENANCE.is_file()
+    assert record["history"]["supersedes"] == PREVIOUS_RELEASE_PROVENANCE.name
+    assert PREVIOUS_RELEASE_PROVENANCE.is_file()
+    assert LOCAL_ORACLE_PROVENANCE.is_file()
 
-    # The superseded record stays frozen as the local-oracle-only stage.
-    historical = json.loads(HISTORICAL_PROVENANCE.read_text(encoding="utf-8"))
-    assert historical["status"] == "local_oracle_only"
-    assert historical["public_exact_release_available"] is False
-    assert historical["forge_optional_extra_declared"] is False
+    # Superseded records stay frozen: the 1.1.0 release and the local-oracle stage.
+    previous = json.loads(PREVIOUS_RELEASE_PROVENANCE.read_text(encoding="utf-8"))
+    assert previous["status"] == "published_release_bound"
+    assert previous["abacuslite_release"]["package_version"] == "1.1.0"
+    assert previous["abacuslite_release"]["wheel_sha256"] == (
+        "c3e4504e9c9f5bceb69f70c79290e7843037ca72f625c5f66258e14d110f0ff3"
+    )
+    local_oracle = json.loads(LOCAL_ORACLE_PROVENANCE.read_text(encoding="utf-8"))
+    assert local_oracle["status"] == "local_oracle_only"
+    assert local_oracle["public_exact_release_available"] is False
+    assert local_oracle["forge_optional_extra_declared"] is False
 
     release = record["abacuslite_release"]
     assert release["package_name"] == "abacuslite"
-    assert release["package_version"] == "1.1.0"
-    assert release["tag"] == "v1.1.0"
-    assert release["tag_commit"] == "94a26e4c7f31ed817eac36c871ff74a7b7abe418"
+    assert release["package_version"] == "1.2.0"
+    assert release["tag"] == "v1.2.0"
+    assert release["tag_commit"] == "7e6761d2ff656f11f54abc613ac7bdad6ef6dec4"
     assert release["source_repository"] == "https://github.com/QuantumMisaka/abacuslite"
-    assert release["wheel_filename"] == "abacuslite-1.1.0-py3-none-any.whl"
+    assert release["pypi_url"] == "https://pypi.org/project/abacuslite/1.2.0/"
+    assert release["wheel_filename"] == "abacuslite-1.2.0-py3-none-any.whl"
     assert release["wheel_sha256"] == (
-        "c3e4504e9c9f5bceb69f70c79290e7843037ca72f625c5f66258e14d110f0ff3"
+        "3e5e245c0a03e8182c2c726d7ccad1c800c20250641abd4b81a8e22e892bc4a0"
     )
-    assert release["sdist_filename"] == "abacuslite-1.1.0.tar.gz"
+    assert release["sdist_filename"] == "abacuslite-1.2.0.tar.gz"
     assert release["sdist_sha256"] == (
-        "79a85f09a37e68ca97ba35f0a620bc888ace092bfd0fdfc533320498d46956e3"
+        "61a238197879136ee59d99651242921850834a3954b8a8b475a34b109a077fe0"
     )
     assert release["requires_python"] == ">=3.10"
     runtime = release["runtime_files"]
@@ -92,7 +103,7 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
     forge_extra = record["forge_extra"]
     assert forge_extra["name"] == extra_name
     assert forge_extra["requirement"] == requirement
-    assert forge_extra["change_kind"] == "added"
+    assert forge_extra["change_kind"] == "changed"
     assert forge_extra["scope"] == "project.optional-dependencies"
     assert forge_extra["default_dependencies_unchanged"] is True
 
@@ -109,11 +120,12 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
         "wheel_sha256": forge["wheel_sha256"],
     }
 
-    # The next pin is booked explicitly instead of being re-derived later.
-    rebind = record["rebind_plan"]
-    assert rebind["target_pin"] == "abacuslite==1.2.0"
+    # The rebind is recorded as applied instead of being re-derived later.
+    rebind = record["rebind"]
+    assert rebind["from_version"] == "1.1.0"
+    assert rebind["to_version"] == release["package_version"]
+    assert rebind["status"] == "applied"
     assert rebind["requires_four_capability_parity_rerun"] is True
-    assert rebind["status"] == "pending_upstream_release"
 
 
 def test_abacuslite_extra_is_exactly_pinned_if_declared() -> None:

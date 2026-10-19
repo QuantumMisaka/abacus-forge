@@ -84,7 +84,7 @@ Typed 标量 `MetricRecord` 在语法和来源确认时可附带单位、`report
 
 Typed collect 只读取 workspace 内领域文件；audit events、claims、锁和 workspace manifest 不作为计算产物。typed MD 的热力学指标只从 contained 的原生 `running_md.log` 提取：Energy/Potential/Kinetic 从 Ry 转 eV，Temperature 为 K，Pressure（kbar）可选。`MD_dump` 提供轨迹帧/步数和 artifact facts。MD typed collection 为 `complete` 要求唯一、contained、可读的原生日志且至少有一个完整热力学 block；缺失/歧义/不完整日志，以及只有 stdout 或 `MD_dump` 的情况会是 `partial` 或 `missing_output`。Legacy collect 可保留从 synthetic `MD_dump` 读取历史兼容指标。
 
-`collect` 默认使用 Forge native parser。typed ABACUS collect 可在 service 实例或 machine CLI 单次显式指定可选 `abacuslite` parser backend 和受支持的 `output_version`；这只影响 typed collect，不改变请求 schema、进程环境或 legacy collect。可选包缺失、日志版本缺失/不支持会按既有前置条件错误返回；无唯一非空主 running log 时不会调用可选 parser。该 backend 需要已发布的 `abacuslite` 包，安装 `pip install 'abacus-forge[abacuslite]'`（extra 固定已验证版本，当前为 `1.1.0`）；默认安装不包含它。
+`collect` 默认使用 Forge native parser。typed ABACUS collect 可在 service 实例或 machine CLI 单次显式指定可选 `abacuslite` parser backend 和受支持的 `output_version`；这只影响 typed collect，不改变请求 schema、进程环境或 legacy collect。可选包缺失、日志版本缺失/不支持会按既有前置条件错误返回；无唯一非空主 running log 时不会调用可选 parser。该 backend 需要已发布的 `abacuslite` 包，安装 `pip install 'abacus-forge[abacuslite]'`（extra 固定已验证版本，当前为 `1.2.0`）；默认安装不包含它。
 
 Python 配置形态如下；`output_version` 只接受当前支持的 producer 映射，例如 `v3.10.1`、`v3.9.0` 和 `v3.11.0-beta8+56`：
 

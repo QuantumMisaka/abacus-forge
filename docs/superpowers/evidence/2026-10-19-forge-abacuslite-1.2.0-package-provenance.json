@@ -1,0 +1,67 @@
+{
+  "schema_version": "forge.stage1-package-provenance/v2",
+  "status": "published_release_bound",
+  "public_exact_release_available": true,
+  "forge_optional_extra_declared": true,
+  "recorded_at": "2026-10-19",
+  "history": {
+    "supersedes": "2026-10-19-forge-abacuslite-1.1.0-package-provenance.json",
+    "reason": "abacuslite 1.2.0 was published to PyPI on 2026-10-19 (UTC+08:00); the interim 1.1.0 pin is rebound in one round as planned. The 1.1.0 record stays frozen."
+  },
+  "abacuslite_release": {
+    "package_name": "abacuslite",
+    "package_version": "1.2.0",
+    "source_repository": "https://github.com/QuantumMisaka/abacuslite",
+    "tag": "v1.2.0",
+    "tag_commit": "7e6761d2ff656f11f54abc613ac7bdad6ef6dec4",
+    "pypi_url": "https://pypi.org/project/abacuslite/1.2.0/",
+    "wheel_filename": "abacuslite-1.2.0-py3-none-any.whl",
+    "wheel_sha256": "3e5e245c0a03e8182c2c726d7ccad1c800c20250641abd4b81a8e22e892bc4a0",
+    "sdist_filename": "abacuslite-1.2.0.tar.gz",
+    "sdist_sha256": "61a238197879136ee59d99651242921850834a3954b8a8b475a34b109a077fe0",
+    "requires_python": ">=3.10",
+    "upload_time_utc": "2026-10-19T03:41:48.846731Z",
+    "runtime_files": {
+      "count": 8,
+      "all_equal_tag_source": true
+    }
+  },
+  "forge_extra": {
+    "name": "abacuslite",
+    "requirement": "abacuslite==1.2.0",
+    "change_kind": "changed",
+    "scope": "project.optional-dependencies",
+    "default_dependencies_unchanged": true
+  },
+  "forge_candidate": {
+    "repository": "abacus-forge",
+    "revision": "f97b79839d700017c470d2577e33cfcc52a3ca9d",
+    "packaged_source_equal_to_revision": true,
+    "package_name": "abacus-forge",
+    "package_version": "0.1.0",
+    "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "2fbc50eef8a75368832c94fbaa3a3635d89728367897cc3b427dfd98d62c821e",
+    "build_command": "python -m pip wheel --no-deps --no-build-isolation -w /tmp/fw .",
+    "artifact_binding": {
+      "forge_revision": "f97b79839d700017c470d2577e33cfcc52a3ca9d",
+      "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+      "wheel_sha256": "2fbc50eef8a75368832c94fbaa3a3635d89728367897cc3b427dfd98d62c821e"
+    }
+  },
+  "rebind": {
+    "from_version": "1.1.0",
+    "to_version": "1.2.0",
+    "status": "applied",
+    "requires_four_capability_parity_rerun": true,
+    "rule": "1.1.0 -> 1.2.0 为同一轮 rebind：pyproject exact pin、本 provenance、oracle 版本断言、文档与四 capability parity 一起更新，不重复推导中间版本。"
+  },
+  "evidence": {
+    "fresh_venv_four_capability_parity": "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md",
+    "wheel_files_vs_tag": "8/8 abacuslite runtime files byte-identical between the published wheel and v1.2.0 source",
+    "notes": [
+      "Forge 的 src/ 自 f97b798 起未变；candidate 对打包源的唯一改动是 pyproject 的 exact pin。wheel SHA-256 随 pin 与构建工具链变化，消费者重建必须重新记录自己的值。",
+      "本记录只证明已发布 abacuslite 1.2.0 的 exact extra、安装态四 capability 字段投影与离线回归；不证明 develop/LTS 真实引擎双轨发布证据，也不证明科学可接受性。",
+      "下一 pin 尚未决定；若 abacuslite 再发版，另起一轮 rebind，不复用本记录的哈希。"
+    ]
+  }
+}
