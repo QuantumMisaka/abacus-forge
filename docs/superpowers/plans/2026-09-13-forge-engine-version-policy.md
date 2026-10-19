@@ -59,7 +59,7 @@ Ruling: 先验证 CPython 3.12 本地完整候选 — 复用现有真实输入�
 
 P1 的有界接续结果（2026-10-20）：Paimon v3 已合入发布后的 v2 `502aa3e7a`，从 `ad68dc155` 实施 SCF 显式矩阵输出、实际 inventory/readiness 和 native 文件名发现。现有 Forge `20dc2eb` 安装包足以提供本切片的单元操作；没有新增 Forge 公共契约或编排逻辑。用户授权及验收细节由 Paimon 原 PLAN/报告维护。
 
-- [x] W3 本机安装候选：在新的无 system-site CPython 3.12 环境安装 P0 完整 PyATB wheel、Paimon 已固定的 Forge wheel 及既有基础依赖；81 个发行包一致性/native import 通过。当前 Paimon ZIP 已在该环境回放；产品 CPython 3.13 kit、PyATB 发布 pin 和其它系统仍开放。
+- [x] W3 本机安装候选：在新的无 system-site CPython 3.12 环境安装 P0 完整 PyATB wheel、Paimon 已固定的 Forge wheel 及既有基础依赖；81 个发行包一致性/native import 通过。当前 Paimon ZIP 已在该环境回放；目标系统 kit、PyATB 发布 pin 和其它系统仍开放，CPython 3.13 不作为本轮交付门禁。
 - [x] W2 显式交接：公开 Forge SCF 的 `hs|hsr` 请求在执行副本上物化；真实正常结束、收敛与 nspin 库存形成 ATP readiness。共同发现函数兼容 develop 新名称，保持旧命名策略；歧义拒绝。
 - [x] 本地真实 Tool 链：Si nspin=1，develop/LTS 分别从新源副本 SCF 到显式 PyATB band；源不变、无 legacy import、两轨 6×26 band 数组相同。源码后补齐候选 ZIP 解包回放与无旧包 package runtime gate，均通过；ZIP SHA-256 `f796507ed3993fc06d48cc13b99f2ee7e8a103b2ad2805b706fd74903b5ec466`。
 - [ ] W3/W4 交付验收：正式 kit/SIF 与发布 pin、其它自旋/材料、成对 Benchmark 和平台验收；PyATB 保持 explicit-only，默认路由 PARTIAL 不变。optical L2 的 native 文件复制另行处理。
@@ -72,7 +72,9 @@ Paimon owner 报告（相对 Forge 仓根目录）：`../app-tools-forge/toolbox
 
 用户确认已有另一 Agent 接手相关工作。本轮核对 `app-tools-forge@89d774c91`：`d77907e77` 已在该分支历史中；后继提交维护 Benchmark 容差、候选交付包、SAI 清单及环境 receipt。其 owner 入口为 `toolbox/ABACUS/docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`。该记录说明执行器仍缺 Forge 派发、工具绑定与数值事实提取，尚未提交真实 Benchmark 作业；这属于执行器接线缺口，不能据此判定 Forge 科学基元失败。
 
-本会话只维护 Forge 的既有交接证据与入口，不并发改写 Paimon Benchmark harness、候选身份或 SAI 执行记录。可独立承接的后续项是完整 PyATB 候选在目标解释器/系统上的安装验证，或 Forge 已有 capability 的更广自旋/材料消费证据。开始目标环境构建前，从 Paimon owner 确定实际 Python 与运行时 ABI；仅在本机另建 cp313 wheel 并不能证明适配 SAI。当前没有新建包、替换冻结候选或启动额外实算。
+本会话只维护 Forge 的既有交接证据与入口，不并发改写 Paimon Benchmark harness、候选身份或 SAI 执行记录。可独立承接的后续项是完整 PyATB 候选在目标系统 CPython 3.12 环境的安装验证，或 Forge 已有 capability 的更广自旋/材料消费证据。开始目标环境构建前，从 Paimon owner 确定实际运行时 ABI；当前没有新建包、替换冻结候选或启动额外实算。
+
+Ruling（2026-10-20，用户质疑 3.13 兼容必要性后的复核）：以已有真实交接证据的 CPython 3.12 为本轮 PyATB 安装验收基线，不主动构建 cp313 wheel，也不以 3.13 兼容阻塞 Forge/Paimon v1.3。仅在消费方明确需要 3.13 时重新评估；本裁决不缩减 Forge 已声明的 Python 支持范围。只读实查显示本地交接环境为 3.12.13，而 SAI `/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/env/` 当次仅有 `py313`，其解释器仍为 3.13.16、glibc 2.39；因此尚不能确认远端已切回 3.12。`app-tools-forge@8c9d36d5d` 的 kit 生成器也仍记录 3.13/no PyATB，且执行器存在另一 Agent 的未提交改动。切换落地时应由该 owner 同步解释器路径、依赖锁、kit manifest 与环境 receipt，再复核原 `kit_blocked` 判定；不能仅因目录改名或 Python 主次版本一致就认定 native wheel 可用。
 
 ### P2：能力扩展按真实消费缺口排队
 
