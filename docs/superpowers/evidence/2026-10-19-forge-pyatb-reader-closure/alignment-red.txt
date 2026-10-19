@@ -1,0 +1,358 @@
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+______ test_init_tb_aligns_abacus_R_union_without_losing_values[False-1] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18ca533b90>
+nspin = 1, sparse = False
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:50: in init_tb
+    m_tb.set_solver_HSR(HR, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18ca6cc440>
+HR = <pyatb.tb.multixr.multiXR object at 0x7f18cd3f8860>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18ca8eb920>, isSparse = False
+
+    def set_solver_HSR(self, HR, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        # Check whether HR and SR are consistent
+        if HR.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:36: ValueError
+______ test_init_tb_aligns_abacus_R_union_without_losing_values[False-2] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18ca572060>
+nspin = 2, sparse = False
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:52: in init_tb
+    m_tb.set_solver_HSR_spin2(HR_up, HR_dn, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18ca5724e0>
+HR_up = <pyatb.tb.multixr.multiXR object at 0x7f18ca573470>
+HR_dn = <pyatb.tb.multixr.multiXR object at 0x7f18ca5725d0>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18ca573ce0>, isSparse = False
+
+    def set_solver_HSR_spin2(self, HR_up, HR_dn, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        if self.nspin != 2:
+            raise ValueError('nspin is not equal to 2, the function cannot be called')
+
+        # Check whether HR and SR are consistent
+        if HR_up.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if HR_dn.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR_up.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:65: ValueError
+______ test_init_tb_aligns_abacus_R_union_without_losing_values[False-4] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18ca530a40>
+nspin = 4, sparse = False
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:50: in init_tb
+    m_tb.set_solver_HSR(HR, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18ca532b70>
+HR = <pyatb.tb.multixr.multiXR object at 0x7f18ca532f90>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18ca532c60>, isSparse = False
+
+    def set_solver_HSR(self, HR, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        # Check whether HR and SR are consistent
+        if HR.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:36: ValueError
+_______ test_init_tb_aligns_abacus_R_union_without_losing_values[True-1] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18ca5726c0>
+nspin = 1, sparse = True
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:50: in init_tb
+    m_tb.set_solver_HSR(HR, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18ca533d40>
+HR = <pyatb.tb.multixr.multiXR object at 0x7f18ca572720>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18ca572690>, isSparse = True
+
+    def set_solver_HSR(self, HR, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        # Check whether HR and SR are consistent
+        if HR.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:36: ValueError
+_______ test_init_tb_aligns_abacus_R_union_without_losing_values[True-2] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18ca5735f0>
+nspin = 2, sparse = True
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:52: in init_tb
+    m_tb.set_solver_HSR_spin2(HR_up, HR_dn, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18ca573800>
+HR_up = <pyatb.tb.multixr.multiXR object at 0x7f18ca573560>
+HR_dn = <pyatb.tb.multixr.multiXR object at 0x7f18ca5739e0>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18ca573bc0>, isSparse = True
+
+    def set_solver_HSR_spin2(self, HR_up, HR_dn, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        if self.nspin != 2:
+            raise ValueError('nspin is not equal to 2, the function cannot be called')
+
+        # Check whether HR and SR are consistent
+        if HR_up.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if HR_dn.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR_up.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:65: ValueError
+_______ test_init_tb_aligns_abacus_R_union_without_losing_values[True-4] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2918/test_init_tb_aligns_abacus_R_u5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f18c831d340>
+nspin = 4, sparse = True
+
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('sparse', [False, True])
+    def test_init_tb_aligns_abacus_R_union_without_losing_values(tmp_path, monkeypatch, nspin, sparse):
+        import importlib
+        module = importlib.import_module('pyatb.init_tb')
+        solver_module = importlib.import_module('pyatb.tb.solver')
+
+        class Capture:
+            def __init__(self, *args): self.hsr = None
+            def set_HSR(self, *args): self.hsr = args
+            def set_HSR_sparse(self, *args): self.hsr = args
+            def set_rR(self, *args): self.rr = args
+            def set_rR_sparse(self, *args): self.rr = args
+
+        monkeypatch.setattr(solver_module, 'tb_solver_', Capture)
+        hr = tmp_path / 'h.csr'
+        sr = tmp_path / 's.csr'
+        rr = tmp_path / 'rr.csr'
+        hr.write_text(matrix_text(True, nspin == 4))
+        # The S block has a distinct R to exercise the union, not only padding to H.
+        sr.write_text('Matrix Dimension of S(R): 2\nMatrix number of S(R): 1\n'
+                      '2 0 0 2\n' + ('(5,0) (6,0)' if nspin == 4 else '5 6') + '\n0 1\n0 1 2\n')
+        rr.write_text('Matrix Dimension of r(R): 2\nMatrix number of r(R): 1\n'
+                      '3 0 0\n1\n7\n0\n0 1 1\n0\n0\n')
+>       model = module.init_tb(nspin=nspin, HR_route=[str(hr), str(hr)] if nspin == 2 else str(hr),
+                               SR_route=str(sr), need_rR=True, rR_route=str(rr), isSparse=sparse)
+
+tests/test_abacus_csr_reader.py:120:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src/pyatb/init_tb.py:50: in init_tb
+    m_tb.set_solver_HSR(HR, SR, isSparse)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <pyatb.tb.tb.tb object at 0x7f18c831e330>
+HR = <pyatb.tb.multixr.multiXR object at 0x7f18c831e840>
+SR = <pyatb.tb.multixr.multiXR object at 0x7f18c831ea80>, isSparse = True
+
+    def set_solver_HSR(self, HR, SR, isSparse=False):
+        self.HSR_iSsparse = isSparse
+
+        # Check whether HR and SR are consistent
+        if HR.des != 'H':
+            raise ValueError('HR parameter error !!')
+        if SR.des != 'S':
+            raise ValueError('SR parameter error !!')
+        if not (HR.R_direct_coor == SR.R_direct_coor).all():
+>           raise ValueError('HR and SR mismatch !!')
+E           ValueError: HR and SR mismatch !!
+
+src/pyatb/tb/tb.py:36: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[False-1]
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[False-2]
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[False-4]
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[True-1]
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[True-2]
+FAILED tests/test_abacus_csr_reader.py::test_init_tb_aligns_abacus_R_union_without_losing_values[True-4]
+6 failed, 22 deselected in 0.36s

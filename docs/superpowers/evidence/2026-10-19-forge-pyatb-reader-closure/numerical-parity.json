@@ -1,0 +1,27 @@
+{
+  "H": {
+    "legacy_exact": true,
+    "legacy_shape": [
+      93,
+      351
+    ],
+    "modern_shape": [
+      93,
+      351
+    ],
+    "max_develop_lts_difference_over_R_union": 0.0
+  },
+  "S": {
+    "legacy_exact": true,
+    "legacy_shape": [
+      93,
+      351
+    ],
+    "modern_shape": [
+      63,
+      351
+    ],
+    "max_develop_lts_difference_over_R_union": 0.0
+  },
+  "rR_legacy_exact": true
+}

@@ -118,7 +118,7 @@ PYTHONPATH=src python -m abacus_forge.cli operation collect \
 
 ### PyATB band
 
-运行兼容性：Forge 支持显式交接新旧矩阵文件名，但文件内容仍须被所选 PyATB reader 支持。2026-10-19 指定构建实测中，LTS nspin=1 完整交接通过；develop 新 CSR 内容在 PyATB 1.1.2 reader 中失败，单纯重命名无效。当前可用范围和可复现输入见[双轨交接记录](superpowers/evidence/2026-10-19-forge-pyatb-dual-handoff.md)。
+运行兼容性：Forge 支持显式交接新旧矩阵文件名，但文件内容仍须被所选 PyATB reader 支持。2026-10-19 指定构建实测中，LTS nspin=1 完整交接通过；develop 新 CSR 内容在 PyATB 1.1.2 reader 中失败，单纯重命名无效。本地 PyATB 修复候选已通过同一矩阵的两轨消费，但尚未构建/发布新 wheel；当前已安装旧包仍有上述限制。见[候选与运行身份](superpowers/evidence/2026-10-19-forge-pyatb-reader-closure.md)。
 
 `pyatb-band` 请求要求结构、HR、SR（可选 rR）、Fermi energy 和 line-mode K 点等由调用方显式提供的 workspace-relative inputs。prepare 默认 link workspace 内来源，`handoff_mode="copy"` 时复制；不接受绝对路径/跨 workspace 来源，不扫描 SCF 目录或从 log 推断 Fermi energy。
 

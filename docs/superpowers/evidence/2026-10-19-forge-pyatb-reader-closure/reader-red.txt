@@ -1,0 +1,448 @@
+.F.F.F.F.F.FFFFFF.                                                       [100%]
+=================================== FAILURES ===================================
+_______ test_reads_both_formats_with_units_spin_and_zero_block[H-1-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u1')
+modern = True, nspin = 1, kind = 'H'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+>           result = abacus_readHR(nspin, str(path), 'Ry')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:33:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u1/arbitrary-name.csr'
+HR_unit = 'Ry', kwarg = {}, unit = 13.605698066
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u1/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+_______ test_reads_both_formats_with_units_spin_and_zero_block[H-2-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u3')
+modern = True, nspin = 2, kind = 'H'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+>           result = abacus_readHR(nspin, str(path), 'Ry')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:33:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 2
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u3/arbitrary-name.csr'
+HR_unit = 'Ry', kwarg = {}, unit = 13.605698066
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u3/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+_______ test_reads_both_formats_with_units_spin_and_zero_block[H-4-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u5')
+modern = True, nspin = 4, kind = 'H'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+>           result = abacus_readHR(nspin, str(path), 'Ry')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:33:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 4
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u5/arbitrary-name.csr'
+HR_unit = 'Ry', kwarg = {}, unit = 13.605698066
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u5/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+_______ test_reads_both_formats_with_units_spin_and_zero_block[S-1-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u7')
+modern = True, nspin = 1, kind = 'S'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+            result = abacus_readHR(nspin, str(path), 'Ry')
+            factor = Ry_to_eV
+        else:
+>           result = abacus_readSR(nspin, str(path))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:36:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+SR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u7/arbitrary-name.csr'
+kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u7/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readSR(nspin, SR_route, **kwarg):
+        unit = 1.0
+
+        with open(SR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:89: IndexError
+_______ test_reads_both_formats_with_units_spin_and_zero_block[S-2-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u9')
+modern = True, nspin = 2, kind = 'S'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+            result = abacus_readHR(nspin, str(path), 'Ry')
+            factor = Ry_to_eV
+        else:
+>           result = abacus_readSR(nspin, str(path))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:36:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 2
+SR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u9/arbitrary-name.csr'
+kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u9/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readSR(nspin, SR_route, **kwarg):
+        unit = 1.0
+
+        with open(SR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:89: IndexError
+_______ test_reads_both_formats_with_units_spin_and_zero_block[S-4-True] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u11')
+modern = True, nspin = 4, kind = 'S'
+
+    @pytest.mark.parametrize('modern', [False, True])
+    @pytest.mark.parametrize('nspin', [1, 2, 4])
+    @pytest.mark.parametrize('kind', ['H', 'S'])
+    def test_reads_both_formats_with_units_spin_and_zero_block(tmp_path, modern, nspin, kind):
+        path = tmp_path / 'arbitrary-name.csr'
+        path.write_text(matrix_text(modern, nspin == 4))
+        if kind == 'H':
+            result = abacus_readHR(nspin, str(path), 'Ry')
+            factor = Ry_to_eV
+        else:
+>           result = abacus_readSR(nspin, str(path))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_abacus_csr_reader.py:36:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 4
+SR_route = '/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u11/arbitrary-name.csr'
+kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_reads_both_formats_with_u11/arbitrary-name.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readSR(nspin, SR_route, **kwarg):
+        unit = 1.0
+
+        with open(SR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:89: IndexError
+_________________ test_rejects_malformed_modern_matrix[empty] __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_0')
+change = 'empty'
+
+    @pytest.mark.parametrize('change', ['empty', 'truncated', 'extra_values', 'bad_columns', 'bad_pointers'])
+    def test_rejects_malformed_modern_matrix(tmp_path, change):
+        text = matrix_text(True)
+        if change == 'empty': text = ''
+        if change == 'truncated': text = text.rsplit('4', 1)[0]
+        if change == 'extra_values': text = text.replace('1 2\n3 4', '1 2 3 4 5')
+        if change == 'bad_columns': text = text.replace('0 1\n0 1', '0 2\n0 1')
+        if change == 'bad_pointers': text = text.replace('0 2\n4', '0 3\n2')
+        path = tmp_path / 'bad.csr'
+        path.write_text(text)
+        with pytest.raises(ValueError):
+>           abacus_readHR(1, str(path), 'eV')
+
+tests/test_abacus_csr_reader.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_0/bad.csr'
+HR_unit = 'eV', kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_0/bad.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+_______________ test_rejects_malformed_modern_matrix[truncated] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_1')
+change = 'truncated'
+
+    @pytest.mark.parametrize('change', ['empty', 'truncated', 'extra_values', 'bad_columns', 'bad_pointers'])
+    def test_rejects_malformed_modern_matrix(tmp_path, change):
+        text = matrix_text(True)
+        if change == 'empty': text = ''
+        if change == 'truncated': text = text.rsplit('4', 1)[0]
+        if change == 'extra_values': text = text.replace('1 2\n3 4', '1 2 3 4 5')
+        if change == 'bad_columns': text = text.replace('0 1\n0 1', '0 2\n0 1')
+        if change == 'bad_pointers': text = text.replace('0 2\n4', '0 3\n2')
+        path = tmp_path / 'bad.csr'
+        path.write_text(text)
+        with pytest.raises(ValueError):
+>           abacus_readHR(1, str(path), 'eV')
+
+tests/test_abacus_csr_reader.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_1/bad.csr'
+HR_unit = 'eV', kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_1/bad.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+______________ test_rejects_malformed_modern_matrix[extra_values] ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_2')
+change = 'extra_values'
+
+    @pytest.mark.parametrize('change', ['empty', 'truncated', 'extra_values', 'bad_columns', 'bad_pointers'])
+    def test_rejects_malformed_modern_matrix(tmp_path, change):
+        text = matrix_text(True)
+        if change == 'empty': text = ''
+        if change == 'truncated': text = text.rsplit('4', 1)[0]
+        if change == 'extra_values': text = text.replace('1 2\n3 4', '1 2 3 4 5')
+        if change == 'bad_columns': text = text.replace('0 1\n0 1', '0 2\n0 1')
+        if change == 'bad_pointers': text = text.replace('0 2\n4', '0 3\n2')
+        path = tmp_path / 'bad.csr'
+        path.write_text(text)
+        with pytest.raises(ValueError):
+>           abacus_readHR(1, str(path), 'eV')
+
+tests/test_abacus_csr_reader.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_2/bad.csr'
+HR_unit = 'eV', kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_2/bad.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+______________ test_rejects_malformed_modern_matrix[bad_columns] _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_3')
+change = 'bad_columns'
+
+    @pytest.mark.parametrize('change', ['empty', 'truncated', 'extra_values', 'bad_columns', 'bad_pointers'])
+    def test_rejects_malformed_modern_matrix(tmp_path, change):
+        text = matrix_text(True)
+        if change == 'empty': text = ''
+        if change == 'truncated': text = text.rsplit('4', 1)[0]
+        if change == 'extra_values': text = text.replace('1 2\n3 4', '1 2 3 4 5')
+        if change == 'bad_columns': text = text.replace('0 1\n0 1', '0 2\n0 1')
+        if change == 'bad_pointers': text = text.replace('0 2\n4', '0 3\n2')
+        path = tmp_path / 'bad.csr'
+        path.write_text(text)
+        with pytest.raises(ValueError):
+>           abacus_readHR(1, str(path), 'eV')
+
+tests/test_abacus_csr_reader.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_3/bad.csr'
+HR_unit = 'eV', kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_3/bad.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+______________ test_rejects_malformed_modern_matrix[bad_pointers] ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_4')
+change = 'bad_pointers'
+
+    @pytest.mark.parametrize('change', ['empty', 'truncated', 'extra_values', 'bad_columns', 'bad_pointers'])
+    def test_rejects_malformed_modern_matrix(tmp_path, change):
+        text = matrix_text(True)
+        if change == 'empty': text = ''
+        if change == 'truncated': text = text.rsplit('4', 1)[0]
+        if change == 'extra_values': text = text.replace('1 2\n3 4', '1 2 3 4 5')
+        if change == 'bad_columns': text = text.replace('0 1\n0 1', '0 2\n0 1')
+        if change == 'bad_pointers': text = text.replace('0 2\n4', '0 3\n2')
+        path = tmp_path / 'bad.csr'
+        path.write_text(text)
+        with pytest.raises(ValueError):
+>           abacus_readHR(1, str(path), 'eV')
+
+tests/test_abacus_csr_reader.py:55:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+nspin = 1
+HR_route = '/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_4/bad.csr'
+HR_unit = 'eV', kwarg = {}, unit = 1.0
+fread = <_io.TextIOWrapper name='/tmp/pytest-of-james/pytest-2913/test_rejects_malformed_modern_4/bad.csr' mode='r' encoding='UTF-8'>
+line = []
+
+    def abacus_readHR(nspin, HR_route, HR_unit, **kwarg):
+        if HR_unit == 'eV':
+            unit = 1.0
+        elif HR_unit == 'Ry':
+            unit = Ry_to_eV
+
+        with open(HR_route, 'r') as fread:
+            while True:
+                line = fread.readline().split()
+>               if line[0] == 'Matrix':
+                   ^^^^^^^
+E               IndexError: list index out of range
+
+src/pyatb/io/abacus_read_xr.py:19: IndexError
+=========================== short test summary info ============================
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[H-1-True]
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[H-2-True]
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[H-4-True]
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[S-1-True]
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[S-2-True]
+FAILED tests/test_abacus_csr_reader.py::test_reads_both_formats_with_units_spin_and_zero_block[S-4-True]
+FAILED tests/test_abacus_csr_reader.py::test_rejects_malformed_modern_matrix[empty]
+FAILED tests/test_abacus_csr_reader.py::test_rejects_malformed_modern_matrix[truncated]
+FAILED tests/test_abacus_csr_reader.py::test_rejects_malformed_modern_matrix[extra_values]
+FAILED tests/test_abacus_csr_reader.py::test_rejects_malformed_modern_matrix[bad_columns]
+FAILED tests/test_abacus_csr_reader.py::test_rejects_malformed_modern_matrix[bad_pointers]
+11 failed, 7 passed in 0.50s
