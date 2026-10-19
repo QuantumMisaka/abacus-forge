@@ -10,7 +10,7 @@
 - [x] 在参考分支合入 ATST 复核；保留 IAO 与直接 NAO 方法区别、abacustools 参考定位以及 CLI discovery 说明。
 - [x] dpdata 保留默认依赖；更新当前入口及版本政策，关闭已完成的 exact extra/fresh-install 待办，历史证据保留。
 - [x] 运行相关回归、文档链接与 CLI 检查；独立同族 reviewer 无阻断发现。
-- [ ] 验证后本地 main 快进到集成结果，核对两条分支已吸收；工作树和分支保留以便追溯。
+- [x] 验证后本地 main 快进到集成结果，核对两条分支已吸收；工作树和分支保留以便追溯。
 
 ## 范围裁决
 
@@ -25,4 +25,4 @@
 - 修改范围内 Markdown 本地文件链接：176 个目标，0 缺失（不包含网页与页内锚点验证）；`git diff --check` 通过。
 - `conda run --no-capture-output -n abacus-env env PYTHONPATH=src python -m abacus_forge.cli --help` → exit 0；指南中的机器 CLI 示例由上述 architecture tests 覆盖。
 - 未运行全量、真实引擎或 Benchmark，不据此宣称能力晋级。
-- 独立同族 reviewer 已审查 `cc8dc43..1c23425` 及本轮文档差异，无阻断发现。main 集成结果待回填。
+- 独立同族 reviewer 已审查 `cc8dc43..1c23425` 及本轮文档差异，无阻断发现。本地 main 已快进到 `2be76e3`，吸收参考分支 `b40499b` 和 ATST `e7fdf60`。同时并入本机已知 `origin/main` 的 PR #6 合并记录 `20dc2eb`；该记录相对 ATST tip 无文件增量。集成树与已验证 `18915f2` 逐文件相同，且两条原分支均为 main 祖先。本条随后以纯文档提交回填；未推送或删除分支/工作树。
