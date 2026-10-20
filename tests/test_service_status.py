@@ -2918,3 +2918,53 @@ def test_relax_collect_reselects_output_stru_after_input_stru(
         artifact.path_rel == "outputs/OUT.ABACUS/STRU"
         for artifact in result.envelope.artifacts
     )
+
+
+def test_relax_collect_envelope_publishes_final_stress_from_real_log(tmp_path: Path) -> None:
+    """A real ABACUS relax log must publish its final 9-component kbar stress."""
+
+    fixture = (
+        Path(__file__).resolve().parent
+        / "fixtures"
+        / "abacus-diamond-relax"
+        / "running_relax.log"
+    )
+    log_text = fixture.read_text(encoding="utf-8")
+
+    # Independent oracle: the last TOTAL-STRESS block of the real log.
+    lines = log_text.splitlines()
+    header = max(
+        index for index, line in enumerate(lines) if "TOTAL-STRESS (KBAR)" in line.upper()
+    )
+    expected: list[float] = []
+    for line in lines[header + 1:]:
+        parts = line.split()
+        if len(parts) == 3:
+            try:
+                expected.extend(float(value) for value in parts)
+            except ValueError:
+                break
+        elif expected:
+            break
+    assert len(expected) == 9
+
+    workspace = _write_relax_collection_workspace(
+        tmp_path, log_text=log_text, final_structure="stru"
+    )
+    request = RelaxCollectRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174139",
+        workspace_rel="collection",
+        capability="relax",
+    )
+    result = RelaxServiceSet.default(workspace_root=tmp_path).collect.collect(request)
+
+    assert isinstance(result, OperationOutcome)
+    records = {record.name: record for record in result.envelope.metrics}
+    stress = records["stress"]
+    assert stress.unit == "kbar"
+    assert stress.kind == "reported"
+    assert list(stress.value) == expected
+    assert stress.source_artifact_id is not None
+    # The change is additive: existing scalar facts keep their records.
+    assert "total_energy" in records
+    assert "converged" in records

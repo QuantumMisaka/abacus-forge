@@ -30,7 +30,7 @@ _FINAL_STRUCTURE_SUFFIXES = (
 def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeResultEnvelope:
     """Add Relax's final-output requirement to the common factual projection."""
     projected = _projection_result(result)
-    envelope = common.collection_envelope(projected, workspace_rel)
+    envelope = common.collection_envelope(projected, workspace_rel, vector_metrics=("stress",))
     return replace(
         envelope, status=replace(envelope.status, collection=_collection_status(projected, envelope)),
         diagnostics=envelope.to_dict()["diagnostics"],
