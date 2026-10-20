@@ -7,3 +7,4 @@ docs/superpowers/evidence/2026-10-21-forge-bec/**/*.log -whitespace
 docs/superpowers/evidence/2026-10-21-forge-consumption/**/*.log -whitespace
 docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation/**/*.log -whitespace
 docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation/**/*.info -whitespace
+docs/superpowers/evidence/2026-10-21-forge-integration-candidate-closeout/*.log -whitespace

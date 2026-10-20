@@ -1,0 +1,22 @@
+{
+  "post_merge_offline": {
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge",
+    "command": "PYTHONDONTWRITEBYTECODE=1 /home/james/scratch/forge-release-validation-20261021/venv/bin/python -m pytest -q -p no:cacheprovider",
+    "exit_code": 0
+  },
+  "build": {
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge",
+    "command": "/home/james/scratch/forge-closeout-20261021/build-env/bin/python -m build --outdir /home/james/scratch/forge-closeout-20261021/artifacts",
+    "exit_code": 0
+  },
+  "optional_parser_tests": {
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge",
+    "command": "env -u ABACUS_FORGE_CANONICAL_ABACUSLITE ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 PYTHONPATH= PYTHONDONTWRITEBYTECODE=1 ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES=/home/james/work/sidereus/workplace/abacuslite/tests/fixtures/io/testfiles /home/james/scratch/forge-closeout-20261021/candidate-env/bin/python -m pytest -q -p no:cacheprovider --run-benchmark tests/test_package_contract.py tests/test_package_metadata_drift.py tests/benchmark/test_abacuslite_canonical_parity.py",
+    "exit_code": 0
+  },
+  "wheel_gates": {
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge",
+    "command": "env ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 PYTHONPATH= PYTHONDONTWRITEBYTECODE=1 ABACUS_FORGE_WHEEL=/home/james/scratch/forge-closeout-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl /home/james/scratch/forge-closeout-20261021/candidate-env/bin/python -m pytest -q -p no:cacheprovider tests/test_package_contract.py::test_built_wheel_keeps_the_same_optional_dependency_boundary tests/test_package_contract.py::test_built_wheel_license_metadata_matches_the_gplv3_source",
+    "result": "2 passed"
+  }
+}
