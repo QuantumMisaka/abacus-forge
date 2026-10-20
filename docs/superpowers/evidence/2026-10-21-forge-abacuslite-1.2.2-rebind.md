@@ -36,7 +36,8 @@ python -m pip install '/home/james/scratch/forge-abacuslite-122-20261021/artifac
 
 1. **Paimon 消费新候选及完整 demo/Benchmark。** 本轮只读刷新到 `app-tools-forge@368d694e6`，owner 已补事实字段映射和 STRU 行内注释解析；配置仍绑定 Forge `20dc2eb6` / wheel `2fbc50ee…` 与 abacuslite 1.2.0。owner 需按实际需要换用新包，并统一 kit 产品 ZIP 与 harness，再完成包含 prepare 的实际入口、完整 50 例 Benchmark 和平台验收。没有发现已证实的 Forge 库级阻断。
 2. **科学覆盖扩展。** direct NAO COHP 的更多材料/自旋、BEC 全张量与收敛等仍待具体需求推进；现有 MgO 证据仅覆盖一个 O_x 响应，typed capabilities 仍为 experimental。
-3. **远程交付。** 本轮只做本地候选与 main 集成；尚未远程推送或发布 Forge 到 PyPI。
+3. **远程交付。** `main` `714fea2` 已推送并触发托管 CI 通过（run
+   `39477565615`）；wheel/sdist artifact 已生成。PyPI 发布仍未执行。
 
 完整 Contract System 与 property manifest 的 Draft 未获准实施，不列为正在施工或本轮完成条件。
 Paimon owner 的工作树保持原状；其配置、kit 和 Benchmark 不在本轮改写范围。
@@ -46,4 +47,4 @@ Paimon owner 的工作树保持原状；其配置、kit 和 Benchmark 不在本�
 独立审查通过，无实质问题。最终源码包含当前 pin、测试与 provenance；从它构建的
 wheel 与安装态验证候选相同，见[构建收据](2026-10-21-forge-abacuslite-1.2.2-rebind/final-build.json)。
 193 个文档相对链接核对通过，staged diff 格式检查通过。按既有授权交付到本地 main，
-开发 worktree 保留；远程推送、PyPI 发布和 Paimon 候选替换仍未执行。
+开发 worktree 保留。远程推送与 CI 已接续完成；PyPI 发布和 Paimon 候选替换仍未执行。

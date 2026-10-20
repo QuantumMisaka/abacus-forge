@@ -22,11 +22,16 @@
 [Python 3.12 最终日志](2026-10-21-forge-installed-package-ci/py312/final-check.log)。
 同目录保留实际命令、构建/安装日志、依赖清单与本地重放脚本。
 
-本地 checkout/setup-python 由对应解释器和本地 Git archive 提供，未声称 GitHub
-托管 Actions 或 artifact 上传已经成功；后者须推送后验证。原有源码全离线 job 保留，
-本轮未改运行代码，不重复既有 1534 项完整回归或真实计算。
+本地 checkout/setup-python 由对应解释器和本地 Git archive 提供时，只证明本地
+run blocks；GitHub 托管 Actions 随后由推送 `714fea2` 触发并完成：run
+`39477565615` 结论为 success，`forge-distributions-3.10` 和
+`forge-distributions-3.12` artifact 均已生成、未过期，保留到 2026-11-03。
+[远端机器摘要](2026-10-21-forge-installed-package-ci-remote.json)记录 job、artifact
+身份与 ZIP digest；该 digest 不是内部 wheel/sdist 摘要。
+原有源码全离线 job 保留，本轮未改运行代码，不重复既有 1534 项完整回归或真实计算。
 
 独立审查发现 canonical fixture 在 ImportError 时可能 skip；已在 CI test step
 增加实际导入与发行版本读取，关闭这一假绿入口，并在两版环境重验。
 
-独立终审通过，无未关闭实质问题；本轮交付到本地 main，开发 worktree 保留。
+独立终审通过，无未关闭实质问题；候选先交付到本地 `main`，远程 CI 收口后 `main`
+已推送到 GitHub。开发 worktree 保留，不发布 PyPI。

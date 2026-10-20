@@ -31,7 +31,7 @@ Ruling: 复用已有真实输出做新 parser 的离线兼容回放 — 此次�
 - [x] 新增 Python 3.10/3.12 installed-package job：sdist → wheel → 安装 → package/parser/canonical parity，fixture commit 取自当前 pin 的 provenance。
 - [x] 显式检查 parser 可导入和 fixture 目录存在，避免环境缺项被 pytest skip 掩盖；成功后上传 wheel/sdist CI artifact，保留 14 天。
 - [x] 两版隔离环境实际重放 run blocks，各 55 passed、无跳过，构建 wheel 与 1.2.2 已验收候选一致。见[证据](../evidence/2026-10-21-forge-installed-package-ci.md)。
-- 远端运行与下载链仍待推送后验证；本轮不改 Paimon，不启动科学计算，不发布 PyPI。
+- [x] 推送 `714fea2` 后验证 GitHub 托管 CI 通过（run `39477565615`），两个 wheel/sdist artifact 已生成；本轮不改 Paimon，不启动科学计算，不发布 PyPI。
 
 ## 历史发布状态（2026-10-19）
 
