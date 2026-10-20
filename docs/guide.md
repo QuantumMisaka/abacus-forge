@@ -177,7 +177,7 @@ Python API 通过 `UnitSpec`、`prepare_unit`、`modify_unit`、`execute_unit` �
 
 CLI 提供本地 `eos`、`elastic`、`vibration` 和 `phonon` composite 命令，每个 pack 有 `prepare|run|post` 操作。`phonon` 需要可选依赖 `phonopy`。这些 pack 使用本地子目录和本地 runner，不会生成 Slurm、Bohrium 或 DPDispatcher 配置。拟合数据不足时，`elastic post` 会将结果明确标为 `unavailable`。
 
-`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy` 和 `bec` property pack 暴露本地 `prepare|run|post` 命令。它们均为实验性能力：大多数仅有 mock/fixture 证据；`convergence`、`spin-density`、`workfunc` 和 `charge-diff` 各有一次本地 serial-PW 操作与解析 smoke。这些证据不能将它们提升为稳定产品能力，也不构成科学验收。`bec` 仍是 fixture/legacy 形态，尚无已验证的原生端到端流程。`bader post` 只调用本机已安装的 `bader` executable，不会安装该程序。
+`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy` 和 `bec` property pack 暴露本地 `prepare|run|post` 命令。它们均为实验性能力：大多数仅有 mock/fixture 证据；`convergence`、`spin-density`、`workfunc` 和 `charge-diff` 各有一次本地 serial-PW 操作与解析 smoke。这些证据不能将它们提升为稳定产品能力，也不构成科学验收。legacy `bec` pack 保持 fixture/legacy 形态，不会被下方独立的原生 typed polarization/BEC 路径数值替换。`bader post` 只调用本机已安装的 `bader` executable，不会安装该程序。
 
 以下命令展示 convergence、spin-density 和 workfunc 的不同参数。实际运行前需提供相应 ABACUS 输入/产物以及本机可用的可执行文件：
 
