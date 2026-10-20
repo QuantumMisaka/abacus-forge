@@ -1,0 +1,11 @@
+{
+  "schema_version": "forge.request/v1",
+  "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b",
+  "workspace_rel": ".",
+  "capability": "polarization",
+  "operation": "collect",
+  "log_path_rel": "source/+0.05292/r3/running.log",
+  "structure_path_rel": "source/+0.05292/r3/STRU",
+  "input_path_rel": "source/+0.05292/r3/INPUT",
+  "output_path_rel": "facts/s2-g3.json"
+}

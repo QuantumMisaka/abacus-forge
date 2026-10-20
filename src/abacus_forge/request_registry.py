@@ -22,10 +22,14 @@ from abacus_forge.postprocess_contracts import (
     CohpPostprocessRequest,
     DosPostprocessRequest,
 )
+from abacus_forge.polarization_contracts import BecPostprocessRequest, PolarizationCollectRequest
 from abacus_forge.pyatb_contracts import (
     PyatbBandCollectRequest,
     PyatbBandExecuteRequest,
     PyatbBandPrepareRequest,
+)
+from abacus_forge.pyatb_cohp_contracts import (
+    PyatbCohpCollectRequest, PyatbCohpExecuteRequest, PyatbCohpPrepareRequest,
 )
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
@@ -68,7 +72,14 @@ PYATB_BAND_REQUEST_TYPES = {
     "execute": PyatbBandExecuteRequest,
     "collect": PyatbBandCollectRequest,
 }
+PYATB_COHP_REQUEST_TYPES = {
+    "prepare": PyatbCohpPrepareRequest,
+    "execute": PyatbCohpExecuteRequest,
+    "collect": PyatbCohpCollectRequest,
+}
 EXPORT_REQUEST_TYPES = {"export": ExportRequest}
+POLARIZATION_REQUEST_TYPES = {"collect": PolarizationCollectRequest}
+BEC_REQUEST_TYPES = {"postprocess": BecPostprocessRequest}
 
 ALL_REQUEST_TYPES_BY_CAPABILITY = {
     "scf": SCF_REQUEST_TYPES,
@@ -78,6 +89,9 @@ ALL_REQUEST_TYPES_BY_CAPABILITY = {
     "md": MD_REQUEST_TYPES,
     **POSTPROCESS_REQUEST_TYPES,
     "pyatb-band": PYATB_BAND_REQUEST_TYPES,
+    "pyatb-cohp": PYATB_COHP_REQUEST_TYPES,
+    "polarization": POLARIZATION_REQUEST_TYPES,
+    "bec": BEC_REQUEST_TYPES,
     "export": EXPORT_REQUEST_TYPES,
 }
 

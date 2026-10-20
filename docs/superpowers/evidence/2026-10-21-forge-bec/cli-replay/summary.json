@@ -1,0 +1,16 @@
+{
+  "fixture": "synthetic source-shaped, not ABACUS run",
+  "collect_cli_operations": 9,
+  "bec_cli_operations": 1,
+  "bec_python_operations": 1,
+  "events": 11,
+  "cli_api_results_equal": true,
+  "column_e": [
+    0.19999999999999998,
+    0.0,
+    0.0
+  ],
+  "requested_complete": true,
+  "full_tensor_complete": false,
+  "scientific": "unassessed"
+}

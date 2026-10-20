@@ -1,0 +1,11 @@
+{
+  "schema_version": "forge.request/v1",
+  "operation_id": "8d11498a-5436-4246-9cb9-d0bcb29ef796",
+  "workspace_rel": ".",
+  "capability": "polarization",
+  "operation": "collect",
+  "log_path_rel": "inputs/OUT.ABACUS/running_nscf.log",
+  "structure_path_rel": "inputs/STRU",
+  "input_path_rel": "inputs/INPUT",
+  "output_path_rel": "facts/polarization.json"
+}

@@ -1,0 +1,577 @@
+{
+  "pyatb-cohp/prepare": {
+    "capability": "pyatb-cohp",
+    "operation": "prepare",
+    "request_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "hr_paths_rel": {
+                "maxItems": 1,
+                "minItems": 1
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "nspin": {
+                "const": 2
+              }
+            },
+            "required": [
+              "nspin"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hr_paths_rel": {
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "atom_i_index": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "atom_i_orbs": {
+          "default": "all",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "atom_j_index": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "atom_j_orbs": {
+          "default": "all",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "capability": {
+          "const": "pyatb-cohp",
+          "type": "string"
+        },
+        "de": {
+          "default": 0.05,
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "e_range": {
+          "description": "Increasing absolute eV window spanning at least one de.",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "fermi_energy": {
+          "description": "Absolute Fermi energy in eV.",
+          "type": "number"
+        },
+        "hr_paths_rel": {
+          "description": "One HR for nspin=1 or up/down HR for nspin=2; ABACUS Ry units.",
+          "items": {
+            "minLength": 1,
+            "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "invert": {
+          "default": true,
+          "type": "boolean"
+        },
+        "kpoint_weights": {
+          "description": "One finite nonnegative weight per k point, positive sum; PyATB normalizes.",
+          "items": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "kpoints": {
+          "description": "Explicit fractional reciprocal coordinates; no implicit grid.",
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "max_kpoint_num": {
+          "default": 4000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "nspin": {
+          "default": 1,
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
+        },
+        "operation": {
+          "const": "prepare",
+          "type": "string"
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "orbital_paths_rel": {
+          "description": "Contained orbital files matching STRU NUMERICAL_ORBITAL basenames.",
+          "items": {
+            "minLength": 1,
+            "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "forge.request/v1",
+          "type": "string"
+        },
+        "shift_to_efermi": {
+          "default": true,
+          "type": "boolean"
+        },
+        "sigma": {
+          "default": 0.15,
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "spin": {
+          "default": "sum",
+          "enum": [
+            "sum",
+            "up",
+            "down"
+          ],
+          "type": "string"
+        },
+        "sr_path_rel": {
+          "description": "ABACUS dimensionless overlap matrix.",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "structure_path_rel": {
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "workspace_rel": {
+          "minLength": 1,
+          "pattern": "^(?:\\.(?=$)|(?!(?:\\.{1,2})(?:/|$))[^/\\\\]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+        "structure_path_rel",
+        "capability",
+        "hr_paths_rel",
+        "sr_path_rel",
+        "orbital_paths_rel",
+        "fermi_energy",
+        "atom_i_index",
+        "atom_j_index",
+        "kpoints",
+        "kpoint_weights",
+        "e_range"
+      ],
+      "title": "PyatbCohpPrepareRequest",
+      "type": "object"
+    },
+    "schema_version": "forge.schema-discovery/v1"
+  },
+  "pyatb-cohp/execute": {
+    "capability": "pyatb-cohp",
+    "operation": "execute",
+    "request_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "const": "pyatb-cohp",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": false,
+          "type": "boolean"
+        },
+        "executable": {
+          "default": "pyatb",
+          "minLength": 1,
+          "type": "string"
+        },
+        "mpi_ranks": {
+          "default": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "omp_threads": {
+          "default": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "operation": {
+          "const": "execute",
+          "type": "string"
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "forge.request/v1",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": null,
+          "exclusiveMinimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "workspace_rel": {
+          "minLength": 1,
+          "pattern": "^(?:\\.(?=$)|(?!(?:\\.{1,2})(?:/|$))[^/\\\\]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+        "capability"
+      ],
+      "title": "PyatbCohpExecuteRequest",
+      "type": "object"
+    },
+    "schema_version": "forge.schema-discovery/v1"
+  },
+  "pyatb-cohp/collect": {
+    "capability": "pyatb-cohp",
+    "operation": "collect",
+    "request_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "const": "pyatb-cohp",
+          "type": "string"
+        },
+        "metadata_path_rel": {
+          "default": "inputs/Out/COHP/COHP.meta.json",
+          "description": "PyATB metadata with linked spectrum and occupied ICOHP in eV.",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "operation": {
+          "const": "collect",
+          "type": "string"
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "forge.request/v1",
+          "type": "string"
+        },
+        "spectrum_path_rel": {
+          "default": "inputs/Out/COHP/COHP.dat",
+          "description": "Two-column increasing-energy eV and dimensionless COHP or -COHP spectrum.",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "workspace_rel": {
+          "minLength": 1,
+          "pattern": "^(?:\\.(?=$)|(?!(?:\\.{1,2})(?:/|$))[^/\\\\]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+        "capability"
+      ],
+      "title": "PyatbCohpCollectRequest",
+      "type": "object"
+    },
+    "schema_version": "forge.schema-discovery/v1"
+  },
+  "polarization/collect": {
+    "capability": "polarization",
+    "operation": "collect",
+    "request_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "const": "polarization",
+          "type": "string"
+        },
+        "input_path_rel": {
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "log_path_rel": {
+          "description": "Native ABACUS Berry-phase running log.",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "operation": {
+          "const": "collect",
+          "type": "string"
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "output_path_rel": {
+          "default": "outputs/polarization.json",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "forge.request/v1",
+          "type": "string"
+        },
+        "structure_path_rel": {
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "workspace_rel": {
+          "minLength": 1,
+          "pattern": "^(?:\\.(?=$)|(?!(?:\\.{1,2})(?:/|$))[^/\\\\]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+        "capability",
+        "log_path_rel",
+        "structure_path_rel",
+        "input_path_rel"
+      ],
+      "title": "PolarizationCollectRequest",
+      "type": "object"
+    },
+    "schema_version": "forge.schema-discovery/v1"
+  },
+  "bec/postprocess": {
+    "capability": "bec",
+    "operation": "postprocess",
+    "request_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "max_step_fraction": {
+                "exclusiveMaximum": 0.5,
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "max_step_fraction"
+            ]
+          },
+          "if": {
+            "properties": {
+              "branch_mode": {
+                "const": "explicit"
+              }
+            },
+            "required": [
+              "branch_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "max_step_fraction": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "branch_mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "explicit"
+          ],
+          "type": "string"
+        },
+        "capability": {
+          "const": "bec",
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "atom_index": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "direction": {
+                "enum": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "type": "string"
+              },
+              "samples": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "branch_offsets": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "1": {
+                          "type": "integer"
+                        },
+                        "2": {
+                          "type": "integer"
+                        },
+                        "3": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "1",
+                        "2",
+                        "3"
+                      ],
+                      "type": "object"
+                    },
+                    "displacement_angstrom": {
+                      "type": "number"
+                    },
+                    "polarization_paths_rel": {
+                      "items": {
+                        "minLength": 1,
+                        "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "displacement_angstrom",
+                    "polarization_paths_rel"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "atom_index",
+              "direction",
+              "samples"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "max_step_fraction": {
+          "default": null,
+          "description": "Required caller bound for conditional automatic branch unwrapping.",
+          "exclusiveMaximum": 0.5,
+          "exclusiveMinimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "operation": {
+          "const": "postprocess",
+          "type": "string"
+        },
+        "operation_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "output_path_rel": {
+          "default": "outputs/bec.json",
+          "minLength": 1,
+          "pattern": "^(?:(?!\\.{1,2}(?:/|$))[^/\\\\]+)(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "forge.request/v1",
+          "type": "string"
+        },
+        "workspace_rel": {
+          "minLength": 1,
+          "pattern": "^(?:\\.(?=$)|(?!(?:\\.{1,2})(?:/|$))[^/\\\\]+(?:/(?!\\.{1,2}(?:/|$))[^/\\\\]+)*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "operation_id",
+        "workspace_rel",
+        "capability",
+        "columns"
+      ],
+      "title": "BecPostprocessRequest",
+      "type": "object"
+    },
+    "schema_version": "forge.schema-discovery/v1"
+  }
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import runpy
 from pathlib import Path
 
 import numpy as np
@@ -322,6 +323,54 @@ def test_workfunc_prepare_and_postprocess(tmp_path: Path) -> None:
     assert posted.status == "completed"
     assert posted.summary["vacuum_level_ev"] == pytest.approx(10.0)
     assert posted.summary["work_function_ev"] == pytest.approx(6.0)
+
+
+def test_manifest_consumer_example_uses_actual_cli_artifacts(tmp_path: Path, capsys) -> None:
+    consumer = runpy.run_path(
+        str(Path(__file__).parents[1] / "examples" / "property_manifest_consumer.py")
+    )["consume"]
+    workspace = _prepared_workspace(tmp_path / "consumer")
+    prepare_spin_density(workspace.root)
+    outputs = workspace.root / "spin-density" / "scf" / "outputs"
+    _write_cube(outputs / "chgs1.cube", [3.0, 4.0])
+    _write_cube(outputs / "chgs2.cube", [1.0, 1.5])
+    assert main(["spin-density", "post", str(workspace.root), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+
+    delivered = consumer(result, workspace.root)
+
+    assert delivered["derived_cube"] == "reports/spin_density.cube"
+    assert {item["spin"] for item in delivered["sources"]} == {"up", "down"}
+    assert delivered["grid_shape"] == [1, 1, 2]
+    assert CubeData.from_file(
+        workspace.root / delivered["derived_cube"]
+    ).data.reshape(-1).tolist() == [2.0, 2.5]
+    source_path = workspace.root / delivered["sources"][0]["path_rel"]
+    original = source_path.read_bytes()
+    source_path.write_bytes(original + b"\n")
+    with pytest.raises(ValueError, match="changed since production"):
+        consumer(result, workspace.root)
+    source_path.write_bytes(original)
+    # Manifest presence alone cannot make an absent/stale handoff consumable.
+    (workspace.root / delivered["derived_cube"]).rename(
+        workspace.root / "reports" / "moved.cube"
+    )
+    with pytest.raises(ValueError, match="unavailable"):
+        consumer(result, workspace.root)
+
+
+def test_manifest_consumer_example_rejects_missing_source(tmp_path: Path, capsys) -> None:
+    consumer = runpy.run_path(
+        str(Path(__file__).parents[1] / "examples" / "property_manifest_consumer.py")
+    )["consume"]
+    workspace = _prepared_workspace(tmp_path / "consumer-missing")
+    prepare_spin_density(workspace.root)
+    outputs = workspace.root / "spin-density" / "scf" / "outputs"
+    _write_cube(outputs / "chgs1.cube", [3.0, 4.0])
+    assert main(["spin-density", "post", str(workspace.root), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    with pytest.raises(ValueError, match="missing"):
+        consumer(result, workspace.root)
 
 
 def test_workfunc_converts_rydberg_potential_cube_to_ev(tmp_path: Path) -> None:

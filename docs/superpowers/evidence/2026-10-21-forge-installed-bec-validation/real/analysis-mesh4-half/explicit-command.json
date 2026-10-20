@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "/home/james/scratch/forge-release-validation-20261021/venv/bin/python",
+    "-I",
+    "-m",
+    "abacus_forge.cli",
+    "operation",
+    "postprocess",
+    "--stdin"
+  ],
+  "cwd": "/home/james/scratch/forge-real-bec-20261021/analysis-mesh4-half/workspace",
+  "exit_code": 0
+}

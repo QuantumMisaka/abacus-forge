@@ -1,0 +1,91 @@
+
+                     ▄████▄ █████▄ ▄████▄ ▄█████ ██  ██ ▄█████ 
+                     ██▄▄██ ██▄▄██ ██▄▄██ ██     ██  ██ ▀▀▀▄▄▄ 
+                     ██  ██ ██▄▄█▀ ██  ██ ▀█████ ▀████▀ █████▀ 
+
+                                                                                     
+                                v3.11.0-beta8
+
+               Atomic-orbital Based Ab-initio Computation at UStc                    
+
+                     Website: http://abacus.ustc.edu.cn/                             
+               Documentation: https://abacus.deepmodeling.com/                       
+                  Repository: https://github.com/abacusmodeling/abacus-develop       
+                              https://github.com/deepmodeling/abacus-develop         
+                      Commit: 94576a801 (Mon Aug 31 18:04:16 2026 +0800)
+
+ Wed Oct 21 01:24:42 2026
+ MAKE THE DIR         : OUT.ABACUS/
+ RUNNING WITH DEVICE  : CPU / AMD Ryzen 9 3950X 16-Core Processor (x1)
+ WARNING: some of potential function is set to zero cause of less than 1e-30.
+ WARNING: some of potential function is set to zero cause of less than 1e-30.
+ UNIFORM GRID DIM     : 36 * 36 * 36
+ UNIFORM GRID DIM(BIG): 36 * 36 * 36
+ DONE(0.0361588  SEC) : SETUP UNITCELL
+ DONE(0.0371367  SEC) : INIT K-POINTS
+ ----------------------------------------------------------------
+ ----------------------------------------------------------------
+ SPIN    KPOINTS         PROCESSES   THREADS/PROC  THREADS/TOTAL 
+ 1       128             1           1             1             
+ ----------------------------------------------------------------
+ Use plane wave basis
+ ----------------------------------------------------------------
+ ELEMENT NATOM       
+ O       1           
+ Mg      1           
+ ----------------------------------------------------------------
+ Initial plane wave basis and FFT box
+ ----------------------------------------------------------------
+ DONE(0.0542227  SEC) : INIT PLANEWAVE
+ START CHARGE         : FILE
+ DONE(0.070066   SEC) : LOCAL POTENTIAL
+ DONE(0.113872   SEC) : NON-LOCAL POTENTIAL
+ MEMORY FOR PSI (MB)  : 12.4062
+ DONE(0.208031   SEC) : INIT BASIS
+
+ ================================================================
+ NONSELF-CONSISTENT: 
+ ================================================================
+ DONE(1.20126    SEC) : INIT SCF
+ ITER     ETOT/eV          EDIFF/eV         DRHO     TIME/s
+ CG1   -4.80604920e+02   0.00000000e+00   0.0000e+00   9.05
+
+ * * * * * *
+ << Start Berry phase polarization.
+ >> Finish Berry phase polarization.
+ * * * * * *
+
+ TIME STATISTICS
+-------------------------------------------------------------------
+   CLASS_NAME           NAME         TIME/s  CALLS   AVG/s  PER/%  
+-------------------------------------------------------------------
+                 total               10.84  15       0.72   100.00 
+ Driver          atomic_world        10.84  1        10.84  100.00 
+ PW_Basis_Sup    recip2real          0.22   270      0.00   2.00   
+ Relax_Driver    relax_driver        10.63  1        10.63  98.06  
+ ESolver_KS      runner              10.63  1        10.63  98.06  
+ ESolver_KS_PW   before_scf          0.99   1        0.99   9.16   
+ PSIPrepare      initialize_psi      0.95   1        0.95   8.75   
+ Nonlocal        getvnl              0.20   256      0.00   1.82   
+ pp_cell_vnl     getvnl              0.20   256      0.00   1.81   
+ DiagoIterAssist diag_subspace_init  0.80   128      0.01   7.43   
+ Operator        hPsi                9.34   7993     0.00   86.22  
+ Operator        veff_pw             8.93   7993     0.00   82.40  
+ PW_Basis_K      recip2real          4.67   8761     0.00   43.10  
+ PW_Basis_K      gathers_zero_serial 0.25   8761     0.00   2.28   
+ PW_Basis_K      real2recip          4.16   8761     0.00   38.41  
+ Operator        nonlocal_pw         0.38   7993     0.00   3.47   
+ Nonlocal        add_nonlocal_pp     0.13   7993     0.00   1.18   
+ ESolver_KS_PW   hamilt2rho_single   9.02   1        9.02   83.24  
+ HSolverPW       solve               9.02   1        9.02   83.24  
+ HSolverPW       solve_psik          8.91   128      0.07   82.23  
+ DiagoCG         diag_once           8.90   128      0.07   82.17  
+ ESolver_KS_PW   after_scf           0.58   1        0.58   5.35   
+ ModuleIO        ctrl_scf_pw         0.56   1        0.56   5.18   
+-------------------------------------------------------------------
+
+
+ START  Time  : Wed Oct 21 01:24:42 2026
+ FINISH Time  : Wed Oct 21 01:24:53 2026
+ TOTAL  Time  : 11
+ SEE INFORMATION IN : OUT.ABACUS/

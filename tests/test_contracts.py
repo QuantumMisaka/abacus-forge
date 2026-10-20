@@ -529,7 +529,7 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert payload["schema_version"] == "forge.capabilities/v1"
     assert [item["name"] for item in payload["capabilities"]] == [
         "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "cohp",
-        "pyatb-band", "export",
+        "pyatb-band", "pyatb-cohp", "polarization", "bec", "export",
     ]
     assert payload["capabilities"][0]["maturity"] == "experimental"
     assert payload["capabilities"][0]["operations"] == ["prepare", "modify", "execute", "collect"]
@@ -546,6 +546,12 @@ def test_capabilities_document_is_fresh_and_advertises_all_capabilities() -> Non
     assert payload["capabilities"][6]["operations"] == ["postprocess"]
     assert payload["capabilities"][7]["name"] == "cohp"
     assert payload["capabilities"][8]["operations"] == ["prepare", "execute", "collect"]
+    assert payload["contracts"]["cohp"]["method"] == "iao"
+    assert payload["contracts"]["pyatb-cohp"]["method"] == "direct_nao"
+    assert payload["contracts"]["cohp"]["operation"] == payload["capabilities"][7]["operations"][0]
+    assert payload["contracts"]["pyatb-cohp"]["operations"] == payload["capabilities"][9]["operations"]
+    payload["contracts"]["pyatb-cohp"]["result"]["spectrum_value_unit"] = "mutated"
+    assert capabilities_document()["contracts"]["pyatb-cohp"]["result"]["spectrum_value_unit"] == "dimensionless"
 
 
 def test_atst_neb_requests_round_trip_strictly() -> None:

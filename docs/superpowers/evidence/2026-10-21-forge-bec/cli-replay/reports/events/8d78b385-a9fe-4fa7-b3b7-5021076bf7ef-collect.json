@@ -1,0 +1,87 @@
+{
+  "id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef",
+  "operation": "collect",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "input-b8ca2621e9b995c8",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/-0.05292/r2/running.log",
+          "role": "input",
+          "sha256": "b5a67ead46abd55dac4a8a0ec79d1780571e9a42c85f0046b6935cfb7ac0b1c0",
+          "size_bytes": 349,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "input-f5030ae16f38bbdb",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/-0.05292/r2/STRU",
+          "role": "input",
+          "sha256": "9aa89988a43f204702d88bea4ba4f38d2ac41e2a42078987174692d622ecfd90",
+          "size_bytes": 143,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "input-68f95591fffd3daa",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/-0.05292/r2/INPUT",
+          "role": "input",
+          "sha256": "88bb4643c17c1d75ec15cf16dc68afdfbc457a6c63c564f0e9323dcfd3aeb798",
+          "size_bytes": 63,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "output-40af2efda3ffc202",
+          "media_type": "application/json",
+          "path_rel": "facts/s0-g2.json",
+          "role": "output",
+          "sha256": "db250dedd9c1de3ac695020ab3a84ef5ef25d293a20be85f80e3a0c60e412cb2",
+          "size_bytes": 1571,
+          "stage": "collect"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "input-b8ca2621e9b995c8",
+            "operation_id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef"
+          },
+          {
+            "artifact_id": "input-f5030ae16f38bbdb",
+            "operation_id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef"
+          },
+          {
+            "artifact_id": "input-68f95591fffd3daa",
+            "operation_id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef"
+          },
+          {
+            "artifact_id": "output-40af2efda3ffc202",
+            "operation_id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef"
+          }
+        ],
+        "fact_schema_version": "forge.polarization/v1",
+        "missing_source_paths_rel": [],
+        "output_path_rel": "facts/s0-g2.json"
+      },
+      "metrics": [],
+      "operation": "collect",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

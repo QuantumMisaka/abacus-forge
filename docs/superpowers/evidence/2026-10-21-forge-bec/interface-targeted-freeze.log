@@ -1,0 +1,17 @@
+........................................................................ [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 48%]
+........................................................................ [ 65%]
+........................................................................ [ 81%]
+........................................................................ [ 97%]
+..........                                                               [100%]
+=============================== warnings summary ===============================
+tests/test_polarization_recipe.py::test_polarization_recipe_prepares_one_displacement_and_runs_one_process
+tests/test_polarization_recipe.py::test_polarization_recipe_prepares_one_displacement_and_runs_one_process
+tests/test_polarization_recipe.py::test_polarization_recipe_prepares_one_displacement_and_runs_one_process
+  /home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+442 passed, 3 warnings in 12.88s

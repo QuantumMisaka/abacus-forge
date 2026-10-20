@@ -1,0 +1,108 @@
+
+                     ▄████▄ █████▄ ▄████▄ ▄█████ ██  ██ ▄█████ 
+                     ██▄▄██ ██▄▄██ ██▄▄██ ██     ██  ██ ▀▀▀▄▄▄ 
+                     ██  ██ ██▄▄█▀ ██  ██ ▀█████ ▀████▀ █████▀ 
+
+                                                                                     
+                                v3.11.0-beta8
+
+               Atomic-orbital Based Ab-initio Computation at UStc                    
+
+                     Website: http://abacus.ustc.edu.cn/                             
+               Documentation: https://abacus.deepmodeling.com/                       
+                  Repository: https://github.com/abacusmodeling/abacus-develop       
+                              https://github.com/deepmodeling/abacus-develop         
+                      Commit: 94576a801 (Mon Aug 31 18:04:16 2026 +0800)
+
+ Wed Oct 21 01:23:24 2026
+ MAKE THE DIR         : OUT.ABACUS/
+ RUNNING WITH DEVICE  : CPU / AMD Ryzen 9 3950X 16-Core Processor (x1)
+ WARNING: some of potential function is set to zero cause of less than 1e-30.
+ WARNING: some of potential function is set to zero cause of less than 1e-30.
+ UNIFORM GRID DIM     : 36 * 36 * 36
+ UNIFORM GRID DIM(BIG): 36 * 36 * 36
+ DONE(0.0463005  SEC) : SETUP UNITCELL
+ DONE(0.0469528  SEC) : INIT K-POINTS
+ ----------------------------------------------------------------
+ Self-consistent calculations for electrons
+ ----------------------------------------------------------------
+ SPIN    KPOINTS         PROCESSES   THREADS/PROC  THREADS/TOTAL 
+ 1       64              1           1             1             
+ ----------------------------------------------------------------
+ Use plane wave basis
+ ----------------------------------------------------------------
+ ELEMENT NATOM       
+ O       1           
+ Mg      1           
+ ----------------------------------------------------------------
+ Initial plane wave basis and FFT box
+ ----------------------------------------------------------------
+ DONE(0.0624589  SEC) : INIT PLANEWAVE
+ START CHARGE         : ATOMIC
+ DONE(0.0941134  SEC) : LOCAL POTENTIAL
+ DONE(0.132949   SEC) : NON-LOCAL POTENTIAL
+ MEMORY FOR PSI (MB)  : 6.20312
+ DONE(0.206694   SEC) : INIT BASIS
+
+ ================================================================
+ SELF-CONSISTENT: 
+ ================================================================
+ DONE(0.826033   SEC) : INIT SCF
+ ITER     ETOT/eV          EDIFF/eV         DRHO     TIME/s
+ CG1   -4.77278696e+02   0.00000000e+00   4.7691e-01   1.02
+ CG2   -4.79223561e+02  -1.94486469e+00   5.6936e-01   1.53
+ CG3   -4.80460444e+02  -1.23688342e+00   7.1627e-03   1.34
+ CG4   -4.80590429e+02  -1.29984912e-01   1.3297e-02   1.96
+ CG5   -4.80595183e+02  -4.75400937e-03   1.6228e-03   1.26
+ CG6   -4.80597556e+02  -2.37245301e-03   9.7109e-05   1.26
+ CG7   -4.80598862e+02  -1.30608953e-03   9.5083e-05   1.76
+ CG8   -4.80598804e+02   5.83710966e-05   5.6298e-05   0.99
+ CG9   -4.80598479e+02   3.25011958e-04   4.0880e-05   1.01
+ CG10  -4.80598685e+02  -2.06684513e-04   1.0034e-05   1.67
+ CG11  -4.80598696e+02  -1.06197866e-05   1.8337e-06   1.00
+ CG12  -4.80598695e+02   3.67875966e-07   1.4197e-06   1.27
+ CG13  -4.80598692e+02   3.34356057e-06   8.1222e-07   0.96
+ CG14  -4.80598696e+02  -4.06546188e-06   8.2608e-09   1.28
+ CG15  -4.80598696e+02   6.63595589e-08   1.3049e-07   1.73
+ CG16  -4.80598696e+02   1.61676937e-07   5.8885e-08   1.35
+ CG17  -4.80598696e+02   1.24684227e-07   1.6580e-08   1.30
+ CG18  -4.80598696e+02  -8.27272911e-08   1.0260e-08   1.95
+ CG19  -4.80598696e+02  -1.02912691e-08   9.8825e-10   1.18
+ CG20  -4.80598696e+02  -3.67913379e-09   5.7283e-11   1.42
+
+ TIME STATISTICS
+-------------------------------------------------------------------
+   CLASS_NAME           NAME         TIME/s  CALLS   AVG/s  PER/%  
+-------------------------------------------------------------------
+                 total               28.09  15       1.87   100.00 
+ Driver          atomic_world        28.09  1        28.09  100.00 
+ Relax_Driver    relax_driver        27.88  1        27.88  99.26  
+ ESolver_KS      runner              27.88  1        27.88  99.26  
+ ESolver_KS_PW   before_scf          0.62   1        0.62   2.20   
+ Potential       cal_veff            0.62   21       0.03   2.19   
+ PotXC           cal_veff            0.57   21       0.03   2.03   
+ XC_Functional   v_xc                0.57   21       0.03   2.02   
+ PSIPrepare      initialize_psi      0.57   1        0.57   2.04   
+ Nonlocal        getvnl              1.04   1344     0.00   3.70   
+ pp_cell_vnl     getvnl              1.04   1344     0.00   3.69   
+ DiagoIterAssist diag_subspace_init  0.49   64       0.01   1.74   
+ Operator        hPsi                22.52  16562    0.00   80.16  
+ Operator        veff_pw             21.56  16562    0.00   76.75  
+ PW_Basis_K      recip2real          13.38  25586    0.00   47.62  
+ PW_Basis_K      gathers_zero_serial 0.58   25586    0.00   2.05   
+ PW_Basis_K      real2recip          9.83   20466    0.00   35.00  
+ Operator        nonlocal_pw         0.87   16562    0.00   3.09   
+ Nonlocal        add_nonlocal_pp     0.32   16562    0.00   1.14   
+ ESolver_KS_PW   hamilt2rho_single   26.57  20       1.33   94.57  
+ HSolverPW       solve               26.57  20       1.33   94.57  
+ HSolverPW       solve_psik          22.91  1280     0.02   81.54  
+ DiagoCG         diag_once           17.46  1280     0.01   62.16  
+ ElecStatePW     psiToRho            2.67   20       0.13   9.50   
+ DiagoIterAssist diag_subspace       5.36   1216     0.00   19.10  
+-------------------------------------------------------------------
+
+
+ START  Time  : Wed Oct 21 01:23:24 2026
+ FINISH Time  : Wed Oct 21 01:23:53 2026
+ TOTAL  Time  : 29
+ SEE INFORMATION IN : OUT.ABACUS/

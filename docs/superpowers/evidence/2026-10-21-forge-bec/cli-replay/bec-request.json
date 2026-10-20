@@ -1,0 +1,42 @@
+{
+  "schema_version": "forge.request/v1",
+  "operation_id": "e9a80be0-35df-4807-bbc4-e0d922dab47d",
+  "workspace_rel": ".",
+  "capability": "bec",
+  "operation": "postprocess",
+  "columns": [
+    {
+      "atom_index": 1,
+      "direction": "x",
+      "samples": [
+        {
+          "displacement_angstrom": -0.0529177210903,
+          "polarization_paths_rel": [
+            "facts/s0-g1.json",
+            "facts/s0-g2.json",
+            "facts/s0-g3.json"
+          ]
+        },
+        {
+          "displacement_angstrom": 0.0,
+          "polarization_paths_rel": [
+            "facts/s1-g1.json",
+            "facts/s1-g2.json",
+            "facts/s1-g3.json"
+          ]
+        },
+        {
+          "displacement_angstrom": 0.0529177210903,
+          "polarization_paths_rel": [
+            "facts/s2-g1.json",
+            "facts/s2-g2.json",
+            "facts/s2-g3.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "branch_mode": "auto",
+  "max_step_fraction": 0.2,
+  "output_path_rel": "outputs/bec-cli.json"
+}

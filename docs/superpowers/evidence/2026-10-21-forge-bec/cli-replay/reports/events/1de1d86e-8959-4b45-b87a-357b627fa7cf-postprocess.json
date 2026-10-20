@@ -1,0 +1,173 @@
+{
+  "id": "1de1d86e-8959-4b45-b87a-357b627fa7cf",
+  "operation": "postprocess",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "input-fd0fa9f1d4bd678c",
+          "media_type": "application/json",
+          "path_rel": "facts/s0-g1.json",
+          "role": "input",
+          "sha256": "def3a33f654da7b8308a89db918918f947c0c43b7e8c0c1c364cfb9e1f35d7b5",
+          "size_bytes": 1604,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-40af2efda3ffc202",
+          "media_type": "application/json",
+          "path_rel": "facts/s0-g2.json",
+          "role": "input",
+          "sha256": "db250dedd9c1de3ac695020ab3a84ef5ef25d293a20be85f80e3a0c60e412cb2",
+          "size_bytes": 1571,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-f25f73762814418d",
+          "media_type": "application/json",
+          "path_rel": "facts/s0-g3.json",
+          "role": "input",
+          "sha256": "f2a0a6e4a7f825c55da95f1dd99e148bc28dc470eb91dd5b502ac7f4e63b0be3",
+          "size_bytes": 1562,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-20790b23d5d2c80d",
+          "media_type": "application/json",
+          "path_rel": "facts/s1-g1.json",
+          "role": "input",
+          "sha256": "fd0b0c16ca1b11452d40c5227d42e1ff84c830981bf8480fe08849ea8be012a5",
+          "size_bytes": 1553,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-6747d621080cfe40",
+          "media_type": "application/json",
+          "path_rel": "facts/s1-g2.json",
+          "role": "input",
+          "sha256": "5cb0f767a6f057902dd1e1282670886c083ce31f555f63451898b21fbec27003",
+          "size_bytes": 1558,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-c0af90754abc2ce0",
+          "media_type": "application/json",
+          "path_rel": "facts/s1-g3.json",
+          "role": "input",
+          "sha256": "e990a55eba40c2d09880614211763fad4fbb26479d9a1a0dc265040aadfc0e77",
+          "size_bytes": 1549,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-6fd31a743e8ef069",
+          "media_type": "application/json",
+          "path_rel": "facts/s2-g1.json",
+          "role": "input",
+          "sha256": "65517f9e515d7b693e32e5db966e9ec131bfbb428bdc4cbeb3d77d6ca8a4ba1d",
+          "size_bytes": 1591,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-eab421ae09289f49",
+          "media_type": "application/json",
+          "path_rel": "facts/s2-g2.json",
+          "role": "input",
+          "sha256": "6ab314fc71d99bb04ba4383645cb6ae6a937db57f907a19294bb9684715b3adb",
+          "size_bytes": 1570,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-d2c6dbb454f2ff3a",
+          "media_type": "application/json",
+          "path_rel": "facts/s2-g3.json",
+          "role": "input",
+          "sha256": "f7a78855c8b3b3edda359b8ef377eb677a0f167b0061f000637483f387a18660",
+          "size_bytes": 1561,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "output-395da68a7c074a2b",
+          "media_type": "application/json",
+          "path_rel": "outputs/bec-api.json",
+          "role": "output",
+          "sha256": "f3d4ca6bac5716167cb9793b4b15b7e176fe1183e2a17b9787c712da70a33ebe",
+          "size_bytes": 3531,
+          "stage": "postprocess"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "input-fd0fa9f1d4bd678c",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-40af2efda3ffc202",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-f25f73762814418d",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-20790b23d5d2c80d",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-6747d621080cfe40",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-c0af90754abc2ce0",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-6fd31a743e8ef069",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-eab421ae09289f49",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "input-d2c6dbb454f2ff3a",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          },
+          {
+            "artifact_id": "output-395da68a7c074a2b",
+            "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf"
+          }
+        ],
+        "full_tensor_complete": false,
+        "invalid_source_paths_rel": [],
+        "missing_source_paths_rel": [],
+        "output_path_rel": "outputs/bec-api.json",
+        "requested_complete": true
+      },
+      "metrics": [],
+      "operation": "postprocess",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "1de1d86e-8959-4b45-b87a-357b627fa7cf",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

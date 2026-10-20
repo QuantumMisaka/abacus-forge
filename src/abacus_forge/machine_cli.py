@@ -57,6 +57,12 @@ from abacus_forge.export_services import ExportServiceSet
 from abacus_forge.postprocess_services import PostprocessServiceSet
 from abacus_forge.atst_neb import AtstNebServiceSet
 from abacus_forge.pyatb_services import PyatbBandServiceSet
+from abacus_forge.pyatb_cohp_contracts import (
+    PyatbCohpCollectRequest, PyatbCohpExecuteRequest, PyatbCohpPrepareRequest,
+)
+from abacus_forge.pyatb_cohp_services import PyatbCohpServiceSet
+from abacus_forge.polarization_contracts import BecPostprocessRequest, PolarizationCollectRequest
+from abacus_forge.polarization_services import BecServiceSet, PolarizationServiceSet
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -88,6 +94,7 @@ _POSTPROCESS_DECODERS = {
     capability: _CAPABILITY_DECODERS[capability] for capability in ("band", "cohp", "dos")
 }
 _PYATB_BAND_DECODERS = _CAPABILITY_DECODERS["pyatb-band"]
+_PYATB_COHP_DECODERS = _CAPABILITY_DECODERS["pyatb-cohp"]
 _EXPORT_DECODERS = _CAPABILITY_DECODERS["export"]
 _RELAX_REQUEST_TYPES = (
     RelaxPrepareRequest,
@@ -428,10 +435,13 @@ def run_machine_cli(
     stdout: TextIO,
     stderr: TextIO,
     cwd: Path,
-    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | PyatbBandServiceSet | ExportServiceSet | None = None,
+    services: ScfServiceSet | RelaxServiceSet | MdServiceSet | PostprocessServiceSet | PyatbBandServiceSet | ExportServiceSet | PolarizationServiceSet | BecServiceSet | None = None,
     atst_services: AtstNebServiceSet | None = None,
     pyatb_services: PyatbBandServiceSet | None = None,
+    pyatb_cohp_services: PyatbCohpServiceSet | None = None,
     export_services: ExportServiceSet | None = None,
+    polarization_services: PolarizationServiceSet | None = None,
+    bec_services: BecServiceSet | None = None,
 ) -> int:
     """Run one non-interactive machine command and write one stdout document."""
     parser = build_machine_parser()
@@ -514,6 +524,12 @@ def run_machine_cli(
             service_set = MdPostprocessServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, (PyatbBandPrepareRequest, PyatbBandExecuteRequest, PyatbBandCollectRequest)):
             service_set = pyatb_services if pyatb_services is not None else PyatbBandServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, (PyatbCohpPrepareRequest, PyatbCohpExecuteRequest, PyatbCohpCollectRequest)):
+            service_set = pyatb_cohp_services if pyatb_cohp_services is not None else PyatbCohpServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, PolarizationCollectRequest):
+            service_set = polarization_services if polarization_services is not None else PolarizationServiceSet.default(workspace_root=Path(cwd))
+        elif isinstance(request, BecPostprocessRequest):
+            service_set = bec_services if bec_services is not None else BecServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, ExportRequest):
             service_set = export_services if export_services is not None else ExportServiceSet.default(workspace_root=Path(cwd))
         elif isinstance(request, _RELAX_REQUEST_TYPES):

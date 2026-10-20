@@ -1,0 +1,52 @@
+INPUT_PARAMETERS
+{
+    nspin  1
+    package  ABACUS
+    fermi_energy  6.793680865
+    fermi_energy_unit  eV
+    HR_route  pyatb_sources/data-HR-sparse_SPIN0.csr
+    SR_route  pyatb_sources/data-SR-sparse_SPIN0.csr
+    HR_unit  Ry
+    sparse_format  1
+    max_kpoint_num  3
+}
+
+LATTICE
+{
+    lattice_constant  1.0
+    lattice_constant_unit  Angstrom
+    lattice_vector
+    2.6988037756053  2.6988037756053  0
+    2.6988037756053  0  2.6988037756053
+    0  2.6988037756053  2.6988037756053
+}
+
+COHP
+{
+    stru_file  STRU
+    orbital_dir  .
+    atom_i_index  1
+    atom_j_index  1
+    atom_i_orbs  s
+    atom_j_orbs  p
+    method  COHP
+    spin  sum
+    e_range  -15  25
+    de  0.05
+    sigma  0.15
+    invert  1
+    shift_to_efermi  1
+    output_prefix  COHP
+    kpoint_mode  direct
+    kpoint_num  8
+    kpoint_direct_coor
+    0  0  0
+    0  0  0.5
+    0  0.5  0
+    0  0.5  0.5
+    0.5  0  0
+    0.5  0  0.5
+    0.5  0.5  0
+    0.5  0.5  0.5
+    kpoint_weights  1  1  1  1  1  1  1  1
+}

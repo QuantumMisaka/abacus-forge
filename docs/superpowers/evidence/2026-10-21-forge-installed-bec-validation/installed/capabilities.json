@@ -1,0 +1,382 @@
+{
+  "capabilities": [
+    {
+      "artifact_roles": [
+        "input",
+        "provenance_manifest",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "collect": [
+          "workspace_outputs"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "modify": [
+          "prepared_workspace"
+        ],
+        "prepare": [
+          "structure"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "scf",
+      "operations": [
+        "prepare",
+        "modify",
+        "execute",
+        "collect"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "provenance_manifest",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "collect": [
+          "workspace_outputs"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "modify": [
+          "prepared_workspace"
+        ],
+        "prepare": [
+          "structure"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "relax",
+      "operations": [
+        "prepare",
+        "modify",
+        "execute",
+        "collect"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "provenance_manifest",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "collect": [
+          "workspace_outputs"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "modify": [
+          "prepared_workspace"
+        ],
+        "prepare": [
+          "structure"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "cell-relax",
+      "operations": [
+        "prepare",
+        "modify",
+        "execute",
+        "collect"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "atst-tools",
+      "inputs": {
+        "execute": [
+          "workflow_config"
+        ],
+        "postprocess": [
+          "trajectory"
+        ],
+        "prepare": [
+          "initial_structure",
+          "final_structure"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "atst-neb",
+      "operations": [
+        "prepare",
+        "execute",
+        "postprocess"
+      ],
+      "optional_dependencies": [
+        "atst-tools"
+      ],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "provenance_manifest",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "collect": [
+          "workspace_outputs"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "modify": [
+          "prepared_workspace"
+        ],
+        "postprocess": [
+          "trajectory"
+        ],
+        "prepare": [
+          "structure"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "md",
+      "operations": [
+        "prepare",
+        "modify",
+        "execute",
+        "collect",
+        "postprocess"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "postprocess": [
+          "band_files"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "band",
+      "operations": [
+        "postprocess"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "postprocess": [
+          "dos_files",
+          "pdos",
+          "tdos"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "dos",
+      "operations": [
+        "postprocess"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "postprocess": [
+          "lcao_scf_workspace"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "cohp",
+      "operations": [
+        "postprocess"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "provenance_manifest",
+        "output"
+      ],
+      "engine": "pyatb",
+      "inputs": {
+        "collect": [
+          "workspace_outputs"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "prepare": [
+          "structure",
+          "hr",
+          "sr",
+          "fermi_energy",
+          "line_kpoints"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "pyatb-band",
+      "operations": [
+        "prepare",
+        "execute",
+        "collect"
+      ],
+      "optional_dependencies": [
+        "pyatb"
+      ],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "pyatb",
+      "inputs": {
+        "collect": [
+          "spectrum",
+          "metadata"
+        ],
+        "execute": [
+          "prepared_workspace"
+        ],
+        "prepare": [
+          "structure",
+          "hr",
+          "sr",
+          "numerical_orbitals",
+          "fermi_energy",
+          "kpoints",
+          "kpoint_weights"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "pyatb-cohp",
+      "operations": [
+        "prepare",
+        "execute",
+        "collect"
+      ],
+      "optional_dependencies": [
+        "pyatb"
+      ],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "abacus",
+      "inputs": {
+        "collect": [
+          "running_log",
+          "structure",
+          "input"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "polarization",
+      "operations": [
+        "collect"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "input",
+        "output"
+      ],
+      "engine": "forge",
+      "inputs": {
+        "postprocess": [
+          "polarization_facts",
+          "displacements",
+          "branch_policy"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "bec",
+      "operations": [
+        "postprocess"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    },
+    {
+      "artifact_roles": [
+        "output"
+      ],
+      "engine": "forge",
+      "inputs": {
+        "export": [
+          "source_artifact_refs"
+        ]
+      },
+      "maturity": "experimental",
+      "name": "export",
+      "operations": [
+        "export"
+      ],
+      "optional_dependencies": [],
+      "schema_version": "forge.capability/v1"
+    }
+  ],
+  "contracts": {
+    "cohp": {
+      "input_basis": "ABACUS NAO/LCAO outputs with IAO construction",
+      "method": "iao",
+      "operation": "postprocess",
+      "population": "COHP",
+      "result": "IAO COHP output; see postprocess request schema"
+    },
+    "pyatb-cohp": {
+      "input_basis": "explicit STRU, HR in Ry, SR dimensionless, numerical orbitals, EF in eV, fractional k points and nonnegative explicit weights",
+      "kpoint_weight_mode": "explicit_normalized_by_pyatb",
+      "method": "direct_nao",
+      "operations": [
+        "prepare",
+        "execute",
+        "collect"
+      ],
+      "population": "COHP",
+      "result": {
+        "occupied_integral_occupation": "E <= EF (zero temperature)",
+        "occupied_integral_unit": "eV",
+        "sign": "PyATB metadata records COHP or -COHP and raw/display ICOHP",
+        "spectrum_energy_unit": "eV",
+        "spectrum_value_unit": "dimensionless"
+      }
+    }
+  },
+  "schema_version": "forge.capabilities/v1"
+}

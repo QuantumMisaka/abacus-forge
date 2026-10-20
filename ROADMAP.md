@@ -1,6 +1,6 @@
 # ABACUS-Forge 路线图
 
-本页维护当前重点和待决候选，更新于 2026-10-20。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
+本页维护当前重点和待决候选，更新于 2026-10-21。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
 
 ## 当前重点与未完成验收
 
@@ -8,6 +8,8 @@
 | --- | --- | --- | --- |
 | 文档与代码体系收敛 | 文档、加载/能力映射、band 共享代码与测试分类整理已完成，并通过离线回归与独立审查；已合入本地 main。 | 后续清理按下方调查结论与触发条件推进。 | [本轮计划](docs/superpowers/plans/2026-10-13-forge-repository-consolidation.md) |
 | COHP IAO 后处理 | typed postprocess W1 已合入；Paimon W2、安装态 Si fixture 与完整真实 Si SCF 五组轨道后处理已验证，总曲线迁移等价与 s/p 分解一致性通过。 | 更广材料覆盖与上层完整平台链验收；legacy COHP parity 另行验收。 | [真实输入证据](docs/superpowers/evidence/2026-10-15-forge-real-evidence.md)、[安装消费](docs/superpowers/evidence/2026-10-15-forge-cohp-installed-consumption.md) |
+| 直接 NAO / PyATB COHP 与有限消费接续 | 2026-10-21 有界 direct NAO 接口、有限 contracts map 和现有 manifest 消费示例已实现并完成离线验证、独立审查及两轨 Si 回放。 | 更广材料/自旋覆盖、目标平台与上层验收另行推进；此范围不改变 IAO W1、不批准完整 Contract System Draft，也不批准 property manifest Draft。 | [NAO/PyATB SPEC](docs/superpowers/specs/2026-10-21-forge-pyatb-cohp-design.md)、[元数据/manifest 消费 SPEC](docs/superpowers/specs/2026-10-21-forge-consumption-metadata-design.md)、[完成计划与证据](docs/superpowers/plans/2026-10-21-forge-consumption-followup.md)、[验证记录](docs/superpowers/evidence/2026-10-21-forge-consumption.md) |
+| Polarization 与 BEC typed operations | 有界实现、离线回归与审查已完成；fresh wheel 安装验证通过，MgO 真实计算已验证单个 O_x 响应。能力仍为 experimental，legacy BEC pack 未做数值替换。 | 当前真实材料验证仅覆盖单列；不代表完整张量或收敛，也不构成 Paimon/SAI 验收。敏感性与其余状态由后继计划维护。 | [BEC SPEC](docs/superpowers/specs/2026-10-21-forge-polarization-bec-design.md)、[实现计划](docs/superpowers/plans/2026-10-21-forge-bec-implementation.md)、[安装与实算接续计划](docs/superpowers/plans/2026-10-21-forge-installed-bec-validation.md)、[验证证据](docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation.md) |
 | Engine/Version Policy | `abacuslite` 1.2.0 已于 2026-10-19 发布到 PyPI；Forge 已完成 1.1.0→1.2.0 同一轮 rebind，exact extra 为 `abacuslite==1.2.0`，canonical oracle 指向已安装发布包或独立仓 `src/`，安装态四 capability parity 已在本机 fresh venv 重跑通过。 | 当前 wheel 与发布 parser 的指定 develop/LTS、PW/nspin=1 八格真实 parity 已通过，见[实测](docs/superpowers/evidence/2026-10-19-forge-dual-track-atst230.md)；LTS relax/cell-relax 保留 partial。PyATB 本地 `sidereus-adam@5f7e132` 已完成源码修复与 77 项回归，上游 PR #36–#38 已提交；CSR 源码候选两轨 Si/nspin=1 交接已通过。完整候选 wheel 与 Forge 的 fresh venv 两轨 Si/nspin=1 消费已通过，见[安装证据](docs/superpowers/evidence/2026-10-19-forge-pyatb-installed-consumption.md)；当前 wheel 限 CPython 3.12 / Linux x86_64 / glibc ≥ 2.39，共享环境旧 reader 保持原状。更多配置仍需证据。下一 pin 未定，abacuslite 再发版时另起一轮 rebind。 | [1.2.0 记账](docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)、[版本政策计划](docs/superpowers/plans/2026-09-13-forge-engine-version-policy.md) |
 | 真实进程与能力成熟度 | SCF/Relax/cell-relax/MD、PyATB 及部分 packs 已有各自候选的运行证据；当前 wheel 的 ATST 2.2.8 + LTSv3.10.1 有限步 NEB 执行与后处理恢复已通过核对，未收敛；所有 typed capability 仍为 experimental。 | ATST 2.3.0 安装态 CLI 与上游真实轨迹消费已通过，见[交接验收](docs/superpowers/evidence/2026-10-19-forge-atst-upstream-replay.md)。不默认重复上游 NEB；后续按接口变化补适配验证，未覆盖 packs 继续按能力验收。 | [本轮真实证据](docs/superpowers/evidence/2026-10-15-forge-real-evidence.md)、[Stage 5 计划](docs/superpowers/plans/2026-09-13-forge-stage5-evidence-gates.md)、[真实 smoke 入口](tests/real_smoke/README.md) |
 | Paimon v1.3 上层迁移 | Forge 独立公共契约与局部 adapter/parity 证据已建立；显式 SCF 矩阵输出、actual/readiness 与 develop 文件名适配已完成，独立 CPython 3.12 环境中的候选 ZIP 已通过两轨 Si SCF→PyATB band 实算。 | Paimon owner 接续 Benchmark 执行器、候选交付包及 SAI 验收；目标 Python/系统的 PyATB 安装兼容仍需单独验证。默认路由 14/15 的 PARTIAL 保留，显式成功不改变默认策略。 | [跨仓导航](docs/superpowers/README.md#跨仓迁移) |
@@ -27,8 +29,9 @@ COHP 的共同 NAO 输入、IAO 选择来源及局限见[方法溯源](docs/supe
 
 ## 独立设计候选
 
-- [Contract System Draft](docs/superpowers/specs/2026-09-29-forge-contract-system-design.html) 接续早期 I/O knowledge-base 提案。request/schema 边界仍需设计收口；本轮整理不实施该系统，也不把它设为 Paimon 当前迁移的前置条件。
-- [Typed BEC Draft](docs/superpowers/specs/2026-09-29-forge-typed-bec-design.html) 尚未批准、尚无实施 PLAN。legacy BEC pack 仍为 experimental；显式阶段交接、极化解析与公式/单位一致性需要在该设计中确认，不能把拟议设计写成已交付能力。
+- [Contract System 完整 Draft](docs/superpowers/specs/2026-09-29-forge-contract-system-design.html) 仍未整体批准。2026-10-21 的有限 contracts map 由[独立 SPEC](docs/superpowers/specs/2026-10-21-forge-consumption-metadata-design.md)定义，不代表 M1–M4 或知识库/查询服务已批准。
+- [BEC 历史设计](docs/superpowers/specs/2026-09-29-forge-typed-bec-design.html) 的后继是已确认的[有界 polarization/BEC SPEC](docs/superpowers/specs/2026-10-21-forge-polarization-bec-design.md)。本地实现/离线验证已完成；安装态与 MgO 单列真实验证及其敏感性状态由[后继计划](docs/superpowers/plans/2026-10-21-forge-installed-bec-validation.md)和[证据](docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation.md)维护。当前证据不代表全张量或收敛；能力仍为 experimental，legacy pack 保持原样。
+- [Property manifest Draft](docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html) 继续保留 Draft 状态。2026-10-21 [有限消费 SPEC](docs/superpowers/specs/2026-10-21-forge-consumption-metadata-design.md) 对既有 manifest 定义调用方消费示例，不批准原规范或提升成熟度。
 - PyATB properties、property/composite 聚合、更多 property 的 typed 化及额外 export 格式，按具体需求另立边界与验证；不从现有 band handoff、manifest 或 export 推导。
 
 ## 可废弃与依赖调整候选

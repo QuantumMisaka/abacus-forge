@@ -1,0 +1,20 @@
+{
+  "baseline": "f590367",
+  "files": {
+    "examples/property_manifest_consumer.py": "cb9398fb5463daf3e1d4ac4be6065362571224dc7b1f4f35ebef9040776dc69f",
+    "src/abacus_forge/__init__.py": "35457a2f5a642a37d72e3598cb7e0a028ac261dc0de73c8013939964724f22b4",
+    "src/abacus_forge/discovery.py": "dcd9c3fe9b30403244cb40a194ffb6bf1336309438a01476302ae2655253f988",
+    "src/abacus_forge/machine_cli.py": "2fb80f0e285b73bd1020a669fe8f21ecf4cf7a096495638c68e8c2f999afecea",
+    "src/abacus_forge/pyatb_cohp.py": "1988e92e626f53fe88059563e20028ea39511103a19024cab9df0f35da8359bb",
+    "src/abacus_forge/pyatb_cohp_contracts.py": "988391763d7cc579581190a81990a9f551d445bf1789ec8aec5f3d041117c157",
+    "src/abacus_forge/pyatb_cohp_services.py": "1c3944134237b2cc9554d5bd78c1e4aae047fd467bd7e72d33daf09c5e1decbc",
+    "src/abacus_forge/request_registry.py": "608a6b606e89cfaa5a1f3229bfe80961c6547f1b71f7b30d495e3a517b2e6988",
+    "tests/conftest.py": "a3fde06d0e253466c0e347b890f817a21c9408c33be51adbe3d1db21066bfcc6",
+    "tests/test_architecture.py": "25592319479e65b1d9f4321a3a739bbdcf2252f1897df5867b6f2180c8de17ad",
+    "tests/test_contracts.py": "889ded3a6e09314eece7eb3e8dcda990a41440f3d92b987b0d6a5b97850a055c",
+    "tests/test_imports.py": "35e8a41bd5121b2838e05fe9a14a483fbbf93ffb5a57b37a91968685f8594b48",
+    "tests/test_machine_cli.py": "5931054372f4e49e5f27e05cf9d32c780144218531c482a4453878935af24343",
+    "tests/test_maturation_packs.py": "4ff059e717b132430fd2598d0d9d8350136c89504279d104cda8b445cccde919",
+    "tests/test_pyatb_cohp.py": "80e48f3031ce1cd1743ab8151174b54a0dcd7e2601459ce0db24b4825c3a75f5"
+  }
+}

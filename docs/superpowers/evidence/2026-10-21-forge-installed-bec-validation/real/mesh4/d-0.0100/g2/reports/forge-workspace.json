@@ -1,0 +1,11 @@
+{
+  "events": [
+    {
+      "id": "f1679f0d-f81e-4d21-b48c-f5c772867430",
+      "operation": "collect",
+      "path_rel": "reports/events/f1679f0d-f81e-4d21-b48c-f5c772867430-collect.json"
+    }
+  ],
+  "schema_version": "forge.workspace/v1",
+  "workspace_rel": "."
+}

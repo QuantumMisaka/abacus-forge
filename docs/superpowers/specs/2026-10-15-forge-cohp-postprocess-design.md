@@ -3,6 +3,12 @@
 Status: Approved for the first bounded W1 slice by QuantumMisaka on 2026-10-15
 ("按此推进" in response to the COHP capability gap review).
 
+Follow-on scope (2026-10-21): the independent direct-NAO/PyATB capability is
+specified in [the NAO COHP extension](2026-10-21-forge-pyatb-cohp-design.md)
+and tracked by [the consumption follow-up plan](../plans/2026-10-21-forge-consumption-followup.md).
+That work does not change this approved IAO-only W1 contract or make IAO and
+NAO numerically equivalent.
+
 ## Goal
 
 Expose an agent-first, workspace-local COHP postprocessing unit operation in

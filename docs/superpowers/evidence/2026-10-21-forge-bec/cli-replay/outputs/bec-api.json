@@ -1,0 +1,142 @@
+{
+  "branch_mode": "auto",
+  "columns": [
+    {
+      "atom_index": 1,
+      "branch_trace": [
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "facts/s1-g1.json",
+          "gdir": 1,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "facts/s1-g2.json",
+          "gdir": 2,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "facts/s1-g3.json",
+          "gdir": 3,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": -0.0529177210903,
+          "fact_path_rel": "facts/s0-g1.json",
+          "gdir": 1,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": -0.0529177210903,
+          "fact_path_rel": "facts/s0-g2.json",
+          "gdir": 2,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": -0.0529177210903,
+          "fact_path_rel": "facts/s0-g3.json",
+          "gdir": 3,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0529177210903,
+          "fact_path_rel": "facts/s2-g1.json",
+          "gdir": 1,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0529177210903,
+          "fact_path_rel": "facts/s2-g2.json",
+          "gdir": 2,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        },
+        {
+          "bound_fraction": 0.2,
+          "displacement_angstrom": 0.0529177210903,
+          "fact_path_rel": "facts/s2-g3.json",
+          "gdir": 3,
+          "method": "conditional_continuity",
+          "offset": 0,
+          "reference_displacement_angstrom": 0.0
+        }
+      ],
+      "direction": "x",
+      "reason": null,
+      "status": "computed",
+      "values": [
+        0.19999999999999998,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "computed_columns": [
+    {
+      "atom_index": 1,
+      "direction": "x",
+      "unit": "e",
+      "values": [
+        0.19999999999999998,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "full_tensor_complete": false,
+  "max_step_fraction": 0.2,
+  "requested_columns": [
+    {
+      "atom_index": 1,
+      "direction": "x"
+    }
+  ],
+  "requested_complete": true,
+  "schema_version": "forge.bec/v1",
+  "scientific": "unassessed",
+  "tensor": [
+    [
+      [
+        0.19999999999999998,
+        null,
+        null
+      ],
+      [
+        0.0,
+        null,
+        null
+      ],
+      [
+        0.0,
+        null,
+        null
+      ]
+    ]
+  ],
+  "unit": "e"
+}

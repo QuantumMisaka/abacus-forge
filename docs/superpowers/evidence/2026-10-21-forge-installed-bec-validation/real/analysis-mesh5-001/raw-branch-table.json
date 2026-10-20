@@ -1,0 +1,68 @@
+[
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": -0.002302724474655983,
+    "gdir": 1,
+    "independent_integer_offset": 1,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": -1.002302724474656,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "minus",
+    "sample_raw_scalar": -5.6995822
+  },
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": 0.002302724474655983,
+    "gdir": 1,
+    "independent_integer_offset": 0,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": 0.002302724474655983,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "plus",
+    "sample_raw_scalar": 5.6995822
+  },
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": 0.002302724474655983,
+    "gdir": 2,
+    "independent_integer_offset": 0,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": 0.002302724474655983,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "minus",
+    "sample_raw_scalar": 5.6995822
+  },
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": -0.002302724474655983,
+    "gdir": 2,
+    "independent_integer_offset": 1,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": -1.002302724474656,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "plus",
+    "sample_raw_scalar": -5.6995822
+  },
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": 0.002302724474655983,
+    "gdir": 3,
+    "independent_integer_offset": 0,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": 0.002302724474655983,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "minus",
+    "sample_raw_scalar": 5.6995822
+  },
+  {
+    "caller_bound_fraction": 0.25,
+    "corrected_change_fraction": -0.002302724474655983,
+    "gdir": 3,
+    "independent_integer_offset": 1,
+    "printed_modulus": 11.3469068,
+    "raw_change_fraction": -1.002302724474656,
+    "reference_raw_scalar": 5.6734534,
+    "sample": "plus",
+    "sample_raw_scalar": -5.6995822
+  }
+]

@@ -8,6 +8,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-10-forge-property-manifest-design.html` (Draft for review; the provisional implementation and review record are complete, while normative approval and stable release remain separate human decisions).
 
+Follow-on pointer (2026-10-21): a bounded caller-consumption example for the
+existing manifest is specified in [the finite metadata and manifest-consumer
+SPEC](../specs/2026-10-21-forge-consumption-metadata-design.md) and included
+in [the consumption follow-up plan](2026-10-21-forge-consumption-followup.md).
+This follow-on does not approve the Draft SPEC or promote the manifest to a
+stable contract; this plan remains the provisional implementation record.
+
 **Architecture:** A focused `property_manifest.py` module owns immutable manifest records, strict JSON validation, and an explicit-path builder. Legacy property post functions keep their existing compatibility selection and cube arithmetic, then attach the manifest as `TaskResult.diagnostics["property_manifest"]`. The builder consumes the same `ArtifactRecord` projection as the returned result, so manifest IDs, hashes, sizes, and paths cannot diverge; it never scans directories, chooses latest files, or creates cross-operation provenance.
 
 **Tech Stack:** Python 3.10+, frozen/slotted dataclasses, existing `ArtifactRecord`, `TaskResult`, `Workspace` path containment, `pathlib`, `hashlib` through the existing artifact projection, JSON-safe records, and pytest in the `paimon` environment.

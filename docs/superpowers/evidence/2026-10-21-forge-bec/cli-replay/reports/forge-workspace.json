@@ -1,0 +1,61 @@
+{
+  "events": [
+    {
+      "id": "6b2c8c3b-2f3d-4cc3-b661-38e9241277d3",
+      "operation": "collect",
+      "path_rel": "reports/events/6b2c8c3b-2f3d-4cc3-b661-38e9241277d3-collect.json"
+    },
+    {
+      "id": "8d78b385-a9fe-4fa7-b3b7-5021076bf7ef",
+      "operation": "collect",
+      "path_rel": "reports/events/8d78b385-a9fe-4fa7-b3b7-5021076bf7ef-collect.json"
+    },
+    {
+      "id": "ca2ab131-3dab-4a0a-b561-18fc5dd8768b",
+      "operation": "collect",
+      "path_rel": "reports/events/ca2ab131-3dab-4a0a-b561-18fc5dd8768b-collect.json"
+    },
+    {
+      "id": "751bfa9b-4085-4e35-9ee2-f0c0dc038a25",
+      "operation": "collect",
+      "path_rel": "reports/events/751bfa9b-4085-4e35-9ee2-f0c0dc038a25-collect.json"
+    },
+    {
+      "id": "0d6cac27-ebfb-47c9-9271-d1659fd882d7",
+      "operation": "collect",
+      "path_rel": "reports/events/0d6cac27-ebfb-47c9-9271-d1659fd882d7-collect.json"
+    },
+    {
+      "id": "9af97755-be77-4234-9b2e-45801b0798ad",
+      "operation": "collect",
+      "path_rel": "reports/events/9af97755-be77-4234-9b2e-45801b0798ad-collect.json"
+    },
+    {
+      "id": "34e69d0d-6f1e-4b73-85f3-b81a71d247d5",
+      "operation": "collect",
+      "path_rel": "reports/events/34e69d0d-6f1e-4b73-85f3-b81a71d247d5-collect.json"
+    },
+    {
+      "id": "f8ed681d-3fdc-4e41-9e8d-d871181ca0b3",
+      "operation": "collect",
+      "path_rel": "reports/events/f8ed681d-3fdc-4e41-9e8d-d871181ca0b3-collect.json"
+    },
+    {
+      "id": "542302c6-36b1-48a0-8113-85bc553ca15b",
+      "operation": "collect",
+      "path_rel": "reports/events/542302c6-36b1-48a0-8113-85bc553ca15b-collect.json"
+    },
+    {
+      "id": "e9a80be0-35df-4807-bbc4-e0d922dab47d",
+      "operation": "postprocess",
+      "path_rel": "reports/events/e9a80be0-35df-4807-bbc4-e0d922dab47d-postprocess.json"
+    },
+    {
+      "id": "1de1d86e-8959-4b45-b87a-357b627fa7cf",
+      "operation": "postprocess",
+      "path_rel": "reports/events/1de1d86e-8959-4b45-b87a-357b627fa7cf-postprocess.json"
+    }
+  ],
+  "schema_version": "forge.workspace/v1",
+  "workspace_rel": "."
+}

@@ -1,0 +1,8 @@
+{"case": "mesh4", "displacement": -0.005, "gdir": 0, "seconds": 24.88, "status": "success"}
+{"case": "mesh4", "displacement": -0.005, "gdir": 1, "seconds": 12.86, "status": "success"}
+{"case": "mesh4", "displacement": -0.005, "gdir": 2, "seconds": 13.47, "status": "success"}
+{"case": "mesh4", "displacement": -0.005, "gdir": 3, "seconds": 12.77, "status": "success"}
+{"case": "mesh4", "displacement": 0.005, "gdir": 0, "seconds": 25.82, "status": "success"}
+{"case": "mesh4", "displacement": 0.005, "gdir": 1, "seconds": 12.53, "status": "success"}
+{"case": "mesh4", "displacement": 0.005, "gdir": 2, "seconds": 12.36, "status": "success"}
+{"case": "mesh4", "displacement": 0.005, "gdir": 3, "seconds": 12.74, "status": "success"}

@@ -1,0 +1,134 @@
+{
+  "cartesian_column_e": [
+    -1.954825926723525,
+    0.0,
+    0.0
+  ],
+  "contributions": [
+    {
+      "branch_correction_q": [
+        0.0,
+        8.023474743771748,
+        8.023474743771748
+      ],
+      "corrected_cartesian_q": [
+        0.0,
+        3.993266943771748,
+        3.993266943771748
+      ],
+      "gdir": 1,
+      "raw_cartesian_q": [
+        -0.0,
+        -4.0302078,
+        -4.0302078
+      ],
+      "sample": "minus"
+    },
+    {
+      "branch_correction_q": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "corrected_cartesian_q": [
+        4.0302078,
+        0.0,
+        4.0302078
+      ],
+      "gdir": 2,
+      "raw_cartesian_q": [
+        4.0302078,
+        0.0,
+        4.0302078
+      ],
+      "sample": "minus"
+    },
+    {
+      "branch_correction_q": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "corrected_cartesian_q": [
+        4.0302078,
+        4.0302078,
+        0.0
+      ],
+      "gdir": 3,
+      "raw_cartesian_q": [
+        4.0302078,
+        4.0302078,
+        0.0
+      ],
+      "sample": "minus"
+    },
+    {
+      "branch_correction_q": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "corrected_cartesian_q": [
+        0.0,
+        4.0302078,
+        4.0302078
+      ],
+      "gdir": 1,
+      "raw_cartesian_q": [
+        0.0,
+        4.0302078,
+        4.0302078
+      ],
+      "sample": "plus"
+    },
+    {
+      "branch_correction_q": [
+        8.023474743771748,
+        0.0,
+        8.023474743771748
+      ],
+      "corrected_cartesian_q": [
+        3.993266943771748,
+        0.0,
+        3.993266943771748
+      ],
+      "gdir": 2,
+      "raw_cartesian_q": [
+        -4.0302078,
+        -0.0,
+        -4.0302078
+      ],
+      "sample": "plus"
+    },
+    {
+      "branch_correction_q": [
+        8.023474743771748,
+        8.023474743771748,
+        0.0
+      ],
+      "corrected_cartesian_q": [
+        3.993266943771748,
+        3.993266943771748,
+        0.0
+      ],
+      "gdir": 3,
+      "raw_cartesian_q": [
+        -4.0302078,
+        -4.0302078,
+        -0.0
+      ],
+      "sample": "plus"
+    }
+  ],
+  "displacement_bohr": 0.018897261246257704,
+  "negative_endpoint_q": [
+    8.0604156,
+    8.023474743771748,
+    8.023474743771748
+  ],
+  "positive_endpoint_q": [
+    7.986533887543496,
+    8.023474743771748,
+    8.023474743771748
+  ]
+}

@@ -1,3 +1,9 @@
 # Preserve verbatim upstream scientific-output fixtures without treating their
 # fixed-width trailing spaces as repository formatting errors.
 tests/fixtures/abacustest-abacus-scf/** -whitespace
+
+# Retain byte-exact engine/test evidence; native tables have fixed-width padding.
+docs/superpowers/evidence/2026-10-21-forge-bec/**/*.log -whitespace
+docs/superpowers/evidence/2026-10-21-forge-consumption/**/*.log -whitespace
+docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation/**/*.log -whitespace
+docs/superpowers/evidence/2026-10-21-forge-installed-bec-validation/**/*.info -whitespace

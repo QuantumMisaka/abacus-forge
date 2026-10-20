@@ -1,0 +1,77 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-cohp",
+  "workspace_rel": ".",
+  "structure_path_rel": "source/STRU",
+  "hr_paths_rel": [
+    "source/data-HR-sparse_SPIN0.csr"
+  ],
+  "sr_path_rel": "source/data-SR-sparse_SPIN0.csr",
+  "orbital_paths_rel": [
+    "source/Si_gga_7au_100Ry_2s2p1d.orb"
+  ],
+  "fermi_energy": 6.793680865,
+  "atom_i_index": 1,
+  "atom_j_index": 1,
+  "atom_i_orbs": "s",
+  "atom_j_orbs": "p",
+  "kpoints": [
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.5
+    ],
+    [
+      0.0,
+      0.5,
+      0.0
+    ],
+    [
+      0.0,
+      0.5,
+      0.5
+    ],
+    [
+      0.5,
+      0.0,
+      0.0
+    ],
+    [
+      0.5,
+      0.0,
+      0.5
+    ],
+    [
+      0.5,
+      0.5,
+      0.0
+    ],
+    [
+      0.5,
+      0.5,
+      0.5
+    ]
+  ],
+  "kpoint_weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "e_range": [
+    -15.0,
+    25.0
+  ],
+  "max_kpoint_num": 3,
+  "operation": "prepare",
+  "operation_id": "4c34be72-32ed-4302-86fd-8a3973e196d7"
+}

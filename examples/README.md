@@ -1,5 +1,28 @@
 # 仓库示例输入
 
+<a id="property-manifest-consumer"></a>
+## Property manifest 的调用方消费
+
+已有 spin-density 或 charge-diff workspace 完成计算后，可执行：
+
+```bash
+abacus-forge spin-density post /path/to/workspace --json > spin-result.json
+python examples/property_manifest_consumer.py \
+  --workspace /path/to/workspace --result spin-result.json
+```
+
+[`property_manifest_consumer.py`](property_manifest_consumer.py) 读取真实 post JSON，
+按 `role/origin` 选取派生 cube，通过 `source_artifact_ids` 找到上游文件，并读取
+网格。它不依赖源文件叫 `SPIN1_CHG.cube` 还是 `chgs1.cube`。manifest 缺失、
+有 missing 项、文件被移走或内容已改变时明确失败；不会重新计算或猜测替代文件。
+同一脚本也可消费 `charge-diff post --json` 的结果。
+
+这是 Forge legacy diagnostics 的实验性消费示例；不是新的 typed operation、
+Paimon 平台接线或科学接受判据。小型 cube 的正向与缺失场景由
+`tests/test_maturation_packs.py` 验证。
+
+## NiO 输入
+
 `NiO_inputs/` 保存一份 ABACUS NiO 输入样例。三个文件各有自己的来源和用途：
 
 | 文件 | 内容与边界 |
@@ -57,3 +80,11 @@ PYTHONPATH="$repo_root/src" python -m abacus_forge.cli operation execute --reque
 当前顶层 legacy `execute` 命令没有 `--dry-run` 选项。上例使用 machine operation 请求字段 `dry_run: true`；预期结果是 `execution=skipped`，不会启动 ABACUS。它只验证本地结构解析、输入准备及请求/结果路径，不证明 PP/ORB 可用、ABACUS 可运行、GPU/Slurm 配置可用、计算收敛或科学结果可接受。当前 discovery 中 `cell-relax` capability 的 maturity 为 `experimental`，示例不会改变该状态。
 
 真实 ABACUS 验证必须另行准备与本机 ABACUS 版本兼容的 PP/ORB、配置可执行文件和匹配的运行环境；它不属于以上本地 dry-run。不要把 SAI `gpu_abacus.sbatch` 当作通用提交脚本。
+
+## 单阶段极化准备
+
+[`polarization_stage.py`](polarization_stage.py) 的 `prepare_stage(...)` 使用现有
+结构位移和输入准备 API，仅创建一个指定原子位移、指定 gdir 的 Berry NSCF 输入。
+它不查找 SCF、不移动电荷、不启动引擎；需要调用方提供同一位移结构的 SCF 电荷
+及相容资产。单次执行和新的原生事实/BEC 请求示例见
+[极化与 BEC 指南](../docs/guide.md#polarization-and-bec)。

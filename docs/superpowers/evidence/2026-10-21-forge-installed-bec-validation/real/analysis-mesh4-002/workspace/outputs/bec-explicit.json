@@ -1,0 +1,159 @@
+{
+  "branch_mode": "explicit",
+  "columns": [
+    {
+      "atom_index": 1,
+      "branch_trace": [
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": -0.01,
+          "fact_path_rel": "mesh4/d-0.0100/g1/facts/polarization.json",
+          "gdir": 1,
+          "method": "manual_offsets",
+          "offset": 1,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": -0.01,
+          "fact_path_rel": "mesh4/d-0.0100/g2/facts/polarization.json",
+          "gdir": 2,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": -0.01,
+          "fact_path_rel": "mesh4/d-0.0100/g3/facts/polarization.json",
+          "gdir": 3,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "mesh4/d+0.0000/g1/facts/polarization.json",
+          "gdir": 1,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "mesh4/d+0.0000/g2/facts/polarization.json",
+          "gdir": 2,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.0,
+          "fact_path_rel": "mesh4/d+0.0000/g3/facts/polarization.json",
+          "gdir": 3,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.01,
+          "fact_path_rel": "mesh4/d+0.0100/g1/facts/polarization.json",
+          "gdir": 1,
+          "method": "manual_offsets",
+          "offset": 0,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.01,
+          "fact_path_rel": "mesh4/d+0.0100/g2/facts/polarization.json",
+          "gdir": 2,
+          "method": "manual_offsets",
+          "offset": 1,
+          "reference_displacement_angstrom": null
+        },
+        {
+          "bound_fraction": null,
+          "displacement_angstrom": 0.01,
+          "fact_path_rel": "mesh4/d+0.0100/g3/facts/polarization.json",
+          "gdir": 3,
+          "method": "manual_offsets",
+          "offset": 1,
+          "reference_displacement_angstrom": null
+        }
+      ],
+      "direction": "x",
+      "reason": null,
+      "status": "computed",
+      "values": [
+        -1.954825926723525,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "computed_columns": [
+    {
+      "atom_index": 1,
+      "direction": "x",
+      "unit": "e",
+      "values": [
+        -1.954825926723525,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "full_tensor_complete": false,
+  "max_step_fraction": null,
+  "requested_columns": [
+    {
+      "atom_index": 1,
+      "direction": "x"
+    }
+  ],
+  "requested_complete": true,
+  "schema_version": "forge.bec/v1",
+  "scientific": "unassessed",
+  "tensor": [
+    [
+      [
+        -1.954825926723525,
+        null,
+        null
+      ],
+      [
+        0.0,
+        null,
+        null
+      ],
+      [
+        0.0,
+        null,
+        null
+      ]
+    ],
+    [
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null
+      ]
+    ]
+  ],
+  "unit": "e"
+}

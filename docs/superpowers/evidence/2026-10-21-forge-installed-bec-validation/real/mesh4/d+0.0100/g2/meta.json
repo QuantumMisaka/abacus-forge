@@ -1,0 +1,73 @@
+{
+  "kind": "abacus-forge.workspace",
+  "kpoints": [
+    4,
+    8,
+    4
+  ],
+  "metadata": {},
+  "parameters": {
+    "basis_type": "pw",
+    "berry_phase": 1,
+    "calculation": "nscf",
+    "dft_functional": "PBE",
+    "ecutwfc": 80,
+    "gdir": 2,
+    "init_chg": "file",
+    "nbands": 4,
+    "nspin": 1,
+    "out_band": 0,
+    "out_chg": 0,
+    "out_dos": 0,
+    "pw_diag_thr": 1e-11,
+    "scf_nmax": 100,
+    "scf_thr": 1e-10,
+    "smearing_method": "fixed",
+    "symmetry": -1
+  },
+  "structure": null,
+  "structure_format": "ase",
+  "structure_metadata": {
+    "atom_count": 2,
+    "cell_parameters": {
+      "a": 3.002262255833091,
+      "alpha": 60.00000000000001,
+      "b": 3.002262255833091,
+      "beta": 60.00000000000001,
+      "c": 3.002262255833091,
+      "gamma": 60.00000000000001
+    },
+    "density": 3.497571572550902,
+    "elements": [
+      "Mg",
+      "O"
+    ],
+    "formula": "MgO",
+    "layer_info": null,
+    "pbc": [
+      true,
+      true,
+      true
+    ],
+    "species_counts": {
+      "Mg": 1,
+      "O": 1
+    },
+    "string_info": null,
+    "structure_class": "bulk",
+    "symmetry": {
+      "crystal_system": "tetragonal",
+      "point_group": "4mm",
+      "spacegroup_number": 107,
+      "spacegroup_symbol": "I4mm"
+    },
+    "vacuum_axes": [],
+    "vacuum_thickness": {},
+    "volume": 19.135106393602182
+  },
+  "task": "scf",
+  "validation": {
+    "missing": [],
+    "valid": true
+  }
+}

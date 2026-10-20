@@ -1,0 +1,7 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-cohp",
+  "workspace_rel": ".",
+  "operation": "collect",
+  "operation_id": "5b2ef521-1856-44f6-b875-c5e24e83d2d2"
+}

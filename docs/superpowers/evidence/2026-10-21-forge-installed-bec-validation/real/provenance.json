@@ -1,0 +1,57 @@
+{
+  "engine": "/home/james/work/sidereus/workplace/abacus-packages/abacus-develop/build-mpi-lcao/install/bin/abacus_std_para",
+  "engine_sha256": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+  "pp": {
+    "Mg.PD04.PBE.UPF": "591e224464a251c51becc461071ca29d74fb9217c7312e7a79da33bf1a7c7f19",
+    "O.upf": "2853999c9339a7e7c62672490f3bd05da8c8ee839e7abb08caae87eadae73b0a"
+  },
+  "a_angstrom": 4.24584,
+  "cell_angstrom": [
+    [
+      0,
+      2.12292,
+      2.12292
+    ],
+    [
+      2.12292,
+      0,
+      2.12292
+    ],
+    [
+      2.12292,
+      2.12292,
+      0
+    ]
+  ],
+  "species": [
+    "Mg",
+    "O"
+  ],
+  "positions_fractional": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0.5,
+      0.5,
+      0.5
+    ]
+  ],
+  "direction": "x",
+  "ecutwfc_Ry": 80,
+  "nspin": 1,
+  "xc": "PBE",
+  "timeout_per_stage_seconds": 300,
+  "threads": 1,
+  "max_step_fraction": 0.25,
+  "sensitivity_tolerance_e": 0.1,
+  "python": "/home/james/scratch/forge-release-validation-20261021/venv/bin/python",
+  "source_ase_displaced_atom_index": 2,
+  "serialized_stru_displaced_atom_index": 1,
+  "serialized_stru_species": [
+    "O",
+    "Mg"
+  ]
+}

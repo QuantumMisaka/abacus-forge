@@ -1,0 +1,87 @@
+{
+  "id": "542302c6-36b1-48a0-8113-85bc553ca15b",
+  "operation": "collect",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "input-4d7bdb1948a75efd",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/+0.05292/r3/running.log",
+          "role": "input",
+          "sha256": "4b1db491c26bc4ee82b1751a82a8cd1d3a1332c288dc73c08fae2213b82c696c",
+          "size_bytes": 349,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "input-2b3dc5135b1ee3e9",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/+0.05292/r3/STRU",
+          "role": "input",
+          "sha256": "901b133b13025eaf91daa912ef0bb8d246810127ed2a8a1351fb323dc09e06e2",
+          "size_bytes": 142,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "input-51bd6aa04ab4030f",
+          "media_type": "application/octet-stream",
+          "path_rel": "source/+0.05292/r3/INPUT",
+          "role": "input",
+          "sha256": "bd5e6e5776f44ca6cee05c9238b421fa57448c4cd6708c46b3f9dd0d1d641abb",
+          "size_bytes": 63,
+          "stage": "collect"
+        },
+        {
+          "availability": "available",
+          "id": "output-d2c6dbb454f2ff3a",
+          "media_type": "application/json",
+          "path_rel": "facts/s2-g3.json",
+          "role": "output",
+          "sha256": "f7a78855c8b3b3edda359b8ef377eb677a0f167b0061f000637483f387a18660",
+          "size_bytes": 1561,
+          "stage": "collect"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "input-4d7bdb1948a75efd",
+            "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b"
+          },
+          {
+            "artifact_id": "input-2b3dc5135b1ee3e9",
+            "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b"
+          },
+          {
+            "artifact_id": "input-51bd6aa04ab4030f",
+            "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b"
+          },
+          {
+            "artifact_id": "output-d2c6dbb454f2ff3a",
+            "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b"
+          }
+        ],
+        "fact_schema_version": "forge.polarization/v1",
+        "missing_source_paths_rel": [],
+        "output_path_rel": "facts/s2-g3.json"
+      },
+      "metrics": [],
+      "operation": "collect",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "542302c6-36b1-48a0-8113-85bc553ca15b",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

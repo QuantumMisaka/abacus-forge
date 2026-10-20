@@ -1,0 +1,13 @@
+Processing ./.
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: abacus-forge
+  Building wheel for abacus-forge (pyproject.toml): started
+  Building wheel for abacus-forge (pyproject.toml): finished with status 'done'
+  Created wheel for abacus-forge: filename=abacus_forge-0.1.0-py3-none-any.whl size=303568 sha256=c70e71a698ea6fc6d697495845e45c8cb9a95876636e54705074ce2967a02180
+  Stored in directory: /home/james/.cache/pip/wheels/ee/41/62/463f511b178390a1a75881b7f602910340aeb99c04ac55402a
+Successfully built abacus-forge

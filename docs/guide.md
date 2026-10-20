@@ -198,7 +198,7 @@ PYTHONPATH=src python -m abacus_forge.cli workfunc post runs/slab --vacuum-axis 
 
 ## Agent-first CLI
 
-机器调用面提供 `operation`、`schema` 和 `capabilities`。每次 `operation` 只执行一个请求；多 operation 的衔接由调用方负责。当前 discovery 列出 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band` 和 `export`。operation 支持范围由 capability 决定：typed band、DOS 和 COHP 仅支持 `postprocess`；typed export 仅支持 `export`；typed PyATB band 支持 `prepare`、`execute`、`collect`；`md` 支持 `prepare`、`modify`、`execute`、`collect` 和 `postprocess`。每种能力当前的字段和成熟度以 discovery/schema 返回为准。
+机器调用面提供 `operation`、`schema` 和 `capabilities`。每次 `operation` 只执行一个请求；多 operation 的衔接由调用方负责。当前 discovery 列出 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band`、`pyatb-cohp`、`polarization`、`bec` 和 `export`。operation 支持范围由 capability 决定：typed band、DOS 和 COHP 仅支持 `postprocess`；typed export 仅支持 `export`；`polarization` 仅支持 `collect`，`bec` 仅支持 `postprocess`；typed PyATB band/COHP 支持 `prepare`、`execute`、`collect`；`md` 支持 `prepare`、`modify`、`execute`、`collect` 和 `postprocess`。每种能力当前的字段和成熟度以 discovery/schema 返回为准。
 
 请求可从文件读取：
 
@@ -631,3 +631,136 @@ workfunc_result = post_workfunc("runs/slab", vacuum_axis="c")
 ```
 
 `LocalRunner` 在 `inputs/` 目录启动 ABACUS，不默认注入 `--input-dir` 等非 ABACUS 参数。PyATB 不是必装依赖；缺少 `pyatb` executable 或 ABACUS LCAO matrix files 时，PyATB collect/sequence 会返回 diagnostics。`CubeData` 及 `subtract_cubes` 等 helper 也可通过 `abacus_forge.cube` 使用；上方第一段 import 展示了其调用入口。
+
+
+<a id="direct-nao-cohp"></a>
+## 直接 NAO-COHP（experimental）
+
+`pyatb-cohp` 消费已有 ABACUS NAO 矩阵，与 `cohp` 的 IAO 后处理分别发现。
+调用方先将 STRU、HR、SR 和 STRU 中列出的所有数值轨道文件放入同一 workspace。
+以下 prepare JSON 中的文件名、Fermi energy、原子/轨道选择、能量范围和 k 点需要
+替换成当前任务的实际值；这些示例参数不构成收敛设置。
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-cohp",
+  "operation": "prepare",
+  "operation_id": "ee80c710-65a3-4a30-8546-439de756d911",
+  "workspace_rel": ".",
+  "structure_path_rel": "source/STRU",
+  "hr_paths_rel": ["source/hrs1_nao.csr"],
+  "sr_path_rel": "source/sr_nao.csr",
+  "orbital_paths_rel": ["source/Si_gga_7au_100Ry_2s2p1d.orb"],
+  "fermi_energy": 6.793680865,
+  "atom_i_index": 1,
+  "atom_j_index": 2,
+  "kpoints": [[0, 0, 0], [0.5, 0, 0]],
+  "kpoint_weights": [1, 1],
+  "e_range": [-15, 25]
+}
+```
+
+在 workspace 根目录执行 `abacus-forge operation prepare --request prepare.json`。
+prepare 复制输入到新的 `inputs/` 目标，并生成 PyATB `Input`。
+`nspin=2` 时显式提供 up/down 两个 HR；不支持 nspin=4。
+轨道文件 basename 必须与 STRU 的 NUMERICAL_ORBITAL 一一对应。
+HR 为 Ry；Fermi energy 和 `e_range` 为绝对 eV；k 点为分数倒易坐标，权重由 PyATB 归一化。
+
+另建 execute JSON，保留 schema_version/capability/workspace_rel，使用新的 UUID，
+设 `operation="execute"`，可指定 `executable` 和 `timeout_seconds`；
+以 `abacus-forge operation execute --request execute.json` 启动一个 PyATB 进程。
+执行前要求 `inputs/Out` 与本次 stdout/stderr 目标不存在，防止引擎覆盖已有输出。
+这要求安装支持 COHP 元数据的 PyATB 候选；Forge 不自动安装引擎。
+
+collect JSON 同样使用新的 UUID 和 `operation="collect"`，调用
+`abacus-forge operation collect --request collect.json`。
+默认收集 `inputs/Out/COHP/COHP.dat` 和 `COHP.meta.json`，也可显式指定
+`spectrum_path_rel`/`metadata_path_rel`。缺失、格式错误或 metadata/spectrum 引用不一致
+不能得到 complete；科学状态始终为 unassessed。正常结果含谱 artifact 和
+`icohp_raw`/`icohp`（eV）reported metrics，符号、权重与积分约定见 metadata。
+
+通过 `abacus-forge capabilities` 查询 `contracts`，可区分 IAO 与 direct_nao；
+完整字段通过 `abacus-forge schema pyatb-cohp prepare` 查询。
+
+<a id="polarization-and-bec"></a>
+## 原生极化事实与 BEC（experimental）
+
+`polarization/collect` 收集一个显式 Berry-phase 日志及对应 INPUT/STRU，
+`bec/postprocess` 消费这些事实文件，计算调用方请求的原子/位移方向列。
+它们与 legacy `bec prepare|run|post` 分开；后者不会自动获得新的解析和分支逻辑。
+
+准备一个位移、一个 gdir 的 NSCF 输入可复用
+[`examples/polarization_stage.py`](../examples/polarization_stage.py) 的 `prepare_stage`。
+它使用现有 `modify_stru` 和通用 `prepare`，明确写入 `calculation=nscf`、
+`berry_phase=1`、`symmetry=-1`、`init_chg=file` 和 gdir。示例不启动计算：
+调用方须先完成**相同位移结构的 SCF**，并将相应电荷文件放到 NSCF 所需位置，
+同时提供相容的 PP/ORB 和经过选择的 k 网格。随后可独立调用通用
+`execute(workspace, runner=LocalRunner(...))` 或 `abacus-forge execute workspace`；
+这只启动一个进程。不能把此 NSCF 阶段交给要求 SCF 输入的 typed `scf/execute`。
+
+已有输出后，在包含所有阶段目录的 workspace 根目录调用 collect。例如：
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "polarization",
+  "operation": "collect",
+  "operation_id": "4c3d172a-86f0-4ba8-9037-53d5f334c2b0",
+  "workspace_rel": ".",
+  "log_path_rel": "stages/plus-g1/inputs/OUT.ABACUS/running_nscf.log",
+  "structure_path_rel": "stages/plus-g1/inputs/STRU",
+  "input_path_rel": "stages/plus-g1/inputs/INPUT",
+  "output_path_rel": "facts/plus-g1.json"
+}
+```
+
+`abacus-forge operation collect --request collect.json` 输出标准 JSON envelope，
+并写入带来源的 `forge.polarization/v1` artifact。每个阶段使用新的 operation UUID
+和输出路径；文件必须处于同一 workspace，已有目标不会覆盖。解析保留三个单位行、
+浮点模量与 gdir；gdir 是晶格方向，不是笛卡尔轴。
+
+下面是只请求第一个原子 x 位移响应列的 BEC 请求形状。所有路径必须替换为
+前述 collect 的实际事实文件。示例位移和变化上界仅展示格式，不是收敛推荐值。
+
+```json
+{
+  "schema_version": "forge.request/v1",
+  "capability": "bec",
+  "operation": "postprocess",
+  "operation_id": "d04ac202-65fd-4659-b9ca-5fdb1d7720d5",
+  "workspace_rel": ".",
+  "branch_mode": "auto",
+  "max_step_fraction": 0.25,
+  "columns": [{
+    "atom_index": 1,
+    "direction": "x",
+    "samples": [
+      {"displacement_angstrom": -0.01, "polarization_paths_rel": ["facts/minus-g1.json", "facts/minus-g2.json", "facts/minus-g3.json"]},
+      {"displacement_angstrom": 0.0, "polarization_paths_rel": ["facts/zero-g1.json", "facts/zero-g2.json", "facts/zero-g3.json"]},
+      {"displacement_angstrom": 0.01, "polarization_paths_rel": ["facts/plus-g1.json", "facts/plus-g2.json", "facts/plus-g3.json"]}
+    ]
+  }],
+  "output_path_rel": "outputs/bec.json"
+}
+```
+
+运行 `abacus-forge operation postprocess --request bec.json`。
+自动模式的 `max_step_fraction` 必须介于 0 和 0.5 之间，含义是调用方对
+**真实相邻极化变化**的可信上界（以该 gdir 量子为单位）。程序不会从小的折叠差值
+推断这个条件已成立。路径须含零位移及对称 ±delta，可显式增加中间点；近边界、
+缺参考或不满足界限时返回歧义。算法从零参考分别向两侧解缠，保留 offset 轨迹。
+
+使用 `branch_mode="explicit"` 时，每个 sample 增加
+`"branch_offsets": {"1": 0, "2": 0, "3": 0}`，数值应为调用方实际指定的整数，
+不能照抄零值来假设无需修正；此模式不要求 max_step_fraction 或零位移参考。
+两种模式都核验固定晶胞、原子/资源/设置一致性及声明位移，先合成三个 gdir 的
+笛卡尔贡献再差分。输出张量单位为 e。
+
+`requested_complete` 表示本次请求的列全部得到结果；`full_tensor_complete`
+还要求结构内全部原子的 x/y/z 列。缺列保留 null，独立有效列仍可返回；
+缺文件、缺方向或分支歧义会阻止本次请求被标成完整。科学状态始终 unassessed。
+除源格式合成测试外，安装态已跑通真实 MgO 的 O_x 单列、半幅位移与一次 K 网格
+加密对照，见[真实验证记录](superpowers/evidence/2026-10-21-forge-installed-bec-validation.md)。
+该结果不代表完整张量、声学求和规则或全面收敛。请求中的 atom_index 以实际采集的
+STRU/fact 原子顺序为准；prepare 可能重排输入的 species 顺序。

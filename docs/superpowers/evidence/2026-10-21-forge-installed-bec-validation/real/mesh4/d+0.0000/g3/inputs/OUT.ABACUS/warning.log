@@ -1,0 +1,17 @@
+ smearing_decision  warning : Fixed occupations,gauss broadening ignored
+ AUTO_SET gaussian_parameter to 0
+ In SCAN_LINE_BEGIN, can't find: ABFS_ORBITAL block.
+ In SCAN_LINE_BEGIN, can't find: ABFS_JLES_ORBITAL block.
+                 charge before normalized = 8.00000000000012
+                  charge after normalized = 8
+                            startmag_type = 2
+                       charge from rho_at = 5.99999615160952
+                         charge should be = 6
+                            startmag_type = 2
+                       charge from rho_at = 1.9999976304515
+                         charge should be = 2
+
+ SETUP ATOMIC RHO FOR SPIN 1
+                 Electron number from rho = 7.99999999999951
+           total electron number from rho = 7.99999999999951
+                                should be = 8

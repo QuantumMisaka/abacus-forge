@@ -1,0 +1,93 @@
+{
+  "electronic_phase": 0.0,
+  "gdir": 1,
+  "geometry": {
+    "atom_labels": [
+      "H"
+    ],
+    "cell_angstrom": [
+      [
+        1.058354421806,
+        0.0,
+        0.0
+      ],
+      [
+        0.529177210903,
+        1.058354421806,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.5875316327089999
+      ]
+    ],
+    "move_flags": [
+      [
+        1,
+        1,
+        1
+      ]
+    ],
+    "positions_angstrom": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "species_meta": {
+      "H": {
+        "mass": 1.0,
+        "pp": "H.upf"
+      }
+    },
+    "symbols": [
+      "H"
+    ]
+  },
+  "input": {
+    "berry_phase": "1",
+    "calculation": "nscf",
+    "gdir": "1",
+    "nspin": "1"
+  },
+  "ionic_phase": 0.0,
+  "rows": {
+    "(e/Omega).bohr": {
+      "cartesian": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "modulus": 2.0,
+      "scalar": 0.0,
+      "source_log_path": "source/+0.00000/r1/running.log",
+      "unit": "(e/Omega).bohr"
+    },
+    "C/m^2": {
+      "cartesian": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "modulus": 9.5286204,
+      "scalar": 0.0,
+      "source_log_path": "source/+0.00000/r1/running.log",
+      "unit": "C/m^2"
+    },
+    "e/bohr^2": {
+      "cartesian": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "modulus": 0.1666667,
+      "scalar": 0.0,
+      "source_log_path": "source/+0.00000/r1/running.log",
+      "unit": "e/bohr^2"
+    }
+  },
+  "schema_version": "forge.polarization/v1",
+  "source_log_path": "source/+0.00000/r1/running.log"
+}

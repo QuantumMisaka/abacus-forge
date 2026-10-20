@@ -1,0 +1,14 @@
+INPUT_PARAMETERS
+basis_type pw
+calculation scf
+dft_functional PBE
+ecutwfc 80
+nbands 4
+nspin 1
+out_band 0
+out_chg 1
+out_dos 0
+scf_nmax 100
+scf_thr 1e-10
+smearing_method fixed
+symmetry -1

@@ -73,7 +73,7 @@ The Python example prepares and collects; it does not start ABACUS. See the [usa
 
 ## Capability maturity
 
-Capabilities exposed through multiple APIs do not necessarily share the same contract or maturity. The current typed capability descriptors mark SCF, Relax, cell-relax, MD, band/DOS/COHP postprocess, PyATB band handoff, ATST-NEB, and typed export as experimental. Property packs are also experimental and have not each completed real ABACUS operation and parsing validation. Existing real-process smoke evidence checks process and artifact behavior; it does not establish scientific acceptance or automatically promote a capability to stable.
+Capabilities exposed through multiple APIs do not necessarily share the same contract or maturity. The current typed capability descriptors mark SCF, Relax, cell-relax, MD, band/DOS/COHP postprocess, PyATB band handoff, direct NAO `pyatb-cohp`, ATST-NEB, and typed export as experimental. A bounded BEC implementation is in progress with typed `polarization/collect` and `bec/postprocess`; preparation, displacement, and single-stage execution reuse generic APIs, while cross-run orchestration remains with the caller. The existing legacy BEC pack is unchanged and remains experimental. Neither the new implementation nor existing real-process smoke evidence constitutes real BEC scientific validation or scientific acceptance.
 
 The typed band and DOS capabilities currently provide `postprocess` only. They do not provide typed band or DOS execution. Legacy task, unit, and sequence entry points remain available with their existing behavior.
 
@@ -127,6 +127,8 @@ See [typed export](docs/guide.md#typed-export).
 #### Typed PyATB band handoff (experimental)
 
 See [typed PyATB band handoff](docs/guide.md#typed-pyatb-band-handoff).
+
+Direct NAO-COHP is available separately through experimental `pyatb-cohp` prepare/execute/collect operations. It requires explicit matrices, numerical orbitals, Fermi energy, k points and weights. See [direct NAO-COHP](docs/guide.md#direct-nao-cohp).
 
 <a id="typed-relax-operations"></a>
 #### Typed Relax operations

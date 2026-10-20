@@ -1,0 +1,5 @@
+INPUT_PARAMETERS
+berry_phase 1
+gdir 1
+nspin 1
+calculation nscf

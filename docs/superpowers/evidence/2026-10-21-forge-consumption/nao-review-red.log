@@ -1,0 +1,49 @@
+ERROR conda.cli.main_run:execute(148): `conda run env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_pyatb_cohp.py -k outputs_parent_symlink` failed. (See above for error)
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_____ test_execute_rejects_outputs_parent_symlink_outside_workspace[False] _____
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-3312/test_execute_rejects_outputs_p0')
+dry_run = False
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_execute_rejects_outputs_parent_symlink_outside_workspace(tmp_path, dry_run):
+        sources(tmp_path)
+        service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
+        assert service.prepare.prepare(request()).envelope.status.execution == "not_run"
+        outside = tmp_path.parent / f"{tmp_path.name}-external-logs"
+        outside.mkdir()
+        (tmp_path / "outputs").rename(tmp_path / "outputs-saved")
+        (tmp_path / "outputs").symlink_to(outside, target_is_directory=True)
+        result = service.execute.execute(PyatbCohpExecuteRequest(
+            str(uuid.uuid4()), ".", executable="/bin/true", dry_run=dry_run))
+>       assert isinstance(result, ForgeErrorEnvelope)
+E       AssertionError: assert False
+E        +  where False = isinstance(OperationOutcome(operation_id='8d5df29d-1da1-4eb7-8611-dde7d3dc59df', envelope=ForgeResultEnvelope(operation='execute'...ime'), Observation(name='termination', value='exited', source='runtime')), schema_version='forge.operation-outcome/v1'), ForgeErrorEnvelope)
+
+tests/test_pyatb_cohp.py:234: AssertionError
+_____ test_execute_rejects_outputs_parent_symlink_outside_workspace[True] ______
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-3312/test_execute_rejects_outputs_p1')
+dry_run = True
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_execute_rejects_outputs_parent_symlink_outside_workspace(tmp_path, dry_run):
+        sources(tmp_path)
+        service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
+        assert service.prepare.prepare(request()).envelope.status.execution == "not_run"
+        outside = tmp_path.parent / f"{tmp_path.name}-external-logs"
+        outside.mkdir()
+        (tmp_path / "outputs").rename(tmp_path / "outputs-saved")
+        (tmp_path / "outputs").symlink_to(outside, target_is_directory=True)
+        result = service.execute.execute(PyatbCohpExecuteRequest(
+            str(uuid.uuid4()), ".", executable="/bin/true", dry_run=dry_run))
+>       assert isinstance(result, ForgeErrorEnvelope)
+E       AssertionError: assert False
+E        +  where False = isinstance(OperationOutcome(operation_id='e832a918-02cb-4ba3-8e89-696586ec7d33', envelope=ForgeResultEnvelope(operation='execute'...observations=(Observation(name='dry_run', value=True, source='runtime'),), schema_version='forge.operation-outcome/v1'), ForgeErrorEnvelope)
+
+tests/test_pyatb_cohp.py:234: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pyatb_cohp.py::test_execute_rejects_outputs_parent_symlink_outside_workspace[False]
+FAILED tests/test_pyatb_cohp.py::test_execute_rejects_outputs_parent_symlink_outside_workspace[True]
+2 failed, 11 deselected in 1.01s

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+  "shell_command": "env ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 PYTHONPATH= PYTHONDONTWRITEBYTECODE=1 /home/james/scratch/forge-release-validation-20261021/venv/bin/python -m pytest -q -p no:cacheprovider tests/test_pyatb_cohp.py tests/test_polarization.py tests/test_bec.py tests/test_polarization_services.py tests/test_contracts.py tests/test_workspace.py tests/test_machine_cli.py tests/test_cli_process.py > /home/james/scratch/forge-release-validation-20261021/installed-pytest.log 2>&1",
+  "env_prefix": {
+    "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+    "PYTHONPATH": "",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "python": "/home/james/scratch/forge-release-validation-20261021/venv/bin/python",
+  "python_isolated_flag": false,
+  "pytest_args": [
+    "-m", "pytest", "-q", "-p", "no:cacheprovider",
+    "tests/test_pyatb_cohp.py", "tests/test_polarization.py", "tests/test_bec.py",
+    "tests/test_polarization_services.py", "tests/test_contracts.py", "tests/test_workspace.py",
+    "tests/test_machine_cli.py", "tests/test_cli_process.py"
+  ],
+  "exit_code": 0,
+  "stdout_stderr_log": "/home/james/scratch/forge-release-validation-20261021/installed-pytest.log",
+  "result": "520 passed, 1 warning",
+  "source": "actual exec_command invocation and completed write_stdin result from this session; recorded afterward without rerun"
+}

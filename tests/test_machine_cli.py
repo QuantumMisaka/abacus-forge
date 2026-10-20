@@ -203,7 +203,7 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     descriptors = capabilities_document()["capabilities"]
     assert [descriptor["name"] for descriptor in descriptors] == [
         "scf", "relax", "cell-relax", "atst-neb", "md", "band", "dos", "cohp",
-        "pyatb-band", "export",
+        "pyatb-band", "pyatb-cohp", "polarization", "bec", "export",
     ]
     for descriptor in descriptors[:3]:
         assert descriptor["maturity"] == "experimental"

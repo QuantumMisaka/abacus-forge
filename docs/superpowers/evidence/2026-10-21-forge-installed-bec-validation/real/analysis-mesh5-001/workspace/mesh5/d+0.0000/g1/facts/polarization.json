@@ -1,0 +1,122 @@
+{
+  "electronic_phase": -0.0,
+  "gdir": 1,
+  "geometry": {
+    "atom_labels": [
+      "O",
+      "Mg"
+    ],
+    "cell_angstrom": [
+      [
+        0.0,
+        2.1229200000002586,
+        2.1229200000002586
+      ],
+      [
+        2.1229200000002586,
+        0.0,
+        2.1229200000002586
+      ],
+      [
+        2.1229200000002586,
+        2.1229200000002586,
+        0.0
+      ]
+    ],
+    "move_flags": [
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ]
+    ],
+    "positions_angstrom": [
+      [
+        2.1229200000002586,
+        2.1229200000002586,
+        2.1229200000002586
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "species_meta": {
+      "Mg": {
+        "mass": 24.305,
+        "pp": "Mg.PD04.PBE.UPF"
+      },
+      "O": {
+        "mass": 15.999,
+        "pp": "O.upf"
+      }
+    },
+    "symbols": [
+      "O",
+      "Mg"
+    ]
+  },
+  "input": {
+    "basis_type": "pw",
+    "berry_phase": "1",
+    "calculation": "nscf",
+    "dft_functional": "PBE",
+    "ecutwfc": "80",
+    "gdir": "1",
+    "init_chg": "file",
+    "nbands": "4",
+    "nspin": "1",
+    "out_band": "0",
+    "out_chg": "0",
+    "out_dos": "0",
+    "pw_diag_thr": "1e-11",
+    "scf_nmax": "100",
+    "scf_thr": "1e-10",
+    "smearing_method": "fixed",
+    "symmetry": "-1"
+  },
+  "ionic_phase": 1.0,
+  "rows": {
+    "(e/Omega).bohr": {
+      "cartesian": [
+        0.0,
+        4.0117374,
+        4.0117374
+      ],
+      "modulus": 11.3469068,
+      "scalar": 5.6734534,
+      "source_log_path": "inputs/OUT.ABACUS/running_nscf.log",
+      "unit": "(e/Omega).bohr"
+    },
+    "C/m^2": {
+      "cartesian": [
+        0.0,
+        1.7761772,
+        1.7761772
+      ],
+      "modulus": 5.0237877,
+      "scalar": 2.5118939,
+      "source_log_path": "inputs/OUT.ABACUS/running_nscf.log",
+      "unit": "C/m^2"
+    },
+    "e/bohr^2": {
+      "cartesian": [
+        0.0,
+        0.0310674,
+        0.0310674
+      ],
+      "modulus": 0.0878719,
+      "scalar": 0.0439359,
+      "source_log_path": "inputs/OUT.ABACUS/running_nscf.log",
+      "unit": "e/bohr^2"
+    }
+  },
+  "schema_version": "forge.polarization/v1",
+  "source_log_path": "inputs/OUT.ABACUS/running_nscf.log"
+}

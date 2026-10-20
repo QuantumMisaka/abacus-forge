@@ -1,0 +1,11 @@
+{
+  "events": [
+    {
+      "id": "0a61ba54-4b18-496a-bead-2bbd50ca3db6",
+      "operation": "collect",
+      "path_rel": "reports/events/0a61ba54-4b18-496a-bead-2bbd50ca3db6-collect.json"
+    }
+  ],
+  "schema_version": "forge.workspace/v1",
+  "workspace_rel": "."
+}

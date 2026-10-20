@@ -1,0 +1,9 @@
+{
+  "source": "mesh4/d-0.0100/scf/inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart",
+  "destination": "mesh4/d-0.0100/g1/inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart",
+  "source_sha256": "0fd74b315df3d108c40adc6a2de0e8e88682c3ed92dfdb3481956f9b4ced5fd1",
+  "destination_before_execute_sha256": "0fd74b315df3d108c40adc6a2de0e8e88682c3ed92dfdb3481956f9b4ced5fd1",
+  "timing": "copied before engine launch",
+  "destination_after_execute_sha256": "bcc38e52250b311980e9d2424bde4f1bf17650695f0f08c357b830bdec5060af",
+  "source_after_execute_sha256": "0fd74b315df3d108c40adc6a2de0e8e88682c3ed92dfdb3481956f9b4ced5fd1"
+}

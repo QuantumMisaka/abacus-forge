@@ -2,6 +2,12 @@
 
 Spec: [2026-10-15-forge-cohp-postprocess-design.md](../specs/2026-10-15-forge-cohp-postprocess-design.md)
 
+Follow-on pointer (2026-10-21): direct NAO/PyATB COHP is a separate capability,
+not an extension of this IAO-only W1 implementation. See the [bounded NAO
+SPEC](../specs/2026-10-21-forge-pyatb-cohp-design.md) and [current
+implementation/verification plan](2026-10-21-forge-consumption-followup.md).
+This historical plan remains the record for W1 and its stated follow-up evidence.
+
 ## Task 1: Add typed cohp postprocess contract
 
 - Add `CohpPostprocessRequest` to `postprocess_contracts.py`.

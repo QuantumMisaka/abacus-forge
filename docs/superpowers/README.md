@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+2026-10-21 消费接续实现与独立审查已完成：新增直接 NAO `pyatb-cohp`、有限方法元数据和 manifest 消费示例；两轨 Si 真实 PyATB 回放通过。见[完成记录](plans/2026-10-21-forge-consumption-followup.md#完成记录)与[验证证据](evidence/2026-10-21-forge-consumption.md)。BEC 有界实现、离线回归与审查已完成；fresh wheel 安装验证通过，MgO 真实验证目前覆盖一个 O_x 响应。能力仍为 experimental，不代表全张量或收敛；敏感性与当前状态以[安装/实算接续计划](plans/2026-10-21-forge-installed-bec-validation.md)和[证据](evidence/2026-10-21-forge-installed-bec-validation.md)为准。改动尚留在本地隔离工作树，未提交、未发布。
+
 完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。后续由 Paimon owner 推进 Benchmark 执行器与目标环境交付；本机 CPython 3.12 证据不扩展为 SAI、CPython 3.13 或完整发布通过。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
@@ -20,6 +22,8 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。当前 wheel + 发布 parser 的指定 PW/nspin=1 八格真实双轨 parity 已补齐，见 [10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；PyATB 指定两轨 Si/nspin=1 的完整包消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)；更多配置与上层交接仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
+| 2026-10-21 Forge 消费接续 | [NAO/PyATB SPEC](specs/2026-10-21-forge-pyatb-cohp-design.md) 与 [有限元数据/manifest 消费 SPEC](specs/2026-10-21-forge-consumption-metadata-design.md) → [完成 PLAN](plans/2026-10-21-forge-consumption-followup.md) 与[验证证据](evidence/2026-10-21-forge-consumption.md)。直接 NAO 接口及两轨 Si 回放通过；有限 contracts map 与现有 manifest 消费示例只覆盖各自 SPEC 范围。BEC 由下方已确认的有界 SPEC/PLAN 接续。 |
+| 2026-10-21 Polarization/BEC | [已确认的有界 SPEC](specs/2026-10-21-forge-polarization-bec-design.md) → [实施 PLAN](plans/2026-10-21-forge-bec-implementation.md) → [安装与实算接续 PLAN](plans/2026-10-21-forge-installed-bec-validation.md)。新增实验性 `polarization/collect` 与 `bec/postprocess`；准备/位移/单次执行复用通用 API。本地实现、离线回归、独立审查与 fresh wheel 安装验证通过。MgO 当前只验证单个 O_x 响应；不代表全张量、收敛或 Paimon/SAI 验收。当前实验状态见[后继证据](evidence/2026-10-21-forge-installed-bec-validation.md)；legacy pack 不做数值替换。 |
 
 2026-10-19 用户要求以可复用集成基座为重点并纳入 `abacustools`。既有 SPEC/PLAN 的职责复核、工作区参考分工、COHP 方法来源与建议推进顺序见[参考复核](plans/2026-09-09-forge-core-fidelity-references.md#integration-review-20261019)。这是参考与导航更新，不改变 Approved/Draft 状态。
 
@@ -35,16 +39,18 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | [Engine/Version Policy](specs/2026-09-12-forge-engine-version-policy-design.html) | 设计已收口，Stage 0 已验证；后端配置、错误优先级与解析分工。未完成阶段按 PLAN 验收。 |
 | [2026-10-13 仓库整理](specs/2026-10-13-forge-repository-consolidation-design.md) | 用户确认的兼容整理与文档归属，不修改上述公共契约。 |
 | [COHP postprocess W1](specs/2026-10-15-forge-cohp-postprocess-design.md) | 用户确认“按此推进”；仅覆盖 IAO typed postprocess，SCF 编排和 legacy bridge显式排除。 |
+| [直接 NAO / PyATB COHP](specs/2026-10-21-forge-pyatb-cohp-design.md)、[有限元数据与 manifest 消费](specs/2026-10-21-forge-consumption-metadata-design.md) | 2026-10-21 有界设计已按[完成计划](plans/2026-10-21-forge-consumption-followup.md)实施并验证。前者新增独立 direct NAO capability，不改变已批准的 IAO W1；后者只定义有限 discovery contracts map 与现有 manifest 的消费示例，不批准完整 Contract System 或 manifest Draft。 |
+| [Polarization/BEC 有界实现](specs/2026-10-21-forge-polarization-bec-design.md) | 用户确认的 bounded implementation；新增 `polarization/collect` 与 `bec/postprocess`，本地实现、离线验证和 fresh wheel 安装验证完成。MgO 真实验证的有限进度与未证明项由[接续计划](plans/2026-10-21-forge-installed-bec-validation.md)和[证据](evidence/2026-10-21-forge-installed-bec-validation.md)维护。能力仍为 experimental；当前单列结果不等于全张量/收敛或 Paimon/SAI 验收。 |
 
 ## 草案与后继关系
 
 | 草案 | 当前地位 |
 | --- | --- |
 | [abacuslite 插件维护位置与独立分发](specs/2026-10-16-abacuslite-independent-plugin-design.md) | 独立仓库与首轮包建设已批准，包内规范迁至 QuantumMisaka/abacuslite；此处保留设计历史与跨仓候选方案。正式 1.2.0 发布及 Forge 安装消费已有证据；ABACUS 兼容层与更广生产接入不能由此推定完成。 |
-| [Contract System](specs/2026-09-29-forge-contract-system-design.html) | Draft；接续下列知识库提案，未批准、未实施。 |
+| [Contract System](specs/2026-09-29-forge-contract-system-design.html) | 完整设计仍为 Draft，未整体批准或实施；2026-10-21 的有限 contracts map 见[独立范围 SPEC](specs/2026-10-21-forge-consumption-metadata-design.md)，不继承该草案的 M1–M4、知识库或查询服务方案。 |
 | [I/O Contract Knowledge Base](specs/2026-09-29-forge-io-contract-knowledge-base-design.html) | 历史 Draft；讨论由 Contract System 接续，保留原始依据。 |
-| [Typed BEC](specs/2026-09-29-forge-typed-bec-design.html) | Draft；显式阶段、解析和科学计算语义仍待收口，无实施 PLAN。 |
-| [Property manifest](specs/2026-09-10-forge-property-manifest-design.html) | 仍是 Draft；[计划](plans/2026-09-10-forge-property-manifest.md)已有 provisional 实现与复核，不能反推规范已获批准或能力已稳定。 |
+| [Typed BEC 历史 HTML](specs/2026-09-29-forge-typed-bec-design.html) | 保留原文及后继指针；当前规范源为上方的 2026-10-21 BEC SPEC。旧 HTML 中与新规范冲突的设计不再作为当前实现依据。 |
+| [Property manifest 历史 Draft](specs/2026-09-10-forge-property-manifest-design.html) | 规范仍为 Draft；[计划](plans/2026-09-10-forge-property-manifest.md)记录 provisional 实现与复核。2026-10-21 的[有限消费 SPEC](specs/2026-10-21-forge-consumption-metadata-design.md)增加可运行示例范围，不批准旧 manifest 规范或将能力提升为 stable。 |
 
 ## 实现记录与历史计划
 
@@ -57,6 +63,8 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | 中立内核与输入资产 | [保真收敛](plans/2026-09-09-forge-core-fidelity.md)、[参照源码与取舍](plans/2026-09-09-forge-core-fidelity-references.md)、[显式资产](plans/2026-09-09-forge-typed-asset-materialization.md)、[PBE/ATST 边界](plans/2026-09-09-forge-default-pbe-and-atst-neb-boundary.md) |
 | 后处理与外部引擎 | [Band/DOS](plans/2026-09-10-forge-typed-postprocess.md)、[MD postprocess](plans/2026-09-10-forge-typed-md-postprocess.md)、[MD 复核修正](plans/2026-09-11-forge-md-postprocess-review-fixes.md)、[ATST adapter](plans/2026-09-09-forge-atst-neb-adapter.md) |
 | COHP W1 | [COHP postprocess](plans/2026-10-15-forge-cohp-postprocess.md) |
+| 2026-10-21 direct NAO 与消费 | [消费接续](plans/2026-10-21-forge-consumption-followup.md)；其实现和验证状态以该计划为准。 |
+| 2026-10-21 Polarization/BEC | [BEC 实施](plans/2026-10-21-forge-bec-implementation.md)；[安装与实算接续](plans/2026-10-21-forge-installed-bec-validation.md)及[证据](evidence/2026-10-21-forge-installed-bec-validation.md)维护安装态和当前真实材料验证。仍为 experimental。 |
 | PyATB 与导出 | [Band handoff](plans/2026-09-10-forge-typed-pyatb-band.md)、[manifest](plans/2026-09-10-forge-typed-pyatb-artifact-manifest.md)、[nspin=4](plans/2026-09-10-forge-typed-pyatb-nspin4.md)、[可选 rR](plans/2026-09-11-forge-typed-pyatb-optional-rr.md)、[export](plans/2026-09-10-forge-typed-export.md) |
 | 解析、状态与前置条件 | [原生输出保真](plans/2026-09-10-forge-abacus-native-collection-fidelity.md)、[collection metadata](plans/2026-09-10-forge-typed-collection-metadata.md)、[Fermi 单位](plans/2026-09-12-forge-native-fermi-unit.md)、[calculation 校验](plans/2026-09-12-forge-typed-calculation-guards.md)、[normal_end](plans/2026-09-12-forge-typed-execute-normal-end.md) |
 | 历史集成与运行门禁 | [主线集成](plans/2026-09-11-forge-mainline-integration.md)、[maturity gates](plans/2026-09-11-forge-maturity-gates-integration.md)、[迁移事实](plans/2026-09-11-forge-core-migration-facts.md)、[SCF smoke](plans/2026-09-10-forge-typed-scf-real-smoke.md)、[MD smoke](plans/2026-09-11-forge-typed-md-real-smoke.md)、[freshness](plans/2026-09-11-forge-real-smoke-freshness.md) |
@@ -82,7 +90,7 @@ Paimon v1.3 的 owner 在 app-tools 仓；当前工作区 checkout 名为 `app-t
 - `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md`：W0–W4 执行总表，维护 adapter、依赖、全链路 benchmark 和平台验收。
 - `docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`：正在由另一工作会话推进的 Benchmark 阈值、执行器、候选交付包与 SAI 验收；当前进度以其 owner 记录为准。
 
-Forge 独立交付，Paimon 的发布门槛不自动成为每次 Forge 发布的门槛。Contract System、BEC 与 optional parser package 各有独立设计和验收。已结项 `paimon/` 只作历史证据，不是 Forge 运行时依赖或上级规范。
+Forge 独立交付，Paimon 的发布门槛不自动成为每次 Forge 发布的门槛。完整 Contract System 仍为未批准 Draft；有限 contracts map、manifest 消费示例与 BEC 后继设计分别由上方链接的 2026-10-21 SPEC 约束。optional parser package 继续按独立计划验收。已结项 `paimon/` 只作历史证据，不是 Forge 运行时依赖或上级规范。
 
 ## 文档生命周期与开发路由
 

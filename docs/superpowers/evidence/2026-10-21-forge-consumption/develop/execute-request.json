@@ -1,0 +1,9 @@
+{
+  "schema_version": "forge.request/v1",
+  "capability": "pyatb-cohp",
+  "workspace_rel": ".",
+  "executable": "/home/james/scratch/forge-pyatb-installed-20261019/venv/bin/pyatb",
+  "timeout_seconds": 120,
+  "operation": "execute",
+  "operation_id": "948be57f-f96a-4255-a231-d8d859480943"
+}

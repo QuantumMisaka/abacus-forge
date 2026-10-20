@@ -1,0 +1,173 @@
+{
+  "id": "87824625-adee-4c5c-adb5-088b0c93fe9b",
+  "operation": "postprocess",
+  "payload": {
+    "envelope": {
+      "artifacts": [
+        {
+          "availability": "available",
+          "id": "input-da1ecc42026978aa",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d-0.0050/g1/facts/polarization.json",
+          "role": "input",
+          "sha256": "2770ad3ec96827f4f3e6c8a0d33b0ca73a42cdb398770b7693adec19deaddf2d",
+          "size_bytes": 2255,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-6e721c44b6c9316a",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d-0.0050/g2/facts/polarization.json",
+          "role": "input",
+          "sha256": "55422737df829cd0c3a01212ae77e636d145a50ec13dcf8d3e8b79c37f14cea5",
+          "size_bytes": 2241,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-63cb589d030b1f2f",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d-0.0050/g3/facts/polarization.json",
+          "role": "input",
+          "sha256": "824c68f569cf9012f5875a80a7ff2001aafc024c7186d7860a01c24a9a0c8fa6",
+          "size_bytes": 2241,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-7447528ff3d3f0f9",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0000/g1/facts/polarization.json",
+          "role": "input",
+          "sha256": "b9e35c52c9dc65af4e96907ca1288e0149eca8c3e9506a5294ba4be3f990f4d7",
+          "size_bytes": 2234,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-eac23a9467572858",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0000/g2/facts/polarization.json",
+          "role": "input",
+          "sha256": "57424c061d7e3118dc039b347baeb434f1ca84fed2e921b2a86002cda63299ac",
+          "size_bytes": 2234,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-c63bd8e8499df435",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0000/g3/facts/polarization.json",
+          "role": "input",
+          "sha256": "9131bcffdfe471321b0ff15f2adf4826535498a2c28d78d08ca91f912a1fcc66",
+          "size_bytes": 2235,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-7138f74f6dd1684b",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0050/g1/facts/polarization.json",
+          "role": "input",
+          "sha256": "ce239dc4706c86d065ea5c4152c0d40e593402fb6816ea833019eaa00119dc53",
+          "size_bytes": 2242,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-c33245849d327f36",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0050/g2/facts/polarization.json",
+          "role": "input",
+          "sha256": "8edbadf51278e3d68fac577c5f615b50733778d9d71ed3fc055fe34f6c088ea5",
+          "size_bytes": 2256,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "input-ef1d141a0d17139d",
+          "media_type": "application/json",
+          "path_rel": "mesh4/d+0.0050/g3/facts/polarization.json",
+          "role": "input",
+          "sha256": "50cc7fc64567def4975d132c8faf727653c0d93cf66770d237f33fb7ce811b4d",
+          "size_bytes": 2256,
+          "stage": "postprocess"
+        },
+        {
+          "availability": "available",
+          "id": "output-cbeb01aa69b7976e",
+          "media_type": "application/json",
+          "path_rel": "outputs/bec-explicit.json",
+          "role": "output",
+          "sha256": "2a9407db0d4bc5b2fba5b1b35ab92530f73684d7df935cd4b5a6729b83539c04",
+          "size_bytes": 3827,
+          "stage": "postprocess"
+        }
+      ],
+      "checks": [],
+      "diagnostics": {
+        "artifact_refs": [
+          {
+            "artifact_id": "input-da1ecc42026978aa",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-6e721c44b6c9316a",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-63cb589d030b1f2f",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-7447528ff3d3f0f9",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-eac23a9467572858",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-c63bd8e8499df435",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-7138f74f6dd1684b",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-c33245849d327f36",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "input-ef1d141a0d17139d",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          },
+          {
+            "artifact_id": "output-cbeb01aa69b7976e",
+            "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b"
+          }
+        ],
+        "full_tensor_complete": false,
+        "invalid_source_paths_rel": [],
+        "missing_source_paths_rel": [],
+        "output_path_rel": "outputs/bec-explicit.json",
+        "requested_complete": true
+      },
+      "metrics": [],
+      "operation": "postprocess",
+      "schema_version": "forge.result/v1",
+      "status": {
+        "collection": "complete",
+        "execution": "not_run",
+        "scientific": "unassessed"
+      },
+      "warnings": [],
+      "workspace_rel": "."
+    },
+    "observations": [],
+    "operation_id": "87824625-adee-4c5c-adb5-088b0c93fe9b",
+    "schema_version": "forge.operation-outcome/v1"
+  }
+}

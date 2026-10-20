@@ -1,0 +1,6 @@
+{
+  "returncode": 0,
+  "elapsed_seconds": 28.228975479025394,
+  "native_log_sha256": "586ee985f7ce5b69308ae6f39160cb30c51cae51eb4a182c79f1f150174ba4a8",
+  "validation_note": "Harness normal-end and SCF-convergence markers corrected against native log; successful original engine run retained."
+}

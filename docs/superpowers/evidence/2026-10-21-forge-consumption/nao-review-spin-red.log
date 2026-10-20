@@ -1,0 +1,29 @@
+ERROR conda.cli.main_run:execute(148): `conda run env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_pyatb_cohp.py::test_request_roundtrip_schema_and_strict_validation` failed. (See above for error)
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_request_roundtrip_schema_and_strict_validation ______________
+
+    def test_request_roundtrip_schema_and_strict_validation():
+        obj = request()
+        assert PyatbCohpPrepareRequest.from_dict(obj.to_dict()) == obj
+        assert decode_operation_request("prepare", obj.to_dict()) == obj
+        for operation, typed in (("prepare", obj),
+                                 ("execute", PyatbCohpExecuteRequest(str(uuid.uuid4()), ".")),
+                                 ("collect", PyatbCohpCollectRequest(str(uuid.uuid4()), "."))):
+            schema = request_schema_document("pyatb-cohp", operation)["request_schema"]
+            assert set(schema["properties"]) == set(typed.to_dict())
+            assert schema["additionalProperties"] is False
+            assert typed.__class__.from_dict(typed.to_dict()) == typed
+        with pytest.raises(ValueError, match="unknown|unexpected|field"):
+            PyatbCohpPrepareRequest.from_dict({**obj.to_dict(), "line_kpoints": []})
+        with pytest.raises(ValueError, match="nspin"):
+            request(nspin=4)
+        for fractional_spin in (1.0, 2.0):
+>           with pytest.raises(ValueError, match="nspin"):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_pyatb_cohp.py:100: Failed
+=========================== short test summary info ============================
+FAILED tests/test_pyatb_cohp.py::test_request_roundtrip_schema_and_strict_validation
+1 failed in 0.76s

@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "id": "ae55fff6-7106-402a-b8ce-26ed355d398d",
+      "operation": "postprocess",
+      "path_rel": "reports/events/ae55fff6-7106-402a-b8ce-26ed355d398d-postprocess.json"
+    },
+    {
+      "id": "d2aff3a6-7394-4f6e-bf73-bfa93d1810de",
+      "operation": "postprocess",
+      "path_rel": "reports/events/d2aff3a6-7394-4f6e-bf73-bfa93d1810de-postprocess.json"
+    }
+  ],
+  "schema_version": "forge.workspace/v1",
+  "workspace_rel": "."
+}

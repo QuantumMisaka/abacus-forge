@@ -16,6 +16,7 @@ from abacus_forge.request_registry import (
     MD_REQUEST_TYPES,
     POSTPROCESS_REQUEST_TYPES,
     PYATB_BAND_REQUEST_TYPES,
+    PYATB_COHP_REQUEST_TYPES,
     RELAX_REQUEST_TYPES,
     REQUEST_TYPES_BY_CAPABILITY,
     SCF_REQUEST_TYPES,
@@ -115,6 +116,28 @@ _PYATB_BAND_DESCRIPTOR = CapabilityDescriptor(
     artifact_roles=("input", "provenance_manifest", "output"),
     optional_dependencies=("pyatb",),
 )
+_PYATB_COHP_DESCRIPTOR = CapabilityDescriptor(
+    name="pyatb-cohp", maturity="experimental", engine="pyatb",
+    operations=("prepare", "execute", "collect"),
+    inputs={
+        "prepare": ("structure", "hr", "sr", "numerical_orbitals", "fermi_energy", "kpoints", "kpoint_weights"),
+        "execute": ("prepared_workspace",),
+        "collect": ("spectrum", "metadata"),
+    },
+    artifact_roles=("input", "output"), optional_dependencies=("pyatb",),
+)
+_POLARIZATION_DESCRIPTOR = CapabilityDescriptor(
+    name="polarization", maturity="experimental", engine="abacus",
+    operations=("collect",),
+    inputs={"collect": ("running_log", "structure", "input")},
+    artifact_roles=("input", "output"), optional_dependencies=(),
+)
+_BEC_DESCRIPTOR = CapabilityDescriptor(
+    name="bec", maturity="experimental", engine="forge",
+    operations=("postprocess",),
+    inputs={"postprocess": ("polarization_facts", "displacements", "branch_policy")},
+    artifact_roles=("input", "output"), optional_dependencies=(),
+)
 _EXPORT_DESCRIPTOR = CapabilityDescriptor(
     name="export",
     maturity="experimental",
@@ -178,7 +201,84 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
     properties = _base_properties(operation)
     if capability != "scf":
         properties["capability"] = {"type": "string", "const": capability}
-    if capability == "pyatb-band" and operation == "prepare":
+    if capability == "polarization" and operation == "collect":
+        path = {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN}
+        properties.update({
+            "log_path_rel": {**path, "description": "Native ABACUS Berry-phase running log."},
+            "structure_path_rel": dict(path),
+            "input_path_rel": dict(path),
+            "output_path_rel": {**path, "default": "outputs/polarization.json"},
+        })
+    elif capability == "bec" and operation == "postprocess":
+        path = {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN}
+        sample = {"type": "object", "additionalProperties": False,
+                  "properties": {
+                      "displacement_angstrom": {"type": "number"},
+                      "polarization_paths_rel": {"type": "array", "minItems": 1, "uniqueItems": True, "items": dict(path)},
+                      "branch_offsets": {"type": "object", "additionalProperties": False,
+                                         "properties": {key: {"type": "integer"} for key in ("1", "2", "3")},
+                                         "required": ["1", "2", "3"]},
+                  }, "required": ["displacement_angstrom", "polarization_paths_rel"]}
+        properties.update({
+            "columns": {"type": "array", "minItems": 1, "items": {
+                "type": "object", "additionalProperties": False,
+                "properties": {"atom_index": {"type": "integer", "minimum": 1},
+                               "direction": {"type": "string", "enum": ["x", "y", "z"]},
+                               "samples": {"type": "array", "minItems": 1, "items": sample}},
+                "required": ["atom_index", "direction", "samples"]}},
+            "branch_mode": {"type": "string", "enum": ["auto", "explicit"], "default": "auto"},
+            "max_step_fraction": {"type": ["number", "null"], "exclusiveMinimum": 0,
+                                  "exclusiveMaximum": 0.5, "default": None,
+                                  "description": "Required caller bound for conditional automatic branch unwrapping."},
+            "output_path_rel": {**path, "default": "outputs/bec.json"},
+        })
+    elif capability == "pyatb-cohp" and operation == "prepare":
+        path = {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN}
+        properties.update({
+            "structure_path_rel": dict(path),
+            "hr_paths_rel": {"type": "array", "minItems": 1, "maxItems": 2, "items": dict(path),
+                             "description": "One HR for nspin=1 or up/down HR for nspin=2; ABACUS Ry units."},
+            "sr_path_rel": {**path, "description": "ABACUS dimensionless overlap matrix."},
+            "orbital_paths_rel": {"type": "array", "minItems": 1, "items": dict(path),
+                                  "description": "Contained orbital files matching STRU NUMERICAL_ORBITAL basenames."},
+            "fermi_energy": {"type": "number", "description": "Absolute Fermi energy in eV."},
+            "atom_i_index": {"type": "integer", "minimum": 1},
+            "atom_j_index": {"type": "integer", "minimum": 1},
+            "atom_i_orbs": {"type": "string", "minLength": 1, "maxLength": 128, "default": "all"},
+            "atom_j_orbs": {"type": "string", "minLength": 1, "maxLength": 128, "default": "all"},
+            "kpoints": {"type": "array", "minItems": 1,
+                        "items": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+                        "description": "Explicit fractional reciprocal coordinates; no implicit grid."},
+            "kpoint_weights": {"type": "array", "minItems": 1, "items": {"type": "number", "minimum": 0},
+                               "description": "One finite nonnegative weight per k point, positive sum; PyATB normalizes."},
+            "e_range": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"},
+                        "description": "Increasing absolute eV window spanning at least one de."},
+            "nspin": {"type": "integer", "enum": [1, 2], "default": 1},
+            "spin": {"type": "string", "enum": ["sum", "up", "down"], "default": "sum"},
+            "de": {"type": "number", "exclusiveMinimum": 0, "default": 0.05},
+            "sigma": {"type": "number", "exclusiveMinimum": 0, "default": 0.15},
+            "invert": {"type": "boolean", "default": True},
+            "shift_to_efermi": {"type": "boolean", "default": True},
+            "max_kpoint_num": {"type": "integer", "minimum": 1, "default": 4000},
+        })
+    elif capability == "pyatb-cohp" and operation == "execute":
+        properties.update({
+            "executable": {"type": "string", "minLength": 1, "default": "pyatb"},
+            "mpi_ranks": {"type": "integer", "minimum": 1, "default": 1},
+            "omp_threads": {"type": "integer", "minimum": 1, "default": 1},
+            "timeout_seconds": {"type": ["number", "null"], "exclusiveMinimum": 0, "default": None},
+            "dry_run": {"type": "boolean", "default": False},
+        })
+    elif capability == "pyatb-cohp" and operation == "collect":
+        properties.update({
+            "spectrum_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN,
+                                  "default": "inputs/Out/COHP/COHP.dat",
+                                  "description": "Two-column increasing-energy eV and dimensionless COHP or -COHP spectrum."},
+            "metadata_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN,
+                                  "default": "inputs/Out/COHP/COHP.meta.json",
+                                  "description": "PyATB metadata with linked spectrum and occupied ICOHP in eV."},
+        })
+    elif capability == "pyatb-band" and operation == "prepare":
         properties.update(
             {
                 "structure_path_rel": {"type": "string", "minLength": 1, "pattern": _CANONICAL_FILE_PATTERN},
@@ -497,7 +597,13 @@ def _representative_request(capability: str, operation: str) -> Any:
         "operation_id": "123e4567-e89b-42d3-a456-426614174000",
         "workspace_rel": ".",
     }
-    if capability == "pyatb-band" and operation == "prepare":
+    if capability == "pyatb-cohp" and operation == "prepare":
+        kwargs.update({"structure_path_rel": "source/STRU", "hr_paths_rel": ("source/HR.csr",),
+                       "sr_path_rel": "source/SR.csr", "orbital_paths_rel": ("source/Si.orb",),
+                       "fermi_energy": 0.0, "atom_i_index": 1, "atom_j_index": 2,
+                       "kpoints": ((0.0, 0.0, 0.0),), "kpoint_weights": (1.0,),
+                       "e_range": (-1.0, 1.0)})
+    elif capability == "pyatb-band" and operation == "prepare":
         kwargs.update(
             {
                 "structure_path_rel": "inputs/STRU",
@@ -518,6 +624,12 @@ def _representative_request(capability: str, operation: str) -> Any:
         kwargs["scf_dir_rel"] = "scf"
     elif capability == "md" and operation == "postprocess":
         kwargs.update({"trajectory_path_rel": "outputs/md.traj", "analysis": ("rdf",)})
+    elif capability == "polarization" and operation == "collect":
+        kwargs.update({"log_path_rel": "running.log", "structure_path_rel": "STRU", "input_path_rel": "INPUT"})
+    elif capability == "bec" and operation == "postprocess":
+        kwargs.update({"columns": ({"atom_index": 1, "direction": "x", "samples": [
+            {"displacement_angstrom": 0, "polarization_paths_rel": ["zero.json"]}]},),
+                       "max_step_fraction": 0.25})
     elif capability == "export" and operation == "export":
         from abacus_forge.contracts import ArtifactRef
 
@@ -527,7 +639,7 @@ def _representative_request(capability: str, operation: str) -> Any:
                 "destination_path_rel": "exports/result.json",
             }
         )
-    if capability not in {"scf", "band", "cohp", "dos", "pyatb-band"} and not (
+    if capability not in {"scf", "band", "cohp", "dos", "pyatb-band", "pyatb-cohp", "polarization", "bec"} and not (
         capability == "md" and operation == "postprocess"
     ):
         kwargs["capability"] = capability
@@ -577,7 +689,10 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         if name in REQUIRED_WIRE_FIELDS[operation]
         or (name == "capability" and capability != "scf")
     ]
-    if capability == "pyatb-band" and operation == "prepare":
+    if capability == "pyatb-cohp" and operation == "prepare":
+        required.extend(["hr_paths_rel", "sr_path_rel", "orbital_paths_rel", "fermi_energy",
+                         "atom_i_index", "atom_j_index", "kpoints", "kpoint_weights", "e_range"])
+    elif capability == "pyatb-band" and operation == "prepare":
         required.extend(
             ["hr_paths_rel", "sr_path_rel", "fermi_energy", "line_kpoints"]
         )
@@ -589,6 +704,10 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         required.append("scf_dir_rel")
     elif capability == "md" and operation == "postprocess":
         required.extend(["trajectory_path_rel", "analysis"])
+    elif capability == "polarization" and operation == "collect":
+        required.extend(["log_path_rel", "structure_path_rel", "input_path_rel"])
+    elif capability == "bec" and operation == "postprocess":
+        required.append("columns")
     elif capability == "export" and operation == "export":
         required.extend(["source_artifact_refs", "destination_path_rel"])
     schema = {
@@ -599,7 +718,13 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
         "properties": properties,
         "required": required,
     }
-    if capability == "pyatb-band" and operation == "prepare":
+    if capability == "pyatb-cohp" and operation == "prepare":
+        schema["allOf"] = [{
+            "if": {"required": ["nspin"], "properties": {"nspin": {"const": 2}}},
+            "then": {"properties": {"hr_paths_rel": {"minItems": 2, "maxItems": 2}}},
+            "else": {"properties": {"hr_paths_rel": {"minItems": 1, "maxItems": 1}}},
+        }]
+    elif capability == "pyatb-band" and operation == "prepare":
         spin_two_hr_count = _PYATB_NSPIN_HR_CARDINALITY[2]
         default_hr_count = _PYATB_NSPIN_HR_CARDINALITY[1]
         schema["allOf"] = [
@@ -626,6 +751,13 @@ def _schema_for(capability: str, operation: str) -> dict[str, JSONValue]:
                 },
             }
         ]
+    elif capability == "bec" and operation == "postprocess":
+        schema["allOf"] = [{
+            "if": {"properties": {"branch_mode": {"const": "explicit"}}, "required": ["branch_mode"]},
+            "then": {"properties": {"max_step_fraction": {"type": "null"}}},
+            "else": {"required": ["max_step_fraction"],
+                     "properties": {"max_step_fraction": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 0.5}}},
+        }]
     return schema
 
 
@@ -673,9 +805,35 @@ def capabilities_document() -> dict[str, JSONValue]:
                     _DOS_DESCRIPTOR,
                     _COHP_DESCRIPTOR,
                     _PYATB_BAND_DESCRIPTOR,
+                    _PYATB_COHP_DESCRIPTOR,
+                    _POLARIZATION_DESCRIPTOR,
+                    _BEC_DESCRIPTOR,
                     _EXPORT_DESCRIPTOR,
                 )
             ],
+            "contracts": {
+                "cohp": {
+                    "method": "iao",
+                    "population": "COHP",
+                    "operation": _COHP_DESCRIPTOR.operations[0],
+                    "input_basis": "ABACUS NAO/LCAO outputs with IAO construction",
+                    "result": "IAO COHP output; see postprocess request schema",
+                },
+                "pyatb-cohp": {
+                    "method": "direct_nao",
+                    "population": "COHP",
+                    "operations": list(_PYATB_COHP_DESCRIPTOR.operations),
+                    "input_basis": "explicit STRU, HR in Ry, SR dimensionless, numerical orbitals, EF in eV, fractional k points and nonnegative explicit weights",
+                    "kpoint_weight_mode": "explicit_normalized_by_pyatb",
+                    "result": {
+                        "spectrum_energy_unit": "eV",
+                        "spectrum_value_unit": "dimensionless",
+                        "occupied_integral_unit": "eV",
+                        "occupied_integral_occupation": "E <= EF (zero temperature)",
+                        "sign": "PyATB metadata records COHP or -COHP and raw/display ICOHP",
+                    },
+                },
+            },
         }
     )
 

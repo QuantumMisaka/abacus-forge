@@ -1,0 +1,42 @@
+{
+  "branch_mode": "auto",
+  "capability": "bec",
+  "columns": [
+    {
+      "atom_index": 1,
+      "direction": "x",
+      "samples": [
+        {
+          "displacement_angstrom": -0.01,
+          "polarization_paths_rel": [
+            "mesh5/d-0.0100/g1/facts/polarization.json",
+            "mesh5/d-0.0100/g2/facts/polarization.json",
+            "mesh5/d-0.0100/g3/facts/polarization.json"
+          ]
+        },
+        {
+          "displacement_angstrom": 0.0,
+          "polarization_paths_rel": [
+            "mesh5/d+0.0000/g1/facts/polarization.json",
+            "mesh5/d+0.0000/g2/facts/polarization.json",
+            "mesh5/d+0.0000/g3/facts/polarization.json"
+          ]
+        },
+        {
+          "displacement_angstrom": 0.01,
+          "polarization_paths_rel": [
+            "mesh5/d+0.0100/g1/facts/polarization.json",
+            "mesh5/d+0.0100/g2/facts/polarization.json",
+            "mesh5/d+0.0100/g3/facts/polarization.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "max_step_fraction": 0.25,
+  "operation": "postprocess",
+  "operation_id": "6fa01e4c-359e-49fd-99a2-2a9b309ad3b5",
+  "output_path_rel": "outputs/bec-auto.json",
+  "schema_version": "forge.request/v1",
+  "workspace_rel": "."
+}

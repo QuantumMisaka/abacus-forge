@@ -16,7 +16,7 @@
 
 ### Typed capability 当前覆盖
 
-当前 machine discovery 的 capability 名为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band`、`export`。具体操作和 maturity 以 `capabilities` 返回的 descriptor 为准；当前已知边界如下：
+当前 machine discovery 的 capability 名为 `scf`、`relax`、`cell-relax`、`atst-neb`、`md`、`band`、`dos`、`cohp`、`pyatb-band`、`pyatb-cohp`、`polarization`、`bec`、`export`。具体操作和 maturity 以 `capabilities` 返回的 descriptor 为准；当前已知边界如下：
 
 | Capability | Typed operations | 当前成熟度/边界 |
 | --- | --- | --- |
@@ -27,7 +27,16 @@
 | `band`, `dos` | `postprocess` | `experimental`；没有 typed band/DOS execute。 |
 | `cohp` | `postprocess` | `experimental`；IAO-COHP（`method="iao"`），显式消费同一 workspace 内的已完成 LCAO SCF；不执行 SCF，不含直接 NAO-COHP。 |
 | `pyatb-band` | `prepare`, `execute`, `collect` | `experimental`。 |
+| `pyatb-cohp` | `prepare`, `execute`, `collect` | `experimental`；direct NAO-COHP，支持 nspin=1/2，显式 k 点与权重。 |
+| `polarization` | `collect` | `experimental`；显式原生 Berry 日志、INPUT、STRU。 |
+| `bec` | `postprocess` | `experimental`；条件式分支或显式 offsets，请求子集和缺项诊断。 |
 | `export` | `export` | `experimental`。 |
+
+Polarization/BEC 的有界实现已获确认，已实现 experimental `polarization/collect`
+与 `bec/postprocess`。新能力复用既有通用 prepare/displacement 与单次 execute 原语，
+不编排 SCF/NSCF 多阶段工作流，也不替换 legacy BEC pack 的数值行为。安装态
+已通过 MgO 的 O_x 单列实算与有限位移/网格敏感性检查；不代表全张量或全面收敛，
+见[真实验证记录](superpowers/evidence/2026-10-21-forge-installed-bec-validation.md)。
 
 Typed outcome 报告 `execution`、`collection` 和 `scientific` 等正交状态。Forge 的 `scientific` 字段保持 `unassessed`；运行 smoke、解析出数值或成功写 artifact 都不自动产生科学验收结论，也不会晋级成熟度。
 
@@ -205,3 +214,30 @@ workspace event 是 audit record，不是 mutable last-result 文件；更新不
   "missing": []
 }
 ```
+
+
+## Direct NAO-COHP 与有限能力元数据
+
+`pyatb-cohp` 是独立的 PyATB 薄适配；现有 `cohp/postprocess` 的 IAO 方法不变。
+请求字段以 `schema pyatb-cohp prepare`（以及 execute/collect）为准，用法见
+[指南](guide.md#direct-nao-cohp)。输入 HR 单位固定 Ry，Fermi energy 和绝对能量窗口为 eV；
+输出谱的纵轴无量纲，ICOHP 为 eV。metadata 保留原始/展示符号、能量平移、
+零温 `E <= EF` 占据积分和轨道选择事实。collect 不执行生成的绘图脚本，也不判断科学可接受性。
+
+`capabilities` 增加顶层 `contracts` map，目前只覆盖 `cohp` 和 `pyatb-cohp` 的
+方法、输入和结果语义。operation、字段与默认值仍从现有 descriptor/schema 查询；
+该 map 不代表全部能力已完成契约目录建设。
+
+现有 property pack 的 `diagnostics.property_manifest` 继续保持 experimental。
+[消费示例](../examples/README.md#property-manifest-consumer) 按 role/origin/source artifact 引用选择
+派生 cube，并核验路径、大小和摘要；它没有引入新的 typed operation 或 Paimon 运行时依赖。
+
+## Polarization collection and BEC postprocess
+
+这两个 operation 的实施状态、边界和验收记录见[有界 BEC SPEC](superpowers/specs/2026-10-21-forge-polarization-bec-design.md)
+与[实施计划](superpowers/plans/2026-10-21-forge-bec-implementation.md)。请求字段以
+`abacus-forge schema polarization collect` 和 `abacus-forge schema bec postprocess` 为准；
+本页不复制字段表。`auto` 分支模式要求调用方提供可信的 `max_step_fraction`，并为路径提供
+零位移参考；`explicit` 模式要求调用方为使用的每个样本提供整数 branch offsets。请求列可为原子/轴子集，
+所以 `requested_complete` 不等于 `full_tensor_complete`。条件连续性只在调用方给定上界成立时适用，
+Forge 不据此判断科学可接受性。缺项按列报告，legacy BEC pack 不被新路径数值替换。

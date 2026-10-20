@@ -1,0 +1,13 @@
+ |                  Modern Theory of Polarization                     |
+ VALUES OF POLARIZATION
+
+  The Ionic Phase:    0.10000
+ Electronic Phase:    0.40000
+
+The calculated polarization direction is in R1 direction
+
+ P =    1.0000000  (mod    4.0000000)  (   1.0000000,   0.0000000,   0.0000000) (e/Omega).bohr
+
+ P =    0.0833333  (mod    0.3333333)  (   0.0833333,   0.0000000,   0.0000000) e/bohr^2
+
+ P =    4.7643102  (mod   19.0572407)  (   4.7643102,   0.0000000,   0.0000000) C/m^2
