@@ -23,6 +23,16 @@ Ruling: 复用已有真实输出做新 parser 的离线兼容回放 — 此次�
 
 验证结果：32 项安装态 package/canonical parity、1534 项完整离线回归及 8 格旧真实输出的 32 次新旧对比均通过，见[1.2.2 证据](../evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)。
 
+### 独立交付接续（2026-10-21）
+
+用户确认 Paimon Benchmark 由另一会话负责，本会话继续 Forge 独立交付。
+原有 CI 仅覆盖 editable 源码；本轮把已验证的 optional parser 安装检查纳入持续集成。
+
+- [x] 新增 Python 3.10/3.12 installed-package job：sdist → wheel → 安装 → package/parser/canonical parity，fixture commit 取自当前 pin 的 provenance。
+- [x] 显式检查 parser 可导入和 fixture 目录存在，避免环境缺项被 pytest skip 掩盖；成功后上传 wheel/sdist CI artifact，保留 14 天。
+- [x] 两版隔离环境实际重放 run blocks，各 55 passed、无跳过，构建 wheel 与 1.2.2 已验收候选一致。见[证据](../evidence/2026-10-21-forge-installed-package-ci.md)。
+- 远端运行与下载链仍待推送后验证；本轮不改 Paimon，不启动科学计算，不发布 PyPI。
+
 ## 历史发布状态（2026-10-19）
 
 - 已完成：发布包 `abacuslite==1.2.0` exact extra、fresh venv 安装、四 capability 的安装态 fixture parity（16 passed）与缺包 fail-closed，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。该变更已由 `d8d1a74` 合入本地 main。

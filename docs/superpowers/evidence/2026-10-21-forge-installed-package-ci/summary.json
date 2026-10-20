@@ -1,0 +1,19 @@
+{
+  "py310": {
+    "wheel_sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441",
+    "result": "abacuslite 1.2.2\n.......................................................                  [100%]\n55 passed in 1.24s",
+    "exit_code": 0
+  },
+  "py312": {
+    "wheel_sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441",
+    "result": "abacuslite 1.2.2\n.......................................................                  [100%]\n55 passed in 1.10s",
+    "exit_code": 0
+  },
+  "source_baseline": "55bb387",
+  "changed_scope": [
+    ".github/workflows/ci.yml",
+    "tests/README.md"
+  ],
+  "workflow_sha256": "77ebbe0444760fbc1c7682e015b01da1c10f3ebf15e09d8fc31c1344e97e774b",
+  "scope": "Local replay of actual run blocks. setup-python/checkout supplied locally; no hosted Actions run or upload claimed."
+}

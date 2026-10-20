@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Build sdist and wheel",
+    "script": "2.sh",
+    "log": "2.log",
+    "exit_code": 0
+  },
+  {
+    "name": "Resolve parser fixtures from the declared release",
+    "script": "3.sh",
+    "log": "3.log",
+    "exit_code": 0
+  },
+  {
+    "fixture_source_commit": "f8c8b045fa3a76ad4c2fdd92c828fda5155f6f34",
+    "checkout": "local git archive of the declared commit; not a hosted Actions execution"
+  },
+  {
+    "name": "Install the built optional-parser package",
+    "script": "5.sh",
+    "log": "5.log",
+    "exit_code": 0
+  },
+  {
+    "name": "Check installed metadata and four-capability parser parity",
+    "script": "6.sh",
+    "log": "6.log",
+    "exit_code": 0
+  }
+]

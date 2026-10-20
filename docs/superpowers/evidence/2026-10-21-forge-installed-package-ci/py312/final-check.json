@@ -1,0 +1,20 @@
+{
+  "command": [
+    "bash",
+    "--noprofile",
+    "--norc",
+    "-eo",
+    "pipefail",
+    "/home/james/scratch/forge-installed-ci-20261021/py312/final-check.sh"
+  ],
+  "cwd": "/home/james/scratch/forge-installed-ci-20261021/py312/source",
+  "env": {
+    "ABACUS_FORGE_WHEEL": "/home/james/scratch/forge-installed-ci-20261021/py312/source/dist/abacus_forge-0.1.0-py3-none-any.whl",
+    "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+    "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES": "/home/james/scratch/forge-installed-ci-20261021/py312/source/.ci-abacuslite/tests/fixtures/io/testfiles",
+    "PYTHONPATH": ""
+  },
+  "exit_code": 0,
+  "script": "final-check.sh",
+  "log": "final-check.log"
+}

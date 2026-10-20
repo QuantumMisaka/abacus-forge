@@ -48,6 +48,14 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 
 要在已安装 wheel（而不是源码 checkout）上跑测试，显式设置 `ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1`：conftest 不再把 `src/` 插入 `sys.path`，并用 `importlib.metadata` 记录的 distribution 文件清单校验 `abacus_forge` 的导入路径。editable 安装（PEP 660 `direct_url.json` 或 legacy `.egg-link`）和不在清单内的导入都会直接失败；仓库内 `.venv` 里正常安装的 wheel 则被接受。`tests.support.process.run_cli` 在该模式下也清空子进程 PYTHONPATH 并启用 `-I`，确保 CLI 消费安装包；普通开发模式继续注入源码路径。该模式不能替代带真实引擎的双轨发布证据。
 
+GitHub CI 的 `installed-package` 在 Python 3.10/3.12 上从 sdist 构建 wheel，
+安装 `[dev,abacuslite]` 并执行包元数据、parser backend 和四 capability canonical parity。
+fixture checkout 仅提供日志，提交取自当前 exact pin 的 provenance；实际 parser 来自
+PyPI 安装包。该 job 复用上述 installed-only 检查，缺少 fixture 目录直接失败，
+不以跳过解析测试当作包验收。原有源码全离线回归继续独立运行。
+通过该 job 的 wheel/sdist 保存为 `forge-distributions-<Python版本>` artifact，
+保留 14 天，便于消费方下载验证；这不执行 PyPI 发布。
+
 ## 按变更选择 owning tests
 
 - 改动版本记录、workspace 持久化或跨 operation artifact 时，运行 `tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py tests/test_service_status.py`，并加入对应 API/result tests。`test_contracts.py` 管记录验证，`test_workspace.py` 管 append-only manifest/event，后面三项管结果投影和服务错误映射。
