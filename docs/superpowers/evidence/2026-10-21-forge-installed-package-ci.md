@@ -26,8 +26,9 @@
 run blocks；GitHub 托管 Actions 随后由推送 `714fea2` 触发并完成：run
 `39477565615` 结论为 success，`forge-distributions-3.10` 和
 `forge-distributions-3.12` artifact 均已生成、未过期，保留到 2026-11-03。
-[远端机器摘要](2026-10-21-forge-installed-package-ci-remote.json)记录 job、artifact
-身份与 ZIP digest；该 digest 不是内部 wheel/sdist 摘要。
+两个 artifact ZIP 已实际下载、完整性检查并解包；[远端机器摘要](2026-10-21-forge-installed-package-ci-remote.json)
+记录 job、ZIP digest 和内部 wheel/sdist 摘要。两份内部 wheel 均为
+`516fcbda…`，两份内部 sdist 摘要一致。
 原有源码全离线 job 保留，本轮未改运行代码，不重复既有 1534 项完整回归或真实计算。
 
 独立审查发现 canonical fixture 在 ImportError 时可能 skip；已在 CI test step

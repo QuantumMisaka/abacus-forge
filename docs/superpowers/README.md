@@ -6,6 +6,8 @@
 
 Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parser parity 命令本地重放各 55 项通过；GitHub 托管运行与 wheel/sdist artifact 上传也已通过。见[验证记录](evidence/2026-10-21-forge-installed-package-ci.md)。Paimon Benchmark 由另一会话负责。
 
+2026-10-21 Relax typed collect 增补 opt-in 最终应力 metric：真实日志回归通过，[PR #7](https://github.com/QuantumMisaka/abacus-forge/pull/7) 已合入 `main`，合并后托管 CI 通过。Paimon elastic 上层仍按其 owner 流程验收。
+
 当前 optional parser 升级为 `abacuslite==1.2.2`；新候选、安装态回归及留存双轨输出回放见[1.2.2 接续](evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)。该候选接替下述收口记录中暂留 1.2.0 的选择；历史证据按原包版本保留。
 
 本轮本地 main 集成、候选依赖与消费缺口收口见[PLAN](plans/2026-10-21-forge-integration-candidate-closeout.md)和[交付记录](evidence/2026-10-21-forge-integration-candidate-closeout.md)。

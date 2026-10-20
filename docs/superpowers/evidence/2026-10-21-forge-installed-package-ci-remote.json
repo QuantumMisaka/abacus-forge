@@ -1,6 +1,6 @@
 {
   "record_type": "github-actions-remote-verification",
-  "observed_at": "2026-10-21T02:48:00+08:00",
+  "observed_at": "2026-10-21T03:04:00+08:00",
   "repository": "QuantumMisaka/abacus-forge",
   "head_sha": "714fea28116bc11c13a8847a28703ef1fd6e70cf",
   "workflow_run": {
@@ -35,6 +35,36 @@
       "expires_at": "2026-11-03T18:46:22Z"
     }
   ],
+  "download_chain_verification": {
+    "status": "passed",
+    "method": "downloaded each artifact ZIP, tested the archive, and hashed every contained distribution",
+    "inner_distributions": [
+      {
+        "artifact": "forge-distributions-3.10",
+        "path": "abacus_forge-0.1.0-py3-none-any.whl",
+        "size_bytes": 303567,
+        "sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441"
+      },
+      {
+        "artifact": "forge-distributions-3.10",
+        "path": "abacus_forge-0.1.0.tar.gz",
+        "size_bytes": 11137094,
+        "sha256": "fb10d3397d9245f11338a846149af16ab9dba17fcac517e3a6278401539fc087"
+      },
+      {
+        "artifact": "forge-distributions-3.12",
+        "path": "abacus_forge-0.1.0-py3-none-any.whl",
+        "size_bytes": 303567,
+        "sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441"
+      },
+      {
+        "artifact": "forge-distributions-3.12",
+        "path": "abacus_forge-0.1.0.tar.gz",
+        "size_bytes": 11137094,
+        "sha256": "fb10d3397d9245f11338a846149af16ab9dba17fcac517e3a6278401539fc087"
+      }
+    ]
+  },
   "boundary": {
     "pypi_release": false,
     "paimon_benchmark": "owned by the parallel Paimon session",
