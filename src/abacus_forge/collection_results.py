@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 import math
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from abacus_forge.contracts import ArtifactRecord, ForgeResultEnvelope, MetricRecord, Observation, OperationStatus
 from abacus_forge.result import CollectionResult
@@ -132,10 +132,17 @@ def collection_status(result: CollectionResult) -> str:
     return "complete"
 
 
-def collection_envelope(result: CollectionResult, workspace_rel: str) -> ForgeResultEnvelope:
+def collection_envelope(
+    result: CollectionResult,
+    workspace_rel: str,
+    *,
+    vector_metrics: Sequence[str] = (),
+) -> ForgeResultEnvelope:
     projected = projection_result(result)
     legacy = projected.to_envelope()
-    typed_metrics = _typed_metric_records(projected, legacy.metrics, legacy.artifacts)
+    typed_metrics = _typed_metric_records(
+        projected, legacy.metrics, legacy.artifacts, vector_metrics=vector_metrics
+    )
     return replace(
         legacy, workspace_rel=workspace_rel,
         status=OperationStatus(execution="not_run", scientific="unassessed", collection=collection_status(result)),
@@ -149,6 +156,8 @@ def _typed_metric_records(
     result: CollectionResult,
     legacy_metrics: tuple[MetricRecord, ...] | list[MetricRecord],
     artifacts: tuple[ArtifactRecord, ...],
+    *,
+    vector_metrics: Sequence[str] = (),
 ) -> tuple[MetricRecord, ...]:
     """Attach only grammar-confirmed metadata to the typed projection.
 
@@ -186,6 +195,32 @@ def _typed_metric_records(
                 source_artifact_id=source_artifact_id,
             )
         )
+    # Vector facts stay out of the default scalar projection.  A capability that
+    # needs one (Relax publishes the final 9-component stress) opts in here, and
+    # only that named record is added.
+    published = {record.name for record in records}
+    for name in vector_metrics:
+        if name in published:
+            continue
+        value = result.metrics.get(name)
+        if value is None:
+            continue
+        records.append(
+            MetricRecord(
+                name=name,
+                value=value,
+                unit=_typed_metric_unit(
+                    result,
+                    name,
+                    native_md=native_md,
+                    total_energy_unit=total_energy_unit,
+                    metric_units=result.metric_units,
+                    kind="reported",
+                ),
+                kind="reported",
+                source_artifact_id=_source_artifact_id(result, name, artifact_ids),
+            )
+        )
     return tuple(records)
 
 
@@ -220,6 +255,9 @@ def _typed_metric_unit(
         return "eV/atom" if kind == "derived" and total_energy_unit == "eV" else None
     if name == "pressure":
         return "kbar" if kind == "derived" else None
+    if name == "stress":
+        # Both native and abacuslite collection publish stress in kbar.
+        return "kbar"
     return None
 
 
