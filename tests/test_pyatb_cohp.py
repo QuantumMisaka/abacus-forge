@@ -58,7 +58,7 @@ def sources(root: Path):
     source = root / "source"
     source.mkdir()
     (source / "STRU").write_text(STRU)
-    for name in ("hr.csr", "sr.csr", "Si.orb"):
+    for name in ("hr.csr", "hr_dn.csr", "sr.csr", "Si.orb"):
         (source / name).write_text(name)
 
 
@@ -107,6 +107,28 @@ def test_request_roundtrip_schema_and_strict_validation():
         request(kpoint_weights=(0, 0))
     with pytest.raises(ValueError, match="finite"):
         request(fermi_energy=float("nan"))
+
+
+def test_prepare_nspin2_roundtrips_two_hr_paths_and_selected_spin(tmp_path):
+    """The allowed collinear-spin path stages two HR files verbatim."""
+
+    sources(tmp_path)
+    obj = request(
+        nspin=2,
+        hr_paths_rel=("source/hr.csr", "source/hr_dn.csr"),
+        spin="down",
+    )
+    assert PyatbCohpPrepareRequest.from_dict(obj.to_dict()) == obj
+
+    service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
+    result = service.prepare.prepare(obj)
+    assert result.envelope.status.execution == "not_run"
+    text = (tmp_path / "inputs/Input").read_text()
+    assert "nspin  2" in text
+    assert "spin  down" in text
+    assert (tmp_path / "inputs/pyatb_sources/hr.csr").read_bytes() == b"hr.csr"
+    assert (tmp_path / "inputs/pyatb_sources/hr_dn.csr").read_bytes() == b"hr_dn.csr"
+    assert (tmp_path / "inputs/Input").read_text().count("pyatb_sources/hr") == 2
 
 
 def test_prepare_rejects_all_sources_and_collisions_before_domain_writes(tmp_path):
