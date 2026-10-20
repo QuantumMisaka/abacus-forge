@@ -1,0 +1,72 @@
+{
+  "schema_version": "forge.stage1-package-provenance/v2",
+  "status": "published_release_bound",
+  "public_exact_release_available": true,
+  "forge_optional_extra_declared": true,
+  "recorded_at": "2026-10-21",
+  "history": {
+    "supersedes": "2026-10-19-forge-abacuslite-1.2.0-package-provenance.json",
+    "reason": "User requested upgrading the optional parser to the current published 1.2.2 release; previous release evidence remains frozen."
+  },
+  "abacuslite_release": {
+    "package_name": "abacuslite",
+    "package_version": "1.2.2",
+    "source_repository": "https://github.com/QuantumMisaka/abacuslite",
+    "tag": "v1.2.2",
+    "tag_commit": "f8c8b045fa3a76ad4c2fdd92c828fda5155f6f34",
+    "pypi_url": "https://pypi.org/project/abacuslite/1.2.2/",
+    "wheel_filename": "abacuslite-1.2.2-py3-none-any.whl",
+    "wheel_sha256": "d4675aae2f70b99a6e18882e2c4ecf7f67f57eae10f5ba3e01622e879c6b8caf",
+    "sdist_filename": "abacuslite-1.2.2.tar.gz",
+    "sdist_sha256": "0775eea7bcf9554b7e2e51793fabb613804957405c2d593558984e330aafe347",
+    "requires_python": ">=3.10",
+    "upload_time_utc": "2026-10-20T07:21:20.212589Z",
+    "runtime_files": {
+      "count": 8,
+      "all_equal_tag_source": true
+    }
+  },
+  "forge_extra": {
+    "name": "abacuslite",
+    "requirement": "abacuslite==1.2.2",
+    "change_kind": "changed",
+    "scope": "project.optional-dependencies",
+    "default_dependencies_unchanged": true
+  },
+  "forge_candidate": {
+    "repository": "abacus-forge",
+    "revision": "a68f32a2d5ffe5f328f909b114911378fec3b94a",
+    "packaged_source_equal_to_revision": false,
+    "package_name": "abacus-forge",
+    "package_version": "0.1.0",
+    "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+    "wheel_sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441",
+    "build_command": "python -m build --outdir /home/james/scratch/forge-abacuslite-122-20261021/artifacts",
+    "artifact_binding": {
+      "forge_revision": "a68f32a2d5ffe5f328f909b114911378fec3b94a",
+      "wheel_filename": "abacus_forge-0.1.0-py3-none-any.whl",
+      "wheel_sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441"
+    },
+    "packaged_runtime_source_equal_to_revision": true,
+    "metadata_delta": {
+      "file": "pyproject.toml",
+      "from": "abacuslite==1.2.0",
+      "to": "abacuslite==1.2.2"
+    }
+  },
+  "rebind": {
+    "from_version": "1.2.0",
+    "to_version": "1.2.2",
+    "status": "applied",
+    "requires_four_capability_parity_rerun": true,
+    "rule": "Update exact extra, provenance, package/oracle assertions and docs together; verify installed four-capability parity and replay retained dual-track outputs."
+  },
+  "evidence": {
+    "fresh_venv_four_capability_parity": "docs/superpowers/evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md",
+    "wheel_files_vs_tag": "8/8 abacuslite runtime files byte-identical to v1.2.2 source",
+    "notes": [
+      "Forge runtime Python files match the recorded baseline; wheel metadata differs by the explicit optional dependency update.",
+      "Existing develop/LTS outputs are replayed offline; this is not a new ABACUS execution or a Paimon/SAI acceptance."
+    ]
+  }
+}

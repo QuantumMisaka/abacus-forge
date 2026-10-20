@@ -1,0 +1,28 @@
+{
+  "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+  "download": "https://pypi.org/pypi/abacuslite/json; files selected from urls; sha256 checked before use",
+  "tag": "git -C /home/james/work/sidereus/workplace/abacuslite/.worktrees/public-api-contract rev-parse v1.2.2^{commit}",
+  "build": [
+    "/home/james/scratch/forge-closeout-20261021/build-env/bin/python",
+    "-m",
+    "build",
+    "--outdir",
+    "/home/james/scratch/forge-abacuslite-122-20261021/artifacts"
+  ],
+  "build_exit_code": 0,
+  "install": [
+    "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+    "-m",
+    "pip",
+    "install",
+    "/home/james/scratch/forge-abacuslite-122-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl[dev,abacuslite]"
+  ],
+  "install_exit_code": 0,
+  "validation": [
+    "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+    "-I",
+    "/home/james/scratch/forge-abacuslite-122-20261021/validate.py"
+  ],
+  "validation_exit_code": 0,
+  "replay": "see replay/results/*/*.command.json for each actual installed -I call"
+}

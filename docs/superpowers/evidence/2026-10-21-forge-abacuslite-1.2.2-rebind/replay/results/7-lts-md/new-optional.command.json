@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+    "-I",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/replay.py",
+    "worker",
+    "--workspace",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/7-lts-md",
+    "--capability",
+    "md",
+    "--backend",
+    "abacuslite",
+    "--output-version",
+    "v3.10.1",
+    "--out",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/results/7-lts-md/new-optional.json"
+  ],
+  "exit_code": 0
+}

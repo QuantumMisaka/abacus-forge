@@ -1,0 +1,16 @@
+{
+  "command": [
+    "/home/james/scratch/forge-closeout-20261021/build-env/bin/python",
+    "-m",
+    "build",
+    "--outdir",
+    "/home/james/scratch/forge-abacuslite-122-20261021/final-artifacts"
+  ],
+  "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+  "exit_code": 0,
+  "wheel_built_from_sdist": true,
+  "wheel_sha256": "516fcbda179964e652ba44dade698604c03b021b7c2080c7820fc0710c215441",
+  "sdist_contains_current_pin_provenance_and_tests": true,
+  "sdist_sha256": "0b75ab0c87c4844eb84fab789399ed3bdca5c4ae8ce7d8255604eed0f0d9c283",
+  "note": "Final source package includes the new pin provenance and tests. Packaged runtime/metadata unchanged from the installed and tested wheel; evidence-only edits may follow."
+}

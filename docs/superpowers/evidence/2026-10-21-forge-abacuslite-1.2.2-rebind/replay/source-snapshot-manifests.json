@@ -1,0 +1,730 @@
+[
+  {
+    "capability": "scf",
+    "case_index": 0,
+    "engine_executable_sha256_from_matrix": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "engine_version_of_existing_log": "v3.11.0-beta8",
+    "input_identity_from_matrix": "86c6ed3de0425bd2fe0951c767cea1af6f24d9bab56cbd4040a3b5e9ddd1fe7d",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "d5977009877e62d50b579f91bc50e6faa23ea3c68beb3bbd7bfece1bc1014f43",
+        "size_bytes": 263
+      },
+      "inputs/INPUT": {
+        "sha256": "c874a7c8a3a8deca660e4cfcd1830309f88f7a1feee54bb72d40179c963a7bc0",
+        "size_bytes": 634
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "9da6265c2ca2363c8e10a8db1ba10fe656769a91302550a8a2418bf8d28105db",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT.info": {
+        "sha256": "69dd1fa532549037126bf9ada32cb4215d11aa1d51499943572345b4383965b2",
+        "size_bytes": 45773
+      },
+      "inputs/OUT.ABACUS/KPT.info": {
+        "sha256": "271711e422945fe8170b8e8f6f437538b10415e141825eaf7a3994c43d8da34b",
+        "size_bytes": 6493
+      },
+      "inputs/OUT.ABACUS/eig_occ.txt": {
+        "sha256": "f951e12a27e5d3cb0c9232c9c1b8781ff70554b08b5423b7b2016c1ebf54e651",
+        "size_bytes": 5369
+      },
+      "inputs/OUT.ABACUS/running_scf.log": {
+        "sha256": "4c8db20f5534c23c99428dc10d9c2ef6164c3e16e21938b50c677f2807cb529c",
+        "size_bytes": 24494
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "fd56f3f30feac55795e45fcef95c61f3b792688c71ac9ed2f4201e056befcf0c",
+        "size_bytes": 1179
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "0a09a11d0243aea9cc0f143cc1a10421bcb0841401d4ec0e92451db88a6e9169",
+        "size_bytes": 4246
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "b17358ff2c5a5170e8d09dc34cbaf015ecea7573e16a0beb5078151af517e4ca",
+        "size_bytes": 5705
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/40bf16c355694b66a2459f0fcbde16c3-execute.json": {
+        "sha256": "4ea25038999c0d7d76eb21ea0f9cce3591f8cd4de40e1d42e2b148681979a2c0",
+        "size_bytes": 2904
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "a047fe6bc1d3b20f0d74b06b6f134e3fb1c94295d79477a3f21e563054ea9035",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/0-scf-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/0-develop-scf",
+    "track": "develop"
+  },
+  {
+    "capability": "relax",
+    "case_index": 1,
+    "engine_executable_sha256_from_matrix": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "engine_version_of_existing_log": "v3.11.0-beta8",
+    "input_identity_from_matrix": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "f6da0aff356b66663beb90ac0562b3aa6e87c657bd3ab6a731bea5e4be23bcdc",
+        "size_bytes": 265
+      },
+      "inputs/INPUT": {
+        "sha256": "ca712a2e276651c63ab3f7aca98a0187c0f86bae77ce962307b6320fc27c10ba",
+        "size_bytes": 254
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "8ab35913dee1bbf1b444c6e2d211883e92e3bb0378934135543137f61141fb94",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT.info": {
+        "sha256": "03fa6ed4a5ad1627e80eccb0c7ae8c2cfd8d2be9868a64a46345f5bb5e2f0461",
+        "size_bytes": 45776
+      },
+      "inputs/OUT.ABACUS/KPT.info": {
+        "sha256": "76c393764eb3605e895511d686eec47fd72ff5cc878710ea3e9ff8964d7bca93",
+        "size_bytes": 7978
+      },
+      "inputs/OUT.ABACUS/STRU_FINAL": {
+        "sha256": "c2f75e2d0faf2b4a7e9bd78b9bec8235b16b3f29322516f4f293e38db2ba044e",
+        "size_bytes": 804
+      },
+      "inputs/OUT.ABACUS/STRU_NOW": {
+        "sha256": "df94ae5f92d3af13b29f9e6ef920bbf38b84520d5f3cfc13915539e24706eed4",
+        "size_bytes": 796
+      },
+      "inputs/OUT.ABACUS/eig_occ.txt": {
+        "sha256": "687e38ebc5e4e4953829a2ec5c82d0c1cc509dab7a94cc514edca1aa56dc7b80",
+        "size_bytes": 24169
+      },
+      "inputs/OUT.ABACUS/running_relax.log": {
+        "sha256": "5c3ee42e6f8c9bd5c2400117dc54ac7141e257b475c471134c063739fde0daf5",
+        "size_bytes": 31124
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "fd56f3f30feac55795e45fcef95c61f3b792688c71ac9ed2f4201e056befcf0c",
+        "size_bytes": 1179
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "20ff73c2d991790a4490c23ae37704d7c9ece9e1959041198a398766235809a0",
+        "size_bytes": 5092
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "d64cc0c906f763bbcb9d18fecab059e9ccb08902ffe96397fb17ed2b97b5d0c3",
+        "size_bytes": 6301
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/49e160a0625c4c96943ed781334967ec-execute.json": {
+        "sha256": "f9503914cf775eb2a989cee8ef91333bd0b52bea25187159024246e2916aecb4",
+        "size_bytes": 2905
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "64e87a31e4c8b56c1f86756f2efac2ae03cf8556ba8775b804579ae09a3b1210",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/1-relax-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax",
+    "track": "develop"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 2,
+    "engine_executable_sha256_from_matrix": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "engine_version_of_existing_log": "v3.11.0-beta8",
+    "input_identity_from_matrix": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "4fd69b846fa48e7d8029d035dd883bba9d3263a2e0c26314a17ef220ba0baaf6",
+        "size_bytes": 270
+      },
+      "inputs/INPUT": {
+        "sha256": "5227d39ce0f5e6472e9022e299c2c6261a0734c8c8a5a16145edcdfa702a1293",
+        "size_bytes": 735
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "9da6265c2ca2363c8e10a8db1ba10fe656769a91302550a8a2418bf8d28105db",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT.info": {
+        "sha256": "fc92dfd10a4e5033d3b2b538822d46c8030f1c4b95ba4721f09b276b05e8b743",
+        "size_bytes": 45779
+      },
+      "inputs/OUT.ABACUS/KPT.info": {
+        "sha256": "271711e422945fe8170b8e8f6f437538b10415e141825eaf7a3994c43d8da34b",
+        "size_bytes": 6493
+      },
+      "inputs/OUT.ABACUS/STRU_FINAL": {
+        "sha256": "28f9aaa63b55c2fd2a60929a55306376e47284a039430189a640b95da3142dad",
+        "size_bytes": 802
+      },
+      "inputs/OUT.ABACUS/STRU_NOW": {
+        "sha256": "d29cf889bad1874add64fbb813f8d160eabb806ecd08e6f500bc419aceb16324",
+        "size_bytes": 794
+      },
+      "inputs/OUT.ABACUS/eig_occ.txt": {
+        "sha256": "f951e12a27e5d3cb0c9232c9c1b8781ff70554b08b5423b7b2016c1ebf54e651",
+        "size_bytes": 5369
+      },
+      "inputs/OUT.ABACUS/running_cell-relax.log": {
+        "sha256": "6f4e6f267a4f758b7b5fb9a4cc010c9712f7d4a7a7b5623f9a8eadd6c730a3bf",
+        "size_bytes": 26145
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "fd56f3f30feac55795e45fcef95c61f3b792688c71ac9ed2f4201e056befcf0c",
+        "size_bytes": 1179
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "540fc570755bdae4159cd058484051ebf1c5359843b3584e61b4ea44f18cdf12",
+        "size_bytes": 4866
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "5f1ec6f1a90edde48e670c7a97d13652489686e916ef30f0943f7e92de2721a0",
+        "size_bytes": 7044
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/b24dd7d55d154cd99645e9084c7b51c4-execute.json": {
+        "sha256": "b98e011e8c5c6482c104351e7a270443e69ddd3d3c5cc2b987a74ab6e5b93b5a",
+        "size_bytes": 2904
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "c3b099a30479bbcdd8e645d7170dc4a4c382289a057535c4596e057fa267f777",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/2-cell-relax-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/2-develop-cell-relax",
+    "track": "develop"
+  },
+  {
+    "capability": "md",
+    "case_index": 3,
+    "engine_executable_sha256_from_matrix": "7ca5a99e0d68cfb4a65707db57ef5992caa989679421800d3fa6191f053f5ed5",
+    "engine_version_of_existing_log": "v3.11.0-beta8",
+    "input_identity_from_matrix": "42421a240c8ba3e0bc4e3cc9ba463d75bbd4ccb4d3ba62c9f18eb3dbb142c4db",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "974c8062c6b8068d6bfb55bd2d573e77190b3814e09848f8979191726cd5e762",
+        "size_bytes": 262
+      },
+      "inputs/INPUT": {
+        "sha256": "2530be486fb1f5f8b23e921674a0bd2191a36b3aaa61382b3b588db926a2ca49",
+        "size_bytes": 749
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "a537977c99bc47672702330094f10fef32aac9df659d82047a1cb4987b2f0de1",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT.info": {
+        "sha256": "108df5ab6a818c99c1a3ecd8f1514d43df54d6b101e249e4e3b3c2755af992f9",
+        "size_bytes": 45788
+      },
+      "inputs/OUT.ABACUS/KPT.info": {
+        "sha256": "76c393764eb3605e895511d686eec47fd72ff5cc878710ea3e9ff8964d7bca93",
+        "size_bytes": 7978
+      },
+      "inputs/OUT.ABACUS/MD_dump": {
+        "sha256": "0589246c19927109600d32d871f87b668b5b4665e5852d45e5d51367176a0d17",
+        "size_bytes": 1226
+      },
+      "inputs/OUT.ABACUS/Restart_md.txt": {
+        "sha256": "91dcf5abc930f4d674b53b904e0e75695a2ad3c0d5a513a5b9bc15d17420e25e",
+        "size_bytes": 14
+      },
+      "inputs/OUT.ABACUS/STRU/STRU_MD_0": {
+        "sha256": "b17b1e4e8bf06e5a7a57ae70b9f3d9b33fe320922ef86cb40d47bbc11f239499",
+        "size_bytes": 680
+      },
+      "inputs/OUT.ABACUS/eig_occ.txt": {
+        "sha256": "56672f68abd684b8585341f29dc4893493f4260de6d8558d001f0d74b8e830f0",
+        "size_bytes": 48350
+      },
+      "inputs/OUT.ABACUS/running_md.log": {
+        "sha256": "27c7e3ccf32f8d4ab2039db2986687419a244d7fd02d37eeb3c715e0bb3d7f96",
+        "size_bytes": 32941
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "7252f79d290272437a4f7f7b2fa45c8125b81226d6d2b8d7788112ad212399ec",
+        "size_bytes": 2059
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "2864422e9778f39c4706b27ae8109b006cbcfd5bf830edc90202bc353709c422",
+        "size_bytes": 4009
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "4e1609c479b471342a06b1b8f22e0d0c8ffd1b423263c7fed01f61eeab4c1d68",
+        "size_bytes": 6820
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/8a0ab365cd124c24bf1dd97ef7dfd9d3-execute.json": {
+        "sha256": "2a23d931eb2867e31f3dd9a430e7f25d270aa4dfffb6773b37954b61bb0a2dc4",
+        "size_bytes": 2905
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "2edc680517d1f0367bfb398baeb57c179238f17df2e8d54fb90e24ae8653fa47",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/3-md-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/3-develop-md",
+    "track": "develop"
+  },
+  {
+    "capability": "scf",
+    "case_index": 4,
+    "engine_executable_sha256_from_matrix": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "engine_version_of_existing_log": "v3.10.1",
+    "input_identity_from_matrix": "86c6ed3de0425bd2fe0951c767cea1af6f24d9bab56cbd4040a3b5e9ddd1fe7d",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "083518f2a6dc688c28640f5cf403fc664bd8f2842cde15b7bf0d34b9ebc4823b",
+        "size_bytes": 250
+      },
+      "inputs/INPUT": {
+        "sha256": "c874a7c8a3a8deca660e4cfcd1830309f88f7a1feee54bb72d40179c963a7bc0",
+        "size_bytes": 634
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "2cd015f662ea58faf55deb3b2c97c21391ef4893ecfe044ceb9c695db7d2560d",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT": {
+        "sha256": "37c5270180b306b520c0d72831e167bfd5dd9781499b6ed143ac218aa921a9d4",
+        "size_bytes": 36598
+      },
+      "inputs/OUT.ABACUS/STRU.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/istate.info": {
+        "sha256": "bdf8a1625bec7855815a2ccc6ad585422046b743f721fee55fbef9c6d8a63bf9",
+        "size_bytes": 7620
+      },
+      "inputs/OUT.ABACUS/kpoints": {
+        "sha256": "4a705d793e1fb1eb27f4493daac9ba289b6c8714c39bddff157a336e0b56dd96",
+        "size_bytes": 6492
+      },
+      "inputs/OUT.ABACUS/running_scf.log": {
+        "sha256": "f0096361fec2a52c03fadc0a508536f28d686a71b55a9bf2a3178a60ad0cd3a8",
+        "size_bytes": 34035
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "0608d4718f615aae39fee78942706dcb8b6405598fe2dedc90fb7e0fab86141a",
+        "size_bytes": 828
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "49bdd1659a82bbf92865d522dc0e3517eef06e7f25d5221e2586c3e0035619a2",
+        "size_bytes": 3764
+      },
+      "inputs/time.json": {
+        "sha256": "1d58894454c81418dbdcc04e2e6d4e6bad55b3c02d908d3d1417290c9e086d24",
+        "size_bytes": 23540
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "0fc19334f5d4a0c03f3769d3fdfb7df755c04111bb4ed8c402a80e3769c8874b",
+        "size_bytes": 9177
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/71e9c6e2ea22468ebb5b4ae1b0eb740c-execute.json": {
+        "sha256": "dbd25301e3f0e36371c8ec27b24fe5e1575545c4401e9acf1a79187693f07f2c",
+        "size_bytes": 3086
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "d2d5275e9614c0b643d9e0043f32526793c3184bfda7a9c97e09d2829598f8af",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/4-scf-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/4-lts-scf",
+    "track": "lts"
+  },
+  {
+    "capability": "relax",
+    "case_index": 5,
+    "engine_executable_sha256_from_matrix": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "engine_version_of_existing_log": "v3.10.1",
+    "input_identity_from_matrix": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "2867205667ec3948a2770df7517b7c0b14e4ca87c699b64937235f3943964951",
+        "size_bytes": 252
+      },
+      "inputs/INPUT": {
+        "sha256": "ca712a2e276651c63ab3f7aca98a0187c0f86bae77ce962307b6320fc27c10ba",
+        "size_bytes": 254
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "09d80f050c2b4ae8ff34ce1c800d37b88d9e3e9a2dcd7d2a01fc97964a02feea",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT": {
+        "sha256": "02566eb78ac40dadb6c11cb3a3b6479d927b8398c6d288779799f102cd67fd9c",
+        "size_bytes": 36601
+      },
+      "inputs/OUT.ABACUS/STRU.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/STRU_ION_D": {
+        "sha256": "690f91d1abed0235831dc5c142bfcabada152e00791d77c857702033ca6f5746",
+        "size_bytes": 486
+      },
+      "inputs/OUT.ABACUS/STRU_NOW.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/istate.info": {
+        "sha256": "610daa59cd2f2d139ae8aaf25afe2a4681562980cc3dbaf330cbce8f734e1493",
+        "size_bytes": 34194
+      },
+      "inputs/OUT.ABACUS/kpoints": {
+        "sha256": "b69a45e514cd62f76f6185b2f983153f6da82b0b8fe4ad1f680cbaf55508f09b",
+        "size_bytes": 7977
+      },
+      "inputs/OUT.ABACUS/running_relax.log": {
+        "sha256": "c16f0161b45a716232b7b4db392a9c7efa5bc4377b8fc94eaddbe8463eb79126",
+        "size_bytes": 57112
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "0608d4718f615aae39fee78942706dcb8b6405598fe2dedc90fb7e0fab86141a",
+        "size_bytes": 828
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "72ba1678658ca581910964439a3c788b434c5a05d3d495444157b2eaf6fe1f31",
+        "size_bytes": 4607
+      },
+      "inputs/time.json": {
+        "sha256": "72ccedfaa75900f99cf76dd5a004779fa133773cf9d40e707be11825a4336897",
+        "size_bytes": 27433
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "4f8a3e2e04ce3e1ff8b5d0dfc4342d23de5e62c876397e01dc4e120f26fc9f60",
+        "size_bytes": 10896
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/c94ce15176d54e3baf4639f13859367c-execute.json": {
+        "sha256": "d6a133f166137cfffa6b68b5a4b940332d1ed703c9c33f68672188e785c200f0",
+        "size_bytes": 3088
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "234603dd57784891b6cfb9e906a144c97e93342b94133431e3d5f335d60b039b",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/5-relax-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/5-lts-relax",
+    "track": "lts"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 6,
+    "engine_executable_sha256_from_matrix": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "engine_version_of_existing_log": "v3.10.1",
+    "input_identity_from_matrix": "e8e84b57a59ecf8afc1a6c665b15cbf1f2a65b3c8711400269c887d12f262fbf",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "89cf878c459e24c5601f4697c8470f02346eb84374f885a5f00806ec1d6e2718",
+        "size_bytes": 257
+      },
+      "inputs/INPUT": {
+        "sha256": "5227d39ce0f5e6472e9022e299c2c6261a0734c8c8a5a16145edcdfa702a1293",
+        "size_bytes": 735
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "2cd015f662ea58faf55deb3b2c97c21391ef4893ecfe044ceb9c695db7d2560d",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT": {
+        "sha256": "5b4ea1df9b66437fb38547096ce1d3b8415db85db1d4aaaef623dc774d7e6257",
+        "size_bytes": 36604
+      },
+      "inputs/OUT.ABACUS/STRU.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/STRU_ION_D": {
+        "sha256": "690f91d1abed0235831dc5c142bfcabada152e00791d77c857702033ca6f5746",
+        "size_bytes": 486
+      },
+      "inputs/OUT.ABACUS/STRU_NOW.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/istate.info": {
+        "sha256": "bdf8a1625bec7855815a2ccc6ad585422046b743f721fee55fbef9c6d8a63bf9",
+        "size_bytes": 7620
+      },
+      "inputs/OUT.ABACUS/kpoints": {
+        "sha256": "4a705d793e1fb1eb27f4493daac9ba289b6c8714c39bddff157a336e0b56dd96",
+        "size_bytes": 6492
+      },
+      "inputs/OUT.ABACUS/running_cell-relax.log": {
+        "sha256": "7e5932314fa93554810c46a2863a37a6842a7080c75bac526733f33f53e156b0",
+        "size_bytes": 36512
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "0608d4718f615aae39fee78942706dcb8b6405598fe2dedc90fb7e0fab86141a",
+        "size_bytes": 828
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "490a4754b77669ffab26f3c3ed739d2636022d19fde8c8f727edd244fcd82467",
+        "size_bytes": 4383
+      },
+      "inputs/time.json": {
+        "sha256": "ce231a6f96d055a3fbb7b207771dba7ccbf3c8d62fdd1b579bce8dc78ee733f3",
+        "size_bytes": 27956
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "b4119ca2cb0975689332824edf7d846565a018cb39355dc0c16c2811b3658414",
+        "size_bytes": 10966
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/2edc757ce9004ce08a305cdac13a34fa-execute.json": {
+        "sha256": "35c49e15f2401a7796b8a5376854e9a96aea55b7f0e131f8b6689a4d8c0a2254",
+        "size_bytes": 3087
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "277e6f44d732c0305fd512864cf28cdef49f1a4c45555da210d62ccd4531eb89",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/6-cell-relax-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/6-lts-cell-relax",
+    "track": "lts"
+  },
+  {
+    "capability": "md",
+    "case_index": 7,
+    "engine_executable_sha256_from_matrix": "51f898a40698200db79bacfdc5a0c799847d712941f7da04773a474022412d8f",
+    "engine_version_of_existing_log": "v3.10.1",
+    "input_identity_from_matrix": "42421a240c8ba3e0bc4e3cc9ba463d75bbd4ccb4d3ba62c9f18eb3dbb142c4db",
+    "manifest": {
+      "forge-result.json": {
+        "sha256": "4161a4ba7a811805f1ca4d9247ac075e40e3a62478362ee15a192631560deba4",
+        "size_bytes": 249
+      },
+      "inputs/INPUT": {
+        "sha256": "2530be486fb1f5f8b23e921674a0bd2191a36b3aaa61382b3b588db926a2ca49",
+        "size_bytes": 749
+      },
+      "inputs/KPT": {
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217
+      },
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+        "sha256": "941d9ef8a58da2c0faddac4dc15314d5fbafa4b33e66c0a556250a31680e5435",
+        "size_bytes": 465616
+      },
+      "inputs/OUT.ABACUS/INPUT": {
+        "sha256": "68cc60ef841e49d7ead5bc92dad29654d0d003d307171fda467000c9d838e252",
+        "size_bytes": 36613
+      },
+      "inputs/OUT.ABACUS/MD_dump": {
+        "sha256": "0b9bc4d0706e7b416f4b59ad486eb7d5f677975c59b453dfa5815dda6fde097b",
+        "size_bytes": 1839
+      },
+      "inputs/OUT.ABACUS/Restart_md.dat": {
+        "sha256": "91dcf5abc930f4d674b53b904e0e75695a2ad3c0d5a513a5b9bc15d17420e25e",
+        "size_bytes": 14
+      },
+      "inputs/OUT.ABACUS/STRU.cif": {
+        "sha256": "af4c9f81468b84f3a03443ec98ea2c180dff4054d6b23ccf38a7f6194b302afb",
+        "size_bytes": 767
+      },
+      "inputs/OUT.ABACUS/STRU/STRU_MD_0": {
+        "sha256": "b9375265aa570b6cbca624f6f9d9bfe0a451b32521d8dda2f241deab5dd536c9",
+        "size_bytes": 613
+      },
+      "inputs/OUT.ABACUS/istate.info": {
+        "sha256": "e14c6e7533ff35ec0c087471729184cd9ed4110528dc5169ace2b9b863200c8d",
+        "size_bytes": 34194
+      },
+      "inputs/OUT.ABACUS/kpoints": {
+        "sha256": "b69a45e514cd62f76f6185b2f983153f6da82b0b8fe4ad1f680cbaf55508f09b",
+        "size_bytes": 7977
+      },
+      "inputs/OUT.ABACUS/running_md.log": {
+        "sha256": "b96d9fee11a3699b814aab35a8b2034a9418dfe3172e8eb323b7a6b9e4f7e4f0",
+        "size_bytes": 104839
+      },
+      "inputs/OUT.ABACUS/warning.log": {
+        "sha256": "9e864ae5fe07b19e93e4a895e720d8b33a1a2a18bec7e06759a042b30da94bfe",
+        "size_bytes": 2588
+      },
+      "inputs/STRU": {
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525
+      },
+      "inputs/abacus.json": {
+        "sha256": "27e35383ff9568323a224b3d3e258b8eec990896456ca0fdda5c32511c84e288",
+        "size_bytes": 4061
+      },
+      "inputs/time.json": {
+        "sha256": "e16991d858c98ee0b2156b488b34aff90b49d4884d9031921e3e74bead8331d2",
+        "size_bytes": 26428
+      },
+      "outputs/stderr.log": {
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101
+      },
+      "outputs/stdout.log": {
+        "sha256": "2c22662b23afdacc4c800ceb9b6082af01f5f3f638aab3516946fd3915012b2d",
+        "size_bytes": 12102
+      },
+      "pseudos/Si.upf": {
+        "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+        "size_bytes": 225602
+      },
+      "reports/.forge-workspace.lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "reports/events/ac09d1105f93424a8ddf3928f73dbbaf-execute.json": {
+        "sha256": "f627a05294257afc7f8fe5b2f232284c7107a37fcb5655afcece03c3b51e602f",
+        "size_bytes": 3088
+      },
+      "reports/forge-workspace.json": {
+        "sha256": "cdbfd0df61e8f495413fdbc65b338627c65e23079f9937b4f33a7663e7f54a1c",
+        "size_bytes": 258
+      }
+    },
+    "original_workspace": "/home/james/scratch/forge-dual-track-atst230-20261019/matrix-run/pytest/test_native_and_abacuslite_col0/7-md-native",
+    "snapshot_workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/7-lts-md",
+    "track": "lts"
+  }
+]

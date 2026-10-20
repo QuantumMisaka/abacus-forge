@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+    "-I",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/replay.py",
+    "worker",
+    "--workspace",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/2-develop-cell-relax",
+    "--capability",
+    "cell-relax",
+    "--backend",
+    "native",
+    "--output-version",
+    "v3.11.0-beta8",
+    "--out",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/results/2-develop-cell-relax/new-native.json"
+  ],
+  "exit_code": 0
+}

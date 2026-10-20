@@ -1,6 +1,6 @@
 """Installability contract for the optional abacuslite parser dependency.
 
-``abacuslite`` is an optional extra pinned to the published 1.1.0 release and
+``abacuslite`` is an optional extra pinned to the verified published release and
 must never enter the default dependency set.  The provenance record binds that
 pin to the registry artifact and books the next pin as an explicit rebind item.
 """
@@ -26,9 +26,9 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROVENANCE = ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json"
+PROVENANCE = ROOT / "docs/superpowers/evidence/2026-10-21-forge-abacuslite-1.2.2-package-provenance.json"
 PREVIOUS_RELEASE_PROVENANCE = (
-    ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.1.0-package-provenance.json"
+    ROOT / "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json"
 )
 LOCAL_ORACLE_PROVENANCE = (
     ROOT / "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
@@ -53,12 +53,12 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
     assert PREVIOUS_RELEASE_PROVENANCE.is_file()
     assert LOCAL_ORACLE_PROVENANCE.is_file()
 
-    # Superseded records stay frozen: the 1.1.0 release and the local-oracle stage.
+    # Superseded records stay frozen: the 1.2.0 release and the local-oracle stage.
     previous = json.loads(PREVIOUS_RELEASE_PROVENANCE.read_text(encoding="utf-8"))
     assert previous["status"] == "published_release_bound"
-    assert previous["abacuslite_release"]["package_version"] == "1.1.0"
+    assert previous["abacuslite_release"]["package_version"] == "1.2.0"
     assert previous["abacuslite_release"]["wheel_sha256"] == (
-        "c3e4504e9c9f5bceb69f70c79290e7843037ca72f625c5f66258e14d110f0ff3"
+        "3e5e245c0a03e8182c2c726d7ccad1c800c20250641abd4b81a8e22e892bc4a0"
     )
     local_oracle = json.loads(LOCAL_ORACLE_PROVENANCE.read_text(encoding="utf-8"))
     assert local_oracle["status"] == "local_oracle_only"
@@ -67,18 +67,18 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
 
     release = record["abacuslite_release"]
     assert release["package_name"] == "abacuslite"
-    assert release["package_version"] == "1.2.0"
-    assert release["tag"] == "v1.2.0"
-    assert release["tag_commit"] == "7e6761d2ff656f11f54abc613ac7bdad6ef6dec4"
+    assert release["package_version"] == "1.2.2"
+    assert release["tag"] == "v1.2.2"
+    assert release["tag_commit"] == "f8c8b045fa3a76ad4c2fdd92c828fda5155f6f34"
     assert release["source_repository"] == "https://github.com/QuantumMisaka/abacuslite"
-    assert release["pypi_url"] == "https://pypi.org/project/abacuslite/1.2.0/"
-    assert release["wheel_filename"] == "abacuslite-1.2.0-py3-none-any.whl"
+    assert release["pypi_url"] == "https://pypi.org/project/abacuslite/1.2.2/"
+    assert release["wheel_filename"] == "abacuslite-1.2.2-py3-none-any.whl"
     assert release["wheel_sha256"] == (
-        "3e5e245c0a03e8182c2c726d7ccad1c800c20250641abd4b81a8e22e892bc4a0"
+        "d4675aae2f70b99a6e18882e2c4ecf7f67f57eae10f5ba3e01622e879c6b8caf"
     )
-    assert release["sdist_filename"] == "abacuslite-1.2.0.tar.gz"
+    assert release["sdist_filename"] == "abacuslite-1.2.2.tar.gz"
     assert release["sdist_sha256"] == (
-        "61a238197879136ee59d99651242921850834a3954b8a8b475a34b109a077fe0"
+        "0775eea7bcf9554b7e2e51793fabb613804957405c2d593558984e330aafe347"
     )
     assert release["requires_python"] == ">=3.10"
     runtime = release["runtime_files"]
@@ -122,7 +122,7 @@ def test_published_abacuslite_release_provenance_binds_the_declared_extra() -> N
 
     # The rebind is recorded as applied instead of being re-derived later.
     rebind = record["rebind"]
-    assert rebind["from_version"] == "1.1.0"
+    assert rebind["from_version"] == "1.2.0"
     assert rebind["to_version"] == release["package_version"]
     assert rebind["status"] == "applied"
     assert rebind["requires_four_capability_parity_rerun"] is True

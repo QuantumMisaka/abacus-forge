@@ -1,0 +1,14 @@
+{
+  "tag_commit": "f8c8b045fa3a76ad4c2fdd92c828fda5155f6f34",
+  "runtime_files": [
+    "abacuslite/__init__.py",
+    "abacuslite/core.py",
+    "abacuslite/io/__init__.py",
+    "abacuslite/io/generalio.py",
+    "abacuslite/io/latestio.py",
+    "abacuslite/io/legacyio.py",
+    "abacuslite/utils/__init__.py",
+    "abacuslite/utils/ksampling.py"
+  ],
+  "all_equal": true
+}

@@ -25,7 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 abacuslite = [
-    "abacuslite==1.2.0",
+    "abacuslite==1.2.2",
 ]
 dev = [
     "packaging>=23",

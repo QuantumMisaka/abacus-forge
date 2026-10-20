@@ -10,7 +10,20 @@
 
 **Verification:** 默认离线 owning tests、API/CLI parity、schema/admission/event 回归；真实双轨与 extra 安装是分阶段显式验收。
 
-## 当前状态（2026-10-19）
+## 1.2.2 接续（2026-10-21）
+
+用户要求优先升级 abacuslite，替代上一轮暂留 1.2.0 的候选选择。本轮复用既有 SPEC 的 optional parser 边界，不增加公开 API 或改变 native 默认。
+
+- [x] 更新 exact extra 到 PyPI 1.2.2，核对发布物和 tag，保留 1.2.0 历史记录。
+- [x] 构建新 Forge wheel，在 fresh venv 完成安装态四 capability canonical parity、包元数据与 owning 回归。
+- [x] 对留存 develop/LTS × SCF/relax/cell-relax/MD 八格真实输出，对比新旧 parser 和 native 的事实与状态。
+- [x] 更新当前文档、候选交接与 provenance；独立审查通过，交付到本地 main。
+
+Ruling: 复用已有真实输出做新 parser 的离线兼容回放 — 此次只改依赖 pin，运行日志 reader 未变 — 不把回放记为 1.2.2 新引擎执行或扩大科学/平台验收范围。Paimon 的候选接入与完整 Benchmark 保持 owner 边界。
+
+验证结果：32 项安装态 package/canonical parity、1534 项完整离线回归及 8 格旧真实输出的 32 次新旧对比均通过，见[1.2.2 证据](../evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)。
+
+## 历史发布状态（2026-10-19）
 
 - 已完成：发布包 `abacuslite==1.2.0` exact extra、fresh venv 安装、四 capability 的安装态 fixture parity（16 passed）与缺包 fail-closed，见 [rebind 证据](../evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)。该变更已由 `d8d1a74` 合入本地 main。
 - 已补齐：当前 Forge wheel + 发布 abacuslite 1.2.0 的指定 develop/LTS × PW SCF/relax/cell-relax/MD 八格真实运行与 parser parity，见 [10-19 实测](../evidence/2026-10-19-forge-dual-track-atst230.md)。LTS 两种 relax 的 partial 状态保留。更广版本/配置仍开放。PyATB 已安装的旧 1.1.2 reader 对 develop 新 CSR 仍失败；本地 `sidereus-adam@5f7e132` 已包含 CSR、正物理体积和 COHP 修复，完整 77 项回归通过；CSR 源码候选已通过 Forge 两轨 Si/nspin=1 prepare/execute/collect 回放。早期源码回放复用旧 native extension；本轮已补齐完整候选 wheel 的本机安装消费，见下方 P0 结果。原始证据见[CSR 验收](../evidence/2026-10-19-forge-pyatb-reader-closure.md)与[集成基线](../evidence/2026-10-19-forge-pyatb-sidereus-baseline.md)；后续 COHP 验证由兄弟仓维护（相对工作区 Forge 仓根目录：`../pyatb/doc/validation/2026-10-19-cohp-correctness/README.md`）。
@@ -77,6 +90,8 @@ Paimon owner 报告（相对 Forge 仓根目录）：`../app-tools-forge/toolbox
 Ruling（2026-10-20，用户质疑 3.13 兼容必要性后的复核）：以已有真实交接证据的 CPython 3.12 为本轮 PyATB 安装验收基线，不主动构建 cp313 wheel，也不以 3.13 兼容阻塞 Forge/Paimon v1.3。仅在消费方明确需要 3.13 时重新评估；本裁决不缩减 Forge 已声明的 Python 支持范围。只读实查显示本地交接环境为 3.12.13，而 SAI `/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/env/` 当次仅有 `py313`，其解释器仍为 3.13.16、glibc 2.39；因此尚不能确认远端已切回 3.12。`app-tools-forge@8c9d36d5d` 的 kit 生成器也仍记录 3.13/no PyATB，且执行器存在另一 Agent 的未提交改动。切换落地时应由该 owner 同步解释器路径、依赖锁、kit manifest 与环境 receipt，再复核原 `kit_blocked` 判定；不能仅因目录改名或 Python 主次版本一致就认定 native wheel 可用。
 
 ### P2：能力扩展按真实消费缺口排队
+
+后继状态（2026-10-21）：下段是当时的排队背景。direct NAO COHP、有限消费元数据、polarization/BEC 已实现并合入本地 main，见[集成收口](../evidence/2026-10-21-forge-integration-candidate-closeout.md)。更广科学验证及完整 Draft 仍按各自范围开放。
 
 Forge 现有 `cohp` 仍只提供 IAO typed postprocess。PyATB 的直接 NAO-COHP/ICOHP 修复尚未构成 Forge 新 capability；若接入，需单独确认显式输入、方法/符号/积分输出和 adapter 边界。更广材料/自旋覆盖按 owning tests 与真实 evidence 补齐。ATST 已按用户决定复用上游 NEB 轨迹，不默认重复科学计算；`dpdata` 保持默认依赖；Draft BEC、Contract System 和新 UI 不作为本轮安装消费的前置条件。
 

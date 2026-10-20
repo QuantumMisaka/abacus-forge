@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+当前 optional parser 升级为 `abacuslite==1.2.2`；新候选、安装态回归及留存双轨输出回放见[1.2.2 接续](evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)。该候选接替下述收口记录中暂留 1.2.0 的选择；历史证据按原包版本保留。
+
 本轮本地 main 集成、候选依赖与消费缺口收口见[PLAN](plans/2026-10-21-forge-integration-candidate-closeout.md)和[交付记录](evidence/2026-10-21-forge-integration-candidate-closeout.md)。
 
 2026-10-21 消费接续实现与独立审查已完成：新增直接 NAO `pyatb-cohp`、有限方法元数据和 manifest 消费示例；两轨 Si 真实 PyATB 回放通过。见[完成记录](plans/2026-10-21-forge-consumption-followup.md#完成记录)与[验证证据](evidence/2026-10-21-forge-consumption.md)。BEC 有界实现、离线回归与审查已完成；fresh wheel 安装验证通过，MgO 真实验证目前覆盖一个 O_x 响应。能力仍为 experimental，不代表全张量或收敛；敏感性与当前状态以[安装/实算接续计划](plans/2026-10-21-forge-installed-bec-validation.md)和[证据](evidence/2026-10-21-forge-installed-bec-validation.md)为准。实现已提交为 `5f38349` 并合入本地 main；本地候选已构建，依赖选择、安装与上层交接见[收口记录](evidence/2026-10-21-forge-integration-candidate-closeout.md)。未推送或发布。
@@ -21,7 +23,7 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | 工作 | 状态和入口 |
 | --- | --- |
 | 文档与代码体系收敛 | [已确认设计](specs/2026-10-13-forge-repository-consolidation-design.md) → [实施与验收计划](plans/2026-10-13-forge-repository-consolidation.md)。本批已完成并独立审查，已合入本地 main；保留公开行为与默认依赖，可废弃项单列。 |
-| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；`abacuslite` 1.2.0 已发布并完成同一轮 rebind，Forge exact extra 为 `abacuslite==1.2.0`，安装态四 capability parity 已重跑通过，见[1.2.0 证据](evidence/2026-10-19-forge-abacuslite-1.2.0-rebind.md)与[provenance](evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json)。当前 wheel + 发布 parser 的指定 PW/nspin=1 八格真实双轨 parity 已补齐，见 [10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；PyATB 指定两轨 Si/nspin=1 的完整包消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)；更多配置与上层交接仍开放。 |
+| Engine/Version Policy | [SPEC](specs/2026-09-12-forge-engine-version-policy-design.html) → [分阶段计划](plans/2026-09-13-forge-engine-version-policy.md)。native / Stage 0 已集成；当前 exact extra 为 `abacuslite==1.2.2`，安装态四 capability parity 与旧真实输出双轨回放见[新证据](evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)及[provenance](evidence/2026-10-21-forge-abacuslite-1.2.2-package-provenance.json)。原八格引擎运行见[10-19 实测](evidence/2026-10-19-forge-dual-track-atst230.md)；PyATB 两轨 Si/nspin=1 完整包消费见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)；更多配置与上层交接仍开放。 |
 | 真实运行与迁移证据 | [Stage 5 计划](plans/2026-09-13-forge-stage5-evidence-gates.md)。当前 wheel 已补充有限步真实 NEB execute 与 postprocess 恢复证据，优化未收敛；完整迁移与外部发布事项仍开放。 |
 | COHP postprocess W1 | [SPEC](specs/2026-10-15-forge-cohp-postprocess-design.md) → [PLAN](plans/2026-10-15-forge-cohp-postprocess.md)。IAO typed postprocess 已合入；Paimon W2 接线、当前 wheel/ZIP 无 system-site 后处理消费及完整真实 Si SCF 五组轨道回放已验证，见[安装证据](evidence/2026-10-15-forge-cohp-installed-consumption.md)和[真实输入证据](evidence/2026-10-15-forge-real-evidence.md)。legacy bridge、完整安装/平台及 Benchmark 验收仍开放。 |
 | 2026-10-21 Forge 消费接续 | [NAO/PyATB SPEC](specs/2026-10-21-forge-pyatb-cohp-design.md) 与 [有限元数据/manifest 消费 SPEC](specs/2026-10-21-forge-consumption-metadata-design.md) → [完成 PLAN](plans/2026-10-21-forge-consumption-followup.md) 与[验证证据](evidence/2026-10-21-forge-consumption.md)。直接 NAO 接口及两轨 Si 回放通过；有限 contracts map 与现有 manifest 消费示例只覆盖各自 SPEC 范围。BEC 由下方已确认的有界 SPEC/PLAN 接续。 |

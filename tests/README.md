@@ -35,7 +35,7 @@ conda run -n paimon env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cach
 
 默认回归收集全部测试，但跳过 `real_smoke` 和 `benchmark`；正向 marker 选择不替代完整离线回归。真实计算的输入准备、逐项命令、环境变量、结果范围及已知版本差异统一见 [real-smoke 指南](real_smoke/README.md)。`ABACUS_FORGE_ABACUSLITE_REQUIRE_FULL_MATRIX=1` 是双轨发布门禁的既有例外：即使没有 `--run-real-smoke`，对应测试也不会因缺少外部输入而跳过，会明确失败；普通默认回归不要设置它。
 
-`benchmark/test_abacuslite_canonical_parity.py` 的 Stage 0 对照默认使用已安装的 `abacuslite` 作为 oracle（`pip install '.[abacuslite]'`，当前 pin `1.2.0`）。也可以显式指定源码目录，此时 `ABACUS_FORGE_CANONICAL_ABACUSLITE` 指向包含 `abacuslite` 包的目录（例如独立仓 `abacuslite` 的 `src/`）。canonical 日志由 abacuslite 的 test fixture 提供：`ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES` 指向 `testfiles` 目录；历史布局 `abacuslite/io/testfiles` 仍然兼容。发布 wheel 不带这些日志，所以安装态运行必须显式给 fixtures 路径。
+`benchmark/test_abacuslite_canonical_parity.py` 的 Stage 0 对照默认使用已安装的 `abacuslite` 作为 oracle（`pip install '.[abacuslite]'`，当前 pin `1.2.2`）。也可以显式指定源码目录，此时 `ABACUS_FORGE_CANONICAL_ABACUSLITE` 指向包含 `abacuslite` 包的目录（例如独立仓 `abacuslite` 的 `src/`）。canonical 日志由 abacuslite 的 test fixture 提供：`ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES` 指向 `testfiles` 目录；历史布局 `abacuslite/io/testfiles` 仍然兼容。发布 wheel 不带这些日志，所以安装态运行必须显式给 fixtures 路径。
 
 ```bash
 export ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES=/absolute/path/to/abacuslite/tests/fixtures/io/testfiles

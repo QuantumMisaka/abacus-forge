@@ -1,0 +1,32 @@
+{
+  "versions": [
+    "1.2.0",
+    "1.2.2"
+  ],
+  "equal_functions": [
+    {
+      "interface": "latestio.read_energies_from_running_log",
+      "implementation": "legacyio.read_energies_from_running_log"
+    },
+    {
+      "interface": "latestio.read_forces_from_running_log",
+      "implementation": "latestio.read_forces_from_running_log"
+    },
+    {
+      "interface": "latestio.read_stress_from_running_log",
+      "implementation": "latestio.read_stress_from_running_log"
+    },
+    {
+      "interface": "legacyio.read_energies_from_running_log",
+      "implementation": "legacyio.read_energies_from_running_log"
+    },
+    {
+      "interface": "legacyio.read_forces_from_running_log",
+      "implementation": "legacyio.read_forces_from_running_log"
+    },
+    {
+      "interface": "legacyio.read_stress_from_running_log",
+      "implementation": "legacyio.read_stress_from_running_log"
+    }
+  ]
+}

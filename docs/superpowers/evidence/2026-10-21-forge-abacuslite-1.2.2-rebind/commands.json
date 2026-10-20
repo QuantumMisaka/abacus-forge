@@ -1,0 +1,82 @@
+[
+  {
+    "command": [
+      "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+    "env": {
+      "PYTHONPATH": "",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+      "ABACUS_FORGE_WHEEL": "/home/james/scratch/forge-abacuslite-122-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl",
+      "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES": "/home/james/scratch/forge-abacuslite-122-20261021/fixtures/tests/fixtures/io/testfiles"
+    },
+    "exit_code": 0,
+    "log": "pip-check.log"
+  },
+  {
+    "command": [
+      "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+      "-m",
+      "pip",
+      "freeze"
+    ],
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+    "env": {
+      "PYTHONPATH": "",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+      "ABACUS_FORGE_WHEEL": "/home/james/scratch/forge-abacuslite-122-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl",
+      "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES": "/home/james/scratch/forge-abacuslite-122-20261021/fixtures/tests/fixtures/io/testfiles"
+    },
+    "exit_code": 0,
+    "log": "requirements.log"
+  },
+  {
+    "command": [
+      "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--run-benchmark",
+      "tests/test_package_contract.py",
+      "tests/test_package_metadata_drift.py",
+      "tests/benchmark/test_abacuslite_canonical_parity.py"
+    ],
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+    "env": {
+      "PYTHONPATH": "",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+      "ABACUS_FORGE_WHEEL": "/home/james/scratch/forge-abacuslite-122-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl",
+      "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES": "/home/james/scratch/forge-abacuslite-122-20261021/fixtures/tests/fixtures/io/testfiles"
+    },
+    "exit_code": 0,
+    "log": "package-parity.log"
+  },
+  {
+    "command": [
+      "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider"
+    ],
+    "cwd": "/home/james/work/sidereus/workplace/abacus-forge/.worktrees/forge-integration-reference-review",
+    "env": {
+      "PYTHONPATH": "",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY": "1",
+      "ABACUS_FORGE_WHEEL": "/home/james/scratch/forge-abacuslite-122-20261021/artifacts/abacus_forge-0.1.0-py3-none-any.whl",
+      "ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES": "/home/james/scratch/forge-abacuslite-122-20261021/fixtures/tests/fixtures/io/testfiles"
+    },
+    "exit_code": 0,
+    "log": "installed-offline.log"
+  }
+]

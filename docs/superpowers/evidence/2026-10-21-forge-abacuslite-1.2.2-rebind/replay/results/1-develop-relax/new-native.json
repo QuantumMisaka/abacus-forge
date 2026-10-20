@@ -1,0 +1,765 @@
+{
+  "abacuslite_version": "1.2.2",
+  "capability": "relax",
+  "collection_result": {
+    "artifacts": {
+      "inputs/INPUT": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/INPUT",
+      "inputs/KPT": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/KPT",
+      "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart",
+      "inputs/OUT.ABACUS/INPUT.info": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/INPUT.info",
+      "inputs/OUT.ABACUS/KPT.info": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/KPT.info",
+      "inputs/OUT.ABACUS/STRU_FINAL": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL",
+      "inputs/OUT.ABACUS/STRU_NOW": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_NOW",
+      "inputs/OUT.ABACUS/eig_occ.txt": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/eig_occ.txt",
+      "inputs/OUT.ABACUS/running_relax.log": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log",
+      "inputs/OUT.ABACUS/warning.log": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/warning.log",
+      "inputs/STRU": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/STRU",
+      "inputs/abacus.json": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/abacus.json",
+      "outputs/stderr.log": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stderr.log",
+      "outputs/stdout.log": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+    },
+    "diagnostics": {
+      "band_artifact_candidates": [],
+      "band_artifact_selection_ambiguous": false,
+      "dos_artifact_candidates": [],
+      "dos_artifact_selection_ambiguous": false,
+      "dos_family_projected_artifact_candidates": [],
+      "fallback_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "final_structure_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL",
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_NOW",
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/STRU"
+      ],
+      "final_structure_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL",
+      "final_structure_selected_suffix": "STRU_FINAL",
+      "final_structure_selection_ambiguous": true,
+      "ignored_log_paths": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "last_scf_converged": true,
+      "layout": "forge",
+      "log_paths": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log",
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "log_selection_ambiguous": false,
+      "log_sources": 2,
+      "log_strategy": "selected-running-log",
+      "matched_converged_markers": [
+        "scf_is_converged"
+      ],
+      "matched_nonconverged_markers": [],
+      "native_final_energy_markers": 1,
+      "native_md_block_complete": false,
+      "native_md_block_present": false,
+      "native_md_rows": 0,
+      "output_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "output_log_ignored_paths": [],
+      "output_log_override_missing": false,
+      "output_log_override_requested": null,
+      "output_log_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log",
+      "output_log_reason": "fixed-candidate:stdout.log",
+      "output_log_selection_ambiguous": false,
+      "parser": {
+        "actual_backend": "native",
+        "backend_version": "0.1.0",
+        "io_backend": null,
+        "log_source_rel": "inputs/OUT.ABACUS/running_relax.log",
+        "output_version_normalized": null,
+        "output_version_raw": null,
+        "requested_backend": "native",
+        "version_source": "unknown"
+      },
+      "pyatb_band_artifact_candidates": [],
+      "report_json_absent": [
+        "metrics_band.json",
+        "metrics_dos.json",
+        "metrics_dos_family.json",
+        "metrics_relax.json"
+      ],
+      "running_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log"
+      ],
+      "selected_log_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log",
+      "selected_log_reason": "matched-input-calculation:running_relax.log",
+      "stderr_nonempty": true,
+      "structure_volume": 39.31370032298773,
+      "time_json_absent": true,
+      "warnings": [
+        "time.json is absent.",
+        "No report JSON artifacts found."
+      ],
+      "workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax"
+    },
+    "final_structure_snapshot": {
+      "atom_count": 2,
+      "cell_parameters": {
+        "a": 3.8166849016447304,
+        "alpha": 60.00000000000001,
+        "b": 3.8166849016447304,
+        "beta": 60.00000000000001,
+        "c": 3.8166849016447304,
+        "gamma": 60.00000000000001
+      },
+      "density": 0.08447640320588391,
+      "elements": [
+        "Si"
+      ],
+      "formula": "Si2",
+      "layer_info": null,
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "source": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL",
+      "species_counts": {
+        "Si": 2
+      },
+      "string_info": null,
+      "structure_class": "bulk",
+      "symmetry": {
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "spacegroup_number": 227,
+        "spacegroup_symbol": "Fd-3m"
+      },
+      "vacuum_axes": [],
+      "vacuum_thickness": {},
+      "volume": 39.31370032298773
+    },
+    "inputs_snapshot": {
+      "INPUT": {
+        "basis_type": "pw",
+        "cal_force": "1",
+        "cal_stress": "1",
+        "calculation": "relax",
+        "device": "cpu",
+        "ecutwfc": "60",
+        "force_thr_ev": "100",
+        "ks_solver": "dav_subspace",
+        "precision": "double",
+        "pseudo_dir": "../pseudos",
+        "relax_nmax": "2",
+        "scf_nmax": "100",
+        "scf_thr": "1e-7",
+        "stress_thr": "100",
+        "suffix": "ABACUS",
+        "symmetry": "1"
+      },
+      "KPT": "K_POINTS\n0\nGamma\n4 4 4 0 0 0\n### If you are running an energy calculation, please make sure your final energy is\n### converged with respect to the k-point settings, unless you set a loose k-point\n### mesh on purpose.\n",
+      "KPT_PARSED": {
+        "mesh": [
+          4,
+          4,
+          4
+        ],
+        "mode": "mesh",
+        "shifts": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "metrics": {
+      "converge": true,
+      "converged": true,
+      "drho_last": 0.0652698,
+      "energy_per_atom": -115.0353885368609,
+      "fermi_energy": 6.7742818412,
+      "force": [
+        -6.0507e-05,
+        -1.6496e-06,
+        4.0614e-05,
+        6.0507e-05,
+        1.6496e-06,
+        -4.0614e-05
+      ],
+      "forces": [
+        [
+          -6.0507e-05,
+          -1.6496e-06,
+          4.0614e-05,
+          6.0507e-05,
+          1.6496e-06,
+          -4.0614e-05
+        ]
+      ],
+      "natom": 2,
+      "normal_end": true,
+      "pressure": 44.63214118643333,
+      "pressures": [
+        44.63214118643333
+      ],
+      "relax_steps": 1,
+      "stress": [
+        44.6319637203,
+        0.0032843731,
+        0.0008206282,
+        0.0032843731,
+        44.6321846211,
+        -0.0038956609,
+        0.0008206282,
+        -0.0038956609,
+        44.6322752179
+      ],
+      "stresses": [
+        [
+          44.6319637203,
+          0.0032843731,
+          0.0008206282,
+          0.0032843731,
+          44.6321846211,
+          -0.0038956609,
+          0.0008206282,
+          -0.0038956609,
+          44.6322752179
+        ]
+      ],
+      "total_energy": -230.0707770737218,
+      "total_time": 12.53,
+      "virial": [
+        1.0951641905875402,
+        8.059084807897432e-05,
+        2.013630016502149e-05,
+        8.059084807897432e-05,
+        1.0951696109774507,
+        -9.559042356031362e-05,
+        2.013630016502149e-05,
+        -9.559042356031362e-05,
+        1.0951718340114127
+      ],
+      "virials": [
+        [
+          1.0951641905875402,
+          8.059084807897432e-05,
+          2.013630016502149e-05,
+          8.059084807897432e-05,
+          1.0951696109774507,
+          -9.559042356031362e-05,
+          2.013630016502149e-05,
+          -9.559042356031362e-05,
+          1.0951718340114127
+        ]
+      ]
+    },
+    "status": "unfinished",
+    "structure_snapshot": {
+      "atom_count": 2,
+      "cell_parameters": {
+        "a": 3.8166849016447304,
+        "alpha": 60.00000000000001,
+        "b": 3.8166849016447304,
+        "beta": 60.00000000000001,
+        "c": 3.8166849016447304,
+        "gamma": 60.00000000000001
+      },
+      "density": 0.08447640320588391,
+      "elements": [
+        "Si"
+      ],
+      "formula": "Si2",
+      "layer_info": null,
+      "pbc": [
+        true,
+        true,
+        true
+      ],
+      "source": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/STRU",
+      "species_counts": {
+        "Si": 2
+      },
+      "string_info": null,
+      "structure_class": "bulk",
+      "symmetry": {
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "spacegroup_number": 227,
+        "spacegroup_symbol": "Fd-3m"
+      },
+      "vacuum_axes": [],
+      "vacuum_thickness": {},
+      "volume": 39.31370032298773
+    },
+    "workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax"
+  },
+  "forge_version": "0.1.0",
+  "interpreter": "/home/james/scratch/forge-abacuslite-122-20261021/venv/bin/python",
+  "isolated": true,
+  "requested_backend": "native",
+  "requested_output_version": null,
+  "snapshot_manifest": {
+    "forge-result.json": {
+      "sha256": "f6da0aff356b66663beb90ac0562b3aa6e87c657bd3ab6a731bea5e4be23bcdc",
+      "size_bytes": 265
+    },
+    "inputs/INPUT": {
+      "sha256": "ca712a2e276651c63ab3f7aca98a0187c0f86bae77ce962307b6320fc27c10ba",
+      "size_bytes": 254
+    },
+    "inputs/KPT": {
+      "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+      "size_bytes": 217
+    },
+    "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart": {
+      "sha256": "8ab35913dee1bbf1b444c6e2d211883e92e3bb0378934135543137f61141fb94",
+      "size_bytes": 465616
+    },
+    "inputs/OUT.ABACUS/INPUT.info": {
+      "sha256": "03fa6ed4a5ad1627e80eccb0c7ae8c2cfd8d2be9868a64a46345f5bb5e2f0461",
+      "size_bytes": 45776
+    },
+    "inputs/OUT.ABACUS/KPT.info": {
+      "sha256": "76c393764eb3605e895511d686eec47fd72ff5cc878710ea3e9ff8964d7bca93",
+      "size_bytes": 7978
+    },
+    "inputs/OUT.ABACUS/STRU_FINAL": {
+      "sha256": "c2f75e2d0faf2b4a7e9bd78b9bec8235b16b3f29322516f4f293e38db2ba044e",
+      "size_bytes": 804
+    },
+    "inputs/OUT.ABACUS/STRU_NOW": {
+      "sha256": "df94ae5f92d3af13b29f9e6ef920bbf38b84520d5f3cfc13915539e24706eed4",
+      "size_bytes": 796
+    },
+    "inputs/OUT.ABACUS/eig_occ.txt": {
+      "sha256": "687e38ebc5e4e4953829a2ec5c82d0c1cc509dab7a94cc514edca1aa56dc7b80",
+      "size_bytes": 24169
+    },
+    "inputs/OUT.ABACUS/running_relax.log": {
+      "sha256": "5c3ee42e6f8c9bd5c2400117dc54ac7141e257b475c471134c063739fde0daf5",
+      "size_bytes": 31124
+    },
+    "inputs/OUT.ABACUS/warning.log": {
+      "sha256": "fd56f3f30feac55795e45fcef95c61f3b792688c71ac9ed2f4201e056befcf0c",
+      "size_bytes": 1179
+    },
+    "inputs/STRU": {
+      "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+      "size_bytes": 525
+    },
+    "inputs/abacus.json": {
+      "sha256": "20ff73c2d991790a4490c23ae37704d7c9ece9e1959041198a398766235809a0",
+      "size_bytes": 5092
+    },
+    "outputs/stderr.log": {
+      "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+      "size_bytes": 101
+    },
+    "outputs/stdout.log": {
+      "sha256": "d64cc0c906f763bbcb9d18fecab059e9ccb08902ffe96397fb17ed2b97b5d0c3",
+      "size_bytes": 6301
+    },
+    "pseudos/Si.upf": {
+      "sha256": "39822757f53f36e3bf3bfb779356152a8d3f21199c7db9dd5a931e5d18c45282",
+      "size_bytes": 225602
+    },
+    "reports/.forge-workspace.lock": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    "reports/events/49e160a0625c4c96943ed781334967ec-execute.json": {
+      "sha256": "f9503914cf775eb2a989cee8ef91333bd0b52bea25187159024246e2916aecb4",
+      "size_bytes": 2905
+    },
+    "reports/forge-workspace.json": {
+      "sha256": "64e87a31e4c8b56c1f86756f2efac2ae03cf8556ba8775b804579ae09a3b1210",
+      "size_bytes": 258
+    }
+  },
+  "snapshot_unchanged": true,
+  "source_kind": "offline_replay_of_existing_real_ABACUS_logs",
+  "typed_envelope": {
+    "artifacts": [
+      {
+        "availability": "available",
+        "id": "artifact-10ec10d41b3a",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/INPUT",
+        "role": "output",
+        "sha256": "ca712a2e276651c63ab3f7aca98a0187c0f86bae77ce962307b6320fc27c10ba",
+        "size_bytes": 254,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-cc03a40b77ff",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/KPT",
+        "role": "output",
+        "sha256": "d55726c99e0d8d0167d5e49534cd97731c4a035c5c563bd09fb72aa40d3409c7",
+        "size_bytes": 217,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-62cafbee1b90",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart",
+        "role": "output",
+        "sha256": "8ab35913dee1bbf1b444c6e2d211883e92e3bb0378934135543137f61141fb94",
+        "size_bytes": 465616,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-9b4638eb0fea",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/INPUT.info",
+        "role": "output",
+        "sha256": "03fa6ed4a5ad1627e80eccb0c7ae8c2cfd8d2be9868a64a46345f5bb5e2f0461",
+        "size_bytes": 45776,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-6c57c5f643fa",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/KPT.info",
+        "role": "output",
+        "sha256": "76c393764eb3605e895511d686eec47fd72ff5cc878710ea3e9ff8964d7bca93",
+        "size_bytes": 7978,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-984228707961",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/STRU_FINAL",
+        "role": "output",
+        "sha256": "c2f75e2d0faf2b4a7e9bd78b9bec8235b16b3f29322516f4f293e38db2ba044e",
+        "size_bytes": 804,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-3b73d7d5d105",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/STRU_NOW",
+        "role": "output",
+        "sha256": "df94ae5f92d3af13b29f9e6ef920bbf38b84520d5f3cfc13915539e24706eed4",
+        "size_bytes": 796,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-acf15d5ad0b0",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/eig_occ.txt",
+        "role": "output",
+        "sha256": "687e38ebc5e4e4953829a2ec5c82d0c1cc509dab7a94cc514edca1aa56dc7b80",
+        "size_bytes": 24169,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-fd0131a9a066",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/running_relax.log",
+        "role": "output",
+        "sha256": "5c3ee42e6f8c9bd5c2400117dc54ac7141e257b475c471134c063739fde0daf5",
+        "size_bytes": 31124,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-774ae3ffa2be",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/OUT.ABACUS/warning.log",
+        "role": "output",
+        "sha256": "fd56f3f30feac55795e45fcef95c61f3b792688c71ac9ed2f4201e056befcf0c",
+        "size_bytes": 1179,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-a188b836c514",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/STRU",
+        "role": "output",
+        "sha256": "6ad1d70a432384ed460679b814c0d5eef1af66f473c28bc66fcc74af99b3ee3e",
+        "size_bytes": 525,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "artifact-caa49f5658bf",
+        "media_type": "application/octet-stream",
+        "path_rel": "inputs/abacus.json",
+        "role": "output",
+        "sha256": "20ff73c2d991790a4490c23ae37704d7c9ece9e1959041198a398766235809a0",
+        "size_bytes": 5092,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "stderr_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stderr.log",
+        "role": "output",
+        "sha256": "953dbd0e4920ff8520d0a777383921c8185b50dd55333a765488064a7ba9a8bc",
+        "size_bytes": 101,
+        "stage": "collect"
+      },
+      {
+        "availability": "available",
+        "id": "stdout_log",
+        "media_type": "application/octet-stream",
+        "path_rel": "outputs/stdout.log",
+        "role": "output",
+        "sha256": "d64cc0c906f763bbcb9d18fecab059e9ccb08902ffe96397fb17ed2b97b5d0c3",
+        "size_bytes": 6301,
+        "stage": "collect"
+      }
+    ],
+    "checks": [
+      {
+        "message": null,
+        "name": "converged",
+        "status": "passed"
+      }
+    ],
+    "diagnostics": {
+      "band_artifact_candidates": [],
+      "band_artifact_selection_ambiguous": false,
+      "dos_artifact_candidates": [],
+      "dos_artifact_selection_ambiguous": false,
+      "dos_family_projected_artifact_candidates": [],
+      "fallback_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "final_structure_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL"
+      ],
+      "final_structure_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/STRU_FINAL",
+      "final_structure_selected_suffix": "STRU_FINAL",
+      "final_structure_selection_ambiguous": false,
+      "ignored_log_paths": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "last_scf_converged": true,
+      "layout": "forge",
+      "legacy_metrics": {
+        "force": [
+          -6.0507e-05,
+          -1.6496e-06,
+          4.0614e-05,
+          6.0507e-05,
+          1.6496e-06,
+          -4.0614e-05
+        ],
+        "forces": [
+          [
+            -6.0507e-05,
+            -1.6496e-06,
+            4.0614e-05,
+            6.0507e-05,
+            1.6496e-06,
+            -4.0614e-05
+          ]
+        ],
+        "pressures": [
+          44.63214118643333
+        ],
+        "stress": [
+          44.6319637203,
+          0.0032843731,
+          0.0008206282,
+          0.0032843731,
+          44.6321846211,
+          -0.0038956609,
+          0.0008206282,
+          -0.0038956609,
+          44.6322752179
+        ],
+        "stresses": [
+          [
+            44.6319637203,
+            0.0032843731,
+            0.0008206282,
+            0.0032843731,
+            44.6321846211,
+            -0.0038956609,
+            0.0008206282,
+            -0.0038956609,
+            44.6322752179
+          ]
+        ],
+        "virial": [
+          1.0951641905875402,
+          8.059084807897432e-05,
+          2.013630016502149e-05,
+          8.059084807897432e-05,
+          1.0951696109774507,
+          -9.559042356031362e-05,
+          2.013630016502149e-05,
+          -9.559042356031362e-05,
+          1.0951718340114127
+        ],
+        "virials": [
+          [
+            1.0951641905875402,
+            8.059084807897432e-05,
+            2.013630016502149e-05,
+            8.059084807897432e-05,
+            1.0951696109774507,
+            -9.559042356031362e-05,
+            2.013630016502149e-05,
+            -9.559042356031362e-05,
+            1.0951718340114127
+          ]
+        ]
+      },
+      "log_paths": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log",
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "log_selection_ambiguous": false,
+      "log_sources": 2,
+      "log_strategy": "selected-running-log",
+      "matched_converged_markers": [
+        "scf_is_converged"
+      ],
+      "matched_nonconverged_markers": [],
+      "native_final_energy_markers": 1,
+      "native_md_block_complete": false,
+      "native_md_block_present": false,
+      "native_md_rows": 0,
+      "output_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log"
+      ],
+      "output_log_ignored_paths": [],
+      "output_log_override_missing": false,
+      "output_log_override_requested": null,
+      "output_log_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/outputs/stdout.log",
+      "output_log_reason": "fixed-candidate:stdout.log",
+      "output_log_selection_ambiguous": false,
+      "parser": {
+        "actual_backend": "native",
+        "backend_version": "0.1.0",
+        "io_backend": null,
+        "log_source_rel": "inputs/OUT.ABACUS/running_relax.log",
+        "output_version_normalized": null,
+        "output_version_raw": null,
+        "requested_backend": "native",
+        "version_source": "unknown"
+      },
+      "pyatb_band_artifact_candidates": [],
+      "report_json_absent": [
+        "metrics_band.json",
+        "metrics_dos.json",
+        "metrics_dos_family.json",
+        "metrics_relax.json"
+      ],
+      "running_log_candidates": [
+        "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log"
+      ],
+      "selected_log_path": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax/inputs/OUT.ABACUS/running_relax.log",
+      "selected_log_reason": "matched-input-calculation:running_relax.log",
+      "stderr_nonempty": true,
+      "structure_volume": 39.31370032298773,
+      "time_json_absent": true,
+      "warnings": [
+        "time.json is absent.",
+        "No report JSON artifacts found."
+      ],
+      "workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax"
+    },
+    "metrics": [
+      {
+        "kind": "reported",
+        "name": "natom",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "atoms",
+        "value": 2
+      },
+      {
+        "kind": "reported",
+        "name": "relax_steps",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "steps",
+        "value": 1
+      },
+      {
+        "kind": "reported",
+        "name": "drho_last",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": null,
+        "value": 0.0652698
+      },
+      {
+        "kind": "reported",
+        "name": "fermi_energy",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "eV",
+        "value": 6.7742818412
+      },
+      {
+        "kind": "reported",
+        "name": "converged",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "converge",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "normal_end",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": null,
+        "value": true
+      },
+      {
+        "kind": "reported",
+        "name": "total_energy",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "eV",
+        "value": -230.0707770737218
+      },
+      {
+        "kind": "derived",
+        "name": "pressure",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "kbar",
+        "value": 44.63214118643333
+      },
+      {
+        "kind": "reported",
+        "name": "total_time",
+        "source_artifact_id": "stdout_log",
+        "unit": null,
+        "value": 12.53
+      },
+      {
+        "kind": "derived",
+        "name": "energy_per_atom",
+        "source_artifact_id": "artifact-fd0131a9a066",
+        "unit": "eV/atom",
+        "value": -115.0353885368609
+      }
+    ],
+    "operation": "collect",
+    "schema_version": "forge.result/v1",
+    "status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "warnings": [
+      "time.json is absent.",
+      "No report JSON artifacts found."
+    ],
+    "workspace_rel": "1-develop-relax"
+  },
+  "workspace": "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/1-develop-relax"
+}

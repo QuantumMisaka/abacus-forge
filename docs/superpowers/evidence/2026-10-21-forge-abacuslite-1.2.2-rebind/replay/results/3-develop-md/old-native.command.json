@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/home/james/scratch/forge-closeout-20261021/candidate-env/bin/python",
+    "-I",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/replay.py",
+    "worker",
+    "--workspace",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/snapshots/3-develop-md",
+    "--capability",
+    "md",
+    "--backend",
+    "native",
+    "--output-version",
+    "v3.11.0-beta8",
+    "--out",
+    "/home/james/scratch/forge-abacuslite-122-20261021/replay/run-003/results/3-develop-md/old-native.json"
+  ],
+  "exit_code": 0
+}

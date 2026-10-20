@@ -1,5 +1,8 @@
 # Forge 本地 main 与候选交付收口
 
+> 后继更新：用户随后要求优先升级 abacuslite；当前候选改用 1.2.2，见[新绑定与验证](2026-10-21-forge-abacuslite-1.2.2-rebind.md)。本文保留上一候选的原始依赖裁决和验收，不再代表当前 pin。
+
+
 本轮按用户确认顺序完成已实现增量集成、候选范围和实际消费缺口核查。
 [执行计划](../plans/2026-10-21-forge-integration-candidate-closeout.md)。
 

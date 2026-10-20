@@ -1,0 +1,1714 @@
+[
+  {
+    "capability": "scf",
+    "case_index": 0,
+    "compared": {
+      "fields": 192,
+      "numeric_values": 55
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "scf",
+    "case_index": 0,
+    "compared": {
+      "fields": 192,
+      "numeric_values": 55
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "scf",
+    "case_index": 0,
+    "compared": {
+      "fields": 192,
+      "numeric_values": 55
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "scf",
+    "case_index": 0,
+    "compared": {
+      "fields": 192,
+      "numeric_values": 55
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "relax",
+    "case_index": 1,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "relax",
+    "case_index": 1,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "relax",
+    "case_index": 1,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "relax",
+    "case_index": 1,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 2,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 2,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 2,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 2,
+    "compared": {
+      "fields": 224,
+      "numeric_values": 110
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "md",
+    "case_index": 3,
+    "compared": {
+      "fields": 259,
+      "numeric_values": 100
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "md",
+    "case_index": 3,
+    "compared": {
+      "fields": 259,
+      "numeric_values": 100
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "md",
+    "case_index": 3,
+    "compared": {
+      "fields": 259,
+      "numeric_values": 100
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "md",
+    "case_index": 3,
+    "compared": {
+      "fields": 259,
+      "numeric_values": 100
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "develop"
+  },
+  {
+    "capability": "scf",
+    "case_index": 4,
+    "compared": {
+      "fields": 202,
+      "numeric_values": 57
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "scf",
+    "case_index": 4,
+    "compared": {
+      "fields": 202,
+      "numeric_values": 57
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "scf",
+    "case_index": 4,
+    "compared": {
+      "fields": 202,
+      "numeric_values": 57
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "scf",
+    "case_index": 4,
+    "compared": {
+      "fields": 202,
+      "numeric_values": 57
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "relax",
+    "case_index": 5,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "relax",
+    "case_index": 5,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "relax",
+    "case_index": 5,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "relax",
+    "case_index": 5,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 6,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 6,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 6,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "cell-relax",
+    "case_index": 6,
+    "compared": {
+      "fields": 235,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "natom",
+      "normal_end",
+      "pressure",
+      "relax_steps",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "partial",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "md",
+    "case_index": 7,
+    "compared": {
+      "fields": 269,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:new-native",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "native",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "md",
+    "case_index": 7,
+    "compared": {
+      "fields": 269,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "abacuslite",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-optional:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "md",
+    "case_index": 7,
+    "compared": {
+      "fields": 269,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.0",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "old-native:old-optional",
+    "right_abacuslite_version": "1.2.0",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  },
+  {
+    "capability": "md",
+    "case_index": 7,
+    "compared": {
+      "fields": 269,
+      "numeric_values": 112
+    },
+    "differences": [],
+    "equivalent": true,
+    "left_abacuslite_version": "1.2.2",
+    "left_backend": "native",
+    "left_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "metric_names_left": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "metric_names_right": [
+      "converge",
+      "converged",
+      "drho_last",
+      "energy_per_atom",
+      "fermi_energy",
+      "md_dump_frames",
+      "md_dump_steps",
+      "md_last_kinetic_energy",
+      "md_last_potential_energy",
+      "md_last_temperature",
+      "md_last_total_energy",
+      "md_steps",
+      "natom",
+      "normal_end",
+      "total_energy",
+      "total_time"
+    ],
+    "pair": "new-native:new-optional",
+    "right_abacuslite_version": "1.2.2",
+    "right_backend": "abacuslite",
+    "right_collection_status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "track": "lts"
+  }
+]
