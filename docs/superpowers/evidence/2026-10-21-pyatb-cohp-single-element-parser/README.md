@@ -29,6 +29,12 @@ PyATB fork 的 `sidereus-adam` 后续出现独立 normalization/output 更新。
 tests **44 passed**，全量 **77 passed, 1 skipped**。因此 parser 修复可绑定到最新
 candidate branch，不依赖旧 snapshot。
 
+Git tree 核查进一步确认 `b0012a8` 与 `e1db9d2` 的 `src/` tree hash 完全一致
+（`97df50e…`），`src/` diff 为空；`tests/` 差异只有
+`tests/fixtures/abacus-csr/provenance.json` 的 provenance metadata。因此已归档的
+NiO `sum/up/down` runtime 证据可直接适用于 rebased `e1db9d2`，无需为 parser rebase
+重复三条真实 COHP run。
+
 ## 边界
 
 这是一个 dependency blocker 记录和 local patched branch 验证，不是 PyATB 上游

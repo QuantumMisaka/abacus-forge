@@ -38,6 +38,14 @@
       "commit": "e1db9d2",
       "focused_tests": "44 passed",
       "full_tests": "77 passed, 1 skipped"
+    },
+    "runtime_equivalence": {
+      "old_patched_commit": "b0012a8",
+      "rebased_commit": "e1db9d2",
+      "src_tree_hash": "97df50ebb449bffc95487f0a39bb6d5b0a7242a3",
+      "src_diff_exit_code": 0,
+      "tests_diff": "only tests/fixtures/abacus-csr/provenance.json provenance metadata",
+      "conclusion": "existing b0012a8 NiO sum/up/down runtime evidence applies to e1db9d2"
     }
   },
   "boundaries": [
