@@ -1,0 +1,58 @@
+{
+  "record_type": "forge-main-handoff-candidate",
+  "created_at": "2026-10-21T03:15:00+08:00",
+  "source": {
+    "repository": "QuantumMisaka/abacus-forge",
+    "commit": "b4693f6f8e335555efcde0ede0a0e2a4222be56c",
+    "branch": "main",
+    "worktree": "clean",
+    "build_method": "git archive HEAD; python -m build isolated environment",
+    "builder": "build 1.6.1 / hatchling 1.32.4"
+  },
+  "artifacts": [
+    {
+      "path": "abacus_forge-0.1.0-py3-none-any.whl",
+      "size_bytes": 303894,
+      "sha256": "18b8a6c47987b6a87fb4589a769cd417245de7fce4bec8bb7f1cebfe6dc3f5d7"
+    },
+    {
+      "path": "abacus_forge-0.1.0.tar.gz",
+      "size_bytes": 11139012,
+      "sha256": "a773afd995c85916f51e8654ce123cf440c15d58c81b8e560d10befb317470f2"
+    }
+  ],
+  "provenance": {
+    "wheel_python_files": 76,
+    "missing_sources": 0,
+    "byte_mismatches": 0,
+    "optional_dependency": "abacuslite==1.2.2"
+  },
+  "validation": {
+    "remote_ci": {
+      "run_id": 39533651763,
+      "head_sha": "b4693f6f8e335555efcde0ede0a0e2a4222be56c",
+      "conclusion": "success",
+      "url": "https://github.com/QuantumMisaka/abacus-forge/actions/runs/39533651763"
+    },
+    "installed_package": {
+      "python": "CPython 3.11.15 local venv with system-site-packages",
+      "command_scope": "tests/test_package_contract.py tests/test_package_metadata_drift.py tests/test_parser_backend.py tests/benchmark/test_abacuslite_canonical_parity.py --run-benchmark",
+      "mode": "ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1",
+      "result": "55 passed"
+    },
+    "installed_behavior": {
+      "tests": [
+        "tests/test_service_status.py::test_relax_collect_envelope_publishes_final_stress_from_real_log",
+        "tests/test_pyatb_cohp.py::test_prepare_nspin2_roundtrips_two_hr_paths_and_selected_spin"
+      ],
+      "result": "2 passed"
+    }
+  },
+  "boundary": {
+    "pypi_release": false,
+    "github_release": false,
+    "fresh_isolated_pip_check_claimed": false,
+    "paimon_adopted": false,
+    "paimon_action": "owner must explicitly rebind this wheel/source commit and rerun affected demo/Benchmark entries"
+  }
+}
