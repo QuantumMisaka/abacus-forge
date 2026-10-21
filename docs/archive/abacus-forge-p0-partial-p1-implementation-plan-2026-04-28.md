@@ -36,12 +36,14 @@
 
 ### 已确认的审查结论来源
 
-- [abacus-forge-second-round-audit-report-2026-04-28.md](file:///home/pku-jianghong/liuzhaoqing/work/sidereus/paimon/docs/develop/abacus-forge-second-round-audit-report-2026-04-28.md)
+- 历史来源（原绝对本机链接，不再作为可解析仓库链接）：
+  `file:///home/pku-jianghong/liuzhaoqing/work/sidereus/paimon/docs/develop/abacus-forge-second-round-audit-report-2026-04-28.md`
   - `AF-03`：缺乏执行文件存在性检查；
   - `P0`：补齐 `LocalRunner` 前置检查逻辑；
   - `P0`：在主仓 `tests/` 中增加对 `deps/abacus-forge` 真输出的集成回归测试；
   - `P1`：将 `forge_adapter.py` 中残留的 Mock 解析/样本逻辑尽量下沉到 Forge。
-- [abacus-forge-submodule-review-2026-04-25.md](file:///home/pku-jianghong/liuzhaoqing/work/sidereus/paimon/docs/develop/abacus-forge-submodule-review-2026-04-25.md)
+- 历史来源（原绝对本机链接，不再作为可解析仓库链接）：
+  `file:///home/pku-jianghong/liuzhaoqing/work/sidereus/paimon/docs/develop/abacus-forge-submodule-review-2026-04-25.md`
   - Forge 应优先增强稳定原语与可复用单元，而不是继续让主仓长期承担私有 helper。
 
 ### 本轮范围决策

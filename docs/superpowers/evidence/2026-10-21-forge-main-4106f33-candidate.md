@@ -1,7 +1,8 @@
 # Forge `4106f33` 上层交接候选
 
-状态：当前 main 候选，取代 [`01fbb2a`](2026-10-21-forge-main-01fbb2a-candidate.md)。
-这不是 release，也不声明 Paimon 已采用。
+状态：当前 runtime/main 交接候选，取代
+[`01fbb2a`](2026-10-21-forge-main-01fbb2a-candidate.md)。这不是 release，也不声明
+Paimon 已采用。
 
 ## 候选身份
 
@@ -11,6 +12,9 @@
 - wheel 内 76 个 Python 模块与源码逐字节一致；optional extra 为 `abacuslite==1.2.2`。
 - 相对 `01fbb2a`，`capabilities.contracts["pyatb-cohp"].result` 现在显式暴露
   PyATB pair convention/factor 规则，供 Agent 在发请求和读结果前消费。
+- `main` 后续的 `36633b9` / `c93d793` 只增加 relax stress 交接、COHP 跨实现对照
+  和矩阵核查文档/证据；`src/`、`tests/`、`pyproject.toml` 与 CI workflow 相对本候选
+  无变化，因此 wheel/sdist 身份保持有效。
 
 ## 验证
 
