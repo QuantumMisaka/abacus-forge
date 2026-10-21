@@ -1,0 +1,39 @@
+{
+  "schema_version": "forge.stale-branch-disposition/v1",
+  "branch": "origin/forge-maturation-property-packs",
+  "commit": "a003c55787ed1cb1d031590e338b131e12e89d75",
+  "commit_date": "2026-05-20T09:23:06+08:00",
+  "merge_base": "39ad2e534cfcbbdd35aa65ededf59678b0b4177d",
+  "disposition": "superseded_do_not_merge",
+  "audit": {
+    "branch_changed_files": 10,
+    "branch_additions": 1139,
+    "branch_deletions": 3,
+    "unique_production_symbols": [],
+    "unique_test_functions": [],
+    "current_only_new_helpers": [
+      "_attach_property_manifest",
+      "_canonical_cube_path",
+      "_property_spec",
+      "_integer_token",
+      "_validate_atom_line"
+    ],
+    "current_only_test_functions_count": 12,
+    "merge_tree_simulation": {
+      "tree": "e26b969f4ce4b1244fa320a871d8c024f97561ac",
+      "clean": false,
+      "conflicts": [
+        "README.md",
+        "ROADMAP.md",
+        "src/abacus_forge/__init__.py",
+        "src/abacus_forge/cli.py",
+        "src/abacus_forge/composite/properties.py",
+        "src/abacus_forge/cube.py",
+        "src/abacus_forge/modify.py",
+        "tests/test_maturation_packs.py"
+      ]
+    }
+  },
+  "conclusion": "main contains independently evolved implementations and tests covering every branch production/test symbol; merging would reintroduce older implementations and conflicts.",
+  "recommended_action": "retain or delete the historical remote branch only by owner decision; do not merge without a new approved backport requirement"
+}

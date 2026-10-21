@@ -64,6 +64,7 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 | [I/O Contract Knowledge Base](specs/2026-09-29-forge-io-contract-knowledge-base-design.html) | 历史 Draft；讨论由 Contract System 接续，保留原始依据。 |
 | [Typed BEC 历史 HTML](specs/2026-09-29-forge-typed-bec-design.html) | 保留原文及后继指针；当前规范源为上方的 2026-10-21 BEC SPEC。旧 HTML 中与新规范冲突的设计不再作为当前实现依据。 |
 | [Property manifest 历史 Draft](specs/2026-09-10-forge-property-manifest-design.html) | 规范仍为 Draft；[计划](plans/2026-09-10-forge-property-manifest.md)记录 provisional 实现与复核。2026-10-21 的[有限消费 SPEC](specs/2026-10-21-forge-consumption-metadata-design.md)增加可运行示例范围，不批准旧 manifest 规范或将能力提升为 stable。 |
+| 历史分支 `forge-maturation-property-packs` | 已由 main 独立演进实现覆盖；无 branch-only production/test symbol，直接 merge 会重引旧实现并冲突。见[分支 disposition](evidence/2026-10-21-stale-branch-disposition/README.md)。 |
 
 ## 实现记录与历史计划
 
