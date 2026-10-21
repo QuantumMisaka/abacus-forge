@@ -21,7 +21,7 @@ Paimon 已采用。
 - 新 discovery 断言先在 main discovery 上 RED，修复后 GREEN。
 - GitHub `forge-distributions-3.12` artifact 已实际下载、ZIP 完整性检查并解包；
   ZIP digest 与 metadata 一致，内部 wheel/sdist 与本地候选同 SHA-256，见
-  [远端位流验证](candidate/remote-artifact-verification.json)。
+  [远端位流验证](2026-10-21-forge-main-4106f33-candidate/remote-artifact-verification.json)。
 - 聚焦 COHP/CLI/contracts 回归：**360 passed**。
 - Paimon Python 3.11 环境全离线回归：**1547 passed, 35 skipped**。
 - 本地安装态 package/parser/canonical parity：**55 passed**；同一 wheel 的 direct NAO
@@ -38,4 +38,4 @@ owning PLAN 重跑受影响入口；本记录不替代 Benchmark、SAI 或科学
 当前 owner pinned Forge 为 `6076ad0`。静态审计显示 `4106f33` 相对其只收紧实验性
 `pyatb-cohp/collect` 并新增 additive discovery contract keys；当前 tracked Paimon
 Benchmark runner 不使用 `pyatb-cohp`，generic Benchmark capability 不经过该路径。
-详见 [owner 兼容性审计](../2026-10-21-forge-owner-6076-compatibility/README.md)。
+详见 [owner 兼容性审计](2026-10-21-forge-owner-6076-compatibility/README.md)。
