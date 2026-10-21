@@ -24,6 +24,11 @@ PyATB candidate `1.1.2.dev0+5f7e132` 在 `resolve_cohp_orbitals` 阶段失败：
 - 补丁后真实 NiO `nspin=2 sum` COHP collect：**complete**，Ni–O pair factor `2.0`，
   结果见 [nio-patched-summary.json](nio-patched-summary.json)。
 
+PyATB fork 的 `sidereus-adam` 后续出现独立 normalization/output 更新。该 fix 已重放到
+新基线：`fix/stru-single-letter-new-base` commit `e1db9d2`（base `9c5ffdc`），focused
+tests **44 passed**，全量 **77 passed, 1 skipped**。因此 parser 修复可绑定到最新
+candidate branch，不依赖旧 snapshot。
+
 ## 边界
 
 这是一个 dependency blocker 记录和 local patched branch 验证，不是 PyATB 上游

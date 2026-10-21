@@ -30,6 +30,14 @@
       "collection": "complete",
       "pair_factor": 2.0,
       "occupied_integral_raw_value_ev": 2.8199954662012208
+    },
+    "rebase_to_current_candidate_branch": {
+      "base_branch": "QuantumMisaka/pyatb:sidereus-adam",
+      "base_commit": "9c5ffdce4c0683bea759e7233e9bb096c46060ec",
+      "branch": "fix/stru-single-letter-new-base",
+      "commit": "e1db9d2",
+      "focused_tests": "44 passed",
+      "full_tests": "77 passed, 1 skipped"
     }
   },
   "boundaries": [
