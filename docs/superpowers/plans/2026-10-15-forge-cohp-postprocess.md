@@ -85,7 +85,8 @@ Ruling: 本轮优先闭合最新切片的本地验收 — 现有 W3 历史 kit �
   spin 与 Fermi 信息，分别运行可消费该输入的实现。PyATB 如从 H(R)/S(R) 重建并
   求解，应独立核对本征值和矩阵，而不能假定与原始 WFC 完全等价。
   2026-10-21 已以 LTS v3.10.1 Si SCF 和 36 k 点完成 `abacus-cohp-lcao` 与
-  Forge→PyATB 对照，见[跨实现证据](../evidence/2026-10-21-forge-direct-cohp-cross-implementation/README.md)。
+  Forge→PyATB 对照，并独立比较 selected `H(k)/S(k)` 子块，见[跨实现证据](../evidence/2026-10-21-forge-direct-cohp-cross-implementation/README.md)
+  与[矩阵核查](../evidence/2026-10-21-forge-direct-cohp-cross-implementation/matrix-diag.README.md)。
 - [x] 直接 NAO 实现间先对齐单位、spin 简并、单/双序、能量参考、展宽、积分
   与周期像定义；明确保存原始输出与归一化步骤，再报告差异，不能调整科学默认值
   只为让数值通过。同证据对齐 eV、nspin=1 sum、disjoint pair factor 2、绝对能量、

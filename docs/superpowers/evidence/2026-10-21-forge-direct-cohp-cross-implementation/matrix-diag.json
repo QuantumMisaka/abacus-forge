@@ -1,0 +1,39 @@
+{
+  "orbital_indices_i": [
+    0,
+    1
+  ],
+  "orbital_indices_j": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "H_block Ry_to_eV": {
+    "max_abs": 1.492859064811114e-06,
+    "rms": 4.943023053535943e-07,
+    "fro_relative": 3.628688714603096e-07
+  },
+  "S_block": {
+    "max_abs": 5.4681572048131954e-09,
+    "rms": 2.1398880726938332e-09,
+    "fro_relative": 7.964693738417178e-09
+  },
+  "lcao_eigenvalue_max_abs_delta_vs_pyatb": 0.025701613034584625,
+  "lcao_state_weight_sum_ev": -3.9393130234340297,
+  "pyatb_state_weight_sum_ev": -3.93931453932012,
+  "state_weight_abs_delta_ev": 1.5158860904307403e-06,
+  "state_weight_pointwise_max_abs_delta_ev": 1.2206368871225948e-06,
+  "eigenvalue_ranges": {
+    "lcao": [
+      -2.208894929791503,
+      621.6945056965363
+    ],
+    "pyatb": [
+      -2.2088956570243954,
+      621.6692881371671
+    ]
+  }
+}

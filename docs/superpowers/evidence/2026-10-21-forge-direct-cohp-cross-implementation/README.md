@@ -17,6 +17,10 @@
 k 点权重、Si1 `s/p` disjoint orbital-set pair（factor 2）、绝对能量窗口
 `[-15,25] eV` 和 `de=0.05 eV`。
 
+矩阵级核查另行比较了同一 k 点上的 selected `H(k)`/`S(k)` 子块：PyATB sparse
+重建与 `abacus-cohp-lcao` WFC/full-matrix path 的 `H` 差为 `1.493e-6 eV`，
+`S` 差为 `5.468e-9`，见[矩阵核查](matrix-diag.README.md)。
+
 ## 结果
 
 | 实现 | discrete ICOHP / eV |
