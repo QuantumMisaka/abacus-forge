@@ -49,6 +49,12 @@
       "mergeable": "MERGEABLE",
       "url": "https://github.com/QuantumMisaka/pyatb/pull/1"
     },
+    "merged_result": {
+      "state": "MERGED",
+      "merged_at": "2026-10-21T08:31:59Z",
+      "merge_commit": "18c9ff6610c6fb6a8d3025fd685634fe31ca1f5b",
+      "base_branch_tip_after_merge": "18c9ff6610c6fb6a8d3025fd685634fe31ca1f5b"
+    },
     "runtime_equivalence": {
       "old_patched_commit": "b0012a8",
       "rebased_commit": "e1db9d2",

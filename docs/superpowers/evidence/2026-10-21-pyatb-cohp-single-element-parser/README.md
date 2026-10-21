@@ -30,6 +30,9 @@ tests **44 passed**，全量 **77 passed, 1 skipped**。因此 parser 修复可�
 candidate branch，不依赖旧 snapshot。
 该修复已通过 [PyATB PR #1](https://github.com/QuantumMisaka/pyatb/pull/1) 提交到
 `sidereus-adam` base；PR 当前为 OPEN 且 Git 报告 mergeable。
+PR 已于 2026-10-21T08:31:59Z merge，merge commit 为 `18c9ff6`；`sidereus-adam`
+现在包含 single-uppercase-element parser fix，NiO direct NAO dependency blocker
+在 patched PyATB candidate base 上收口。
 
 Git tree 核查进一步确认 `b0012a8` 与 `e1db9d2` 的 `src/` tree hash 完全一致
 （`97df50e…`），`src/` diff 为空；`tests/` 差异只有
