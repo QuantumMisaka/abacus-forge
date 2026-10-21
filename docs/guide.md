@@ -677,8 +677,10 @@ collect JSON 同样使用新的 UUID 和 `operation="collect"`，调用
 `abacus-forge operation collect --request collect.json`。
 默认收集 `inputs/Out/COHP/COHP.dat` 和 `COHP.meta.json`，也可显式指定
 `spectrum_path_rel`/`metadata_path_rel`。缺失、格式错误或 metadata/spectrum 引用不一致
-不能得到 complete；科学状态始终为 unassessed。正常结果含谱 artifact 和
-`icohp_raw`/`icohp`（eV）reported metrics，符号、权重与积分约定见 metadata。
+不能得到 complete；collect 还要求 PyATB pair convention/factor 与轨道集合一致：
+identical selection 为 1，disjoint selection 为 2，部分重叠 fail-closed。科学状态
+始终为 unassessed。正常结果含谱 artifact 和 `icohp_raw`/`icohp`（eV）reported
+metrics，符号、权重与积分约定见 metadata。
 
 通过 `abacus-forge capabilities` 查询 `contracts`，可区分 IAO 与 direct_nao；
 完整字段通过 `abacus-forge schema pyatb-cohp prepare` 查询。

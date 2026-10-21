@@ -78,6 +78,13 @@ def test_prepare_stages_self_contained_cohp_input_and_discovery(tmp_path):
     assert set(capabilities_document()["contracts"]) == {"cohp", "pyatb-cohp"}
     assert capabilities_document()["contracts"]["cohp"]["method"] == "iao"
     assert capabilities_document()["contracts"]["pyatb-cohp"]["method"] == "direct_nao"
+    contract_result = capabilities_document()["contracts"]["pyatb-cohp"]["result"]
+    assert contract_result["pair_convention"] == (
+        "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)"
+    )
+    assert contract_result["pair_factor_rule"] == (
+        "identical orbital sets use 1; disjoint sets use 2; partial overlap is rejected"
+    )
     assert (tmp_path / "reports/events" / f"{result.operation_id}-prepare.json").is_file()
 
 

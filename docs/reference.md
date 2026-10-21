@@ -222,7 +222,9 @@ workspace event 是 audit record，不是 mutable last-result 文件；更新不
 请求字段以 `schema pyatb-cohp prepare`（以及 execute/collect）为准，用法见
 [指南](guide.md#direct-nao-cohp)。输入 HR 单位固定 Ry，Fermi energy 和绝对能量窗口为 eV；
 输出谱的纵轴无量纲，ICOHP 为 eV。metadata 保留原始/展示符号、能量平移、
-零温 `E <= EF` 占据积分和轨道选择事实。collect 不执行生成的绘图脚本，也不判断科学可接受性。
+零温 `E <= EF` 占据积分、pair convention/factor 和轨道选择事实。collect 校验
+identical/disjoint orbital-set pair 语义并拒绝部分重叠；不执行生成的绘图脚本，
+也不判断科学可接受性。
 
 `capabilities` 增加顶层 `contracts` map，目前只覆盖 `cohp` 和 `pyatb-cohp` 的
 方法、输入和结果语义。operation、字段与默认值仍从现有 descriptor/schema 查询；

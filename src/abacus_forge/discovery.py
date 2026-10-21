@@ -831,6 +831,13 @@ def capabilities_document() -> dict[str, JSONValue]:
                         "occupied_integral_unit": "eV",
                         "occupied_integral_occupation": "E <= EF (zero temperature)",
                         "sign": "PyATB metadata records COHP or -COHP and raw/display ICOHP",
+                        "pair_convention": (
+                            "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)"
+                        ),
+                        "pair_factor_rule": (
+                            "identical orbital sets use 1; disjoint sets use 2; "
+                            "partial overlap is rejected"
+                        ),
                     },
                 },
             },
