@@ -164,6 +164,7 @@ def _metadata(spectrum="COHP.dat", **changes):
         "spectrum_unit": "dimensionless", "fermi_energy_eV": 4.0,
         "energy_shifted_to_efermi": True, "files": {"spectrum": spectrum},
         "atom_i_orbitals": [0], "atom_j_orbitals": [1], "pair_factor": 2.0,
+        "pair_convention": "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)",
         "total_orbitals": 2,
         "atoms": [
             {"index": 1, "start": 0, "stop": 1},
@@ -224,6 +225,12 @@ def test_collect_missing_is_not_complete(tmp_path):
     (None, {"atom_i_orbitals": [0, 2]}),
     (None, {"atom_i_orbitals": [0, 0]}),
     (None, {"atom_j_orbitals": [1, 1]}),
+    ("pair_convention", {}),
+    (None, {"pair_convention": "unordered Hermitian atom pair"}),
+    (None, {"atom_i_orbitals": [0, 1], "atom_j_orbitals": [1]}),
+    (None, {"atom_i_orbitals": [0], "atom_j_orbitals": [1], "pair_factor": 1.0}),
+    (None, {"atom_i_orbitals": [0], "atom_j_orbitals": [0], "pair_factor": 2.0,
+            "total_orbitals": 1, "atoms": [{"index": 1, "start": 0, "stop": 1}]}),
 ])
 def test_collect_rejects_unmapped_orbital_facts(tmp_path, missing, changes):
     _write_outputs(tmp_path)
@@ -243,8 +250,8 @@ def test_collect_rejects_unmapped_orbital_facts(tmp_path, missing, changes):
     )
 
 
-def test_collect_accepts_same_atom_overlapping_orbitals(tmp_path):
-    """PyATB permits an intrasite pair; Forge must not reject shared orbitals."""
+def test_collect_accepts_identical_intrasite_orbitals(tmp_path):
+    """PyATB defines identical orbital sets as an intrasite pair with factor one."""
 
     meta = _metadata(
         atom_i_orbitals=[0],

@@ -256,6 +256,18 @@ def _metadata(path: Path, spectrum: Path, root: Path) -> dict[str, object]:
     for orbital in selected:
         if not any(atom["start"] <= orbital < atom["stop"] for atom in atoms):
             raise ValueError("metadata selected orbital is outside the atom orbital map")
+    if meta.get("pair_convention") != "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)":
+        raise ValueError("metadata pair convention is invalid")
+    orbital_set_i = set(meta["atom_i_orbitals"])
+    orbital_set_j = set(meta["atom_j_orbitals"])
+    if orbital_set_i == orbital_set_j:
+        expected_pair_factor = 1.0
+    elif orbital_set_i.isdisjoint(orbital_set_j):
+        expected_pair_factor = 2.0
+    else:
+        raise ValueError("metadata orbital selections partially overlap")
+    if meta["pair_factor"] != expected_pair_factor:
+        raise ValueError("metadata pair factor disagrees with orbital selections")
     integral = meta.get("occupied_integral")
     if not isinstance(integral, dict) or integral.get("method") != "ICOHP" or integral.get("unit") != "eV" or integral.get("occupation") != "E <= EF (zero temperature)":
         raise ValueError("metadata occupied integral facts are invalid")
