@@ -1,7 +1,7 @@
 # Forge `25cd715` 上层交接候选
 
-状态：当前 main 候选，取代 [`b4693f6`](2026-10-21-forge-main-b4693f6-candidate.md)。
-这不是 release，也不声明 Paimon 已采用。
+状态：**已由 [`03b4957`](2026-10-21-forge-main-03b4957-candidate.md) 取代**。保留当时的
+候选身份；不要把它当作当前 `main` 交付候选。
 
 ## 候选身份
 
