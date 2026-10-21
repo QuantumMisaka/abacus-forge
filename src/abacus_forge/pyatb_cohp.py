@@ -250,9 +250,9 @@ def _metadata(path: Path, spectrum: Path, root: Path) -> dict[str, object]:
             for v in values
         ):
             raise ValueError(f"metadata {field} is invalid")
+        if len(values) != len(set(values)):
+            raise ValueError(f"metadata {field} contains duplicate orbitals")
     selected = [*meta["atom_i_orbitals"], *meta["atom_j_orbitals"]]
-    if len(selected) != len(set(selected)):
-        raise ValueError("metadata atom_i_orbitals and atom_j_orbitals overlap")
     for orbital in selected:
         if not any(atom["start"] <= orbital < atom["stop"] for atom in atoms):
             raise ValueError("metadata selected orbital is outside the atom orbital map")

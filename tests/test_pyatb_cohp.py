@@ -222,7 +222,8 @@ def test_collect_missing_is_not_complete(tmp_path):
     (None, {"atoms": []}),
     (None, {"atoms": [{"index": 1, "start": 0, "stop": 1}]}),
     (None, {"atom_i_orbitals": [0, 2]}),
-    (None, {"atom_i_orbitals": [0], "atom_j_orbitals": [0]}),
+    (None, {"atom_i_orbitals": [0, 0]}),
+    (None, {"atom_j_orbitals": [1, 1]}),
 ])
 def test_collect_rejects_unmapped_orbital_facts(tmp_path, missing, changes):
     _write_outputs(tmp_path)
@@ -240,6 +241,25 @@ def test_collect_rejects_unmapped_orbital_facts(tmp_path, missing, changes):
     assert "inputs/Out/COHP/COHP.meta.json" in (
         result.envelope.diagnostics["malformed_output_paths_rel"]
     )
+
+
+def test_collect_accepts_same_atom_overlapping_orbitals(tmp_path):
+    """PyATB permits an intrasite pair; Forge must not reject shared orbitals."""
+
+    meta = _metadata(
+        atom_i_orbitals=[0],
+        atom_j_orbitals=[0],
+        pair_factor=1.0,
+        total_orbitals=1,
+        atoms=[{"index": 1, "start": 0, "stop": 1}],
+    )
+    _write_outputs(tmp_path, meta=meta)
+    service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
+    result = service.collect.collect(PyatbCohpCollectRequest(str(uuid.uuid4()), "."))
+    assert result.envelope.status.collection == "complete"
+    assert {metric.name: metric.value for metric in result.envelope.metrics} == {
+        "icohp_raw": -1.25, "icohp": 1.25,
+    }
 
 
 def _executable(path: Path, body: str) -> Path:
