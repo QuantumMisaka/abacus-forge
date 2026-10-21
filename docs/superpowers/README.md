@@ -16,10 +16,10 @@ Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parse
 
 当前 `main` `01fbb2a` 交接候选已构建并绑定 wheel `4c82db57…`；全离线、安装态包/解析、direct NAO COHP pair-factor 语义与真实两轨 metadata 回放通过。见[候选记录](evidence/2026-10-21-forge-main-01fbb2a-candidate.md)。Paimon owner 仍需显式重绑并自行验收，本仓未发布。
 
-完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已补齐 replay 接线、band 边缘事实和 longchain elastic 输入；Benchmark 矩阵为 45 pass、1 vacancy baseline defect fixed、1 Al110 allowed exception、2 Al elastic fail、1 phonon resource skip。owner 记录为本地工作区
-`app-tools-forge@dd85664a4` 的
+完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已补齐 replay 接线、band 边缘事实和 longchain elastic 输入，并按签字裁决将 longchain elastic 改判为 baseline defect fixed；矩阵为 45 pass、2 baseline defect fixed、1 allowed exception、1 Al-FCC elastic fail、1 phonon resource skip，即 46/47 持平或更好。owner 记录为本地工作区
+`app-tools-forge@17c45161a` 的
 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-21-paimon-benchmark-final-parity/README.md`。
-Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `25cd715` 候选未被该轮采用。剩余 elastic 科学诊断、baseline 缺陷改判与资源补跑由 Paimon owner 裁决。
+Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `01fbb2a` 候选未被该轮采用。剩余 Al-FCC elastic 残差归因与 phonon 资源补跑由 Paimon owner 裁决。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
@@ -101,7 +101,7 @@ Paimon v1.3 的 owner 在 app-tools 仓；当前工作区 checkout 名为 `app-t
 
 - `docs/superpowers/specs/2026-09-29-paimon-v1.3-backend-architecture.html`：Reviewed / 实施基线，定义两个产品的边界、开发参照和 M0–M4 验收。
 - `docs/superpowers/plans/2026-09-13-paimon-v1.3-forge-migration.md`：W0–W4 执行总表，维护 adapter、依赖、全链路 benchmark 和平台验收。
-- `docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`：由另一工作会话维护的 Benchmark 阈值、执行器、候选交付包与 SAI 验收；截至 `app-tools-forge@dd85664a4`，最终 parity 为 45 pass、1 vacancy defect fixed、1 allowed exception、2 Al elastic fail、1 resource skip。owner 证据位于同一工作区 checkout 的
+- `docs/superpowers/plans/2026-10-19-paimon-v1.3-benchmark-parity-plan.md`：由另一工作会话维护的 Benchmark 阈值、执行器、候选交付包与 SAI 验收；截至 `app-tools-forge@17c45161a`，最终 parity 为 45 pass、2 baseline defect fixed、1 allowed exception、1 Al-FCC elastic fail、1 resource skip（46/47 持平或更好）。owner 证据位于同一工作区 checkout 的
   `toolbox/ABACUS/docs/superpowers/evidence/2026-10-21-paimon-benchmark-final-parity/README.md`。当前进度仍以其 owner 记录为准。
 
 Forge 独立交付，Paimon 的发布门槛不自动成为每次 Forge 发布的门槛。完整 Contract System 仍为未批准 Draft；有限 contracts map、manifest 消费示例与 BEC 后继设计分别由上方链接的 2026-10-21 SPEC 约束。optional parser package 继续按独立计划验收。已结项 `paimon/` 只作历史证据，不是 Forge 运行时依赖或上级规范。

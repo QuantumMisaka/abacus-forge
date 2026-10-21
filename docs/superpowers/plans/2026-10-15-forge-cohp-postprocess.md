@@ -95,6 +95,16 @@ Ruling: 本轮优先闭合最新切片的本地验收 — 现有 W3 历史 kit �
 这些待办归属现有 COHP 计划，验收产物应包含版本/输入来源、方法约定表、原始和
 归一化数值、差异归因与未覆盖项；不以化学方向看似合理替代方法验证。
 
+### 当前状态（2026-10-21）
+
+“新增直接 NAO typed 方法”的设计前置已由用户批准，并经
+[NAO/PyATB SPEC](../specs/2026-10-21-forge-pyatb-cohp-design.md) 与
+[消费接续计划](2026-10-21-forge-consumption-followup.md)完成；因此该历史条件项不再
+阻塞现役工作。同版本 PyATB 的 develop/LTS 保留矩阵回放已证明 Forge 交接与原生调用
+的谱和 ICOHP 一致，但它不是不同 direct NAO 实现间的独立对照，也不重建 WFC 本征解。
+因此上列前三项仍保持开放，归属跨 direct NAO 实现对照和方法差异报告；后续若推进，
+须另立有界计划并绑定固定输入、版本和方法约定表。
+
 本轮验证：`paimon` 环境下运行 `tests/test_architecture.py`、`tests/test_cohp_iao.py`、
 `tests/test_postprocess_services.py`、`tests/test_postprocess_machine_cli.py`，53 passed；
 真实 CLI `schema cohp postprocess` exit 0，返回 `enum=["iao"]` 及 IAO-COHP 描述。
