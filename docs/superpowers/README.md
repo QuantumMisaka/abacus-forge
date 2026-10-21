@@ -14,7 +14,7 @@ Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parse
 
 2026-10-21 消费接续实现与独立审查已完成：新增直接 NAO `pyatb-cohp`、有限方法元数据和 manifest 消费示例；两轨 Si 真实 PyATB 回放通过。见[完成记录](plans/2026-10-21-forge-consumption-followup.md#完成记录)与[验证证据](evidence/2026-10-21-forge-consumption.md)。BEC 有界实现、离线回归与审查已完成；fresh wheel 安装验证通过，MgO 真实验证目前覆盖一个 O_x 响应。能力仍为 experimental，不代表全张量或收敛；敏感性与当前状态以[安装/实算接续计划](plans/2026-10-21-forge-installed-bec-validation.md)和[证据](evidence/2026-10-21-forge-installed-bec-validation.md)为准。实现已提交为 `5f38349` 并合入 `main`；本地候选已构建，依赖选择、安装与上层交接见[收口记录](evidence/2026-10-21-forge-integration-candidate-closeout.md)。`main` 已推送到 GitHub，PyPI 发布未执行。
 
-当前 `main` `01fbb2a` 交接候选已构建并绑定 wheel `4c82db57…`；全离线、安装态包/解析、direct NAO COHP pair-factor 语义与真实两轨 metadata 回放通过。见[候选记录](evidence/2026-10-21-forge-main-01fbb2a-candidate.md)。Paimon owner 仍需显式重绑并自行验收，本仓未发布。
+当前 `main` `4106f33` 交接候选已构建并绑定 wheel `ae3705aa…`；全离线、安装态包/解析、direct NAO COHP pair contract 与真实两轨 metadata 回放通过。见[候选记录](evidence/2026-10-21-forge-main-4106f33-candidate.md)。Paimon owner 仍需显式重绑并自行验收，本仓未发布。
 
 完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已补齐 replay 接线、band 边缘事实和 longchain elastic 输入，并按签字裁决将 longchain elastic 改判为 baseline defect fixed；矩阵为 45 pass、2 baseline defect fixed、1 allowed exception、1 Al-FCC elastic fail、1 phonon resource skip，即 46/47 持平或更好。owner 记录为本地工作区
 `app-tools-forge@17c45161a` 的
