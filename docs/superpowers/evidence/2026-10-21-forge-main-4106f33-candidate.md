@@ -39,3 +39,12 @@ owning PLAN 重跑受影响入口；本记录不替代 Benchmark、SAI 或科学
 `pyatb-cohp/collect` 并新增 additive discovery contract keys；当前 tracked Paimon
 Benchmark runner 不使用 `pyatb-cohp`，generic Benchmark capability 不经过该路径。
 详见 [owner 兼容性审计](2026-10-21-forge-owner-6076-compatibility/README.md)。
+
+### Known dependency blocker
+
+真实 NiO `nspin=2` direct NAO COHP 暴露 PyATB candidate parser blocker：单字母
+uppercase atom label `O` 被误判为 section header，导致 O atom 缺失。已有本地
+PyATB patch、focused/full regression 和补丁后 NiO smoke，见
+[单字母元素 parser blocker](2026-10-21-pyatb-cohp-single-element-parser/README.md)。
+owner 若要消费 NiO 等 direct NAO COHP，应先重绑 patched PyATB branch；当前 Forge
+wheel artifact 身份不变。

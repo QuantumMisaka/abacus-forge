@@ -1,0 +1,41 @@
+{
+  "schema_version": "pyatb-cohp-upstream-blocker/v1",
+  "candidate": {
+    "pyatb_version": "1.1.2.dev0+5f7e132",
+    "input": "NiO nspin=2 sparse HR/SR from abacus-packages/smoke-sources/pyatb-band/source",
+    "request": {
+      "capability": "pyatb-cohp",
+      "atom_i_index": 1,
+      "atom_j_index": 2,
+      "atom_i_orbs": "s",
+      "atom_j_orbs": "p",
+      "nspin": 2
+    }
+  },
+  "unpatched_result": {
+    "status": "execute failed / nonzero_exit",
+    "exception": "ValueError: atom index 2 is not present in STRU",
+    "orbital_map": {
+      "total_orbitals": 27,
+      "atoms": [{"index": 1, "element": "Ni", "start": 0, "stop": 27}]
+    },
+    "cause": "STR parser terminated ATOMIC_POSITIONS at uppercase-only atom label O"
+  },
+  "patched_result": {
+    "pyatb_branch": "fix/stru-single-letter-element",
+    "pyatb_commit": "b0012a8",
+    "focused_tests": "44 passed",
+    "full_tests": "77 passed, 1 skipped",
+    "nio_sum_cohp": {
+      "collection": "complete",
+      "pair_factor": 2.0,
+      "occupied_integral_raw_value_ev": 2.8199954662012208
+    }
+  },
+  "boundaries": [
+    "single NiO nspin=2 smoke",
+    "local patched PyATB branch; not an upstream release",
+    "does not alter Forge wheel 4106f33 artifact identity",
+    "not scientific acceptance"
+  ]
+}

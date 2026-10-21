@@ -1,0 +1,100 @@
+From b0012a82211c282415b34cd36b01ec82bf7407e7 Mon Sep 17 00:00:00 2001
+From: QuantumMisaka <ff6757442@gmail.com>
+Date: Wed, 21 Oct 2026 15:21:23 +0800
+Subject: [PATCH] fix: preserve single-uppercase-element atoms in STRU parsing
+
+---
+ src/pyatb/fermi/orbital_selection.py | 13 ++++++++-
+ tests/test_orbital_selection.py      | 41 ++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 1 deletion(-)
+
+diff --git a/src/pyatb/fermi/orbital_selection.py b/src/pyatb/fermi/orbital_selection.py
+index affaf8f..10c144c 100644
+--- a/src/pyatb/fermi/orbital_selection.py
++++ b/src/pyatb/fermi/orbital_selection.py
+@@ -11,6 +11,17 @@ L_MULTIPLICITY = {
+     "g": 9,
+ }
+ SHELL_ORDER = ["s", "p", "d", "f", "g"]
++STRU_SECTION_HEADERS = {
++    "ABFS_ORBITAL",
++    "ATOMIC_POSITIONS",
++    "ATOMIC_SPECIES",
++    "LATTICE_CONSTANT",
++    "LATTICE_CONSTANT_UNIT",
++    "LATTICE_VECTORS",
++    "NUMERICAL_DESCRIPTOR",
++    "NUMERICAL_ORBITAL",
++    "PAW_FILES",
++}
+ 
+ 
+ @dataclass(frozen=True)
+@@ -51,7 +62,7 @@ def _section_lines(lines, section_name):
+             section = []
+             for next_line in lines[index + 1:]:
+                 clean = _strip_comment(next_line)
+-                if clean and re.match(r"^[A-Z_]+$", clean):
++                if clean and clean.upper() in STRU_SECTION_HEADERS:
+                     break
+                 if clean:
+                     section.append(clean)
+diff --git a/tests/test_orbital_selection.py b/tests/test_orbital_selection.py
+index f5fa962..bd0499b 100644
+--- a/tests/test_orbital_selection.py
++++ b/tests/test_orbital_selection.py
+@@ -4,6 +4,7 @@ import shutil
+ from pyatb.fermi.orbital_selection import (
+     build_orbital_map,
+     parse_global_orbital_indices,
++    parse_stru_metadata,
+     resolve_atom_orbitals,
+ )
+ 
+@@ -41,3 +42,43 @@ def test_build_orbital_map_uses_relative_abacus_orbital_dir(tmp_path):
+ 
+     assert orbital_map.total_orbitals == 26
+     assert all(str(atom.orbital_file).startswith(str(orbital_dir)) for atom in orbital_map.atoms)
++
++
++def test_parse_stru_metadata_keeps_single_uppercase_element_atoms(tmp_path):
++    # ABACUS element symbols are case-sensitive and may be a single uppercase
++    # letter (e.g. O).  Such an atom label must not terminate the positions
++    # section merely because it looks like a section header token.
++    stru = tmp_path / "STRU"
++    stru.write_text(
++        "ATOMIC_SPECIES\n"
++        "Ni 58.6934 Ni.orb\n"
++        "O 15.999 O.orb\n"
++        "NUMERICAL_ORBITAL\n"
++        "Ni.orb\n"
++        "O.orb\n"
++        "LATTICE_CONSTANT\n"
++        "1.0\n"
++        "LATTICE_VECTORS\n"
++        "1 0 0\n"
++        "0 1 0\n"
++        "0 0 1\n"
++        "ATOMIC_POSITIONS\n"
++        "Direct\n"
++        "Ni\n"
++        "0.0\n"
++        "1\n"
++        "0 0 0 1 1 1\n"
++        "O\n"
++        "0.0\n"
++        "1\n"
++        "0.5 0.5 0.5 1 1 1\n",
++        encoding="utf-8",
++    )
++
++    atoms, orbital_files = parse_stru_metadata(stru)
++
++    assert atoms == [
++        {"index": 1, "element": "Ni"},
++        {"index": 2, "element": "O"},
++    ]
++    assert orbital_files == {"Ni": "Ni.orb", "O": "O.orb"}
+-- 
+2.43.0
+
