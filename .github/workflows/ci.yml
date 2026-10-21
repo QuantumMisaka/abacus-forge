@@ -76,7 +76,7 @@ jobs:
           python -m pip install "${wheels[0]}[dev,abacuslite]"
           python -m pip check
           echo "ABACUS_FORGE_WHEEL=$PWD/${wheels[0]}" >> "$GITHUB_ENV"
-      - name: Check installed metadata and four-capability parser parity
+      - name: Check installed metadata, onboarding and four-capability parser parity
         env:
           ABACUS_FORGE_INSTALLED_PACKAGE_ONLY: "1"
           ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES: ${{ github.workspace }}/.ci-abacuslite/tests/fixtures/io/testfiles
@@ -88,6 +88,8 @@ jobs:
             tests/test_package_contract.py \
             tests/test_package_metadata_drift.py \
             tests/test_parser_backend.py \
+            tests/test_diagnostics.py \
+            tests/test_getting_started.py \
             tests/benchmark/test_abacuslite_canonical_parity.py
       - name: Retain tested distributions
         uses: actions/upload-artifact@v4
