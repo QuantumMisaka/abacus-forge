@@ -32,3 +32,10 @@ Paimon 已采用。
 
 不发布 PyPI 或 GitHub release。Paimon owner 采用前必须显式重绑该 wheel/commit，并按
 owning PLAN 重跑受影响入口；本记录不替代 Benchmark、SAI 或科学验收。
+
+### Paimon `6076ad0` 兼容性审计
+
+当前 owner pinned Forge 为 `6076ad0`。静态审计显示 `4106f33` 相对其只收紧实验性
+`pyatb-cohp/collect` 并新增 additive discovery contract keys；当前 tracked Paimon
+Benchmark runner 不使用 `pyatb-cohp`，generic Benchmark capability 不经过该路径。
+详见 [owner 兼容性审计](../2026-10-21-forge-owner-6076-compatibility/README.md)。

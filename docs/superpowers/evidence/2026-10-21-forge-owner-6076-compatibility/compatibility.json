@@ -1,0 +1,45 @@
+{
+  "record_type": "forge-owner-upgrade-compatibility-audit",
+  "observed_at": "2026-10-21T15:00:00+08:00",
+  "owner_state": {
+    "repository": "app-tools-forge",
+    "branch": "codex/paimon-v3-1276-handoff",
+    "commit": "17c45161a",
+    "pinned_forge_commit": "6076ad0c84fe24acad6ea3a2db9663aa58392b4a",
+    "pinned_forge_wheel_sha256": "3647ccc2d69ddf4c82c290749b468e107202f079efbe256db211f617a2cba902"
+  },
+  "candidate_state": {
+    "repository": "QuantumMisaka/abacus-forge",
+    "commit": "4106f33505b552f1dee837c6f2e6bf24e514cf83",
+    "wheel_sha256": "ae3705aa8d801a969f80ae7b3c418ec546e7fa66ba46a65094b80140cc393ad1"
+  },
+  "runtime_diff": {
+    "changed_source_files": [
+      "src/abacus_forge/discovery.py",
+      "src/abacus_forge/pyatb_cohp.py"
+    ],
+    "changed_tests_files": [
+      "tests/test_pyatb_cohp.py"
+    ],
+    "changed_pyproject_or_ci": [],
+    "capabilities_change": "additive result keys under contracts['pyatb-cohp']; no existing keys removed or renamed",
+    "collect_change": "only experimental pyatb-cohp collect becomes stricter for orbital-map, duplicate-orbital, pair-convention, and pair-factor facts"
+  },
+  "owner_usage": {
+    "tracked_pyatb_cohp_references": [],
+    "tracked_benchmark_runner_pyatb_cohp_references": [],
+    "benchmark_capabilities_use_candidate_changed_collect": false
+  },
+  "conclusion": {
+    "current_benchmark_results_remain_valid": true,
+    "full_benchmark_rerun_required_solely_for_upgrade": false,
+    "upgrade_required_for_current_benchmark": false,
+    "adopt_candidate_for_direct_nao": "recommended when Paimon consumes direct NAO COHP; owner must validate affected entry",
+    "scientific_or_platform_acceptance_implied": false
+  },
+  "boundaries": [
+    "static compatibility audit; does not run the 50-case benchmark",
+    "does not authorize changing the owner branch or frozen candidate kit",
+    "future owner changes require re-audit"
+  ]
+}
