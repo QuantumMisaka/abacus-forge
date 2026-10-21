@@ -28,6 +28,8 @@ PyATB fork 的 `sidereus-adam` 后续出现独立 normalization/output 更新。
 新基线：`fix/stru-single-letter-new-base` commit `e1db9d2`（base `9c5ffdc`），focused
 tests **44 passed**，全量 **77 passed, 1 skipped**。因此 parser 修复可绑定到最新
 candidate branch，不依赖旧 snapshot。
+该修复已通过 [PyATB PR #1](https://github.com/QuantumMisaka/pyatb/pull/1) 提交到
+`sidereus-adam` base；PR 当前为 OPEN 且 Git 报告 mergeable。
 
 Git tree 核查进一步确认 `b0012a8` 与 `e1db9d2` 的 `src/` tree hash 完全一致
 （`97df50e…`），`src/` diff 为空；`tests/` 差异只有

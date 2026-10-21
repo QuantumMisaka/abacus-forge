@@ -39,6 +39,16 @@
       "focused_tests": "44 passed",
       "full_tests": "77 passed, 1 skipped"
     },
+    "pull_request": {
+      "number": 1,
+      "repository": "QuantumMisaka/pyatb",
+      "base_branch": "sidereus-adam",
+      "head_branch": "fix/stru-single-letter-new-base",
+      "head_commit": "e1db9d27418df3962f785efeb938db3bf7553e17",
+      "state": "OPEN",
+      "mergeable": "MERGEABLE",
+      "url": "https://github.com/QuantumMisaka/pyatb/pull/1"
+    },
     "runtime_equivalence": {
       "old_patched_commit": "b0012a8",
       "rebased_commit": "e1db9d2",
