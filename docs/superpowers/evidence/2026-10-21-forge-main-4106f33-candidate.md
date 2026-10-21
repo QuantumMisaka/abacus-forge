@@ -19,6 +19,9 @@ Paimon 已采用。
 ## 验证
 
 - 新 discovery 断言先在 main discovery 上 RED，修复后 GREEN。
+- GitHub `forge-distributions-3.12` artifact 已实际下载、ZIP 完整性检查并解包；
+  ZIP digest 与 metadata 一致，内部 wheel/sdist 与本地候选同 SHA-256，见
+  [远端位流验证](candidate/remote-artifact-verification.json)。
 - 聚焦 COHP/CLI/contracts 回归：**360 passed**。
 - Paimon Python 3.11 环境全离线回归：**1547 passed, 35 skipped**。
 - 本地安装态 package/parser/canonical parity：**55 passed**；同一 wheel 的 direct NAO

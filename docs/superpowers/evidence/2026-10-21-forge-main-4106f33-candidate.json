@@ -35,6 +35,18 @@
       "head_sha": "4106f33505b552f1dee837c6f2e6bf24e514cf83",
       "conclusion": "success"
     },
+        "remote_artifact_chain": {
+          "status": "passed",
+          "python": "CPython 3.12",
+          "artifact_name": "forge-distributions-3.12",
+          "artifact_id": 12323281982,
+          "github_artifact_sha256": "c39fe41087c6d8f656d2e391104db1aa7c9f41c553af9d2deadf97fe2a654193",
+          "downloaded_zip_sha256": "c39fe41087c6d8f656d2e391104db1aa7c9f41c553af9d2deadf97fe2a654193",
+          "archive_test": "passed",
+          "inner_wheel_sha256": "ae3705aa8d801a969f80ae7b3c418ec546e7fa66ba46a65094b80140cc393ad1",
+          "inner_sdist_sha256": "489cb160f375b1e720360cbee6773bb36f173f64126bedfb0067b4fc3830cfdb",
+          "verification": "../2026-10-21-forge-main-4106f33-candidate/remote-artifact-verification.json"
+        },
     "local_offline_regression": {
       "python": "CPython 3.11.15 / conda paimon",
       "command": "python -m pytest -q",
