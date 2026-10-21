@@ -17,7 +17,14 @@
     "exception": "ValueError: atom index 2 is not present in STRU",
     "orbital_map": {
       "total_orbitals": 27,
-      "atoms": [{"index": 1, "element": "Ni", "start": 0, "stop": 27}]
+      "atoms": [
+        {
+          "index": 1,
+          "element": "Ni",
+          "start": 0,
+          "stop": 27
+        }
+      ]
     },
     "cause": "STR parser terminated ATOMIC_POSITIONS at uppercase-only atom label O"
   },
@@ -45,9 +52,13 @@
       "base_branch": "sidereus-adam",
       "head_branch": "fix/stru-single-letter-new-base",
       "head_commit": "e1db9d27418df3962f785efeb938db3bf7553e17",
-      "state": "OPEN",
-      "mergeable": "MERGEABLE",
-      "url": "https://github.com/QuantumMisaka/pyatb/pull/1"
+      "state": "MERGED",
+      "url": "https://github.com/QuantumMisaka/pyatb/pull/1",
+      "state_at_submission": "OPEN",
+      "mergeable_at_submission": "MERGEABLE",
+      "merged": true,
+      "merged_at": "2026-10-21T08:31:59Z",
+      "merge_commit": "18c9ff6610c6fb6a8d3025fd685634fe31ca1f5b"
     },
     "merged_result": {
       "state": "MERGED",
