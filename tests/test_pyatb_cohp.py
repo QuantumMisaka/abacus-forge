@@ -164,6 +164,11 @@ def _metadata(spectrum="COHP.dat", **changes):
         "spectrum_unit": "dimensionless", "fermi_energy_eV": 4.0,
         "energy_shifted_to_efermi": True, "files": {"spectrum": spectrum},
         "atom_i_orbitals": [0], "atom_j_orbitals": [1], "pair_factor": 2.0,
+        "total_orbitals": 2,
+        "atoms": [
+            {"index": 1, "start": 0, "stop": 1},
+            {"index": 2, "start": 1, "stop": 2},
+        ],
         "kpoint_weight_mode": "explicit_normalized",
         "occupied_integral": {"method": "ICOHP", "occupation": "E <= EF (zero temperature)",
                               "unit": "eV", "raw_value": -1.25, "value": 1.25,
@@ -209,6 +214,32 @@ def test_collect_missing_is_not_complete(tmp_path):
     service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
     result = service.collect.collect(PyatbCohpCollectRequest(str(uuid.uuid4()), "."))
     assert result.envelope.status.collection == "missing_output"
+
+
+@pytest.mark.parametrize("missing,changes", [
+    ("total_orbitals", {}),
+    (None, {"total_orbitals": 1}),
+    (None, {"atoms": []}),
+    (None, {"atoms": [{"index": 1, "start": 0, "stop": 1}]}),
+    (None, {"atom_i_orbitals": [0, 2]}),
+    (None, {"atom_i_orbitals": [0], "atom_j_orbitals": [0]}),
+])
+def test_collect_rejects_unmapped_orbital_facts(tmp_path, missing, changes):
+    _write_outputs(tmp_path)
+    path = tmp_path / "inputs/Out/COHP/COHP.meta.json"
+    meta = json.loads(path.read_text())
+    if missing:
+        meta.pop(missing)
+    meta.update(changes)
+    path.write_text(json.dumps(meta))
+
+    service = PyatbCohpServiceSet.default(workspace_root=tmp_path)
+    result = service.collect.collect(PyatbCohpCollectRequest(str(uuid.uuid4()), "."))
+    assert result.envelope.status.collection == "partial"
+    assert result.envelope.metrics == ()
+    assert "inputs/Out/COHP/COHP.meta.json" in (
+        result.envelope.diagnostics["malformed_output_paths_rel"]
+    )
 
 
 def _executable(path: Path, body: str) -> Path:

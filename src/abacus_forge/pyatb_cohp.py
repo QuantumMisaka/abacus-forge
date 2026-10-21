@@ -218,6 +218,26 @@ def _metadata(path: Path, spectrum: Path, root: Path) -> dict[str, object]:
             raise ValueError(f"metadata {field} must be finite")
     if meta["pair_factor"] <= 0 or meta.get("spin") not in ("sum", "up", "down"):
         raise ValueError("metadata pair factor or spin is invalid")
+    total_orbitals = meta.get("total_orbitals")
+    if isinstance(total_orbitals, bool) or not isinstance(total_orbitals, int) or total_orbitals <= 0:
+        raise ValueError("metadata total_orbitals is invalid")
+    atoms = meta.get("atoms")
+    if not isinstance(atoms, list) or not atoms:
+        raise ValueError("metadata atom orbital map is missing")
+    seen_atoms: set[int] = set()
+    cursor = 0
+    for atom in atoms:
+        if not isinstance(atom, dict):
+            raise ValueError("metadata atom orbital map entry is invalid")
+        index, start, stop = (atom.get(name) for name in ("index", "start", "stop"))
+        if any(isinstance(value, bool) or not isinstance(value, int) for value in (index, start, stop)):
+            raise ValueError("metadata atom orbital map bounds are invalid")
+        if index <= 0 or index in seen_atoms or start != cursor or stop <= start or stop > total_orbitals:
+            raise ValueError("metadata atom orbital map is inconsistent")
+        seen_atoms.add(index)
+        cursor = stop
+    if cursor != total_orbitals:
+        raise ValueError("metadata atom orbital map does not cover total_orbitals")
     if meta.get("kpoint_weight_mode") != "explicit_normalized":
         raise ValueError("metadata does not confirm explicit normalized k weights")
     broadening = meta.get("broadening")
@@ -225,8 +245,17 @@ def _metadata(path: Path, spectrum: Path, root: Path) -> dict[str, object]:
         raise ValueError("metadata Gaussian broadening is invalid")
     for field in ("atom_i_orbitals", "atom_j_orbitals"):
         values = meta.get(field)
-        if not isinstance(values, list) or not values or any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in values):
+        if not isinstance(values, list) or not values or any(
+            isinstance(v, bool) or not isinstance(v, int) or v < 0 or v >= total_orbitals
+            for v in values
+        ):
             raise ValueError(f"metadata {field} is invalid")
+    selected = [*meta["atom_i_orbitals"], *meta["atom_j_orbitals"]]
+    if len(selected) != len(set(selected)):
+        raise ValueError("metadata atom_i_orbitals and atom_j_orbitals overlap")
+    for orbital in selected:
+        if not any(atom["start"] <= orbital < atom["stop"] for atom in atoms):
+            raise ValueError("metadata selected orbital is outside the atom orbital map")
     integral = meta.get("occupied_integral")
     if not isinstance(integral, dict) or integral.get("method") != "ICOHP" or integral.get("unit") != "eV" or integral.get("occupation") != "E <= EF (zero temperature)":
         raise ValueError("metadata occupied integral facts are invalid")
