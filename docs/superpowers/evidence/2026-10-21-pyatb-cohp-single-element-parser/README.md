@@ -33,6 +33,9 @@ candidate branch，不依赖旧 snapshot。
 PR 已于 2026-10-21T08:31:59Z merge，merge commit 为 `18c9ff6`；`sidereus-adam`
 现在包含 single-uppercase-element parser fix，NiO direct NAO dependency blocker
 在 patched PyATB candidate base 上收口。
+用户 guide/reference 现已将 `sidereus-adam@18c9ff6` 记录为当前 direct NAO COHP
+验证 baseline；含 `O` 这类单字母 uppercase atom label 的任务应使用该 commit 或
+等价修复。
 
 Git tree 核查进一步确认 `b0012a8` 与 `e1db9d2` 的 `src/` tree hash 完全一致
 （`97df50e…`），`src/` diff 为空；`tests/` 差异只有

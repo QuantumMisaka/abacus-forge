@@ -672,6 +672,9 @@ HR 为 Ry；Fermi energy 和 `e_range` 为绝对 eV；k 点为分数倒易坐标
 以 `abacus-forge operation execute --request execute.json` 启动一个 PyATB 进程。
 执行前要求 `inputs/Out` 与本次 stdout/stderr 目标不存在，防止引擎覆盖已有输出。
 这要求安装支持 COHP 元数据的 PyATB 候选；Forge 不自动安装引擎。
+当前验证基线是 `QuantumMisaka/pyatb:sidereus-adam@18c9ff6`（含 PR #1 的 STRU
+parser fix）。含 `O` 这类单字母 uppercase atom label 时必须使用该 commit 或等价
+修复；旧 candidate 会在 orbital selection 阶段丢失 O atoms。
 
 collect JSON 同样使用新的 UUID 和 `operation="collect"`，调用
 `abacus-forge operation collect --request collect.json`。

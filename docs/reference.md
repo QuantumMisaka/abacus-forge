@@ -225,6 +225,8 @@ workspace event 是 audit record，不是 mutable last-result 文件；更新不
 零温 `E <= EF` 占据积分、pair convention/factor 和轨道选择事实。collect 校验
 identical/disjoint orbital-set pair 语义并拒绝部分重叠；不执行生成的绘图脚本，
 也不判断科学可接受性。
+当前验证的 PyATB baseline 是 `sidereus-adam@18c9ff6`，包含修复单字母 uppercase
+atom label 解析的 PR #1。含 `O` 等元素的 STRU 必须使用该 commit 或等价修复。
 
 `capabilities` 增加顶层 `contracts` map，目前只覆盖 `cohp` 和 `pyatb-cohp` 的
 方法、输入和结果语义。operation、字段与默认值仍从现有 descriptor/schema 查询；
