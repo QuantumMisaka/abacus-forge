@@ -1,0 +1,132 @@
+{
+  "record_type": "pyatb-cohp-nspin2-spin-coverage",
+  "created_at": "2026-10-21T15:34:00+08:00",
+  "pyatb": {
+    "branch": "fix/stru-single-letter-element",
+    "commit": "b0012a8",
+    "patch_required_for_NiO_O_atoms": true
+  },
+  "forge_runtime_commit": "4106f33505b552f1dee837c6f2e6bf24e514cf83",
+  "source": {
+    "case": "retained NiO nspin=2 LCAO matrices",
+    "abacus_execution": "none; existing output only"
+  },
+  "request": {
+    "capability": "pyatb-cohp",
+    "nspin": 2,
+    "atom_i_index": 1,
+    "atom_j_index": 2,
+    "atom_i_orbs": "s",
+    "atom_j_orbs": "p",
+    "kpoint_count": 8,
+    "fermi_energy_ev": 15.5241312077
+  },
+  "results": {
+    "sum": {
+      "collection": "complete",
+      "pair_factor": 2.0,
+      "occupied_integral": {
+        "method": "ICOHP",
+        "occupation": "E <= EF (zero temperature)",
+        "unit": "eV",
+        "raw_value": 2.8199954662012208,
+        "value": -2.8199954662012208,
+        "label": "-ICOHP",
+        "spin_degeneracy": 1.0
+      },
+      "run_summary": "spin-runs/sum/run-summary.json",
+      "curve": "spin-runs/sum/minus-cohp.dat",
+      "metadata": "spin-runs/sum/metadata.json"
+    },
+    "up": {
+      "collection": "complete",
+      "pair_factor": 2.0,
+      "occupied_integral": {
+        "method": "ICOHP",
+        "occupation": "E <= EF (zero temperature)",
+        "unit": "eV",
+        "raw_value": 1.3180523163593323,
+        "value": -1.3180523163593323,
+        "label": "-ICOHP",
+        "spin_degeneracy": 1.0
+      },
+      "run_summary": "spin-runs/up/run-summary.json",
+      "curve": "spin-runs/up/minus-cohp.dat",
+      "metadata": "spin-runs/up/metadata.json"
+    },
+    "down": {
+      "collection": "complete",
+      "pair_factor": 2.0,
+      "occupied_integral": {
+        "method": "ICOHP",
+        "occupation": "E <= EF (zero temperature)",
+        "unit": "eV",
+        "raw_value": 1.5019431498418887,
+        "value": -1.5019431498418887,
+        "label": "-ICOHP",
+        "spin_degeneracy": 1.0
+      },
+      "run_summary": "spin-runs/down/run-summary.json",
+      "curve": "spin-runs/down/minus-cohp.dat",
+      "metadata": "spin-runs/down/metadata.json"
+    }
+  },
+  "input_identity": {
+    "source_files": {
+      "Ni_gga_7au_100Ry_4s2p2d1f.orb": {
+        "size_bytes": 148263,
+        "sha256": "23c90eb553728aba1e3d60658396774df9285209bf80568e5d2ea0799e8056ee"
+      },
+      "O_gga_6au_100Ry_2s2p1d.orb": {
+        "size_bytes": 70923,
+        "sha256": "eff1f457c6d7bf199af92a2a4ef9cc5f2852a7084e1dc9f78865c69bb24a0933"
+      },
+      "STRU": {
+        "size_bytes": 512,
+        "sha256": "d837d5654265c5f69bb8d393a0cd8d16f83d1eeb775b3aa9f43c8e68f6341490"
+      },
+      "data-HR-sparse_SPIN0.csr": {
+        "size_bytes": 2285861,
+        "sha256": "78c473660cdef68588bb5933823e71c8ca1a3e3dafbf33b3ae1c5c4111f2052a"
+      },
+      "data-HR-sparse_SPIN1.csr": {
+        "size_bytes": 2285665,
+        "sha256": "369241953db0501ff5a3d4179167d48cf4cf774b1a7838e32f17ab104ad895fd"
+      },
+      "data-SR-sparse_SPIN0.csr": {
+        "size_bytes": 1807054,
+        "sha256": "69bd7000192312b3de95f3b6f91f8c309a4b07017dd48818575b487aa8a04a31"
+      }
+    },
+    "orbital_files": {},
+    "sum_workspace_source_sha256": {
+      "data-HR-sparse_SPIN1.csr": "369241953db0501ff5a3d4179167d48cf4cf774b1a7838e32f17ab104ad895fd",
+      "data-SR-sparse_SPIN0.csr": "69bd7000192312b3de95f3b6f91f8c309a4b07017dd48818575b487aa8a04a31",
+      "O_gga_6au_100Ry_2s2p1d.orb": "eff1f457c6d7bf199af92a2a4ef9cc5f2852a7084e1dc9f78865c69bb24a0933",
+      "data-HR-sparse_SPIN0.csr": "78c473660cdef68588bb5933823e71c8ca1a3e3dafbf33b3ae1c5c4111f2052a",
+      "STRU": "d837d5654265c5f69bb8d393a0cd8d16f83d1eeb775b3aa9f43c8e68f6341490",
+      "Ni_gga_7au_100Ry_4s2p2d1f.orb": "23c90eb553728aba1e3d60658396774df9285209bf80568e5d2ea0799e8056ee"
+    },
+    "up_workspace_source_sha256": {
+      "data-HR-sparse_SPIN1.csr": "369241953db0501ff5a3d4179167d48cf4cf774b1a7838e32f17ab104ad895fd",
+      "data-SR-sparse_SPIN0.csr": "69bd7000192312b3de95f3b6f91f8c309a4b07017dd48818575b487aa8a04a31",
+      "O_gga_6au_100Ry_2s2p1d.orb": "eff1f457c6d7bf199af92a2a4ef9cc5f2852a7084e1dc9f78865c69bb24a0933",
+      "data-HR-sparse_SPIN0.csr": "78c473660cdef68588bb5933823e71c8ca1a3e3dafbf33b3ae1c5c4111f2052a",
+      "STRU": "d837d5654265c5f69bb8d393a0cd8d16f83d1eeb775b3aa9f43c8e68f6341490",
+      "Ni_gga_7au_100Ry_4s2p2d1f.orb": "23c90eb553728aba1e3d60658396774df9285209bf80568e5d2ea0799e8056ee"
+    },
+    "down_workspace_source_sha256": {
+      "data-HR-sparse_SPIN1.csr": "369241953db0501ff5a3d4179167d48cf4cf774b1a7838e32f17ab104ad895fd",
+      "data-SR-sparse_SPIN0.csr": "69bd7000192312b3de95f3b6f91f8c309a4b07017dd48818575b487aa8a04a31",
+      "O_gga_6au_100Ry_2s2p1d.orb": "eff1f457c6d7bf199af92a2a4ef9cc5f2852a7084e1dc9f78865c69bb24a0933",
+      "data-HR-sparse_SPIN0.csr": "78c473660cdef68588bb5933823e71c8ca1a3e3dafbf33b3ae1c5c4111f2052a",
+      "STRU": "d837d5654265c5f69bb8d393a0cd8d16f83d1eeb775b3aa9f43c8e68f6341490",
+      "Ni_gga_7au_100Ry_4s2p2d1f.orb": "23c90eb553728aba1e3d60658396774df9285209bf80568e5d2ea0799e8056ee"
+    }
+  },
+  "boundaries": [
+    "one NiO nspin=2 case and one Ni-O s/p selection",
+    "uses local patched PyATB branch b0012a8; not an upstream release",
+    "smoke is not scientific acceptance, full tensor, convergence, or Paimon platform acceptance"
+  ]
+}

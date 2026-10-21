@@ -1,0 +1,59 @@
+{
+  "sum": {
+    "pair_factor": 2.0,
+    "pair_convention": "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)",
+    "occupied_integral": {
+      "method": "ICOHP",
+      "occupation": "E <= EF (zero temperature)",
+      "unit": "eV",
+      "raw_value": 2.8199954662012208,
+      "value": -2.8199954662012208,
+      "label": "-ICOHP",
+      "spin_degeneracy": 1.0
+    },
+    "status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "workspace": "/home/james/scratch/forge-nspin2-cohp-20261021/nio-patched-sum"
+  },
+  "up": {
+    "pair_factor": 2.0,
+    "pair_convention": "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)",
+    "occupied_integral": {
+      "method": "ICOHP",
+      "occupation": "E <= EF (zero temperature)",
+      "unit": "eV",
+      "raw_value": 1.3180523163593323,
+      "value": -1.3180523163593323,
+      "label": "-ICOHP",
+      "spin_degeneracy": 1.0
+    },
+    "status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "workspace": "/home/james/scratch/forge-nspin2-cohp-20261021/nio-patched-up"
+  },
+  "down": {
+    "pair_factor": 2.0,
+    "pair_convention": "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)",
+    "occupied_integral": {
+      "method": "ICOHP",
+      "occupation": "E <= EF (zero temperature)",
+      "unit": "eV",
+      "raw_value": 1.5019431498418887,
+      "value": -1.5019431498418887,
+      "label": "-ICOHP",
+      "spin_degeneracy": 1.0
+    },
+    "status": {
+      "collection": "complete",
+      "execution": "not_run",
+      "scientific": "unassessed"
+    },
+    "workspace": "/home/james/scratch/forge-nspin2-cohp-20261021/nio-patched-down"
+  }
+}

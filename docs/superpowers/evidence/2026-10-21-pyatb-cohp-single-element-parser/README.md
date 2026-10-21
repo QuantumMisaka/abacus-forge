@@ -29,3 +29,15 @@ PyATB candidate `1.1.2.dev0+5f7e132` 在 `resolve_cohp_orbitals` 阶段失败：
 这是一个 dependency blocker 记录和 local patched branch 验证，不是 PyATB 上游
 release，也不改变 Forge `4106f33` wheel/sdist artifact 身份；更广材料/自旋科学
 验收仍另行推进。
+
+## NiO `nspin=2` spin coverage
+
+用补丁后的 PyATB branch `b0012a8`，对同一 retained NiO `nspin=2` sparse 矩阵和
+Ni–O `s/p` disjoint pair 分别执行 `spin=sum/up/down`。三条 collect 均为
+`complete`；`up` 与 `down` ICOHP 数值不同，证明确实消费了两个 spin channel，
+`sum` 的 `spin_degeneracy=1` 语义也按 candidate 实现。曲线、metadata、逐 run
+摘要和输入 SHA-256 见 [nspin2-spin-coverage.json](nspin2-spin-coverage.json)
+与 [spin-runs/](spin-runs/)。
+
+该证据扩展自上述 blocker 的 patched dependency smoke，仍限一个 NiO case 和一个
+selection，不宣称多材料 parity、收敛、科学验收或 Paimon 平台验收。

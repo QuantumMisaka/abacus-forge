@@ -1,0 +1,28 @@
+{
+  "nspin": 2,
+  "spin": "up",
+  "atom_i_index": 1,
+  "atom_j_index": 2,
+  "atom_i_orbs": "s",
+  "atom_j_orbs": "p",
+  "kpoint_count": 8,
+  "fermi_energy_ev": 15.5241312077,
+  "pair_factor": 2.0,
+  "pair_convention": "unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)",
+  "occupied_integral": {
+    "method": "ICOHP",
+    "occupation": "E <= EF (zero temperature)",
+    "unit": "eV",
+    "raw_value": 1.3180523163593323,
+    "value": -1.3180523163593323,
+    "label": "-ICOHP",
+    "spin_degeneracy": 1.0
+  },
+  "spectrum_samples": 1201,
+  "status": {
+    "collection": "complete",
+    "execution": "not_run",
+    "scientific": "unassessed"
+  },
+  "operation_id": "e578de4f-528c-4696-9c75-4a18dba1a1fb"
+}
