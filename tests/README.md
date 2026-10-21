@@ -59,6 +59,7 @@ PyPI 安装包。该 job 复用上述 installed-only 检查，缺少 fixture 目
 ## 按变更选择 owning tests
 
 - 改动版本记录、workspace 持久化或跨 operation artifact 时，运行 `tests/test_contracts.py tests/test_workspace.py tests/test_result_contract.py tests/test_units.py tests/test_service_status.py`，并加入对应 API/result tests。`test_contracts.py` 管记录验证，`test_workspace.py` 管 append-only manifest/event，后面三项管结果投影和服务错误映射。
+- 修改 README、docs、evidence 或 PLAN 中的相对链接时，运行 `tests/test_documentation_links.py`；该测试防止证据链接指向缺失的仓库目标，不校验外部 URL 或锚点文本。
 - 改动机器 CLI transport 时，同时运行 `tests/test_machine_cli.py tests/test_cli_process.py`。前者管进程内解码/发现/派发，后者管 stdout/stderr/退出码与 API/进程一致性。
 - `tests/test_architecture.py` 管生产代码导入边界与当前用户指南中的机器 CLI 示例；示例仍通过实际 CLI 解析和执行 dry-run。`tests/fixtures/abacus-native-md` 是本地格式 fixture，不能充当真实执行或科学判断。
 
