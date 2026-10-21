@@ -17,9 +17,11 @@
 
 ### Task 4：整体交付
 - [x] 完整离线回归、两版安装态与用户路径，独立审查并解决实质问题。
-- [ ] 集成与远端 CI，形成具体发行候选；不覆盖并行 owner 状态。
+- [x] 集成与远端 CI，形成具体发行候选；不覆盖并行 owner 状态。
 - 延后（用户本轮明确要求）：PyPI 账户配置与实际发布、发布后 fresh index install。本轮完成其余配置、实现与验收，不以此声称 PyPI 已上线。
 
 任务分工：诊断 worker 仅 doctor/CLI 与 owning tests；用户路径 worker 仅用户文档/示例/用户路径 tests；发布 worker 仅 release workflow/验证器/发布文档与测试。主控维护规范、计划、索引、项目元数据及 CI 集成，并负责审查、构建和发布动作。共享 Git index 仅主控操作。
 
 验收记录见[本轮证据](../evidence/2026-10-21-forge-public-release.md)。独立终审已完成，legacy/typed 状态说明差异已修正。GitHub `pypi` environment 与 `v*` tag policy 已配置；不触发发行。
+
+实现 `cc68920` 已通过四矩阵远端 CI，并由 [PR #8](https://github.com/QuantumMisaka/abacus-forge/pull/8) 合入 `main@93cd2cc`。源码与安装态结果见[验收记录](../evidence/2026-10-21-forge-public-release.md#远端集成)。本轮实现及其余配置已完成；PyPI 延后项保持开放。
