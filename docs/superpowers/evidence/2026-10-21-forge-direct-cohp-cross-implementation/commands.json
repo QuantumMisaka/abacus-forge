@@ -1,0 +1,4 @@
+{
+  "abacus-cohp-lcao": "python src/cohp.py --out-dir OUT.ABACUS --stru STRU --input INPUT --atom-i-index 1 --atom-j-index 1 --atom-i-orbs s --atom-j-orbs p --method COHP --de 0.05 --emin -15 --emax 25 --output-prefix abacus_lcao_s_p --workers 2",
+  "forge_pyatb": "python scripts/replay_forge_pyatb.py; request sequence prepare -> execute -> collect with the retained 36 k points and weights"
+}

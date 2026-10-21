@@ -1,0 +1,45 @@
+{
+  "cohp_curve_unit": "dimensionless",
+  "cohp_state_weight_unit": "eV",
+  "de_ev": 0.05,
+  "efermi_ev": 15.9268620439,
+  "files": {
+    "metadata": {
+      "path": "abacus_lcao_s_p.meta.json"
+    },
+    "raw": {
+      "energy_column": "Energy(eV)",
+      "path": "abacus_lcao_s_p.dat",
+      "shifted_by_efermi": false
+    },
+    "shifted": {
+      "energy_column": "Energy-E_Fermi(eV)",
+      "path": "abacus_lcao_s_p_EminusEf.dat",
+      "shifted_by_efermi": true
+    }
+  },
+  "icohp": {
+    "efermi_ev": 15.9268620439,
+    "energy_window_ev": {
+      "max": 14.88956924754531,
+      "min": -2.2088948506557196,
+      "occupied_condition": "energy <= efermi"
+    },
+    "icohp": -0.8790256696459798,
+    "input_convention": "cohp",
+    "integration": "occupied_discrete_state_sum",
+    "minus_icohp": 0.8790256696459798,
+    "points_occupied": 133,
+    "points_total": 661,
+    "uses_plot_smoothing": false
+  },
+  "method": "COHP",
+  "nspin": 1,
+  "pair_convention": "unordered Hermitian orbital-block pair",
+  "shift_toefermi": true,
+  "smooth": true,
+  "smooth_nstddev": 3.0,
+  "spin": "sum",
+  "spin_degeneracy_factor": 2.0,
+  "spin_total_convention": "nspin=1 spin=sum includes spin degeneracy factor 2; nspin=2 spin=sum is up + down with no extra factor"
+}

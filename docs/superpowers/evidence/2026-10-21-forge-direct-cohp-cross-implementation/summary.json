@@ -1,0 +1,72 @@
+{
+  "scope": "same retained LTS ABACUS v3.10.1 Si SCF; no new ABACUS run",
+  "producer": {
+    "program": "ABACUS",
+    "version": "v3.10.1",
+    "sai_job_id": "1760372",
+    "source_directory": "/org/galileo-group/galileouser02/cohp-iao-9f6411c64-sai-20261013/cohp-iao-b3ffff102-current-0b5f"
+  },
+  "selection": {
+    "atom_i_index": 1,
+    "atom_j_index": 1,
+    "atom_i_orbs": "s",
+    "atom_j_orbs": "p",
+    "kpoint_count": 36,
+    "kpoint_weights_source": "OUT.ABACUS/kpoints"
+  },
+  "implementations": {
+    "abacus-cohp-lcao": {
+      "commit": "78b3628aa4bb137bb75f465b2b4ecc9aac8f9fb1",
+      "input": "WFC + full H(k)/S(k)",
+      "inferred_pair_factor": 2.0
+    },
+    "forge-pyatb": {
+      "version": "1.1.2.dev0+5f7e132",
+      "input": "sparse H(R)/S(R) reconstruction",
+      "forge_source_commit": "39413eeec8568d0f43962d57859a2fc5990030de",
+      "pair_factor": 2.0
+    }
+  },
+  "conventions": {
+    "energy_unit": "eV",
+    "spectrum_unit": "dimensionless",
+    "spin": "sum",
+    "spin_degeneracy": 2.0,
+    "pair_convention": "unordered Hermitian orbital-set pair; disjoint selections use factor 2",
+    "occupied_integral": "discrete state sum before broadening, E <= EF"
+  },
+  "results": {
+    "abacus_cohp_lcao_icohp_ev": -0.8790256696459798,
+    "forge_pyatb_icohp_ev": -0.880434861336741,
+    "abs_delta_ev": 0.0014091916907611468,
+    "relative_delta_vs_lcao": 0.0016031291683764898
+  },
+  "broadening": {
+    "abacus_cohp_lcao": "standard Gaussian convolution, sigma=0.15 eV, 3 sigma default",
+    "forge_pyatb": "PyATB kernel exp(-(dE/sigma)^2)/(sqrt(pi)*sigma), sigma=0.15 eV",
+    "decision": "ICOHP comparison deliberately uses pre-broadening discrete sums; broadened curves are retained as implementation outputs and are not treated as parity gates"
+  },
+  "input_sha256": {
+    "STRU": "233f6a40b8b799d724f10899d65bf9f04fddaeae01d2d96a73019011e0bb30d8",
+    "orbital": "9cf950edf43961cd7e197cb31ac46194871fb3f49f00e231de09e78c59ecaece",
+    "HR": "fd7fbb04f8536e12336252cdd670d2eae1ce5394039f6bbe159ecd30625dfb89",
+    "SR": "4e6e2ce0674975c8bee084a6879fee4ba31b11307cbbbea6ed91379866203c22",
+    "kpoints": "b69a45e514cd62f76f6185b2f983153f6da82b0b8fe4ad1f680cbaf55508f09b"
+  },
+  "artifact_sha256": {
+    "abacus-lcao/cohp.dat": "3c30d045574ecbd4f16029e08e9cf3eaddfc372d145597a38b8f8055acb0abfd",
+    "pyatb/minus-cohp.dat": "b822332d44312a419f68707e58959101a2d04c86479d96ce328d12ff6a4cfe7a"
+  },
+  "boundaries": [
+    "one Si SCF case",
+    "nspin=1",
+    "s/p selection",
+    "experimental methods",
+    "not scientific acceptance or Paimon platform acceptance"
+  ],
+  "method_reference": {
+    "iao_s_p_icohp_ev_from_same_scf": -0.6040196341992011,
+    "source": "../2026-10-15-forge-real-evidence/cohp-summary.json",
+    "interpretation": "IAO and direct NAO are different orbital representations; equality is not expected or used as a gate"
+  }
+}

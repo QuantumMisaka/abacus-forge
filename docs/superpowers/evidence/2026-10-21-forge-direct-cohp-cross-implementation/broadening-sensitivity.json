@@ -1,0 +1,15 @@
+{
+  "lcao_points": 1357,
+  "pyatb_points": 801,
+  "common_grid_points": 228,
+  "common_grid": [
+    -2.2999999999998195,
+    9.050000000000342
+  ],
+  "max_abs_delta": 3.806692904165715,
+  "rms_delta": 0.4253518614209567,
+  "nonzero_points_lcao": 26,
+  "nonzero_points_pyatb": 0,
+  "trapezoid_common_lcao": 0.16433847900788262,
+  "trapezoid_common_pyatb": 0.0
+}
