@@ -8,61 +8,83 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from abacus_forge.api import UnitModifySpec, UnitSpec, collect, collect_unit, execute_unit, export as export_result, modify_unit, prepare, prepare_unit, run
-from abacus_forge.composite import (
-    post_bader,
-    post_bec,
-    post_charge_density,
-    post_charge_diff,
-    post_convergence,
-    post_elastic,
-    post_elf,
-    post_eos,
-    post_phonon,
-    post_spin_density,
-    post_vacancy,
-    post_vibration,
-    post_workfunc,
-    prepare_bader,
-    prepare_bec,
-    prepare_charge_density,
-    prepare_charge_diff,
-    prepare_convergence,
-    prepare_elastic,
-    prepare_elf,
-    prepare_eos,
-    prepare_phonon,
-    prepare_spin_density,
-    prepare_vacancy,
-    prepare_vibration,
-    prepare_workfunc,
-    run_bader,
-    run_bec,
-    run_charge_density,
-    run_charge_diff,
-    run_convergence,
-    run_elastic,
-    run_elf,
-    run_eos,
-    run_phonon,
-    run_spin_density,
-    run_vacancy,
-    run_vibration,
-    run_workfunc,
-)
-from abacus_forge.modify import modify_input, modify_kpt, modify_stru
-from abacus_forge.machine_cli import run_machine_cli
-from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
-from abacus_forge.runner import LocalRunner
-from abacus_forge.structure import AbacusStructure
-from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_relax, run_scf
-from abacus_forge.workspace import Workspace
+from abacus_forge import __version__
+
+_LEGACY_LOADED = False
+
+
+def _load_legacy_dependencies() -> None:
+    """Load legacy command dependencies only after stdlib entry routing."""
+    global _LEGACY_LOADED
+    if _LEGACY_LOADED:
+        return
+    from abacus_forge.api import UnitModifySpec, UnitSpec, collect, collect_unit, execute_unit, export as export_result, modify_unit, prepare, prepare_unit, run
+    from abacus_forge.composite import (
+        post_bader,
+        post_bec,
+        post_charge_density,
+        post_charge_diff,
+        post_convergence,
+        post_elastic,
+        post_elf,
+        post_eos,
+        post_phonon,
+        post_spin_density,
+        post_vacancy,
+        post_vibration,
+        post_workfunc,
+        prepare_bader,
+        prepare_bec,
+        prepare_charge_density,
+        prepare_charge_diff,
+        prepare_convergence,
+        prepare_elastic,
+        prepare_elf,
+        prepare_eos,
+        prepare_phonon,
+        prepare_spin_density,
+        prepare_vacancy,
+        prepare_vibration,
+        prepare_workfunc,
+        run_bader,
+        run_bec,
+        run_charge_density,
+        run_charge_diff,
+        run_convergence,
+        run_elastic,
+        run_elf,
+        run_eos,
+        run_phonon,
+        run_spin_density,
+        run_vacancy,
+        run_vibration,
+        run_workfunc,
+    )
+    from abacus_forge.modify import modify_input, modify_kpt, modify_stru
+    from abacus_forge.pyatb import collect_pyatb, prepare_pyatb_band, run_pyatb
+    from abacus_forge.runner import LocalRunner
+    from abacus_forge.structure import AbacusStructure
+    from abacus_forge.tasks import run_band, run_cell_relax, run_dos, run_md, run_relax, run_scf
+    from abacus_forge.workspace import Workspace
+
+    # Existing legacy handlers resolve these names as module globals.  Publish
+    # exactly the imported public names after the first legacy invocation so
+    # the large established dispatch stays unchanged (including patch points).
+    globals().update({name: value for name, value in locals().items() if not name.startswith('_')})
+    _LEGACY_LOADED = True
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level CLI parser for Forge subcommands."""
     parser = argparse.ArgumentParser(prog="abacus-forge")
+    parser.add_argument("--version", action="version", version=f"abacus-forge {__version__}",
+                        help="show the installed Forge version and exit")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    doctor_parser = subparsers.add_parser("doctor", help="inspect this environment without running an engine")
+    doctor_parser.add_argument("--json", action="store_true", help="emit forge.environment/v1 JSON")
+    doctor_parser.add_argument("--executable", metavar="PATH_OR_NAME", help="require this executable")
+    doctor_parser.add_argument("--asset", action="append", metavar="PATH", help="require a readable file; repeatable")
 
     prepare_parser = subparsers.add_parser("prepare", help="prepare a minimal workspace")
     prepare_parser.add_argument("workspace")
@@ -235,7 +257,14 @@ def _print_prepared_workspace(workspace: Workspace, *, as_json: bool) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse CLI arguments, dispatch to a Forge primitive, and return an exit code."""
     effective_argv = list(sys.argv[1:] if argv is None else argv)
+    if effective_argv and effective_argv[0] == "doctor":
+        from abacus_forge.diagnostics import run_doctor
+        return run_doctor(effective_argv[1:])
+    if effective_argv and effective_argv[0] == "--version":
+        from abacus_forge.diagnostics import run_version
+        return run_version(effective_argv)
     if effective_argv and effective_argv[0] in {"operation", "schema", "capabilities"}:
+        from abacus_forge.machine_cli import run_machine_cli
         return run_machine_cli(
             effective_argv,
             stdin=sys.stdin,
@@ -243,6 +272,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             stderr=sys.stderr,
             cwd=Path.cwd(),
         )
+    if effective_argv in (["--help"], ["-h"]):
+        build_parser().parse_args(effective_argv)
+
+    _load_legacy_dependencies()
 
     parser = build_parser()
     args = parser.parse_args(argv)

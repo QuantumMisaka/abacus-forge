@@ -4,6 +4,8 @@
 
 ## 当前工作入口
 
+Forge 0.1.0 独立公开交付接续见[设计](specs/2026-10-21-forge-public-release-design.md)与[计划](plans/2026-10-21-forge-public-release.md)：补环境诊断、安装态人类/Agent 上手和受验证制品的发布管线；PyPI 账户配置与实际发布按用户要求延后。Paimon 验收仍由另一会话负责。
+
 Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parser parity 命令本地重放各 55 项通过；GitHub 托管运行与 wheel/sdist artifact 上传也已通过。见[验证记录](evidence/2026-10-21-forge-installed-package-ci.md)。Paimon Benchmark 由另一会话负责。
 
 2026-10-21 Relax typed collect 增补 opt-in 最终应力 metric：真实日志回归通过，[PR #7](https://github.com/QuantumMisaka/abacus-forge/pull/7) 已合入 `main`，合并后托管 CI 通过。Paimon elastic 上层仍按其 owner 流程验收。

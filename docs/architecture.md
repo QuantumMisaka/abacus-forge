@@ -30,6 +30,7 @@ flowchart TD
 | 责任 | 主要模块 | 维护边界 |
 | --- | --- | --- |
 | 人类 CLI 与机器协议 | `cli.py`、`machine_cli.py`、`discovery.py`、`request_registry.py` | 参数转换、请求解码、service 路由、outcome/error 渲染；discovery 与解码复用 request_registry 静态映射，不在 CLI 实现科学算法。 |
+| 环境诊断 | `diagnostics.py` | 标准库读取安装元数据和显式程序/资产可发现性；不启动引擎、不写 workspace，返回独立 `forge.environment/v1` 报告。 |
 | 请求和结果契约 | `contracts.py`、`*_contracts.py`、`errors.py` | 冻结记录、字段校验、operation identity 与错误类别；能力专用请求在各自模块。 |
 | ABACUS typed operations | `services.py`、`service_support.py` | SCF/Relax/cell-relax/MD 复用 prepare/modify/execute/collect 基元；service 负责受理、状态和事件。 |
 | 独立 typed operations | `postprocess_services.py`、`md_postprocess_services.py`、`pyatb_services.py`、`export_services.py`、`atst_neb.py`、`pyatb_cohp_services.py`、`polarization_services.py` | 各 capability 的显式输入与单次 operation；不隐式寻找 latest 或编排上游任务。IAO `cohp` 只受理 postprocess；direct NAO 的 `pyatb-cohp` 单独交接外部引擎。 |

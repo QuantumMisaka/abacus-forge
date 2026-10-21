@@ -5,6 +5,10 @@
 ## 使用 Forge
 
 - [根 README](../README.md)：英文产品入口、安装、最小本地调用和能力成熟度概览。
+- [安装与环境检查](installation.md)：当前 Git/wheel 安装入口、doctor 与外部引擎要求。
+- [第一个 workspace](quickstart.md)：免引擎上手和显式资产的真实 SCF 用法。
+- [通用 Agent 接入](agents.md)：发现/schema、结构化调用、错误和不完整结果处理。
+- [公开兼容约定](compatibility.md)：0.x 版本、v1 契约与科学能力成熟度。
 - [使用指南](guide.md)：从 primitive、UnitSpec、task/sequence 或 pack 选择调用面，并按场景使用 CLI 和 Python API。
 - [接口与 workspace 参考](reference.md)：typed request、能力发现、资产路径、输出记录和状态语义。
 - [仓内示例](../examples/README.md)：使用现有 NiO 结构准备本地 workspace，以及站点运行脚本的适用范围。
@@ -15,6 +19,7 @@
 - [架构说明](architecture.md)：现行模块职责、依赖方向和扩展/测试定位。
 - [测试说明](../tests/README.md)：测试层级和门禁的唯一入口。
 - [真实运行 smoke 说明](../tests/real_smoke/README.md)：显式 opt-in 的真实进程验证与证据边界。
+- [发行维护](releasing.md)：从通过 CI 的制品准备发布，PyPI 配置及实际发布当前延后。
 - [路线图](../ROADMAP.md)：当前重点和单列的可废弃候选；候选不代表已批准删除。
 
 ## 设计、计划与历史

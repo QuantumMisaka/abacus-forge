@@ -1,0 +1,75 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag, for example v0.1.0; also select this tag as the workflow ref"
+        required: true
+        type: string
+      run_id:
+        description: "Successful CI push run ID for the tagged commit"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      artifact_id: ${{ steps.identity.outputs.artifact_id }}
+      digest: ${{ steps.identity.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify tag, successful CI run, required jobs and artifact identity
+        id: identity
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_RUN_ID: ${{ inputs.run_id }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/release_validate.py verify-run
+      - name: Download the already tested distributions and check archive digest
+        env:
+          ARTIFACT_ID: ${{ steps.identity.outputs.artifact_id }}
+          ARTIFACT_DIGEST: ${{ steps.identity.outputs.digest }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/release_validate.py download
+          --artifact-id "$ARTIFACT_ID"
+          --digest "$ARTIFACT_DIGEST"
+          --dist-dir dist
+      - name: Verify wheel and sdist identities and metadata
+        run: python scripts/release_validate.py verify-distributions --dist-dir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-forge-distributions
+          path: dist/
+          if-no-files-found: error
+
+  pypi:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/abacus-forge
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-forge-distributions
+          path: dist/
+      - name: Upload to PyPI with trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1

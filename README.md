@@ -2,74 +2,45 @@
 
 ABACUS-Forge is a lightweight Python library and command-line tool for preparing ABACUS inputs, editing individual input files, running a local process, collecting output facts, and exporting results. It works with one workspace at a time. Workflow orchestration, cluster scheduling, platform integration, and scientific acceptance remain with the caller.
 
-## Install
+## Install and first workspace
 
-Python 3.10 or newer is required. Install the package from this repository:
-
-```bash
-python -m pip install .
-```
-
-The optional phonon pack requires `phonopy`:
+Python 3.10 or newer is required. The first PyPI release is being prepared; today, install from the project Git URL if you have access, or from a wheel supplied by the maintainer. Neither route requires a source checkout in your working directory:
 
 ```bash
-python -m pip install '.[phonon]'
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install 'git+https://github.com/QuantumMisaka/abacus-forge.git'
+abacus-forge doctor
 ```
 
-The optional `abacuslite` parser backend requires the published `abacuslite` package. The extra pins the exact verified release:
+See [installation](docs/installation.md) for the wheel option, environment checks, and optional dependencies. The following runs in any empty directory with Forge installed. It creates a one-atom Si CIF, prepares an SCF workspace, and checks the typed dry-run state without starting ABACUS:
 
 ```bash
-python -m pip install '.[abacuslite]'
+python - <<'PY'
+from pathlib import Path
+from uuid import uuid4
+from ase import Atoms
+from ase.io import write
+from abacus_forge import OperationOutcome, ScfExecuteRequest, ScfServiceSet, prepare
+
+root = Path("forge-first-run").resolve()  # use a fresh name to repeat
+root.mkdir(exist_ok=False)
+write(root / "Si.cif", Atoms("Si", positions=[[0, 0, 0]], cell=[5.43] * 3, pbc=True))
+workspace = prepare(root / "scf", structure=root / "Si.cif", task="scf",
+                    parameters={"basis_type": "pw", "ecutwfc": 40},
+                    kpoints=[1, 1, 1], asset_mode="copy")
+assert all((workspace.inputs_dir / name).is_file() for name in ("INPUT", "STRU", "KPT"))
+outcome = ScfServiceSet.default(workspace_root=root).execute.execute(
+    ScfExecuteRequest(str(uuid4()), "scf", executable="abacus", dry_run=True))
+assert isinstance(outcome, OperationOutcome), outcome.to_dict()
+status = outcome.envelope.status
+assert (status.execution, status.collection, status.scientific) == (
+    "skipped", "not_collected", "unassessed"), status.to_dict()
+print(status.to_dict())
+PY
 ```
 
-Running an ABACUS calculation also requires an ABACUS executable available to the local process and the pseudopotential and, where needed, orbital files referenced by the input. Forge does not provide these external assets or install ABACUS.
-
-To inspect the installed command surface without ABACUS inputs:
-
-```bash
-abacus-forge --help
-abacus-forge capabilities
-```
-
-## Minimal local calculation
-
-Start with a structure file and the resource files you intend ABACUS to use. The following prepares an SCF workspace, executes ABACUS, then collects facts. Replace the structure and asset paths with files available in your environment.
-
-```bash
-abacus-forge prepare runs/Si_scf \
-  --structure path/to/Si.cif \
-  --task scf \
-  --parameter ecutwfc=70 \
-  --kpoint 3 --kpoint 3 --kpoint 1 \
-  --pseudo-path path/to/pseudopotentials \
-  --orbital-path path/to/orbitals \
-  --asset-mode copy
-abacus-forge execute runs/Si_scf --executable abacus --mpi 1 --omp 1
-abacus-forge collect runs/Si_scf --json
-```
-
-Preparation creates the `INPUT`, `STRU`, and `KPT` files. Check the generated input and resource references before execution. A `prepare` call can also be used on its own to inspect generated inputs before ABACUS is available.
-
-For Python use, the primitive API exposes the same preparation and collection boundaries:
-
-```python
-from abacus_forge import collect, prepare
-
-workspace = prepare(
-    "runs/Si_scf",
-    structure="path/to/Si.cif",
-    task="scf",
-    parameters={"ecutwfc": 70},
-    kpoints=[3, 3, 1],
-    pseudo_path="path/to/pseudopotentials",
-    orbital_path="path/to/orbitals",
-    asset_mode="copy",
-)
-result = collect(workspace)
-print(result.status)
-```
-
-The Python example prepares and collects; it does not start ABACUS. See the [usage guide](docs/guide.md) for execution, typed operations, unit APIs, sequences, and packs.
+This inspection structure has no pseudopotential, so it is **not** ready for an actual SCF calculation. For a real run, supply ABACUS, suitable pseudopotential files and, for LCAO, orbital files; inspect the generated `INPUT` and `STRU` before execution. The [full quickstart](docs/quickstart.md) gives the real-SCF commands and checks the human collector's top-level status and metrics. The [Agent guide](docs/agents.md) shows capability and schema discovery, typed JSON operations, missing prerequisites, and incomplete collection. A normal CLI exit is not scientific acceptance; the typed dry-run explicitly reports `scientific=unassessed`.
 
 ## Capability maturity
 
@@ -81,6 +52,7 @@ Collected values are facts about available files and parser output. Forge report
 
 ## Documentation
 
+- [Installation](docs/installation.md), [first workspace](docs/quickstart.md), [Agent integration](docs/agents.md), and [public compatibility](docs/compatibility.md).
 - [Documentation index](docs/README.md) — Chinese navigation for users and maintainers.
 - [Usage guide](docs/guide.md) — CLI and Python paths, workspace preparation, execution, collection, and capability-specific examples.
 - [API and workspace reference](docs/reference.md) — current interfaces, request boundaries, assets, outputs, and status semantics.
