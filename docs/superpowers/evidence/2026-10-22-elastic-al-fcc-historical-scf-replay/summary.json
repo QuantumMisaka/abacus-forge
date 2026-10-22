@@ -1,0 +1,44 @@
+{
+  "schema_version": "v12-historical-scf-replay-summary/v1",
+  "source": "abacus-agent-tools@e81c5d1",
+  "sai_job_id": "1900782",
+  "work_dir": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/runs/v12-equivalent-elastic-Al-FCC-20261022/20261022225825.abacus_cal_elastic.1b584e94",
+  "mode": {
+    "calculation": "scf",
+    "kpt": [
+      20,
+      20,
+      20
+    ],
+    "relax_force_threshold_ev": null
+  },
+  "all_converged": true,
+  "all_normal_end": true,
+  "job_count_including_pristine": 25,
+  "replay_fit": {
+    "bulk_modulus": 75.38306491906677,
+    "shear_modulus": 23.727387936180037,
+    "young_modulus": 64.42295973820733,
+    "poisson_ratio": 0.35756535678277895
+  },
+  "baseline_evalset_fit": {
+    "bulk_modulus": 75.38299506884455,
+    "shear_modulus": 23.72735569302671,
+    "young_modulus": 64.4228748383505,
+    "poisson_ratio": 0.35756541250999774
+  },
+  "fit_difference_replay_minus_evalset": {
+    "bulk_modulus": 6.985022221783765e-05,
+    "shear_modulus": 3.224315332772676e-05,
+    "young_modulus": 8.489985683013401e-05,
+    "poisson_ratio": -5.5727218783996335e-08
+  },
+  "tensor_max_abs_replay_minus_evalset": 0.0040843325000015085,
+  "candidate_fit": {
+    "bulk_modulus": 76.07318366257789,
+    "shear_modulus": 24.86883186282004,
+    "young_modulus": 67.27555303880061,
+    "poisson_ratio": 0.3526078227136278
+  },
+  "conclusion": "exact historical-mode match: SCF deformed structures with 20x20x20 reproduce the evalset baseline tensor and moduli; current candidate uses relax with 34x34x34"
+}

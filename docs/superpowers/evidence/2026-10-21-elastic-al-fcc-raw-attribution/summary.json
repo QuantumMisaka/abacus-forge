@@ -1,0 +1,264 @@
+{
+  "schema_version": "elastic-al-fcc-raw-attribution-summary/v1",
+  "created_at": "2026-10-21T17:45:00+08:00",
+  "authorization": "user explicitly requested read-only access to SAI job 1886152 raw output",
+  "source": {
+    "sai_job_id": "1886152",
+    "run_id": "bm-20261021-044215-1886152",
+    "work_root": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/runs/elastic_Al-FCC/work/elastic_al-fcc_step1-005"
+  },
+  "selected_archive": {
+    "path": "raw-selected.tar.gz",
+    "sha256": "0d802c38852f839170c1b5f4cdebf79b90bb2b2401ff73b9badde81f4b9ce443"
+  },
+  "run_provenance_archive": {
+    "path": "sai-run-selected.tar.gz",
+    "sha256": "94923b66066c120a14891971e20081d6f1590df7c639ee3d361f02fb60ae64fc"
+  },
+  "checks": {
+    "job_count_including_pristine": 25,
+    "all_kpt_34x34x34": true,
+    "all_converged": true,
+    "all_relax_steps_1": true,
+    "reconstructed_fit_matches_candidate_result": true
+  },
+  "candidate_reconstructed_fit": {
+    "bulk_modulus": 76.07318366257788,
+    "shear_modulus": 24.86883186282004,
+    "young_modulus": 67.27555303880061,
+    "poisson_ratio": 0.3526078227136277,
+    "tensor_GPa": [
+      [
+        109.79420865980023,
+        60.09030722060005,
+        58.33713311640004,
+        2.4793625950000084,
+        0.0,
+        0.0
+      ],
+      [
+        60.43794469540005,
+        109.1600570308002,
+        58.61298567240004,
+        -2.448284007800009,
+        0.0,
+        0.0
+      ],
+      [
+        58.69202950840004,
+        58.69202950840004,
+        110.84195755100022,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        2.8026761671999942,
+        -2.357763584900004,
+        -0.47631474490000214,
+        23.856485013800004,
+        0.0,
+        0.0
+      ],
+      [
+        1.6869999639111517e-07,
+        1.709999960588818e-07,
+        1.6699999816312832e-07,
+        -4.999997369691867e-10,
+        23.899057519800003,
+        2.5800946047000006
+      ],
+      [
+        -5.870000510622556e-08,
+        -5.7100005947924167e-08,
+        -5.930000654600532e-08,
+        1.9999999078702732e-10,
+        2.3682745744,
+        25.670017703100005
+      ]
+    ]
+  },
+  "candidate_fit": {
+    "bulk_modulus": 76.07318366257788,
+    "shear_modulus": 24.86883186282004,
+    "young_modulus": 67.27555303880061,
+    "poisson_ratio": 0.3526078227136277,
+    "voigt_shear_modulus": 24.86883186282004,
+    "reuss_shear_modulus": 24.60551419392745,
+    "voigt_bulk_modulus": 76.07318366257788,
+    "reuss_bulk_modulus": 76.07317793214828
+  },
+  "baseline_reported_fit": {
+    "bulk_modulus": 75.38299506884455,
+    "shear_modulus": 23.72735569302671,
+    "young_modulus": 64.4228748383505,
+    "poisson_ratio": 0.35756541250999774
+  },
+  "baseline_tensor_recomputed_fit": {
+    "bulk_modulus": 75.38222222222223,
+    "shear_modulus": 23.728,
+    "young_modulus": 64.42439537688229,
+    "poisson_ratio": 0.35756059037597515,
+    "voigt_shear_modulus": 23.728,
+    "reuss_shear_modulus": 18.470055259595004,
+    "voigt_bulk_modulus": 75.38222222222223,
+    "reuss_bulk_modulus": 75.38215344127097
+  },
+  "candidate_tensor": [
+    [
+      109.79420865980023,
+      60.09030722060005,
+      58.33713311640004,
+      2.4793625950000084,
+      0.0,
+      0.0
+    ],
+    [
+      60.43794469540005,
+      109.1600570308002,
+      58.61298567240004,
+      -2.448284007800009,
+      0.0,
+      0.0
+    ],
+    [
+      58.69202950840004,
+      58.69202950840004,
+      110.84195755100022,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      2.8026761671999942,
+      -2.357763584900004,
+      -0.47631474490000214,
+      23.856485013800004,
+      0.0,
+      0.0
+    ],
+    [
+      1.6869999639111517e-07,
+      1.709999960588818e-07,
+      1.6699999816312832e-07,
+      -4.999997369691867e-10,
+      23.899057519800003,
+      2.5800946047000006
+    ],
+    [
+      -5.870000510622556e-08,
+      -5.7100005947924167e-08,
+      -5.930000654600532e-08,
+      1.9999999078702732e-10,
+      2.3682745744,
+      25.670017703100005
+    ]
+  ],
+  "baseline_tensor_from_evalset_response": [
+    [
+      109.84,
+      61.9,
+      54.26,
+      10.81,
+      0.0,
+      0.0
+    ],
+    [
+      61.75,
+      110.31,
+      54.15,
+      -11.0,
+      0.0,
+      0.0
+    ],
+    [
+      54.02,
+      54.02,
+      118.19,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      9.65,
+      -9.27,
+      0.05,
+      18.81,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      18.84,
+      9.39
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      10.23,
+      24.98
+    ]
+  ],
+  "tensor_difference_candidate_minus_baseline": [
+    [
+      -0.04579134019977005,
+      -1.8096927793999456,
+      4.0771331164000415,
+      -8.330637404999992,
+      0.0,
+      0.0
+    ],
+    [
+      -1.3120553045999515,
+      -1.1499429691997989,
+      4.462985672400045,
+      8.551715992199991,
+      0.0,
+      0.0
+    ],
+    [
+      4.672029508400037,
+      4.672029508400037,
+      -7.348042448999777,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -6.847323832800006,
+      6.912236415099995,
+      -0.5263147449000022,
+      5.046485013800005,
+      0.0,
+      0.0
+    ],
+    [
+      1.6869999639111517e-07,
+      1.709999960588818e-07,
+      1.6699999816312832e-07,
+      -4.999997369691867e-10,
+      5.059057519800003,
+      -6.8099053952999995
+    ],
+    [
+      -5.870000510622556e-08,
+      -5.7100005947924167e-08,
+      -5.930000654600532e-08,
+      1.9999999078702732e-10,
+      -7.8617254256,
+      0.6900177031000041
+    ]
+  ],
+  "attribution": {
+    "candidate_parser_and_fit": "closed: raw 25 collect events reproduce elastic_fit.json to machine precision; stress is row-major kbar and converted as -0.1*kbar to GPa",
+    "candidate_execution": "closed: all 25 jobs used KPT 34x34x34 and reported converged; one-atom sites remained at origin after one relax step",
+    "baseline_raw_per_strain": "not_found_in_accessible_paimon-bench-20261020 tree; only evalset final tensor and aggregate moduli are available",
+    "current_conclusion": "baseline tensor-level anomaly: severe nonsymmetric shear couplings and low C44/C55 explain the Voigt shear residual; candidate raw evidence shows no stress-ordering, unit-conversion, strain-ordering, KPT-selection, or local-fit defect",
+    "remaining_uncertainty": "the historical cause inside v1.2 cannot be assigned without its original per-strain stress logs or a separately authorized v1.2-equivalent replay"
+  }
+}

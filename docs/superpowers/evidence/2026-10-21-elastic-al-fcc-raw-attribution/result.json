@@ -1,0 +1,69 @@
+{
+  "schema_version": "benchmark.candidate-run/v1",
+  "case_id": "elastic/Al-FCC",
+  "source_file": "elastic.evalset.json",
+  "source_sha256": "9940495776a03145491edcd22e264d70bee4f75d673eb2b5c85a0a7c0752d999",
+  "status": "completed",
+  "parity_claim": false,
+  "steps": [
+    {
+      "name": "abacus_prepare",
+      "mapped_to": "baseline input",
+      "capability": "prepare",
+      "status": "completed",
+      "facts": {
+        "completed": true,
+        "baseline_input": {
+          "source_sha256": "b484f9285e09256008c4228a2da8ebb9f5b7d4661e8a9312cfc802355d127b59",
+          "bundle": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/inputs/baseline-bundles/13756__112260__store__168d2b49-d2fa-4678-adba-f125c8da202a__outputs__job_path__000000.tgz",
+          "added_files": [
+            "KPT placeholder (the baseline input expresses its grid through kspacing; ABACUS ignores KPT while kspacing is positive)"
+          ],
+          "derived_from": null,
+          "redirected_fields": [],
+          "reason": null,
+          "target_calculation": "scf"
+        }
+      },
+      "outputs": {
+        "abacus_inputs_dir": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/runs/elastic_Al-FCC/work/elastic/Al-FCC_baseline_inputs/000000"
+      },
+      "thresholds": {},
+      "fact_units": {}
+    },
+    {
+      "name": "abacus_cal_elastic",
+      "mapped_to": "abacus_elastic.abacus_worker_elastic",
+      "capability": "elastic",
+      "status": "completed",
+      "facts": {
+        "completed": true,
+        "dropped_historical_args": {
+          "historical_defaults": "v1.2 default kspacing=0.042334176853600004; the current worker derives it from the prepared INPUT"
+        },
+        "bulk_modulus": 76.07318366257789,
+        "shear_modulus": 24.86883186282004,
+        "young_modulus": 67.27555303880061,
+        "poisson_ratio": 0.3526078227136278,
+        "fit_accepted": true,
+        "subtasks_accepted": true,
+        "input_policy_manifest": "absent"
+      },
+      "outputs": {
+        "abacus_outputs": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/runs/elastic_Al-FCC/work/elastic_al-fcc_step1-005/result_evidence.json",
+        "work_dir": "/org/pku-jianghong/liuzhaoqing/paimon-bench-20261020/runs/elastic_Al-FCC/work/elastic_al-fcc_step1-005"
+      },
+      "thresholds": {
+        "status": "pass",
+        "checks": {}
+      },
+      "fact_units": {
+        "bulk_modulus": "GPa",
+        "shear_modulus": "GPa",
+        "young_modulus": "GPa",
+        "poisson_ratio": "1"
+      }
+    }
+  ],
+  "blocking_reasons": []
+}

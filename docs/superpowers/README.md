@@ -21,7 +21,7 @@ Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parse
 完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已补齐 replay 接线、band 边缘事实和 longchain elastic 输入，并按签字裁决将 longchain elastic 改判为 baseline defect fixed；矩阵为 45 pass、2 baseline defect fixed、1 allowed exception、1 Al-FCC elastic fail、1 phonon resource skip，即 46/47 持平或更好。owner 记录为本地工作区
 `app-tools-forge@17c45161a` 的
 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-21-paimon-benchmark-final-parity/README.md`。
-Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `01fbb2a` 候选未被该轮采用。剩余 Al-FCC elastic 残差归因与 phonon 资源补跑由 Paimon owner 裁决。
+Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `01fbb2a` 候选未被该轮采用。Al-FCC candidate-side raw 归因已闭合：SAI job `1886152` 的 25 个 collect event 全部使用 `34x34x34`、converged，重建 fit 逐位复现 candidate。后续 historical replay `abacus-agent-tools@e81c5d1` + SAI job `1900782` 进一步复现 evalset baseline：旧口径是 deformed SCF、无 force threshold、`20x20x20`；candidate 是 relax、`0.01 eV/angstrom`、`34x34x34`。科学根因已闭环，待 owner 签字改判 baseline defect fixed；phonon 资源补跑由 Paimon owner 裁决。见[raw 归因](evidence/2026-10-21-elastic-al-fcc-raw-attribution/README.md)与[historical replay](evidence/2026-10-22-elastic-al-fcc-historical-scf-replay/README.md)。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
