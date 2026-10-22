@@ -1,6 +1,6 @@
 # Al-FCC elastic raw strain/stress attribution
 
-状态：candidate-side 归因已闭合；v1.2 历史根因仍缺原始 per-strain 日志，需 owner 裁决或另行授权复现。
+状态：candidate-side 归因已闭合；后继 historical replay 已定位 baseline 口径为 SCF + `20^3`。见[2026-10-22 historical replay](../2026-10-22-elastic-al-fcc-historical-scf-replay/README.md)。
 
 2026-10-21，用户明确要求访问 SAI job `1886152` 的原始输出。本次只读取远端数据并取回轻量工件；未修改 `app-tools-forge` owner worktree，未重跑 candidate。
 
@@ -74,5 +74,5 @@ candidate 的六阶 Voigt 张量最大不对称量为 `0.476 GPa`；baseline fin
 
 - 已闭合：candidate raw 执行、stress conversion、strain mapping 和 fit 可完整复现；本轮 fail 不是 candidate-side 的 parser/order/unit bug。
 - 张量级发现：baseline final tensor 本身有明显 shear coupling 和 `C44/C55` 异常，可解释汇总模量差异。
-- 未闭合：不能把上述 anomaly 的历史产生机制归因到 v1.2 的某个具体日志、执行环境或 postprocess bug，因为可访问的 benchmark 树只有 evalset final tensor 和 aggregate moduli，没有 v1.2 的 per-strain raw logs。
-- 下一步由 owner 选择：接受 tensor 级证据并把 `elastic/Al-FCC` 改判为 baseline defect fixed，或授权获取 v1.2 原始 Bohrium/job 输出、或授权一次 v1.2-equivalent 对拍。
+- 历史根因已由后继 replay 闭合：2025-08-20 的 `abacus-agent-tools@e81c5d1` 使用 `calculation=scf` 和 prepared INPUT `kspacing=0.14`（`20x20x20`），精确复现 evalset baseline tensor 与模量；candidate 使用 relax、`0.01 eV/angstrom` force threshold 和 `34x34x34`。见[historical replay](../2026-10-22-elastic-al-fcc-historical-scf-replay/README.md)。
+- 剩余动作由 owner 签字：将 `elastic/Al-FCC` 按科学口径升级记为 baseline defect fixed；不需要修改 1% threshold。
