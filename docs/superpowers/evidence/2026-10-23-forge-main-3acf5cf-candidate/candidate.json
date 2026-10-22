@@ -1,0 +1,70 @@
+{
+  "record_type": "forge-main-public-candidate",
+  "created_at": "2026-10-23T00:30:00+08:00",
+  "supersedes_for_standalone_delivery": "2026-10-21-forge-main-4106f33-candidate.json",
+  "source": {
+    "repository": "QuantumMisaka/abacus-forge",
+    "commit": "3acf5cf60c0d4501feb1cc24d4862d28c760c053",
+    "branch": "main",
+    "merge_pull_request": "QuantumMisaka/abacus-forge#9",
+    "implementation_commit": "cc689202dad573b138ae677bd92e3967c5a6f8ce",
+    "runtime_source_diff_vs_implementation_commit": false
+  },
+  "remote_ci": {
+    "run_id": 39810350192,
+    "head_sha": "3acf5cf60c0d4501feb1cc24d4862d28c760c053",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/QuantumMisaka/abacus-forge/actions/runs/39810350192"
+  },
+  "artifacts": {
+    "python": "CPython 3.12",
+    "artifact_name": "forge-distributions-3.12",
+    "artifact_id": 12438949131,
+    "expired": false,
+    "wheel": {
+      "path": "abacus_forge-0.1.0-py3-none-any.whl",
+      "size_bytes": 307943,
+      "sha256": "f40cf487163cae048ef7f2900713cffe6e6326821718a2f6e51fc64c79a82a7e",
+      "identical_to_public_release_reviewed_wheel": true
+    },
+    "sdist": {
+      "path": "abacus_forge-0.1.0.tar.gz",
+      "size_bytes": 11764006,
+      "sha256": "00b2053b85ff73ce2c60dff34eead2f3a0b6c54eb20b9910efdd8b738efd2b65"
+    }
+  },
+  "post_merge_install_smoke": {
+    "python": "CPython 3.12.3",
+    "install_mode": "fresh uv venv + wheel, python -I",
+    "version": "abacus-forge 0.1.0",
+    "doctor_json_status": "ready",
+    "doctor_json_sha256": "1b1f3fd163b35f66e25ebab7092a1cfdf96058feadf78dc65a32a1bc0a2e52ae",
+    "capabilities_count": 13,
+    "capability_names": [
+      "atst-neb",
+      "band",
+      "bec",
+      "cell-relax",
+      "cohp",
+      "dos",
+      "export",
+      "md",
+      "polarization",
+      "pyatb-band",
+      "pyatb-cohp",
+      "relax",
+      "scf"
+    ],
+    "capabilities_json_sha256": "f7016c20471744766475e65b5ca45dd4d6d6fb754b5c4ea6df81b88cf78af29b",
+    "scf_execute_schema_json_sha256": "cded6fcd57a62d87491557e34711df8361a63e3920873afa28e8d319fdfa3b48",
+    "scf_dry_run_schema_type": "boolean"
+  },
+  "boundary": {
+    "pypi_release": false,
+    "github_release": false,
+    "release_tag": false,
+    "paimon_adopted": false,
+    "paimon_candidate_4106f33_still_separate": true
+  }
+}
