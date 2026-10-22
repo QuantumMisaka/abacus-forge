@@ -4,7 +4,7 @@
 
 ## 当前工作入口
 
-Forge 0.1.0 独立公开交付准备已完成：[设计](specs/2026-10-21-forge-public-release-design.md)、[计划](plans/2026-10-21-forge-public-release.md)与[验收证据](evidence/2026-10-21-forge-public-release.md)。环境诊断、安装态人类/Agent 上手和受验证制品的发布管线已由 PR #8 合入 main；两版源码/安装态远端 CI 均通过。当前候选 wheel 为 `f40cf487…`，GitHub 发布环境已配置；PyPI 账户配置与实际发布按用户要求延后。Paimon 验收仍由另一会话负责。
+Forge 0.1.0 独立公开交付准备已完成：[设计](specs/2026-10-21-forge-public-release-design.md)、[计划](plans/2026-10-21-forge-public-release.md)与[验收证据](evidence/2026-10-21-forge-public-release.md)。环境诊断、安装态人类/Agent 上手和受验证制品的发布管线已由 PR #8 合入 main；两版源码/安装态远端 CI 均通过。PR #9 合入后，standalone public candidate 已推进到 [`main@3acf5cf`](evidence/2026-10-23-forge-main-3acf5cf-candidate/README.md)，wheel 仍为 `f40cf487…`；GitHub 发布环境已配置，PyPI 账户配置与实际发布按用户要求延后。Paimon 验收仍由另一会话负责。
 
 Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parser parity 命令本地重放各 55 项通过；GitHub 托管运行与 wheel/sdist artifact 上传也已通过。见[验证记录](evidence/2026-10-21-forge-installed-package-ci.md)。Paimon Benchmark 由另一会话负责。
 
@@ -18,10 +18,10 @@ Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parse
 
 本轮公开消费接续前的 runtime 候选为 `4106f33`，绑定 wheel `ae3705aa…`；全离线、安装态包/解析、direct NAO COHP pair contract 与真实两轨 metadata 回放通过。见[候选记录](evidence/2026-10-21-forge-main-4106f33-candidate.md)。相对 Paimon pinned `6076ad0` 的静态兼容性审计见[owner 兼容记录](evidence/2026-10-21-forge-owner-6076-compatibility/README.md)。Paimon owner 仍需显式重绑并自行验收，本仓未发布。
 
-完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已补齐 replay 接线、band 边缘事实和 longchain elastic 输入，并按签字裁决将 longchain elastic 改判为 baseline defect fixed；矩阵为 45 pass、2 baseline defect fixed、1 allowed exception、1 Al-FCC elastic fail、1 phonon resource skip，即 46/47 持平或更好。owner 记录为本地工作区
-`app-tools-forge@17c45161a` 的
+完整 PyATB `sidereus-adam@5f7e132` wheel 与 Forge `be1c0bc` 的本机安装态 develop/LTS Si/nspin=1 消费已通过，见[安装证据](evidence/2026-10-19-forge-pyatb-installed-consumption.md)。Paimon 显式 SCF 矩阵输出/readiness、develop 文件名适配及候选 ZIP 两轨 Si 实算已完成，见[既有计划 P1](plans/2026-09-13-forge-engine-version-policy.md#paimon-pyatb-handoff)。Paimon owner 已按签字裁决将 longchain elastic 与 Al-FCC elastic 均改判为 baseline defect fixed；最新矩阵为 45 pass、3 baseline defect fixed、1 allowed exception、0 fail、1 phonon inconclusive，即 47/47 baseline-pass 持平或更好。owner 记录为
+`app-tools-forge@codex/paimon-v3-elastic-owner-decision@1d06af29f` 的
 `toolbox/ABACUS/docs/superpowers/evidence/2026-10-21-paimon-benchmark-final-parity/README.md`。
-Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `01fbb2a` 候选未被该轮采用。Al-FCC candidate-side raw 归因已闭合：SAI job `1886152` 的 25 个 collect event 全部使用 `34x34x34`、converged，重建 fit 逐位复现 candidate。后续 historical replay `abacus-agent-tools@e81c5d1` + SAI job `1900782` 进一步复现 evalset baseline：旧口径是 deformed SCF、无 force threshold、`20x20x20`；candidate 是 relax、`0.01 eV/angstrom`、`34x34x34`。科学根因已闭环，待 owner 签字改判 baseline defect fixed；phonon 资源补跑由 Paimon owner 裁决。见[raw 归因](evidence/2026-10-21-elastic-al-fcc-raw-attribution/README.md)与[historical replay](evidence/2026-10-22-elastic-al-fcc-historical-scf-replay/README.md)。
+Forge relax stress 修复已进入其运行时 `6076ad0`；当前 Forge `01fbb2a` 候选未被该轮采用。Al-FCC candidate-side raw 归因已闭合：SAI job `1886152` 的 25 个 collect event 全部使用 `34x34x34`、converged，重建 fit 逐位复现 candidate。后续 historical replay `abacus-agent-tools@e81c5d1` + SAI job `1900782` 进一步复现 evalset baseline：旧口径是 deformed SCF、无 force threshold、`20x20x20`；candidate 是 relax、`0.01 eV/angstrom`、`34x34x34`。科学根因已闭环并由 owner 签字改判 baseline defect fixed；phonon 资源补跑不再受 walltime 阻塞，但暴露 v2 `forge_phonon_backend` 对 nspin=2 误用 calculated magnetic moments 的 blocker，已交给 v2 owner。见[raw 归因](evidence/2026-10-21-elastic-al-fcc-raw-attribution/README.md)与[historical replay](evidence/2026-10-22-elastic-al-fcc-historical-scf-replay/README.md)。
 
 ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当前安装组合的 Forge 消费回放，见[交接验收](evidence/2026-10-19-forge-atst-upstream-replay.md)；取消默认重复 NEB 计算任务。
 
