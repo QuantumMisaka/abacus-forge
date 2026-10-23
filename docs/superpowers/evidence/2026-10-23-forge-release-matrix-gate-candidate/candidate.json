@@ -1,0 +1,101 @@
+{
+  "record_type": "forge-release-matrix-gate-candidate",
+  "created_at": "2026-10-23T21:45:00+08:00",
+  "supersedes_release_gate_for_pending_merge": "2026-10-23-forge-main-972477c-candidate.json",
+  "source": {
+    "repository": "QuantumMisaka/abacus-forge",
+    "runtime_commit": "68d42658d0c01db52d06646c1d841569f751e56c",
+    "branch": "chore/release-matrix-gate",
+    "base_commit": "8524075c60d57df2abfae1a5796f3cdc754e5e82",
+    "pull_request": "QuantumMisaka/abacus-forge#15",
+    "runtime_relevant_diff_vs_base_8524075": [
+      ".github/workflows/ci.yml",
+      "docs/releasing.md",
+      "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
+      "scripts/release_validate.py",
+      "tests/test_release.py"
+    ],
+    "runtime_relevant_diff_vs_972477c": [
+      ".github/workflows/ci.yml",
+      "docs/releasing.md",
+      "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
+      "scripts/release_validate.py",
+      "tests/test_release.py"
+    ],
+    "exhaustive_tree_diff_vs_972477c": [
+      ".github/workflows/ci.yml",
+      "ROADMAP.md",
+      "docs/releasing.md",
+      "docs/superpowers/README.md",
+      "docs/superpowers/evidence/2026-10-23-forge-main-972477c-candidate/README.md",
+      "docs/superpowers/evidence/2026-10-23-forge-main-972477c-candidate/candidate.json",
+      "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
+      "scripts/release_validate.py",
+      "tests/test_release.py"
+    ],
+    "runtime_python_import_diff_vs_972477c": false
+  },
+  "remote_ci": {
+    "run_id": 39963085204,
+    "head_sha": "68d42658d0c01db52d06646c1d841569f751e56c",
+    "status": "completed",
+    "conclusion": "success",
+    "required_python_versions": ["3.10", "3.11", "3.12", "3.13"],
+    "required_jobs_passed": [
+      "test (3.10)",
+      "test (3.11)",
+      "test (3.12)",
+      "test (3.13)",
+      "installed-package (3.10)",
+      "installed-package (3.11)",
+      "installed-package (3.12)",
+      "installed-package (3.13)"
+    ],
+    "url": "https://github.com/QuantumMisaka/abacus-forge/actions/runs/39963085204"
+  },
+  "artifacts": {
+    "source": "remote forge-distributions-3.12 artifact",
+    "python": "CPython 3.12",
+    "wheel": {
+      "path": "abacus_forge-0.1.0-py3-none-any.whl",
+      "size_bytes": 308033,
+      "sha256": "ac2f46d3669dac280470e6b8fd24ca03aa60385f4b799f1b2e2f941cf6042b29"
+    },
+    "sdist": {
+      "path": "abacus_forge-0.1.0.tar.gz",
+      "size_bytes": 11768176,
+      "sha256": "bed450807ce93102aa89c318f0a1c96eaf96ffe7c7fbca67fc4aa471b2c438d9"
+    },
+    "distribution_metadata_validation": "passed"
+  },
+  "local_validation": {
+    "full_offline_regression": {
+      "python": "CPython 3.11.15",
+      "command": "python -m pytest -q -p no:cacheprovider",
+      "result": "1583 passed, 35 skipped",
+      "elapsed_seconds": 131.72
+    },
+    "fresh_wheel_install": {
+      "python": "CPython 3.12.3",
+      "wheel_source": "local build byte-identical to remote wheel",
+      "extras": ["dev", "abacuslite", "phonon"],
+      "abacuslite": "1.2.2",
+      "dependency_check": "passed",
+      "tests": "64 passed",
+      "elapsed_seconds": 10.94
+    },
+    "smoke": {
+      "version": "abacus-forge 0.1.0",
+      "doctor_status": "ready",
+      "capabilities_count": 13,
+      "scf_execute_schema_version": "forge.schema-discovery/v1"
+    }
+  },
+  "boundary": {
+    "merged_to_main": false,
+    "current_main_public_candidate": "972477c",
+    "release_tag": false,
+    "pypi_release": false,
+    "paimon_adopted": false
+  }
+}

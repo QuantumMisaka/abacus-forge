@@ -28,11 +28,16 @@ except ModuleNotFoundError:  # Python 3.10 development/test environments
 REPOSITORY = "QuantumMisaka/abacus-forge"
 CI_PATH = ".github/workflows/ci.yml"
 ARTIFACT_NAME = "forge-distributions-3.12"
+PROJECT_PATH = Path(__file__).resolve().parents[1] / "pyproject.toml"
+PROJECT = tomllib.loads(PROJECT_PATH.read_text(encoding="utf-8"))
+REQUIRED_PYTHON_VERSIONS = tuple(
+    classifier.rsplit(" ", 1)[-1]
+    for classifier in PROJECT["project"]["classifiers"]
+    if classifier.startswith("Programming Language :: Python :: 3.")
+)
 REQUIRED_JOBS = {
-    "test (3.10)",
-    "test (3.12)",
-    "installed-package (3.10)",
-    "installed-package (3.12)",
+    *(f"test ({version})" for version in REQUIRED_PYTHON_VERSIONS),
+    *(f"installed-package ({version})" for version in REQUIRED_PYTHON_VERSIONS),
 }
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024
@@ -59,8 +64,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def project_version() -> str:
-    path = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    return tomllib.loads(path.read_text(encoding="utf-8"))["project"]["version"]
+    return PROJECT["project"]["version"]
 
 
 def api_get(path: str, token: str) -> dict:

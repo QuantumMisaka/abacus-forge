@@ -7,6 +7,7 @@
 [1.2.2 接续](docs/superpowers/evidence/2026-10-21-forge-abacuslite-1.2.2-rebind.md)；此前集成证据见
 [交付收口](docs/superpowers/evidence/2026-10-21-forge-integration-candidate-closeout.md)。
 standalone public candidate 已更新到 [`972477c`](docs/superpowers/evidence/2026-10-23-forge-main-972477c-candidate/README.md)；`4106f33` 保留为历史 Paimon 兼容调查候选，见[旧候选记录](docs/superpowers/evidence/2026-10-21-forge-main-4106f33-candidate.md)。
+release matrix gate 分支候选已绑定 [`68d42658`](docs/superpowers/evidence/2026-10-23-forge-release-matrix-gate-candidate/README.md) 并由 PR #15 走合入审查；合入前 `972477c` 仍是 main public candidate。
 
 ## 当前重点与未完成验收
 
