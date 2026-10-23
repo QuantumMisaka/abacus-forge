@@ -6,15 +6,25 @@
 
 ## Scope
 
-- CI 的 `test` 与 `installed-package` 矩阵补齐 Python 3.11。
-- 发布验证器不再维护硬编码的四 job 清单，而是按 pyproject 声明的 Python
+- [x] CI 的 `test` 与 `installed-package` 矩阵补齐 Python 3.11。
+- [x] 发布验证器不再维护硬编码的四 job 清单，而是按 pyproject 声明的 Python
   classifier 派生 `test` 和 `installed-package` 必需 job；发布 run 缺任一版本
   即拒绝。
-- 增加 owning regression，检查声明的 Python 版本、两条 CI 矩阵和发布必需
+- [x] 增加 owning regression，检查声明的 Python 版本、两条 CI 矩阵和发布必需
   job 三者一致。
-- 在隔离 Python 3.11 环境执行完整默认离线回归；用 CPython 3.12 构建 wheel
+- [x] 在隔离 Python 3.11 环境执行完整默认离线回归；用 CPython 3.12 构建 wheel
   与 sdist，并做安装态候选 smoke。
-- 形成新候选记录；远端 CI 未完成前不得宣称该候选已满足发布门槛。
+- [x] 形成新候选记录；[远端 CI](../evidence/2026-10-23-forge-release-matrix-gate-candidate/README.md)
+  已完成后才记录通过状态。
+
+## Completion record
+
+Runtime commit 为 `68d42658d0c01db52d06646c1d841569f751e56c`。本地
+CPython 3.11 全量离线回归为 `1583 passed, 35 skipped`；CPython 3.12 fresh
+wheel 安装门禁为 `64 passed`。Push CI
+`39963085204` 的八个 required job 全部成功，CI 3.12 artifact 的 wheel/sdist
+metadata validation 通过。候选记录和未合入边界见
+[branch candidate](../evidence/2026-10-23-forge-release-matrix-gate-candidate/README.md)。
 
 ## Non-goals
 
