@@ -16,7 +16,7 @@ permissions: {}
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       actions: read
@@ -25,10 +25,10 @@ jobs:
       artifact_id: ${{ steps.identity.outputs.artifact_id }}
       digest: ${{ steps.identity.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Verify tag, successful CI run, required jobs and artifact identity
@@ -50,7 +50,7 @@ jobs:
           --dist-dir dist
       - name: Verify wheel and sdist identities and metadata
         run: python scripts/release_validate.py verify-distributions --dist-dir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: verified-forge-distributions
           path: dist/
@@ -58,7 +58,7 @@ jobs:
 
   pypi:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment:
       name: pypi
@@ -67,7 +67,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: verified-forge-distributions
           path: dist/
