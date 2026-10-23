@@ -6,11 +6,17 @@ import hashlib
 import importlib.util
 from io import BytesIO
 from pathlib import Path
+import re
 import tarfile
 from urllib.request import Request
 import zipfile
 
 import pytest
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10/3.11 test environments
+    import tomli as tomllib
 
 pytestmark = pytest.mark.core
 
@@ -21,6 +27,7 @@ assert SPEC and SPEC.loader
 release = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(release)
 COMMIT = "a" * 40
+PROJECT_ROOT = SCRIPT.parents[1]
 
 
 def release_case():
@@ -46,7 +53,7 @@ def release_case():
             "run_attempt": 1,
         },
         "jobs": {
-            "total_count": 4,
+            "total_count": len(release.REQUIRED_JOBS),
             "jobs": [
                 {
                     "name": name,
@@ -69,6 +76,32 @@ def release_case():
                 "digest": "sha256:" + "b" * 64,
             }],
         },
+    }
+
+
+def test_release_jobs_cover_declared_python_and_ci_matrix():
+    project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    declared = {
+        classifier.rsplit(" ", 1)[-1]
+        for classifier in project["project"]["classifiers"]
+        if classifier.startswith("Programming Language :: Python :: 3.")
+    }
+    ci_text = (PROJECT_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci_matrices = re.findall(r"python-version:\s*\[([^\]]+)\]", ci_text)
+    ci_versions = [
+        {version.strip().strip('"\'') for version in matrix.split(",") if version.strip()}
+        for matrix in ci_matrices
+    ]
+
+    required_versions = set(getattr(release, "REQUIRED_PYTHON_VERSIONS", ()))
+    required_jobs = set(getattr(release, "REQUIRED_JOBS", ()))
+
+    assert required_versions == declared
+    assert len(ci_versions) == 2
+    assert all(versions == declared for versions in ci_versions)
+    assert required_jobs == {
+        *(f"test ({version})" for version in declared),
+        *(f"installed-package ({version})" for version in declared),
     }
 
 
