@@ -7,17 +7,21 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
@@ -26,15 +30,15 @@ jobs:
         run: python -m pytest -q
 
   installed-package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Build sdist and wheel
@@ -62,7 +66,7 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write(f"commit={release['tag_commit']}\n")
           PY
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: QuantumMisaka/abacuslite
           ref: ${{ steps.parser.outputs.commit }}
@@ -73,7 +77,8 @@ jobs:
         run: |
           wheels=(dist/*.whl)
           test "${#wheels[@]}" -eq 1
-          python -m pip install "${wheels[0]}[dev,abacuslite]"
+          python -m pip install "${wheels[0]}[dev,abacuslite,phonon]"
+          python -c "import phonopy; print('phonopy', phonopy.__version__)"
           python -m pip check
           echo "ABACUS_FORGE_WHEEL=$PWD/${wheels[0]}" >> "$GITHUB_ENV"
       - name: Check installed metadata, onboarding and four-capability parser parity
@@ -92,7 +97,7 @@ jobs:
             tests/test_getting_started.py \
             tests/benchmark/test_abacuslite_canonical_parity.py
       - name: Retain tested distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: forge-distributions-${{ matrix.python-version }}
           path: |
