@@ -1,0 +1,53 @@
+{
+  "record_type": "forge-main-public-candidate",
+  "created_at": "2026-10-23T21:05:00+08:00",
+  "supersedes_for_standalone_delivery": "2026-10-23-forge-main-3acf5cf-candidate.json",
+  "source": {
+    "repository": "QuantumMisaka/abacus-forge",
+    "commit": "972477c586dcdd513f57af9cd1e1a51df8f2feff",
+    "branch": "main",
+    "merge_pull_request": "QuantumMisaka/abacus-forge#13",
+    "runtime_source_diff_vs_3acf5cf": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml",
+      "pyproject.toml"
+    ],
+    "runtime_python_import_diff_vs_3acf5cf": false
+  },
+  "remote_ci": {
+    "run_id": 39956848080,
+    "head_sha": "972477c586dcdd513f57af9cd1e1a51df8f2feff",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/QuantumMisaka/abacus-forge/actions/runs/39956848080"
+  },
+  "artifacts": {
+    "python": "CPython 3.12",
+    "wheel": {
+      "path": "abacus_forge-0.1.0-py3-none-any.whl",
+      "size_bytes": 309554,
+      "sha256": "ac2f46d3669dac280470e6b8fd24ca03aa60385f4b799f1b2e2f941cf6042b29"
+    },
+    "sdist": {
+      "path": "abacus_forge-0.1.0.tar.gz",
+      "size_bytes": 12595215,
+      "sha256": "719817d6a5244f929ab486779838548f62db36768796e2bf0cf8379bcafef20e"
+    }
+  },
+  "post_merge_install_smoke": {
+    "python": "CPython 3.12.3",
+    "install_mode": "fresh uv venv + wheel, python -I",
+    "version": "abacus-forge 0.1.0",
+    "doctor_json_status": "ready",
+    "doctor_json_sha256": "f941e30b1d5ffdfa698251729dabcbfedb85a718083d69a9e94a2157e097a440",
+    "capabilities_count": 13,
+    "capabilities_json_sha256": "f7016c20471744766475e65b5ca45dd4d6d6fb754b5c4ea6df81b88cf78af29b",
+    "scf_execute_schema_json_sha256": "cded6fcd57a62d87491557e34711df8361a63e3920873afa28e8d319fdfa3b48"
+  },
+  "boundary": {
+    "pypi_release": false,
+    "github_release": false,
+    "release_tag": false,
+    "paimon_adopted": false
+  }
+}
