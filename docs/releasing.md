@@ -4,7 +4,7 @@
 
 ## 发行边界
 
-`publish.yml` 是手动入口。它仅从指定的成功 CI `push` run 下载已测试的 Python 3.12 wheel 和 sdist，核对 tag、commit、四个必需矩阵 job、artifact 摘要与两个包的元数据，然后由单独的 `pypi` job 上传。发布流程不重新构建。首次版本沿用 `pyproject.toml` 中的 `0.1.0`。
+`publish.yml` 是手动入口。它仅从指定的成功 CI `push` run 下载已测试的 Python 3.12 wheel 和 sdist，核对 tag、commit、全部必需矩阵 job、artifact 摘要与两个包的元数据，然后由单独的 `pypi` job 上传。必需 job 由 `test`/`installed-package` 与 pyproject 声明的 Python 版本派生，当前共八个。发布流程不重新构建。首次版本沿用 `pyproject.toml` 中的 `0.1.0`。
 
 发布验证器要求：
 
@@ -31,7 +31,7 @@ GitHub 侧已建立 `pypi` environment（ID `24906209635`），deployment tag po
 ## 执行顺序
 
 1. 确认 release commit 的 `pyproject.toml` 版本、`CHANGELOG.md`、入门文档及干净安装验收。按维护者流程将该 commit 合入远端，再在该 commit 建立 `v0.1.0` tag 并推送；勿将 tag 指向未经验证的提交。
-2. 等待该 commit 的 CI `push` run 完成。记录 run ID，核对四个必需 job 及 artifact。CI 可以由 tag push 或相同 commit 的分支 push 产生。
+2. 等待该 commit 的 CI `push` run 完成。记录 run ID，核对由 pyproject Python 支持矩阵派生的全部必需 job（当前八个）及 artifact。CI 可以由 tag push 或相同 commit 的分支 push 产生。
 3. 当 PyPI/GitHub environment 配置完成、且已准备上传时执行：
 
    ```bash

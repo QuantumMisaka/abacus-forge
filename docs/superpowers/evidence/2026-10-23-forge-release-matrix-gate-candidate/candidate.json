@@ -6,11 +6,29 @@
     "repository": "QuantumMisaka/abacus-forge",
     "runtime_commit": "68d42658d0c01db52d06646c1d841569f751e56c",
     "branch": "chore/release-matrix-gate",
-    "base_commit": "8524075",
+    "base_commit": "8524075c60d57df2abfae1a5796f3cdc754e5e82",
     "pull_request": "QuantumMisaka/abacus-forge#15",
-    "runtime_source_diff_vs_972477c": [
+    "runtime_relevant_diff_vs_base_8524075": [
       ".github/workflows/ci.yml",
       "docs/releasing.md",
+      "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
+      "scripts/release_validate.py",
+      "tests/test_release.py"
+    ],
+    "runtime_relevant_diff_vs_972477c": [
+      ".github/workflows/ci.yml",
+      "docs/releasing.md",
+      "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
+      "scripts/release_validate.py",
+      "tests/test_release.py"
+    ],
+    "exhaustive_tree_diff_vs_972477c": [
+      ".github/workflows/ci.yml",
+      "ROADMAP.md",
+      "docs/releasing.md",
+      "docs/superpowers/README.md",
+      "docs/superpowers/evidence/2026-10-23-forge-main-972477c-candidate/README.md",
+      "docs/superpowers/evidence/2026-10-23-forge-main-972477c-candidate/candidate.json",
       "docs/superpowers/plans/2026-10-23-forge-release-matrix-gate.md",
       "scripts/release_validate.py",
       "tests/test_release.py"

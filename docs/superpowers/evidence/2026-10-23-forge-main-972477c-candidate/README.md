@@ -17,3 +17,7 @@
 - 未触发 publish workflow。
 - 未上传 PyPI。
 - Paimon 尚未采用该 standalone candidate。
+
+2026-10-23 provenance correction：重新下载本候选 CI artifact 后，确认原始 JSON 中的
+wheel/sdist `size_bytes` 有误；两个 SHA-256 不变，实际 byte size 已在
+[candidate.json](candidate.json) 中更正并保留原值。
