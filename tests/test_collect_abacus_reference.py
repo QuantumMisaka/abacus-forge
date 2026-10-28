@@ -12,6 +12,19 @@ from abacus_forge.workspace import Workspace
 from tests.support.reference_workspaces import FIXTURE_ROOT, copy_abacustest_scf_workspace, copy_native_md_workspace
 
 
+def test_collect_does_not_apply_legacy_workflow_path_exclusions(tmp_path: Path) -> None:
+    """Artifact discovery keys on producer filenames, not retired workflow paths."""
+    workspace = Workspace(tmp_path / "workflow-neutral-artifacts").ensure_layout()
+    workspace.write_text("inputs/INPUT", "INPUT_PARAMETERS\ncalculation scf\n")
+    workspace.write_text("outputs/aiida/BANDS_1.dat", "0.0 -1.0 0.2\n1.0 -0.8 0.4\n")
+    workspace.write_text("outputs/aiida/DOS1_smearing.dat", "-1.0 0.1\n0.0 0.2\n")
+
+    result = collect(workspace)
+
+    assert [Path(path).name for path in result.metrics["band_artifacts"]] == ["BANDS_1.dat"]
+    assert [Path(path).name for path in result.metrics["dos_artifacts"]] == ["DOS1_smearing.dat"]
+
+
 def test_collect_matches_abacustest_reference_for_force_stress_and_pressure(tmp_path: Path) -> None:
     reference = json.loads((FIXTURE_ROOT / "abacus.json").read_text(encoding="utf-8"))["output"][0]
 
