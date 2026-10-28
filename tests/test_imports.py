@@ -197,6 +197,7 @@ def _isolated(code: str) -> Any:
     return json.loads(proc.stdout)
 
 def test_input_io_import_does_not_load_unrelated_services_or_science_packages() -> None:
+    """Basic input I/O stays a light entry point instead of loading unrelated services."""
     result = _isolated("""
 import json, sys
 import abacus_forge.input_io

@@ -53,6 +53,25 @@ flowchart TD
 
 具体调用和状态见[使用指南](guide.md)与[接口参考](reference.md)。`scientific=unassessed`、workspace-relative artifact 和追加式事件属于契约要求，不能用“清理代码”绕过。
 
+## 边界测试目的
+
+边界测试保护的是可运行、可分发和可调用的架构性质，不是禁止历史名词出现。
+文档、归档、计划、evidence、回归 fixture 和显式 negative guard 可以引用 retired
+系统；全局 keyword scan 不是门禁。新增边界检查时，必须先说明它保护哪条架构
+不变量，并能在一次具名 mutation 中失败。
+
+| Boundary purpose | 必须保持的性质 | Representative evidence |
+| --- | --- | --- |
+| Runtime dependency closure | 生产代码不 import retired workflow、agent/test stack、协议层或调度器 | `tests/test_architecture.py` |
+| Core / API layering | typed services 和 neutral core 可与 legacy 路径共享底层模块，但不依赖 legacy API facade 或 unit adapter | architecture dependency-graph tests |
+| Artifact neutrality | collector 和 postprocess 按 producer 文件名与显式请求选择产物；retired workflow 目录名不产生特殊分支 | `tests/test_collect_abacus_reference.py::test_collect_does_not_apply_legacy_workflow_path_exclusions` |
+| Lazy import boundary | 基础文本 I/O 导入不连带加载无关 service、科学库或外部引擎 | `tests/test_imports.py` |
+| Package boundary | 默认依赖、optional extra 和 wheel metadata 只表达声明过的发布边界 | `tests/test_package_contract.py`、installed-package CI |
+
+边界检查失败时，报告应指向被破坏的不变量和具体 mutation，而不是只报告某个词
+出现过。若某处必须写出 forbidden root（例如 wheel negative guard），这是边界
+守卫，不是对上层语义的耦合。
+
 ## 修改入口与验证
 
 | 要修改的行为 | 先定位 | 验证入口 |
