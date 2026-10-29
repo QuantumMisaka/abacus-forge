@@ -1,6 +1,12 @@
 # ABACUS-Forge 路线图
 
-本页维护当前重点和待决候选，更新于 2026-10-23。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
+本页维护当前重点和待决候选，更新于 2026-10-29。当前用法见[使用指南](docs/guide.md)，接口与成熟度见[参考](docs/reference.md)，逐项任务和验收证据由下列 owning PLAN 维护。历史运行数字不作为当前候选的通过证明。
+
+用户已确认[收缩后的算筹工场设计](docs/superpowers/specs/2026-10-29-forge-computation-factory-target-architecture-design.md)：
+优先完成实际消费链，复用现有 discovery、runner、结果和 provenance，撤回未消费的
+Phase A 平行契约。当前改动与验证见[原型撤回记录](docs/superpowers/plans/2026-10-29-forge-computation-factory-phase-a.md)。
+ABACUS 默认 GPU、独立 CPU 后处理的策略保留；后续资源和目录接入随具体能力推进。
+以下候选及跨仓证据保留其原有版本范围，不证明 Paimon 1.2.84 替代完成。
 
 本轮 NAO/BEC/消费扩展已于 `5f38349` 合入本地 main，集成后回归通过；
 本轮优先升级 optional parser 到 `abacuslite==1.2.2`，当前候选与验收见

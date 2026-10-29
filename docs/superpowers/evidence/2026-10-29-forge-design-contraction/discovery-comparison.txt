@@ -1,0 +1,15 @@
+Baseline: abacus-forge main@3d3ae52c8908149ae6f1f9f140444a3a805b69ca
+Candidate: refactor/forge-design-contraction-20261029, uncommitted contraction diff
+Interpreter: /home/james/apps/miniforge3/envs/abacus-env/bin/python
+Imports: candidate src/ (PYTHONPATH=src)
+
+Captured stdout from this session's baseline/API/CLI comparison, exit 0:
+API discovery unchanged: 13 capabilities, 32 operation schemas
+CLI matches API for all 33 discovery queries
+
+The baseline document and replay script are retained locally in
+.superpowers/design-contraction/discovery-baseline.json and check_discovery.py.
+The baseline contains capabilities_document() and request_schema_document()
+for every selector from REQUEST_TYPES_BY_CAPABILITY plus ATST_NEB_REQUEST_TYPES.
+The comparison asserts full parsed document equality, then checks each CLI
+query against that same API result with successful exit and empty stderr.

@@ -1,544 +1,90 @@
-# Forge “算筹工场”目标架构与 Paimon v3 单一来源后端设计
+# Forge “算筹工场”：面向实际消费的后端设计
 
-- Status: Draft; product name confirmed by owner on 2026-10-29
-- Date: 2026-10-29
-- Owner: ABACUS-Forge
-- Supersedes: 无；本 SPEC 是既有 Contract-First / Service-Status / Capability SPEC 的目标架构附录
-- 上位规范:
-  - `2026-09-01-forge-contract-first-rearchitecture-design.html`
-  - `2026-09-02-forge-service-status-migration-design.html`
-  - `2026-09-12-forge-engine-version-policy-design.html`
-  - `2026-09-29-forge-contract-system-design.html`（只采纳其问题定义；M1–M4 仍不整体批准）
+- 状态：2026-10-29 用户确认收缩方向并授权消融；本修订取代本文件原七层架构与 Phase A–F 框架建设方案。
+- Owner：ABACUS-Forge。
+- 基础规范：[Contract-First](2026-09-01-forge-contract-first-rearchitecture-design.html)、[Service/Status](2026-09-02-forge-service-status-migration-design.html)、[Engine/Version Policy](2026-09-12-forge-engine-version-policy-design.html)。既有 v1 请求、结果、错误、单 workspace 与事件语义继续有效。
+- 实施与验证：[Phase A 收缩记录](../plans/2026-10-29-forge-computation-factory-phase-a.md)。
 
-## 1. 定位裁决
+## 1. 产品目标与职责
 
-**Forge 是 ABACUS 科学计算的单一来源后端，也是人类研发者与 AI Agent 共用的“算筹工场”。**
+ABACUS-Forge（算筹工场）为人类研发者与 AI Agent 提供可复用的 ABACUS 科学计算 Python API 和非交互 CLI。优先把实际输入、执行、收集和后处理能力交付完整，而不先建设统一所有能力的元数据系统。
 
-Forge 不是 Paimon 的内部工具，也不是只服务 ATP 的私有函数库。它对外提供稳定、版本化、协议无关的：
+| 层次 | 负责的行为 |
+| --- | --- |
+| Forge | 输入与资产处理、单次引擎调用、解析和独立后处理；返回事实、来源与工件。 |
+| 引擎与专业库 | ABACUS、PyATB、ATST、abacuslite 等各自的数值算法、驱动和格式读取；Forge 通过明确接口复用。 |
+| 调用方与平台适配 | 选择和组合操作、申请资源、重试、科学判断、ATP Tool、报告与平台发布。 |
 
-- typed Python API；
-- non-interactive machine CLI；
-- request / result / artifact / event contracts；
-- workspace 与 provenance；
-- capability、engine、resource、diagnostic、output 元数据。
+复用计算实现与已公开契约，不要求所有 Paimon Tool 都变成一个 Forge capability。Paimon 自有摘要、展示、编排和辅助能力继续由 Paimon 维护。
 
-**Paimon 承载 ATP Tool 与其他辅助组件。**
+## 2. 保留已有接口，取消平行框架
 
-Paimon 是 Forge 的消费者和平台适配层，负责：
+能力和请求发现继续使用 `discovery.py`、`request_registry.py`、已有 request 类型，以及 `capabilities` / `schema <capability> <operation>`。结果事实以实际 `OperationOutcome`、metric、artifact 和 observations 为准。
 
-- ATP Tool 生命周期；
-- `@tool_io` 声明；
-- platform protocol；
-- Agent session、报告和辅助组件；
-- Slurm / SAI / 站点调度适配；
-- 用户可见的诊断包装和恢复策略。
+撤回尚未接入运行链的 Phase A `capability_registry.py`、新记录类型及 `capability-contracts` 命令。它们只提供 SCF seed 与自测，重复描述既有事实，并包含未实现的输出、错误的 metric 元数据和不可解析的 schema 引用。消费者改用已有发现接口；不保留另一份声明相同事实的兼容 registry。此次是首次公开发布前、用户明确授权的原型撤回；已交付操作接口的兼容规则仍见 [compatibility](../../compatibility.md)。
 
-Paimon 不得复制 Forge 的执行、收集、artifact、schema 或 output contract 逻辑。Paimon 的 Tool 契约应由 Forge capability registry 驱动、生成或校验。
+后续缺少某项元数据时，在它的实际 owner 中补充，并通过对应消费者验证。当前没有完成全能力输出目录，不把目录完整度设为所有 Tool 的发布前提，也不按固定数量的字段或 evidence booleans 判断能力成熟度。已有 COHP 方法说明、property manifest 与专用结果契约继续保持各自边界。
 
-### 非目标
+## 3. 来源记录：记录事实，按需要核对
 
-Forge 仍然不做：
+来源信息沿用现有结果 diagnostics、parser metadata、输入 provenance 和 workspace event，不增加通用 ExecutionIdentity 子系统。
 
-- MCP / ATP / 平台协议编解码；
-- Slurm、SAI、Bohrium、DPDispatcher 调度；
-- workflow 编排、自动重试、跨 workspace 任务链；
-- 数字 Task-ID 协议；
-- 交互式前端；
-- 科学接受判断；
-- 用户项目管理、权限、报告发布。
+| 使用场景 | 所需来源 |
+| --- | --- |
+| 执行 | 当前 operation、输入和工件引用、实际启动命令与参数；可获得的引擎和 Forge 版本。 |
+| 收集已有输出 | 输出中可识别的生产者版本与源文件、当前解析器及版本；无法得知的原执行环境保留 unknown。 |
+| Benchmark、发布或特定复现 | 根据所验证的组合记录候选源码、wheel、镜像、依赖环境和输入；复用已有候选清单和证据。 |
 
-“ProjectContext”只表达调用方显式给出的本地目录组织意图，不表达平台项目、权限或任务队列。
+生产者与解析者分别记录。解析历史日志不要求原二进制、容器或 Git checkout，也不把本机版本冒充日志生产者。哈希用于必要的内容完整性、来源绑定或制品核验，不要求每次普通操作重复计算 executable / wheel / SIF hash 或提交 Python lock。
 
-## 2. 产品身份与调用模型
+核对只针对操作实际需要的版本、功能或调用方显式要求的约束。现有 parser 的已知版本冲突、格式不支持和缺依赖处理继续有效；来源不全本身不成为新的全局拒绝条件。
 
-Forge 对两类一等调用者保持同一契约：
+## 4. 资源：沿用 GPU/CPU 分工，分开申请与启动
 
-| Caller | 使用方式 | 典型形态 |
-| --- | --- | --- |
-| 人类研发者 | Python API / CLI / 后续可选 TUI | 准备输入、执行、收集、后处理、导出 |
-| AI Agent / 上层 adapter | machine CLI / typed Python API / JSON contracts | 非交互、结构化、可审计、可重放 |
+用户确认的现役策略继续保留：ABACUS 计算默认 GPU；独立输入准备、收集和 CPU 后处理按实际成本使用 CPU。资源取决于本次 operation 启动什么，不能仅凭 capability 名称推断。
 
-“算筹工场”的目标是让调用方不必理解旧 `abacus-agent-tools` / `abacustest` 的内部结构，只需选择 capability、operation、engine、workspace 和 evidence 要求。
-
-### 调用模型
+| 操作 | 集成方式 |
+| --- | --- |
+| 纯输入准备、结构编辑、日志收集 | 工具自身使用 CPU；生成面向 GPU 的未来 ABACUS 输入不意味着当前申请 GPU。 |
+| ABACUS execute | 现役 Paimon profile 保留 GPU 默认与已验证档位；资源与实际 INPUT、可执行程序和启动方式一致。 |
+| CPU PyATB / Bader 等独立后处理 | 使用对应 CPU 运行环境；不因前一步是 GPU SCF 而要求 GPU。 |
+| ASE/CP、NEB 等含 ABACUS 子计算的操作 | 按驱动及子计算的并行方式传递资源；不将图像并行的 GPU/rank 含义套用到普通 ABACUS。 |
 
 ```text
-Human / Agent / Paimon ATP Tool
-        ↓ explicit request
-Forge capability API / machine CLI
-        ↓ capability contract
-Prepare / Modify / Execute / Collect / Postprocess / Export
-        ↓ engine adapter
-ABACUS / PyATB / ATST / optional parser backend
-        ↓ local process + evidence
-Workspace manifest, events, artifacts, metrics, diagnostics
-        ↓ consumer projection
-Human report / Agent evidence / Paimon Tool outputs
+操作默认值 + 调用方显式选择
+          ↓
+Paimon / 站点适配器申请资源
+          ↓
+实际分配 + 引擎启动参数 → Forge 执行 → 退出与资源观察
 ```
 
-## 3. 核心架构原则
+Paimon/站点适配器继续负责 `resAlloc`、partition/QOS、GPU 档位、分配与绑定。通用库不固化 SAI 的 CPU/GPU 比例、固定档位上限或 Slurm 参数。独立本地调用可使用调用方已有的资源，不要求经过平台分配服务。
 
-1. **单一来源**：capability、operation、request schema、output contract、diagnostic class、engine identity、maturity 都以 Forge registry 为规范源。
-2. **契约先行**：所有新行为先进入版本化 schema，再进入实现。
-3. **单元操作优先**： Forge 提供单元 operation；多 operation 编排由 caller 显式执行。
-4. **Artifact 是一等公民**：任何跨 operation 边界的文件必须有 `ArtifactRecord` 与 workspace-relative path。
-5. **科学状态不判定**：执行成功、解析完整、科学可接受是三类事实，Forge 只表达前两类。
-6. **平台无关**：Forge 不理解站点、账号、队列、项目权限或平台 Task-ID。
-7. **可审计优先**：workspace manifest 和 events append-only；不使用 mutable last-result 作为规范事实。
-8. **薄 adapter**：Paimon 只做投影，不复制后端逻辑。
-9. **显式降级**：缺失依赖、未知 schema、非法资源、engine identity mismatch、diagnostic unknown 都 fail closed。
-10. **人类与 Agent 对等**：CLI 的输出应能由 Agent 消费；Python API 的语义应能由人类审阅。
+Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新增 GPU 数、设备绑定或实际分配信息，应随具体执行适配接入并验证；暂不发布脱离运行消费者的 ResourceSpec。通用资源表示需要覆盖零 GPU 的 CPU 操作；这不改变现役 Paimon 的 ABACUS GPU 准入，也不授权自动 CPU 降级。本次不增加新的资源调度实现。
 
-## 4. 目标架构分层
+资源请求、实际分配和实际启动三者分别记录，未知观测不写成零。MPI ranks 与 GPU 数由引擎和启动方式映射，不设置通用一比一规则。发生 OOM、超时或非零退出时，Forge 返回有来源的事实；外层决定升档、重新申请和重试。整个作业被平台杀死时，终态记录由外部执行管理层补充，不要求进程内必然落盘。
 
-### L0 Contract Kernel
+先贯通单节点 ABACUS GPU 与独立 CPU 后处理，再按实际需要接 ASE/CP、NEB；多节点扩展随启动能力和真实验证推进。
 
-稳定基础类型：
+## 5. 目录、输出与诊断按消费者补齐
 
-- `OperationRef`
-- `OperationStatus`
-- `ForgeResultEnvelope`
-- `ArtifactRecord`
-- `MetricRecord`
-- `CheckRecord`
-- `Observation`
-- `ForgeErrorEnvelope`
-- `OperationOutcome`
+**目录放置。** 先复用调用方已有 project parent 和路径解析，向 Forge 提供明确 workspace。只有可复用的路径解析、冲突检查确实缺失时才抽取小型 helper。不预建 ProjectContext / WorkspaceAllocator / ProjectManifest 框架、固定 role 枚举或跨 workspace 的第二套审计索引。既有路径 containment 和 append-only event 继续保护实际工件交接。
 
-已有 `forge.request/v1`、`forge.result/v1`、`forge.workspace/v1` 保持兼容。
+**输出映射。** Paimon 中声明来自 Forge 的输出核对实际工件、单位、来源和缺失语义，允许显式重命名与有依据的派生。摘要、报告及平台输出由 Paimon 自有契约定义。多个操作的组合属于调用方；不要求全部 Tool 输出是 Forge canonical outputs 的子集，不自动生成整套 Tool。
 
-### L1 Capability Registry
+**诊断。** 复用已有错误 envelope、运行退出事实、observations 和 diagnostics。遇到真实消费缺口再补稳定字段，不另建 collector registry、封闭的全局 diagnostic 枚举或恢复动作语言。平台特有信息由 adapter 解释为有来源的事实；Forge 不直接读取 ATP/Slurm 传输协议。数据保真、有效 JSON 与既有错误类别仍需验证。
 
-将现有分散在 `discovery.py`、contracts、collector、service 中的事实收敛为单一 capability registry。
+## 6. 迁移与相称验证
 
-每个 capability 的规范记录：
+以最新 Paimon v2 基线为需求来源，逐能力移植实际缺口。2026-10-29 读取的 `app-tools/main@38c0f9073` 为 toolbox `1.2.84`；`app-tools-forge-latest-main-sync@7cd73eeb3` 是对应规划工作树，不是已通过替代验收的新运行候选。旧 `1.2.76` Forge-route candidate 和历史 Benchmark 证据按其原身份保留。
 
-```json
-{
-  "schema_version": "forge.capability-contract/v1",
-  "capability": "relax",
-  "engine": "abacus",
-  "driver": "native|ase|cp",
-  "operations": ["prepare", "modify", "execute", "collect"],
-  "maturity": "experimental",
-  "request_schema_ref": "forge.schema.relax.execute/v1",
-  "canonical_outputs": [
-    {
-      "name": "work_dir",
-      "kind": "directory",
-      "required": true,
-      "availability": "always",
-      "artifact_role": "output"
-    },
-    {
-      "name": "relaxed_structure_file",
-      "kind": "file",
-      "required": false,
-      "availability": "converged",
-      "artifact_role": "primary_structure"
-    },
-    {
-      "name": "relaxed_inputs_dir",
-      "kind": "directory",
-      "required": false,
-      "availability": "converged_or_partial_resume",
-      "artifact_role": "input_handoff"
-    }
-  ],
-  "metrics": [
-    {
-      "name": "total_energy",
-      "unit": "eV",
-      "kind": "reported|derived",
-      "source_marker_ref": "abacus.marker.final_etot"
-    }
-  ],
-  "diagnostic_classes": [
-    "missing_output",
-    "unparseable_output",
-    "resource_oom",
-    "resource_timeout",
-    "engine_nonzero_exit",
-    "identity_mismatch"
-  ],
-  "maturity_evidence": {
-    "offline": true,
-    "installed": false,
-    "real_smoke": false,
-    "parity": false
-  }
-}
-```
+近期先完成一条 SCF 输入→执行→收集→Paimon 消费链，按实际需要补目录放置、资源交接和输出映射；再扩展 Relax/MD、CPU 后处理和驱动。完整替代仍需解除旧依赖并在相应 ABACUS Agent Benchmark 上同等或更好，不能由离线测试或删除 import 推定。
 
-该 registry 是 Paimon Tool 契约的规范来源。Paimon 可以生成 `@tool_io` 声明，或至少用 CI 校验其声明与 Forge registry 一致。
+验证强度随变更及所声称的结果选择：
 
-不得把 ATP `tool_data`、platform report、Slurm shape 或用户报告文案放进 Forge registry。
+- 契约或消费者改变，检查实际请求、结果与交接；真实错误用邻近回归保护。
+- 仅收缩未消费的元数据原型，比较保留接口及相关离线行为；不为删设计新增真实计算。
+- 安装、引擎启动或打包边界改变，补对应安装态或真实运行证据；相关输入未变时复用已有证据。
+- 在完整迁移或发布验收处汇总候选和适用证据，不要求每个小切片重跑全套 Benchmark、冻结全部哈希或重复 SAI 计算。
 
-### L2 Workspace and Project Runtime
-
-保持单 workspace 审计边界，新增显式 project 组织层。
-
-```json
-{
-  "schema_version": "forge.workspace-plan/v1",
-  "project_root": "GaN",
-  "workspace_rel": "relax/prime-run",
-  "role": "run",
-  "strategy": "explicit",
-  "contained_paths": true,
-  "allow_existing": false
-}
-```
-
-`ProjectContext` 不表示平台项目，只表示本地目录组织：
-
-```text
-GaN/
-  inputs/
-    prime/
-    next/
-  runs/
-    prime/
-    restart-a/
-  analysis/
-    band/
-    dos/
-  reports/
-    forge-projects.json
-```
-
-`WorkspaceAllocator` 只做确定性路径解析、containment 检查、冲突检测和 allocator evidence；不做任务链、不自动 retry、不自动复用旧目录。
-
-`ProjectManifest` 追加记录：
-
-- project root；
-- declared workspace roles；
-- operation outcome refs；
-- artifact refs；
-- allocator decisions；
-- engine identity；
-- diagnostic refs。
-
-它不改变单 workspace manifest 语义，而是跨 workspace 的只读审计索引。
-
-### L3 Engine and Driver Adapter
-
-Forge 的引擎面继续与平台解耦。
-
-| Adapter | 职责 | 不做 |
-| --- | --- | --- |
-| ABACUS native | prepare INPUT/STRU/KPT；execute；collect native output | 不自动判断收敛为科学成功 |
-| ASE relax/MD driver | 构造 driver 输入、启动本地优化/MD、收集轨迹与 endpoint | 不做 CP 逻辑硬编码、不做科学收敛判定 |
-| CP / ATST driver adapter | 显式接收 compensated/FCP 配置和 runner 结果 | 不隐藏 workflow 状态 |
-| PyATB | 显式矩阵/结构 handoff、postprocess/collect | 不扫描 latest、不推断上游 |
-| ATST NEB / transition | 显式文件交接与本地执行 | 不做站点调度 |
-| Optional parser | abacuslite 等 collect backend | 不改变 native 默认 |
-
-`ResourceSpec` 是显式请求，不是调度器：
-
-```json
-{
-  "schema_version": "forge.resource-spec/v1",
-  "mpi_ranks": 4,
-  "omp_threads": 4,
-  "gpu_count": 1,
-  "gpu_shape": "1gpu",
-  "expected_locality": "single-node",
-  "environment_ref": "reports/environment.json",
-  "timeout_seconds": 3600,
-  "dry_run": false
-}
-```
-
-Forge 只校验、传递、执行并记录 evidence。Slurm / SAI adapter 决定如何满足该 spec。
-
-### L4 Execution Identity and Provenance
-
-每次真实 execute/collect 都携带可核对 identity：
-
-```json
-{
-  "schema_version": "forge.execution-identity/v1",
-  "engine": "abacus",
-  "engine_version": "v3.10.1",
-  "engine_build": "LTS3.10.1",
-  "executable_sha256": "...",
-  "container_image": "abacus:1.1.1",
-  "container_digest": "sha256:...",
-  "forge_version": "0.1.0",
-  "forge_commit": "...",
-  "parser_backend": "native",
-  "python_lock_ref": "reports/python-lock.json",
-  "resource_spec_ref": "reports/resource-spec.json"
-}
-```
-
-结果 envelope 不直接内嵌大文件，而是引用 identity artifact。identity mismatch 属于 diagnostic class，不由 Forge 决定是否重试。
-
-### L5 Evidence, Collector and Diagnostics
-
-Collector 从单一事实源扩展为 typed collector registry：
-
-| Collector class | 输出 |
-| --- | --- |
-| `engine_exit` | returncode、stdout/stderr ref、start/end |
-| `running_log` | SCF/Relax/MD markers、迭代、能量、收敛观察 |
-| `structure_evidence` | source/final structure、species order、atom mapping |
-| `matrix_fact` | SCF matrix / density / Hamiltonian artifacts |
-| `trajectory_evidence` | frames、steps、units、dataset manifest |
-| `resource_evidence` | launch shape、GPU、OOM、timeout、host observation |
-| `handoff_evidence` | editable/published、containment、manifest digest |
-| `identity_evidence` | engine、container、forge、parser backend |
-
-统一 `DiagnosticRecord`：
-
-```json
-{
-  "schema_version": "forge.diagnostic/v1",
-  "stage": "collect",
-  "error_class": "resource_oom",
-  "severity": "error",
-  "message": "Slurm evidence reports OOM",
-  "observed_facts": {
-    "oom_kind": "host_memory",
-    "slurm_event_ref": "reports/events/slurm-oom.json"
-  },
-  "workdir_ref": "runs/prime",
-  "artifact_refs": ["running_log", "raw_artifacts_manifest"],
-  "resource_evidence_ref": "reports/resource-evidence.json",
-  "safe_next_actions": [
-    "inspect_resource_evidence",
-    "choose_larger_shape"
-  ],
-  "scientific_interpretation": "unassessed"
-}
-```
-
-`safe_next_actions` 只是语义枚举，不自动执行。
-
-### L6 Consumer Projection
-
-Forge 不实现 ATP Tool，但提供 projection contract：
-
-```json
-{
-  "schema_version": "forge.tool-projection/v1",
-  "capability": "relax",
-  "operation": "collect",
-  "target": "paimon.tool/v1",
-  "tool_name": "abacus_worker_relax",
-  "declared_outputs": {
-    "work_dir": {"source": "canonical_output:work_dir"},
-    "final_structure_file": {"source": "artifact:relaxed_structure"},
-    "result_evidence_file": {"source": "artifact:result_evidence"}
-  },
-  "diagnostics_mapping": {
-    "resource_oom": "platform.resource.retry_candidate"
-  }
-}
-```
-
-Paimon 可由 registry 生成 Tool 描述，最低要求是 CI 校验：
-
-- Paimon Tool outputs ⊆ Forge canonical outputs；
-- required / optional 与 Forge registry 一致；
-- metric units/kinds 一致；
-- diagnostic classes 有 adapter 处理或显式 unsupported；
-- missing registry contract 阻断 Tool 发布。
-
-## 5. 与 1.2.84 缺口的映射
-
-| 1.2.84 能力 | 本 SPEC 对应设计 |
-| --- | --- |
-| project output parent、semantic stages | `forge.workspace-plan/v1` + `ProjectContext` |
-| directory roles、editable/published handoff | workspace role + handoff evidence |
-| multi-GPU ASE relax/MD、GPU shape | `forge.resource-spec/v1` |
-| OOM/resource recovery evidence | `resource_evidence` collector + `DiagnosticRecord` |
-| strict declared-output publisher | capability output contract + consumer projection |
-| Tool SIF 全量切 `abacus:1.1.1` | execution identity |
-| 修复 L2 误载旧 `abacusagent` | Forge runtime closure + retired path neutrality |
-| IDPP failure actionable | transition diagnostic class |
-| SCF matrix facts、MD result evidence | matrix/trajectory evidence collectors |
-| IRC / property analysis root | project analysis role + workspace allocator |
-
-## 6. 渐进迁移策略
-
-不做一次性 giant merge。按 capability vertical slice 推进：
-
-### Phase A — Contract-only foundation（implemented）
-
-Implementation: `src/abacus_forge/capability_registry.py` and
-`capability-contracts` machine access. The initial registry is explicitly a
-seed containing only SCF.
-
-新增：
-
-- capability contract registry schema；
-- workspace plan schema；
-- resource spec schema；
-- execution identity schema；
-- diagnostic schema；
-- consumer projection schema。
-
-本阶段只引入 registry、validator、fixture 和 round-trip tests，不改现有 runtime。
-
-验收：
-
-- schema/API/CLI round-trip；
-- unknown field fail closed；
--现有 Forge full offline suite 不回退；
-- Paimon focused suite 可继续运行。
-
-### Phase B — Project placement
-
-实现：
-
-- `ProjectContext`；
-- `WorkspaceAllocator`；
-- `ProjectManifest`；
-- allocator event/evidence；
-- contained path checks。
-
-先接 SCF，再接 Relax / MD，再接 Band / DOS。
-
-验收：
-
-- 同一请求使用显式 project root 后，输出位置稳定；
-- 不同 role 不冲突；
-- no cwd side effect；
-- artifact 均在允许 root 下；
-- old single-workspace path 保持兼容。
-
-### Phase C — Resource and identity evidence
-
-实现：
-
-- `ResourceSpec` validation；
-- `LocalRunner` evidence；
-- execution identity artifact；
-- OOM / timeout / nonzero exit diagnostics；
-- identity mismatch diagnostics。
-
-验收：
-
-- synthetic local runner 可复现 OOM、timeout、nonzero、identity mismatch；
-- real smoke 记录完整 identity；
-- Forge 不做重试决策。
-
-### Phase D — Capability output registry
-
-按顺序：
-
-1. SCF；
-2. Relax / cell-relax；
-3. MD；
-4. Band / DOS；
-5. EOS / Bader / charge-diff；
-6. Phonon / spin / vibration；
-7. COHP / PyATB；
-8. Transition / IRC / property。
-
-每个 capability 提供：
-
-- canonical output contract；
-- metric contract；
-- diagnostic classes；
-- Paimon projection fixture；
-- normal 与 disabled-compatibility sweep；
-- real smoke 或冻结 replay。
-
-### Phase E — Paimon projection hardening
-
-Paimon 改为由 Forge registry 校验 Tool outputs：
-
-- Tool 生成或 CI 校验；
-- missing contract 阻断发布；
-- tool integrity gate 增加 Forge registry consistency；
-- release inventory 记录 Forge wheel、SIF digest、Python lock、capability contract hash。
-
-### Phase F — Benchmark and release
-
-完成：
-
-- 全 capability parity；
-- Agent Benchmark 同等或更好验证；
-- clean install；
-- SAI real smoke；
-- production-ready release inventory。
-
-在此之前不得宣称 v3 完全替代 v2。
-
-## 7. 兼容与迁移规则
-
-1. v1 request/result 保持兼容，新增字段必须是 optional 且 schema 化。
-2. 新 schema 使用独立 `schema_version`，不悄悄改变旧 payload。
-3. legacy API 可以继续存在，但不得成为新 capability 的规范路径。
-4. retired systems 可在 docs/fixtures/guards 中出现，但 runtime 不产生路径或 import 特例。
-5. Paimon 的 Tool outputs 只能引用 Forge canonical outputs 或显式 diagnostic projection。
-6. 任何 capability 没有完成 registry contract 时，Paimon Tool 必须标记 experimental 或 blocked。
-7. Forge 不因 Paimon 暂缺某 projection 而拒绝提供人类/Agent CLI。
-
-## 8. 验收总纲
-
-### Forge local gates
-
-- full offline suite；
-- schema/API/CLI parity；
-- workspace/project allocator tests；
-- resource/diagnostic mutation tests；
-- identity mismatch tests；
-- collector fixture tests；
-- installed wheel tests；
-- boundary purpose map tests。
-
-### Paimon integration gates
-
-- Forge registry → Tool projection consistency；
-- legacy disabled sweep；
-- candidate package build；
-- package runtime；
-- package default routes；
-- focused capability suite；
-- SAI real smoke；
-- release inventory。
-
-### Evidence requirements
-
-每个 capability slice 记录：
-
-- Forge commit；
-- Paimon commit；
-- Forge wheel SHA；
-- SIF / engine digest；
-- Python lock；
-- v2 replay input；
-- Forge normal result；
-- disabled compatibility result；
-- focused test result；
-- real smoke or frozen replay result。
-
-## 9. 开放取舍
-
-以下不阻塞本 SPEC 的架构方向，但进入实施前需逐项裁决：
-
-| 问题 | 推荐 | 说明 |
-| --- | --- | --- |
-| Project root 是否进入每个 typed request | 推荐 optional `workspace_plan` 字段 | 保持单 workspace 请求兼容 |
-| `n_gpu` 是否加入 v1 execute request | 推荐包进 optional `resource_spec` | 避免把 GPU shape 泄漏为所有 capability 的顶层概念 |
-| Paimon Tool outputs 是生成还是 CI 校验 | 短期 CI 校验，长期生成 | 生成减少漂移，但需要稳定代码生成协议 |
-| capability registry 存 JSON、Python 还是两者 | 推荐 Python source of truth + deterministic JSON export | 便于类型校验，同时给 Agent/CI 消费 |
-| Contract System M1–M4 是否并入 | 暂不整体并入 | 只吸收 capability/output/diagnostic 子集 |
-| “算筹工场”是否进入 README 产品名 | 已采纳 | owner confirmed on 2026-10-29; README uses “ABACUS-Forge · 算筹工场” |
-
-## 10. 成功标准
-
-目标架构完成后，应满足：
-
-1. Forge 是 capability、schema、execution、evidence 和 provenance 的单一来源。
-2. Paimon 没有复制的 Forge 执行/收集/output contract 逻辑。
-3. 人类与 Agent 使用同一套 contracts，不需第二套私有路径。
-4. 1.2.84 的 project placement、resource evidence、strict output、diagnostic identity 都有 Forge-native 表达。
-5. 每个 capability 的 maturity 和证据等级机器可查。
-6. v2 replay、Forge normal、disabled compatibility 三类结果可比对。
-7. Forge wheel、SIF、Python lock、capability contract hash 进入 release inventory。
-8. 不再依赖“代码看起来没有旧 import”推断替代完成，而是有 capability-level parity 和 release inventory。
+本修订不批准旧 Contract System M1–M4，不替换专用科学方法设计，也不新增发布、平台上传或生产运行授权。后续实现按具体缺口推进，不以完成一套预设架构层级作为交付目标。

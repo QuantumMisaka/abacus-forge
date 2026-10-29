@@ -23,7 +23,6 @@ from abacus_forge.contracts import (
     AtstNebPostprocessRequest,
     canonical_relative_path,
 )
-from abacus_forge.capability_registry import capability_contract, capability_contracts_document
 from abacus_forge.discovery import capabilities_document, request_schema_document
 from abacus_forge.request_registry import (
     ALL_REQUEST_TYPES_BY_CAPABILITY,
@@ -183,13 +182,6 @@ def build_machine_parser() -> argparse.ArgumentParser:
     schema.add_argument("capability")
     schema.add_argument("operation")
 
-    capability_contracts = subparsers.add_parser("capability-contracts", add_help=False)
-    capability_contracts.add_argument("-h", "--help", action=_HelpAction, help="show this help message and exit")
-    capability_contracts.add_argument(
-        "capability", nargs="?", default=None,
-        help="return one capability contract; omit it to return the registry document",
-    )
-    capability_contracts.add_argument("--pretty", action="store_true")
     return parser
 
 
@@ -476,20 +468,6 @@ def run_machine_cli(
             return exit_code_for(result)
         stdout.write(render_json(document))
         return 0
-    if args.command == "capability-contracts":
-        try:
-            document = (
-                capability_contract(args.capability).to_dict()
-                if args.capability is not None
-                else capability_contracts_document()
-            )
-        except ForgeRequestError as error:
-            result = _error_from_exception(error, None)
-            stdout.write(render_json(result))
-            return exit_code_for(result)
-        stdout.write(render_json(document, pretty=args.pretty))
-        return 0
-
     if args.output_format == "text" and args.pretty:
         result = _error(
             "request.invalid",

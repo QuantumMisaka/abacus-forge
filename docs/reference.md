@@ -49,16 +49,9 @@ abacus-forge operation <operation> --request FILE
 abacus-forge operation <operation> --stdin
 abacus-forge capabilities
 abacus-forge schema <capability> <operation>
-abacus-forge capability-contracts
-abacus-forge capability-contracts <capability>
 ```
 
 源码开发态可使用 `PYTHONPATH=src python -m abacus_forge.cli`。路径按两级解析：CLI 的 `workspace_rel` 相对调用进程 cwd（作为 service 的 `workspace_root`）解析；`structure_path_rel`、`trajectory_path_rel`、source paths 等 operation 路径再相对解析后的 workspace 根目录解析。例如 `workspace_rel="runs/Si_relax"` 与 `structure_path_rel="source.STRU"` 指向 `runs/Si_relax/source.STRU`。CLI 不提示或推断科学结论，也不负责任务链编排、重试、调度或平台提交。
-
-`capability-contracts` 是 Phase A 只读 registry。无参数返回
-`forge.capability-contracts/v1`；指定 capability 返回
-`forge.capability-contract/v1`。当前 registry 仅含 SCF reference contract，
-明确不表示其他 capability 已完成 canonical output/maturity 契约建设。
 
 请求 envelope 使用 `schema_version="forge.request/v1"`。operation-specific 字段以 `schema` discovery 为准；每个 operation 请求携带 operation id。`capability` 用于区分 capability-specific operation，不能只根据通用 operation 名推断服务。尤其 `band`、`dos` 必须显式声明相应 capability 且只能 postprocess；typed `export` 也必须声明 `capability="export"`。
 

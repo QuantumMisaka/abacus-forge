@@ -21,6 +21,10 @@ flowchart TD
 
 箭头表示调用或依赖方向，不表示一次 operation 会自动执行全部阶段。`prepare`、`modify`、`execute`、`collect`、`postprocess`、`export` 各自受理、执行并记录事件。typed service 不通过 legacy `api.py` 或 task helper 实现；两者在下层共享输入、runner 和解析代码。`tasks.py`、sequence 与 packs 保留既有本地组合语义，不能据此扩大 typed operation 的职责。
 
+后续消费接入按[收缩设计](superpowers/specs/2026-10-29-forge-computation-factory-target-architecture-design.md)推进：
+复用已有发现、结果和来源记录，按实际缺口补齐目录、资源和输出交接。
+Paimon 自有展示与平台输出留在上层；不预建第二套 identity、registry 或 project runtime。
+
 根包 `__init__.py` 保留原有导出名称，按需加载其所属模块。基础文本 I/O 可直接导入 `abacus_forge.input_io`；这不意味着所有结构或科学功能都不需要第三方库。安装依赖保持当前 `pyproject.toml` 定义，候选调整见[路线图](../ROADMAP.md#可废弃与依赖调整候选)。
 
 ## 模块职责
@@ -30,7 +34,6 @@ flowchart TD
 | 责任 | 主要模块 | 维护边界 |
 | --- | --- | --- |
 | 人类 CLI 与机器协议 | `cli.py`、`machine_cli.py`、`discovery.py`、`request_registry.py` | 参数转换、请求解码、service 路由、outcome/error 渲染；discovery 与解码复用 request_registry 静态映射，不在 CLI 实现科学算法。 |
-| Capability contracts | `capability_registry.py` | Phase A 只读 source of truth：capability canonical outputs、metrics、diagnostic classes、maturity evidence，以及 workspace/resource/identity/diagnostic/tool projection schema；只校验和导出，不启动进程或写 workspace。 |
 | 环境诊断 | `diagnostics.py` | 标准库读取安装元数据和显式程序/资产可发现性；不启动引擎、不写 workspace，返回独立 `forge.environment/v1` 报告。 |
 | 请求和结果契约 | `contracts.py`、`*_contracts.py`、`errors.py` | 冻结记录、字段校验、operation identity 与错误类别；能力专用请求在各自模块。 |
 | ABACUS typed operations | `services.py`、`service_support.py` | SCF/Relax/cell-relax/MD 复用 prepare/modify/execute/collect 基元；service 负责受理、状态和事件。 |

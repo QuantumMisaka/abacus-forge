@@ -263,7 +263,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if effective_argv and effective_argv[0] == "--version":
         from abacus_forge.diagnostics import run_version
         return run_version(effective_argv)
-    if effective_argv and effective_argv[0] in {"operation", "schema", "capabilities", "capability-contracts"}:
+    if effective_argv and effective_argv[0] in {"operation", "schema", "capabilities"}:
         from abacus_forge.machine_cli import run_machine_cli
         return run_machine_cli(
             effective_argv,
