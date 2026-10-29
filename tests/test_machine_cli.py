@@ -213,6 +213,66 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     assert descriptors[3]["maturity"] == "experimental"
     assert descriptors[3]["engine"] == "atst-tools"
     assert descriptors[3]["operations"] == ["prepare", "execute", "postprocess"]
+
+
+def test_scf_execute_discovery_schema_declares_optional_launcher_and_env_overrides() -> None:
+    schema = request_schema_document("scf", "execute")["request_schema"]
+    assert schema["properties"]["launcher"] == {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1},
+        "default": [],
+    }
+    assert schema["properties"]["env_overrides"] == {
+        "type": "object",
+        "propertyNames": {"type": "string", "minLength": 1},
+        "additionalProperties": {"type": "string"},
+        "default": {},
+    }
+    assert "launcher" not in schema["required"]
+    assert "env_overrides" not in schema["required"]
+
+
+def test_machine_execute_decode_hands_launcher_and_env_overrides_to_service() -> None:
+    operation_id = "123e4567-e89b-42d3-a456-426614174013"
+    results = {name: _outcome_for(name, operation_id) for name in ("prepare", "modify", "execute", "collect")}
+    services = _AllRecordingServices(results)
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": operation_id,
+        "workspace_rel": ".",
+        "launcher": ["mpirun", "-np", "2"],
+        "env_overrides": {"OMP_PROC_BIND": "close"},
+    }
+
+    code, output, diagnostics = _invoke(
+        ["operation", "execute", "--stdin"], request_text=json.dumps(payload), services=services
+    )
+
+    assert code == 0
+    assert diagnostics == ""
+    request = services.calls[0][1]
+    assert isinstance(request, ScfExecuteRequest)
+    assert request.launcher == ("mpirun", "-np", "2")
+    assert request.env_overrides == {"OMP_PROC_BIND": "close"}
+
+
+def test_machine_execute_decode_rejects_invalid_launcher_and_env_overrides() -> None:
+    base = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+    }
+    for field, value in (("launcher", "mpirun"), ("env_overrides", {"OMP_PROC_BIND": 2})):
+        code, output, _ = _invoke(
+            ["operation", "execute", "--stdin"],
+            request_text=json.dumps({**base, field: value}),
+        )
+        assert code == 2
+        envelope = json.loads(output)
+        assert envelope["error"]["class"] == "request.schema"
+        assert field in envelope["error"]["message"]
     assert descriptors[3]["artifact_roles"] == ["input", "output"]
     assert descriptors[4]["maturity"] == "experimental"
     assert descriptors[4]["engine"] == "abacus"

@@ -160,6 +160,8 @@ def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_
         "mpi_ranks": 3,
         "omp_threads": 5,
         "timeout_seconds": 12.5,
+        "launcher": (),
+        "env_overrides": {},
     }]
 
 
@@ -185,9 +187,48 @@ def test_typed_execute_runs_relative_path_executable_resolved_from_process_cwd(
     assert result.status.execution == "completed"
     assert result.envelope.diagnostics["failure_class"] == "none"
     assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
-    assert json.loads((workspace.root / "forge-result.json").read_text(encoding="utf-8"))["command"] == [
+    execution_facts = json.loads((workspace.root / "forge-result.json").read_text(encoding="utf-8"))
+    assert execution_facts["command"] == [
         "bin/fake-abacus"
     ]
+    assert execution_facts["resolved_command"][0] != "bin/fake-abacus"
+    assert execution_facts["resolved_command"][0].endswith("bin/fake-abacus")
+
+
+def test_typed_execute_hands_launcher_and_env_overrides_to_runner(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = tmp_path / "env-echo-abacus"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "import os\n"
+        "print(f\"FORGE_ENV={os.environ.get('FORGE_ENV', 'missing')}\")\n"
+        "print(\"NORMAL END\")\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    captured: dict[str, object] = {}
+
+    def factory(**kwargs: object) -> LocalRunner:
+        captured.update(kwargs)
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174120",
+        workspace_rel="scf",
+        executable=str(executable),
+        launcher=("env",),
+        env_overrides={"FORGE_ENV": "site-value"},
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert captured["launcher"] == ("env",)
+    assert captured["env_overrides"] == {"FORGE_ENV": "site-value"}
+    assert result.envelope.diagnostics["launcher"] == ["env"]
+    assert result.envelope.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
+    assert result.envelope.diagnostics["resolved_command"][1] == str(executable)
+    assert "FORGE_ENV=site-value" in (tmp_path / "scf" / "outputs" / "stdout.log").read_text(encoding="utf-8")
 
 
 def test_local_runner_runs_relative_path_launcher_and_executable(
@@ -874,8 +915,53 @@ def test_legacy_run_result_serialization_excludes_normal_end_sidecar(tmp_path: P
     stdout = tmp_path / "stdout.log"
     stderr = tmp_path / "stderr.log"
     result = RunResult(tmp_path, ["fake"], 0, "completed", stdout, stderr, 1, {}, True, tmp_path / "normal.log")
-    assert set(result.to_dict()) == {"workspace", "command", "returncode", "status", "stdout_path", "stderr_path", "omp_threads", "diagnostics"}
+    assert set(result.to_dict()) == {
+        "workspace", "command", "returncode", "status", "stdout_path",
+        "stderr_path", "omp_threads", "diagnostics", "resolved_command",
+    }
     assert "normal_end" not in result.to_envelope().to_dict()["diagnostics"]
+
+
+def test_local_runner_records_requested_and_resolved_commands(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    launcher = tmp_path / "launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os\nimport sys\nos.execv(sys.argv[1], sys.argv[1:])\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+
+    result = LocalRunner(
+        executable=str(executable),
+        launcher=(str(launcher),),
+        env_overrides={"FORGE_ENV": "site-value"},
+    ).run(workspace)
+
+    assert result.command == [str(launcher), str(executable)]
+    assert result.resolved_command == [str(launcher), str(executable)]
+    assert result.diagnostics["resolved_command"] == [str(launcher), str(executable)]
+    assert result.diagnostics["launcher"] == [str(launcher)]
+    assert result.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
+
+
+def test_local_runner_missing_executable_keeps_resolved_start_unknown(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+
+    result = LocalRunner(executable=str(tmp_path / "missing-abacus")).run(workspace)
+
+    assert result.resolved_command is None
+    assert result.diagnostics["resolved_command"] is None
+    assert result.diagnostics["failure_class"] == "missing_executable"
+    assert result.diagnostics["launcher"] == []
+    assert result.diagnostics["mpi_ranks"] == 1
+    assert result.diagnostics["omp_threads"] == 1
+    assert result.diagnostics["timeout_seconds"] is None
+    assert result.diagnostics["env_overrides"] == {}
 
 
 @pytest.mark.parametrize(

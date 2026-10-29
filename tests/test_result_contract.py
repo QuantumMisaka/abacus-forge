@@ -53,9 +53,11 @@ def test_run_result_to_dict_serializes_paths_and_exit_status(tmp_path: Path) -> 
         "stderr_path",
         "omp_threads",
         "diagnostics",
+        "resolved_command",
     }
     assert payload["workspace"] == str(workspace.root)
     assert isinstance(payload["returncode"], int)
+    assert payload["resolved_command"] == payload["command"]
     assert payload["stdout_path"].endswith("stdout.log")
     assert payload["stderr_path"].endswith("stderr.log")
     json.dumps(payload, allow_nan=False)

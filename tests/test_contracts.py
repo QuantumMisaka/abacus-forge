@@ -95,6 +95,7 @@ SCF_WIRE_KEYS = {
     ScfExecuteRequest: {
         "schema_version", "operation", "operation_id", "workspace_rel",
         "executable", "mpi_ranks", "omp_threads", "timeout_seconds", "dry_run",
+        "launcher", "env_overrides",
     },
     ScfCollectRequest: {"schema_version", "operation", "operation_id", "workspace_rel"},
 }
@@ -202,8 +203,29 @@ def test_scf_execute_request_round_trips_local_runner_configuration() -> None:
         mpi_ranks=4,
         omp_threads=2,
         timeout_seconds=120.0,
+        launcher=("mpirun", "-np", "4"),
+        env_overrides={"ABACUS_WHEEL": "/opt/abacus"},
     )
+    payload = request.to_dict()
+    assert payload["launcher"] == ["mpirun", "-np", "4"]
+    assert payload["env_overrides"] == {"ABACUS_WHEEL": "/opt/abacus"}
+    restored = ScfExecuteRequest.from_dict(json.loads(json.dumps(payload, allow_nan=False)))
+    assert restored == request
+    assert restored.launcher == ("mpirun", "-np", "4")
+    assert restored.env_overrides == {"ABACUS_WHEEL": "/opt/abacus"}
+
+
+def test_scf_execute_request_defaults_are_empty_and_legacy_payloads_still_round_trip() -> None:
+    legacy_payload = _valid_execute_request_dict()
+    legacy_payload.pop("launcher", None)
+    legacy_payload.pop("env_overrides", None)
+
+    request = ScfExecuteRequest.from_dict(legacy_payload)
+
+    assert request.launcher == ()
+    assert request.env_overrides == {}
     assert ScfExecuteRequest.from_dict(request.to_dict()) == request
+    assert set(request.to_dict()) == set(legacy_payload) | {"launcher", "env_overrides"}
 
 
 @pytest.mark.parametrize(
@@ -235,16 +257,65 @@ def test_scf_execute_request_rejects_invalid_runner_configuration(field: str, va
         ScfExecuteRequest.from_dict(payload)
 
 
-@pytest.mark.parametrize("field", ["executable", "mpi_ranks", "omp_threads", "timeout_seconds"])
+@pytest.mark.parametrize(
+    "field", ["executable", "mpi_ranks", "omp_threads", "timeout_seconds", "launcher", "env_overrides"]
+)
 def test_scf_execute_request_rejects_non_json_runner_values_at_constructor(field: str) -> None:
     kwargs = {field: object()}
     with pytest.raises(ValueError):
         ScfExecuteRequest(operation_id=OPERATION_ID, workspace_rel="scf", **kwargs)
 
 
+@pytest.mark.parametrize(
+    "launcher",
+    [
+        "mpirun",
+        1,
+        None,
+        [""],
+        ["mpirun", 4],
+        ["mpirun", None],
+        [b"mpirun"],
+    ],
+)
+def test_scf_execute_request_rejects_invalid_launcher(launcher: object) -> None:
+    payload = _valid_execute_request_dict()
+    payload["launcher"] = launcher
+    with pytest.raises(ValueError, match="launcher"):
+        ScfExecuteRequest.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "env_overrides",
+    [
+        "PATH=/usr/bin",
+        1,
+        None,
+        {"": "/usr/bin"},
+        {"PATH": None},
+        {"PATH": 1},
+        {1: "/usr/bin"},
+    ],
+)
+def test_scf_execute_request_rejects_invalid_env_overrides(env_overrides: object) -> None:
+    payload = _valid_execute_request_dict()
+    payload["env_overrides"] = env_overrides
+    with pytest.raises(ValueError, match="env_overrides"):
+        ScfExecuteRequest.from_dict(payload)
+
+
+def test_scf_execute_request_rejects_invalid_launcher_at_constructor() -> None:
+    with pytest.raises(ValueError, match="launcher"):
+        ScfExecuteRequest(
+            operation_id=OPERATION_ID,
+            workspace_rel="scf",
+            launcher="mpirun",  # type: ignore[arg-type]
+        )
+
+
 def test_scf_execute_request_rejects_unknown_runner_fields() -> None:
     payload = _valid_execute_request_dict()
-    payload["launcher"] = "mpirun"
+    payload["gpu_count"] = 4
     with pytest.raises(ValueError, match="unknown"):
         ScfExecuteRequest.from_dict(payload)
 
