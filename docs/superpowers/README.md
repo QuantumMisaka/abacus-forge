@@ -8,8 +8,9 @@
 [当前设计](specs/2026-10-29-forge-computation-factory-target-architecture-design.md)与
 [Phase A 原型撤回记录](plans/2026-10-29-forge-computation-factory-phase-a.md)与
 [SCF consumer chain 计划](plans/2026-10-29-forge-scf-consumer-chain.md)。
-该切片初版离线实现已交付，复审仍有一项 P1、两项 P2 与安装态/CI 缺口；
-修复入口和验收顺序见计划 Task 6–10，当前尚未合入。
+该切片初版离线实现已交付；复审 P1/P2 源码修复已分别落在
+Paimon `359c3d6fe` 与 Forge `baee443`，fresh-wheel 默认安装态
+检查已通过；远端 CI 与两侧合入确认仍按计划 Task 10 执行。
 复用现有 discovery、操作契约、runner 和 provenance；撤回平行 registry、
 通用 identity 硬门及 Paimon 全输出投影约束。ABACUS 默认 GPU、独立 CPU 任务
 的分工保持；资源接入按实际消费者推进，不增加统一调度框架。
