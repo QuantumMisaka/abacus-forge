@@ -50,6 +50,7 @@ from abacus_forge.pyatb_contracts import (
     PyatbBandPrepareRequest,
 )
 from abacus_forge.errors import ForgeRequestError
+from abacus_forge.md_contracts import MdExecuteRequest
 
 
 OPERATION_ID = "123e4567-e89b-42d3-a456-426614174000"
@@ -302,6 +303,44 @@ def test_scf_execute_request_rejects_invalid_env_overrides(env_overrides: object
     payload["env_overrides"] = env_overrides
     with pytest.raises(ValueError, match="env_overrides"):
         ScfExecuteRequest.from_dict(payload)
+
+
+def test_scf_execute_env_overrides_allow_empty_values_for_unset_semantics() -> None:
+    request = ScfExecuteRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="scf",
+        env_overrides={"OMP_NUM_THREADS": "", "FORGE_ENV": "site-value"},
+    )
+    payload = request.to_dict()
+    assert payload["env_overrides"] == {"OMP_NUM_THREADS": "", "FORGE_ENV": "site-value"}
+    restored = ScfExecuteRequest.from_dict(json.loads(json.dumps(payload)))
+    assert restored == request
+    assert restored.env_overrides["OMP_NUM_THREADS"] == ""
+
+
+def test_scf_execute_runner_fields_are_scf_only() -> None:
+    """launcher/env_overrides are SCF execute contract fields, not shared runner config."""
+    scf = ScfExecuteRequest(
+        operation_id=OPERATION_ID,
+        workspace_rel="scf",
+        launcher=("mpirun",),
+        env_overrides={"FORGE_ENV": "site-value"},
+    )
+    assert "launcher" in scf.to_dict()
+    assert "env_overrides" in scf.to_dict()
+    for request_type, capability in ((RelaxExecuteRequest, "relax"), (MdExecuteRequest, "md")):
+        execute = request_type(
+            operation_id=OPERATION_ID,
+            workspace_rel="job",
+            capability=capability,
+        )
+        assert "launcher" not in execute.to_dict()
+        assert "env_overrides" not in execute.to_dict()
+        payload = execute.to_dict()
+        with pytest.raises(ValueError, match="unknown"):
+            request_type.from_dict({**payload, "launcher": ["mpirun"]})
+        with pytest.raises(ValueError, match="unknown"):
+            request_type.from_dict({**payload, "env_overrides": {"FORGE_ENV": ""}})
 
 
 def test_scf_execute_request_rejects_invalid_launcher_at_constructor() -> None:

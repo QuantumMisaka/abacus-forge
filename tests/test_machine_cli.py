@@ -293,6 +293,13 @@ def test_scf_execute_discovery_schema_declares_optional_launcher_and_env_overrid
     assert "env_overrides" not in schema["required"]
 
 
+@pytest.mark.parametrize("capability", ["relax", "cell-relax", "md"])
+def test_non_scf_execute_discovery_schema_excludes_scf_only_runner_fields(capability: str) -> None:
+    schema = request_schema_document(capability, "execute")["request_schema"]
+    assert "launcher" not in schema["properties"]
+    assert "env_overrides" not in schema["properties"]
+
+
 def test_machine_execute_decode_hands_launcher_and_env_overrides_to_service() -> None:
     operation_id = "123e4567-e89b-42d3-a456-426614174013"
     results = {name: _outcome_for(name, operation_id) for name in ("prepare", "modify", "execute", "collect")}
@@ -303,7 +310,7 @@ def test_machine_execute_decode_hands_launcher_and_env_overrides_to_service() ->
         "operation_id": operation_id,
         "workspace_rel": ".",
         "launcher": ["mpirun", "-np", "2"],
-        "env_overrides": {"OMP_PROC_BIND": "close"},
+        "env_overrides": {"OMP_PROC_BIND": "close", "EMPTY_VAR": ""},
     }
 
     code, output, diagnostics = _invoke(
@@ -315,7 +322,21 @@ def test_machine_execute_decode_hands_launcher_and_env_overrides_to_service() ->
     request = services.calls[0][1]
     assert isinstance(request, ScfExecuteRequest)
     assert request.launcher == ("mpirun", "-np", "2")
-    assert request.env_overrides == {"OMP_PROC_BIND": "close"}
+    assert request.env_overrides == {"OMP_PROC_BIND": "close", "EMPTY_VAR": ""}
+
+
+def test_machine_relax_execute_decode_rejects_scf_only_runner_fields() -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "capability": "relax",
+        "launcher": ["mpirun"],
+    }
+    code, output, _ = _invoke(["operation", "execute", "--stdin"], request_text=json.dumps(payload))
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.schema"
 
 
 def test_machine_execute_decode_rejects_invalid_launcher_and_env_overrides() -> None:

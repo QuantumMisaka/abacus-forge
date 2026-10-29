@@ -257,6 +257,7 @@ def _write_runtime_k_inputs(
     [
         ("gamma_only 1\n", "123e4567-e89b-42d3-a456-426614174124"),
         ("kspacing 0.5\n", "123e4567-e89b-42d3-a456-426614174125"),
+        ("kspacing 0.1 0.1 0.1\n", "123e4567-e89b-42d3-a456-426614174131"),
     ],
 )
 def test_typed_execute_admits_runtime_k_source_without_kpt_file(
@@ -300,6 +301,11 @@ def test_typed_execute_admits_runtime_k_source_without_kpt_file(
         "gamma_only\n",
         "kspacing 0\n",
         "kspacing -0.5\n",
+        "kspacing 0.1 -1 0.1\n",
+        "kspacing 0.1 0.1\n",
+        "kspacing nan\n",
+        "kspacing inf\n",
+        "kspacing 0.1 abc 0.1\n",
         "kspacing abc\n",
         "kspacing\n",
         "",
@@ -338,17 +344,23 @@ def test_typed_execute_requires_kpt_without_valid_runtime_k_source(
         ("md", MdExecuteRequest, "123e4567-e89b-42d3-a456-426614174128"),
     ],
 )
-def test_relax_and_md_execute_share_runtime_k_source_admission(
+def test_relax_and_md_execute_do_not_inherit_runtime_k_source_admission(
     tmp_path: Path,
     capability: str,
     request_type: type[object],
     operation_id: str,
 ) -> None:
-    """Relax/MD reuse the shared _ExecuteService admission, so runtime K sources apply there too."""
+    """Relax/MD keep the legacy KPT admission even when INPUT names a runtime K source."""
     workspace = Workspace(tmp_path / capability)
     workspace.ensure_layout()
     _write_runtime_k_inputs(workspace, capability=capability, extra_input_lines="gamma_only 1\n")
     executable = write_fake_abacus(tmp_path / f"fake-abacus-{capability}", stdout_lines=["NORMAL END"])
+    calls = 0
+
+    def factory(**kwargs: object) -> LocalRunner:
+        nonlocal calls
+        calls += 1
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
 
     request = request_type(
         operation_id=operation_id,
@@ -357,14 +369,79 @@ def test_relax_and_md_execute_share_runtime_k_source_admission(
         executable=str(executable),
     )
     if capability == "md":
-        services = MdServiceSet.default(workspace_root=tmp_path)
+        services = MdServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
     else:
-        services = RelaxServiceSet.default(workspace_root=tmp_path)
+        services = RelaxServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    result = services.execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert calls == 0
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "operation_id"),
+    [
+        ("relax", RelaxExecuteRequest, "123e4567-e89b-42d3-a456-426614174129"),
+        ("md", MdExecuteRequest, "123e4567-e89b-42d3-a456-426614174130"),
+    ],
+)
+def test_non_scf_execute_runner_factory_does_not_receive_scf_only_runner_fields(
+    tmp_path: Path,
+    capability: str,
+    request_type: type[object],
+    operation_id: str,
+) -> None:
+    captured: dict[str, object] = {}
+    workspace = Workspace(tmp_path / capability)
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability=capability, include_kpt=True)
+    executable = write_fake_abacus(
+        tmp_path / f"fake-abacus-{capability}-factory", stdout_lines=["NORMAL END"]
+    )
+
+    def factory(**kwargs: object) -> LocalRunner:
+        captured.update(kwargs)
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = request_type(
+        operation_id=operation_id,
+        workspace_rel=capability,
+        capability=capability,
+        executable=str(executable),
+    )
+    if capability == "md":
+        services = MdServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    else:
+        services = RelaxServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
     result = services.execute.execute(request)
 
     assert isinstance(result, OperationOutcome)
     assert result.status.execution == "completed"
-    assert not (workspace.inputs_dir / "KPT").exists()
+    assert set(captured) == {"executable", "mpi_ranks", "omp_threads", "timeout_seconds"}
+
+
+def test_local_runner_env_overrides_allow_empty_values(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = tmp_path / "env-empty-abacus"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "import os\n"
+        "print(f\"FORGE_EMPTY={os.environ.get('FORGE_EMPTY', 'missing')}\")\n"
+        "print(\"NORMAL END\")\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+
+    runner = LocalRunner(executable=str(executable), env_overrides={"FORGE_EMPTY": ""})
+    assert runner.preview(workspace)["env"]["FORGE_EMPTY"] == ""
+    result = runner.run(workspace)
+
+    assert result.status == "completed"
+    assert "FORGE_EMPTY=\n" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
 
 
 def test_local_runner_runs_relative_path_launcher_and_executable(
