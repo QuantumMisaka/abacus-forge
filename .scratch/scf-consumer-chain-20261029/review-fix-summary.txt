@@ -1,0 +1,8 @@
+Review fix — implementation evidence
+1) scf-only fence: _SharedExecuteRequest(_ScfRequest) holds shared runner config; launcher/env_overrides only on ScfExecuteRequest; relax/md execute inherit _SharedExecuteRequest and reject them as unknown fields; discovery declares launcher/env_overrides only for capability=scf; _ExecuteService reads/passes them only when request_type is ScfExecuteRequest
+2) runtime-K admission fenced to SCF execute: relax/md missing KPT -> precondition.missing even with gamma_only/kspacing (covered by test_relax_and_md_execute_do_not_inherit_runtime_k_source_admission)
+3) kspacing: 1 or 3 finite positive real tokens admitted; 2 tokens, any non-positive/non-finite token, malformed stay fail-closed
+4) env_overrides: non-empty keys, values may be empty strings (unset semantics); typed validator, schema (already string-valued), round-trip, machine CLI decode, and runner env covered
+5) docs/agents.md non-dry execute KPT wording updated and scoped to current Forge SCF-only admission
+focused four files: exit 0, 667 passed (652 + 15 new)
+full offline pytest: exit 0, 1635 passed, 35 skipped

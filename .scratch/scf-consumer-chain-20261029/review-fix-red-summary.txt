@@ -1,0 +1,14 @@
+Review fix (3 Important + 1 Minor) — TDD red evidence
+commit: 8ed6a18 (tests only, on 6742eee)
+red run: focused 3 files -k filter -> exit 1, 11 failed / 17 passed
+  FAILED tests/test_contracts.py::test_scf_execute_env_overrides_allow_empty_values_for_unset_semantics
+  FAILED tests/test_contracts.py::test_scf_execute_runner_fields_are_scf_only
+  FAILED tests/test_machine_cli.py::test_non_scf_execute_discovery_schema_excludes_scf_only_runner_fields[relax]
+  FAILED tests/test_machine_cli.py::test_non_scf_execute_discovery_schema_excludes_scf_only_runner_fields[cell-relax]
+  FAILED tests/test_machine_cli.py::test_non_scf_execute_discovery_schema_excludes_scf_only_runner_fields[md]
+  FAILED tests/test_machine_cli.py::test_machine_relax_execute_decode_rejects_scf_only_runner_fields
+  FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[kspacing 0.1 0.1 0.1\n-123e4567-e89b-42d3-a456-426614174131]
+  FAILED tests/test_service_status.py::test_relax_and_md_execute_do_not_inherit_runtime_k_source_admission[relax-RelaxExecuteRequest-123e4567-e89b-42d3-a456-426614174127]
+  FAILED tests/test_service_status.py::test_relax_and_md_execute_do_not_inherit_runtime_k_source_admission[md-MdExecuteRequest-123e4567-e89b-42d3-a456-426614174128]
+  FAILED tests/test_service_status.py::test_non_scf_execute_runner_factory_does_not_receive_scf_only_runner_fields[relax-RelaxExecuteRequest-123e4567-e89b-42d3-a456-426614174129]
+  FAILED tests/test_service_status.py::test_non_scf_execute_runner_factory_does_not_receive_scf_only_runner_fields[md-MdExecuteRequest-123e4567-e89b-42d3-a456-426614174130]
