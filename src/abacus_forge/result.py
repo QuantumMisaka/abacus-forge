@@ -21,6 +21,7 @@ class RunResult:
     stderr_path: Path
     omp_threads: int
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    resolved_command: list[str] | None = field(default=None, kw_only=True)
     normal_end: bool | None = field(default=None, repr=False, compare=False)
     normal_end_source: Path | None = field(default=None, repr=False, compare=False)
 

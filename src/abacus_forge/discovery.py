@@ -547,6 +547,17 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                     "default": None,
                 },
                 "dry_run": {"type": "boolean", "default": False},
+                "launcher": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1},
+                    "default": [],
+                },
+                "env_overrides": {
+                    "type": "object",
+                    "propertyNames": {"type": "string", "minLength": 1},
+                    "additionalProperties": {"type": "string"},
+                    "default": {},
+                },
             }
         )
     return properties

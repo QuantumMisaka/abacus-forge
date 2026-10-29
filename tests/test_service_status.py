@@ -128,7 +128,7 @@ class _RecordingRunnerFactory:
         self.calls.append(dict(kwargs))
         # Avoid requiring an MPI installation while still exercising the
         # request's mpi_ranks mapping.
-        return LocalRunner(launcher=("true",), **kwargs)  # type: ignore[arg-type]
+        return LocalRunner(**{**kwargs, "launcher": ("true",)})  # type: ignore[arg-type]
 
 
 def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_path: Path) -> None:
@@ -225,9 +225,9 @@ def test_typed_execute_hands_launcher_and_env_overrides_to_runner(tmp_path: Path
     assert result.status.execution == "completed"
     assert captured["launcher"] == ("env",)
     assert captured["env_overrides"] == {"FORGE_ENV": "site-value"}
-    assert result.envelope.diagnostics["launcher"] == ["env"]
+    assert list(result.envelope.diagnostics["launcher"]) == ["env"]
     assert result.envelope.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
-    assert result.envelope.diagnostics["resolved_command"][1] == str(executable)
+    assert list(result.envelope.diagnostics["resolved_command"])[1] == str(executable)
     assert "FORGE_ENV=site-value" in (tmp_path / "scf" / "outputs" / "stdout.log").read_text(encoding="utf-8")
 
 

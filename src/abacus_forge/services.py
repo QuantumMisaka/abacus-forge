@@ -424,6 +424,8 @@ class _ExecuteService:
                         mpi_ranks=typed_request.mpi_ranks,  # type: ignore[attr-defined]
                         omp_threads=typed_request.omp_threads,  # type: ignore[attr-defined]
                         timeout_seconds=typed_request.timeout_seconds,  # type: ignore[attr-defined]
+                        launcher=tuple(typed_request.launcher),  # type: ignore[attr-defined]
+                        env_overrides=dict(typed_request.env_overrides),  # type: ignore[attr-defined]
                     )
                     preflight = getattr(runner, "preflight", None)
                     if callable(preflight):
@@ -444,6 +446,7 @@ class _ExecuteService:
                             "status": runner_result.status,
                             "returncode": runner_result.returncode,
                             "command": runner_result.command,
+                            "resolved_command": runner_result.resolved_command,
                         },
                     )
                     envelope = _with_workspace(runner_result.to_envelope(), typed_request.workspace_rel)  # type: ignore[attr-defined]

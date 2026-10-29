@@ -578,6 +578,8 @@ class ScfExecuteRequest(_ScfRequest):
     omp_threads: int = 1
     timeout_seconds: float | None = None
     dry_run: bool = False
+    launcher: Sequence[str] = field(default_factory=tuple)
+    env_overrides: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _ScfRequest.__post_init__(self)
@@ -592,6 +594,8 @@ class ScfExecuteRequest(_ScfRequest):
                 raise ValueError("timeout_seconds must be a positive finite number or None")
         if not isinstance(self.dry_run, bool):
             raise ValueError("dry_run must be a boolean")
+        object.__setattr__(self, "launcher", _string_sequence(self.launcher, "launcher"))
+        object.__setattr__(self, "env_overrides", _string_mapping(self.env_overrides, "env_overrides"))
 
     def to_dict(self) -> dict[str, JSONValue]:
         payload = _ScfRequest.to_dict(self)
@@ -602,6 +606,8 @@ class ScfExecuteRequest(_ScfRequest):
                 "omp_threads": self.omp_threads,
                 "timeout_seconds": self.timeout_seconds,
                 "dry_run": self.dry_run,
+                "launcher": list(self.launcher),
+                "env_overrides": _thaw_json(self.env_overrides),
             }
         )
         return payload
