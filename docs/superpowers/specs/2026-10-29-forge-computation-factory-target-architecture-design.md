@@ -1,6 +1,6 @@
 # Forge “算筹工场”目标架构与 Paimon v3 单一来源后端设计
 
-- Status: Draft for owner review
+- Status: Draft; product name confirmed by owner on 2026-10-29
 - Date: 2026-10-29
 - Owner: ABACUS-Forge
 - Supersedes: 无；本 SPEC 是既有 Contract-First / Service-Status / Capability SPEC 的目标架构附录
@@ -524,7 +524,7 @@ Paimon 改为由 Forge registry 校验 Tool outputs：
 | Paimon Tool outputs 是生成还是 CI 校验 | 短期 CI 校验，长期生成 | 生成减少漂移，但需要稳定代码生成协议 |
 | capability registry 存 JSON、Python 还是两者 | 推荐 Python source of truth + deterministic JSON export | 便于类型校验，同时给 Agent/CI 消费 |
 | Contract System M1–M4 是否并入 | 暂不整体并入 | 只吸收 capability/output/diagnostic 子集 |
-| “算筹工场”是否进入 README 产品名 | 暂缓 | 需用户确认中英文命名与发布口径 |
+| “算筹工场”是否进入 README 产品名 | 已采纳 | owner confirmed on 2026-10-29; README uses “ABACUS-Forge · 算筹工场” |
 
 ## 10. 成功标准
 
