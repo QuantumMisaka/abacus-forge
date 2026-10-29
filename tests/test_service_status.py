@@ -32,6 +32,8 @@ from abacus_forge import (
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.input_io import read_input
+from abacus_forge.md_contracts import MdExecuteRequest
+from abacus_forge.services import MdServiceSet
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.result import RunResult
 from tests.support.fake_executables import write_fake_abacus
@@ -229,6 +231,139 @@ def test_typed_execute_hands_launcher_and_env_overrides_to_runner(tmp_path: Path
     assert result.envelope.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
     assert list(result.envelope.diagnostics["resolved_command"])[1] == str(executable)
     assert "FORGE_ENV=site-value" in (tmp_path / "scf" / "outputs" / "stdout.log").read_text(encoding="utf-8")
+
+
+def _write_runtime_k_inputs(
+    workspace: Workspace,
+    *,
+    capability: str,
+    extra_input_lines: str = "",
+    include_kpt: bool = False,
+) -> None:
+    (workspace.inputs_dir / "INPUT").write_text(
+        f"INPUT_PARAMETERS\ncalculation {capability}\n{extra_input_lines}",
+        encoding="utf-8",
+    )
+    (workspace.inputs_dir / "STRU").write_text("prepared\n", encoding="utf-8")
+    if include_kpt:
+        (workspace.inputs_dir / "KPT").write_text(
+            "K_POINTS\n0\nGamma\n1 1 1 0 0 0\n",
+            encoding="utf-8",
+        )
+
+
+@pytest.mark.parametrize(
+    ("runtime_k_lines", "operation_id"),
+    [
+        ("gamma_only 1\n", "123e4567-e89b-42d3-a456-426614174124"),
+        ("kspacing 0.5\n", "123e4567-e89b-42d3-a456-426614174125"),
+    ],
+)
+def test_typed_execute_admits_runtime_k_source_without_kpt_file(
+    tmp_path: Path,
+    runtime_k_lines: str,
+    operation_id: str,
+) -> None:
+    """Shared _ExecuteService admission: INPUT provides the runtime K source."""
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability="scf", extra_input_lines=runtime_k_lines)
+    executable = write_fake_abacus(
+        tmp_path / f"fake-abacus-{runtime_k_lines.split()[0]}", stdout_lines=["NORMAL END"]
+    )
+    entered = {"runner": False}
+
+    def factory(**kwargs: object) -> LocalRunner:
+        entered["runner"] = True
+        return LocalRunner(executable=str(executable), **kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id=operation_id,
+        workspace_rel="scf",
+        executable=str(executable),
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert entered["runner"] is True
+    assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+    # Admission must never fabricate a KPT file to pass its own precondition.
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    "runtime_k_lines",
+    [
+        "gamma_only 0\n",
+        "gamma_only abc\n",
+        "gamma_only\n",
+        "kspacing 0\n",
+        "kspacing -0.5\n",
+        "kspacing abc\n",
+        "kspacing\n",
+        "",
+    ],
+)
+def test_typed_execute_requires_kpt_without_valid_runtime_k_source(
+    tmp_path: Path,
+    runtime_k_lines: str,
+) -> None:
+    calls = 0
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability="scf", extra_input_lines=runtime_k_lines)
+
+    def factory(**kwargs: object) -> LocalRunner:
+        nonlocal calls
+        calls += 1
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174126",
+        workspace_rel="scf",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert calls == 0
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "operation_id"),
+    [
+        ("relax", RelaxExecuteRequest, "123e4567-e89b-42d3-a456-426614174127"),
+        ("md", MdExecuteRequest, "123e4567-e89b-42d3-a456-426614174128"),
+    ],
+)
+def test_relax_and_md_execute_share_runtime_k_source_admission(
+    tmp_path: Path,
+    capability: str,
+    request_type: type[object],
+    operation_id: str,
+) -> None:
+    """Relax/MD reuse the shared _ExecuteService admission, so runtime K sources apply there too."""
+    workspace = Workspace(tmp_path / capability)
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability=capability, extra_input_lines="gamma_only 1\n")
+    executable = write_fake_abacus(tmp_path / f"fake-abacus-{capability}", stdout_lines=["NORMAL END"])
+
+    request = request_type(
+        operation_id=operation_id,
+        workspace_rel=capability,
+        capability=capability,
+    )
+    if capability == "md":
+        services = MdServiceSet.default(workspace_root=tmp_path)
+    else:
+        services = RelaxServiceSet.default(workspace_root=tmp_path)
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert not (workspace.inputs_dir / "KPT").exists()
 
 
 def test_local_runner_runs_relative_path_launcher_and_executable(
