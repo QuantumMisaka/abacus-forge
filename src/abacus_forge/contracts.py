@@ -82,8 +82,11 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 
 
 def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
-    if isinstance(value, (str, bytes)):
-        raise ValueError(f"{field_name} must contain non-empty strings")
+    # JSON has one launcher shape: an ordered array.  Python callers may use
+    # a list or tuple; Mapping keys, sets and generic iterables must not be
+    # silently projected into argv.
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{field_name} must be an array of non-empty strings")
     try:
         values = tuple(value)  # type: ignore[arg-type]
     except TypeError as error:

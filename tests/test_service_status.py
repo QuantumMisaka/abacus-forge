@@ -256,8 +256,17 @@ def _write_runtime_k_inputs(
     ("runtime_k_lines", "operation_id"),
     [
         ("gamma_only 1\n", "123e4567-e89b-42d3-a456-426614174124"),
+        ("gamma_only true\n", "123e4567-e89b-42d3-a456-426614174132"),
+        ("gamma_only t\n", "123e4567-e89b-42d3-a456-426614174133"),
+        ("gamma_only yes\n", "123e4567-e89b-42d3-a456-426614174134"),
+        ("gamma_only y\n", "123e4567-e89b-42d3-a456-426614174135"),
+        ("gamma_only on\n", "123e4567-e89b-42d3-a456-426614174136"),
+        ("gamma_only .true.\n", "123e4567-e89b-42d3-a456-426614174137"),
+        ("gamma_only 1 ! Gamma sampling\n", "123e4567-e89b-42d3-a456-426614174138"),
         ("kspacing 0.5\n", "123e4567-e89b-42d3-a456-426614174125"),
+        ("kspacing 0.5 ! reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174139"),
         ("kspacing 0.1 0.1 0.1\n", "123e4567-e89b-42d3-a456-426614174131"),
+        ("kspacing 0.1 0.1 0.1 # reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174140"),
     ],
 )
 def test_typed_execute_admits_runtime_k_source_without_kpt_file(
@@ -297,6 +306,7 @@ def test_typed_execute_admits_runtime_k_source_without_kpt_file(
     "runtime_k_lines",
     [
         "gamma_only 0\n",
+        "gamma_only 1.0\n",
         "gamma_only abc\n",
         "gamma_only\n",
         "kspacing 0\n",

@@ -376,20 +376,23 @@ def _input_has_runtime_k_source(input_path: Path) -> bool:
         parameters = read_input(input_path)
     except (OSError, ValueError):
         return False
+
+    def _active_value(raw: str) -> str:
+        # ABACUS INPUT supports ``#`` and ``!`` comments.  ``read_input`` owns
+        # ``#``; strip both here so admission and the engine see the same token.
+        for comment_token in ("#", "!"):
+            raw = raw.split(comment_token, 1)[0]
+        return raw.strip()
+
     gamma_only = parameters.get("gamma_only")
     if gamma_only is not None:
-        normalized = gamma_only.strip().lower()
-        if normalized in {"1", "true"}:
+        normalized = _active_value(gamma_only).lower()
+        if normalized in {"1", "true", "t", "yes", "y", "on", ".true."}:
             return True
-        try:
-            if math.isfinite(float(normalized)) and float(normalized) == 1.0:
-                return True
-        except ValueError:
-            pass
     kspacing = parameters.get("kspacing")
     if kspacing is not None:
         # ABACUS accepts a scalar spacing or an isotropic-equivalent triple.
-        tokens = kspacing.split()
+        tokens = _active_value(kspacing).split()
         if len(tokens) not in (1, 3):
             return False
         try:

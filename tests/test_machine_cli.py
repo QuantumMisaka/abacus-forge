@@ -358,6 +358,26 @@ def test_machine_execute_decode_rejects_invalid_launcher_and_env_overrides() -> 
         assert envelope["error"]["class"] == "request.schema"
 
 
+def test_machine_execute_rejects_launcher_object_without_runner_call() -> None:
+    operation_id = "123e4567-e89b-42d3-a456-426614174014"
+    services = _AllRecordingServices({"execute": _outcome_for("execute", operation_id)})
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": operation_id,
+        "workspace_rel": ".",
+        "launcher": {"env": "-i"},
+    }
+
+    code, output, _ = _invoke(
+        ["operation", "execute", "--stdin"], request_text=json.dumps(payload), services=services
+    )
+
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.schema"
+    assert services.calls == []
+
+
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
 @pytest.mark.parametrize(
     ("operation", "request_type", "extra"),

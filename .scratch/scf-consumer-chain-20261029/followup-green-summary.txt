@@ -1,0 +1,5 @@
+Forge follow-up TDD green — branch feat/forge-scf-consumer-chain-20261029
+runtime-K focused: 28 passed, 176 deselected (exit 0)
+launcher focused: 18 passed, 418 deselected (exit 0)
+Full default offline: 1651 passed, 35 skipped, 176 warnings (exit 0)
+Implementation: boolean token grammar with #/! comments, strict gamma_only 1.0 rejection, strict launcher list/tuple admission.

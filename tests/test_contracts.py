@@ -352,6 +352,23 @@ def test_scf_execute_request_rejects_invalid_launcher_at_constructor() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    "launcher",
+    [
+        {"env": "-i"},
+        {"mpirun": None},
+        "mpirun",
+        b"mpirun",
+        {"mpirun", "-np", "2"},
+    ],
+)
+def test_scf_execute_request_rejects_non_list_launcher(launcher: object) -> None:
+    payload = _valid_execute_request_dict()
+    payload["launcher"] = launcher
+    with pytest.raises(ValueError, match="launcher"):
+        ScfExecuteRequest.from_dict(payload)
+
+
 def test_scf_execute_request_rejects_unknown_runner_fields() -> None:
     payload = _valid_execute_request_dict()
     payload["gpu_count"] = 4
