@@ -76,6 +76,7 @@ _FILE_MARKERS: dict[str, tuple[str, ...]] = {
     "test_maturation_packs.py": ("experimental",),
     "test_property_manifest.py": ("experimental",),
     "test_architecture.py": ("core",),
+    "test_capability_registry.py": ("core",),
     "test_documentation_links.py": ("core",),
 }
 

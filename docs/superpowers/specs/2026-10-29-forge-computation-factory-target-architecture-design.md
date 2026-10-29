@@ -365,7 +365,11 @@ Paimon 可由 registry 生成 Tool 描述，最低要求是 CI 校验：
 
 不做一次性 giant merge。按 capability vertical slice 推进：
 
-### Phase A — Contract-only foundation
+### Phase A — Contract-only foundation（implemented）
+
+Implementation: `src/abacus_forge/capability_registry.py` and
+`capability-contracts` machine access. The initial registry is explicitly a
+seed containing only SCF.
 
 新增：
 
