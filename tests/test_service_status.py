@@ -275,7 +275,7 @@ def test_typed_execute_admits_runtime_k_source_without_kpt_file(
 
     def factory(**kwargs: object) -> LocalRunner:
         entered["runner"] = True
-        return LocalRunner(executable=str(executable), **kwargs)  # type: ignore[arg-type]
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
 
     request = ScfExecuteRequest(
         operation_id=operation_id,
@@ -354,6 +354,7 @@ def test_relax_and_md_execute_share_runtime_k_source_admission(
         operation_id=operation_id,
         workspace_rel=capability,
         capability=capability,
+        executable=str(executable),
     )
     if capability == "md":
         services = MdServiceSet.default(workspace_root=tmp_path)
