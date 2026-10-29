@@ -3,7 +3,7 @@
 - 状态：2026-10-29 用户确认收缩方向并授权消融；本修订取代本文件原七层架构与 Phase A–F 框架建设方案。
 - Owner：ABACUS-Forge。
 - 基础规范：[Contract-First](2026-09-01-forge-contract-first-rearchitecture-design.html)、[Service/Status](2026-09-02-forge-service-status-migration-design.html)、[Engine/Version Policy](2026-09-12-forge-engine-version-policy-design.html)。既有 v1 请求、结果、错误、单 workspace 与事件语义继续有效。
-- 实施与验证：[Phase A 收缩记录](../plans/2026-10-29-forge-computation-factory-phase-a.md)。
+- 实施与验证：[Phase A 收缩记录](../plans/2026-10-29-forge-computation-factory-phase-a.md)、[SCF consumer chain 记录](../plans/2026-10-29-forge-scf-consumer-chain.md)。
 
 ## 1. 产品目标与职责
 
@@ -61,6 +61,8 @@ Paimon / 站点适配器申请资源
 Paimon/站点适配器继续负责 `resAlloc`、partition/QOS、GPU 档位、分配与绑定。通用库不固化 SAI 的 CPU/GPU 比例、固定档位上限或 Slurm 参数。独立本地调用可使用调用方已有的资源，不要求经过平台分配服务。
 
 Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新增 GPU 数、设备绑定或实际分配信息，应随具体执行适配接入并验证；暂不发布脱离运行消费者的 ResourceSpec。通用资源表示需要覆盖零 GPU 的 CPU 操作；这不改变现役 Paimon 的 ABACUS GPU 准入，也不授权自动 CPU 降级。本次不增加新的资源调度实现。
+
+当前 SCF execute 裁决：只按 SCF 消费者暴露站点 `launcher` 与 `env_overrides`，并分别记录 requested command 与 resolved command；无法解析可执行文件时 resolved launch 保持 unknown。无 KPT 的 SCF execute 只有在 INPUT 提供 `gamma_only` 或 1/3 个 finite positive `kspacing` token 时才可 admission。这些扩展不进入 Relax/MD execute 契约；后续实际消费者需要时另行裁决。
 
 资源请求、实际分配和实际启动三者分别记录，未知观测不写成零。MPI ranks 与 GPU 数由引擎和启动方式映射，不设置通用一比一规则。发生 OOM、超时或非零退出时，Forge 返回有来源的事实；外层决定升档、重新申请和重试。整个作业被平台杀死时，终态记录由外部执行管理层补充，不要求进程内必然落盘。
 
