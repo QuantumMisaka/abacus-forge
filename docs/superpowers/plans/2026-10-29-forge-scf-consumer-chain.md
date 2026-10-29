@@ -83,8 +83,16 @@ env_overrides: object[string,string]  # default empty；仅显式传给 runner
 ## Progress
 
 - [x] 2026-10-29：确认并提交收缩后的 SPEC（`f02588c`）。
-- [ ] Task 1: Forge SCF execute handoff
-- [ ] Task 2: Paimon Forge SCF adapter
-- [ ] Task 3: Paimon Tool 消费与输出合同
-- [ ] Task 4: Integration and evidence
-- [ ] Task 5: Independent review and closeout
+- [x] Task 1: Forge SCF execute handoff
+- [x] Task 2: Paimon Forge SCF adapter
+- [x] Task 3: Paimon Tool 消费与输出合同
+- [x] Task 4: Integration and evidence
+- [x] Task 5: Independent review and closeout
+
+## Execution record
+
+- Forge implementation：`QuantumMisaka/abacus-forge`，branch `feat/forge-scf-consumer-chain-20261029`，final HEAD `5ac3e72`。覆盖 SCF-only `launcher` / `env_overrides`、requested vs resolved launch、SCF runtime-K admission（`gamma_only` 或 1/3 个 finite positive `kspacing` token）、服务错误 envelope 事实和文档。默认离线回归 1635 passed / 35 skipped。
+- Paimon v3 implementation：`app-tools-forge-latest-main-sync`，branch `feat/paimon-v3-forge-scf-consumer-chain-20261029`，final HEAD `be95cd86e`。覆盖显式 Forge backend、immutable consumer outcome record、完整 legacy dependency-tree projection、runtime launcher mapping、unknown allocation observation 和既有 output/evidence 合同。focused 361 passed / 2 deselected。
+- 控制器跨源 stub probe 用 Forge branch 的真实 `ScfServiceSet` 驱动 Paimon adapter：无 KPT + `gamma_only=1` 的 execute/collect 成功，normal-end/converge/energy 与 resolved command 可读，allocation 保持 unknown。
+- 独立审查后修复：完整 PP/ORB legacy projection、SCF-only 契约 fence、三分量 `kspacing`、空环境值和 docs。复核判定原 Critical/Important/Minor 全部 closed，无新 Critical/Important。
+- Deferred：malformed runtime-K source 的诊断仍保守折叠为缺 KPT；Paimon Forge 失败 outcome 目前随 exception 保留，尚不生成 durable failure evidence；installed-wheel end-to-end、真实 ABACUS/SAI/GPU 和 Benchmark parity 仍未执行，不作为本切片验收声明。

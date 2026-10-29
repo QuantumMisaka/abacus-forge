@@ -85,6 +85,8 @@ STRU 归一化支持 `Direct`、`Cartesian`、`Cartesian_angstrom`、`Cartesian_
 
 `execute` 只在指定 workspace 内调用一次本地进程；不自动 prepare、collect 或分析科学结果。`LocalRunner` 在 `inputs/` 下启动 ABACUS。`executable`/`launcher` 中带目录的相对路径，以及 PATH 中的相对或空分量，都按调用进程 cwd 解析；typed `forge-result` 的公开 `command` 字段保留调用方传入的原始字符串。
 
+Typed SCF execute 可显式提供完整站点 `launcher` argv 和 `env_overrides`；空字符串 value 表示显式设空并原样传给子进程。这些字段仅属于 SCF discovery/decoder，Relax/MD execute 不接受。执行结果中的 `resolved_command` 是启动前解析出的实际 argv；无法解析可执行文件时保持 unknown，不用空数组冒充。缺 KPT 的 typed SCF execute 只有在 INPUT 提供 `gamma_only` 或 1/3 个 finite positive `kspacing` token 时才可 admission；Relax/MD 仍要求 KPT。
+
 若本次进程 stdout 或新建/内容实际变化的 workspace-contained `running_*.log` 包含 ABACUS 正常结束标志，typed execute 可返回 `normal_end=true` 和相对来源路径的 log observation；没有可归因标志时不返回该 observation。它不改变 execution 或 scientific 状态。
 
 `collect` 读取 workspace 输出并返回标准化事实。当前解析范围包括能量、费米能级、带隙、力、应力、压力、virial、relax 结果和关键工件索引。原生 ABACUS SCF 行 `!FINAL_ETOT_IS ... eV` 可作为 `total_energy` 事实。typed SCF/Relax collection 可返回解析数组指标、有效结构快照以及收敛观察；Relax 完整性还要求有效最终结构，收敛标志独立返回。
