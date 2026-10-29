@@ -1,7 +1,7 @@
 # Forge SCF 消费链垂直切片
 
 - Owner：ABACUS-Forge；Paimon v3 消费面在 migration checkout 内单独落地。
-- Status：In progress。初版离线实现已交付；复审 P1/P2 及独立复核修复已在 Paimon `a05448c7e` 和 Forge `d9eb12a` 完成，默认安装态消费已用 wheel `a4bba28e…` 验证；远端 CI 与合入确认尚未完成，暂不具备合入条件。
+- Status：Forge SCF slice merged。复审 P1/P2 及独立复核修复已在 Paimon `a05448c7e` 和 Forge `d9eb12a` 完成，fresh-wheel `a4bba28e…`、远端 CI 8/8 与差异复审通过；Forge PR #16 已合入 `main@7f1fdfb`。Paimon 分支已推送至 origin，平台 MR/owner 合入确认仍待完成。
 - Design source：[算筹工场目标设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。
 - Forge baseline：`QuantumMisaka/abacus-forge`，branch `feat/forge-scf-consumer-chain-20261029`，commit `f02588c`（已包含用户确认的设计收缩）。
 - Paimon planning baseline：`app-tools-forge-latest-main-sync`，branch `integration/paimon-v3-baseline-1.2.84-20261029`，commit `7cd73eeb3`（toolbox `1.2.84` 来源）。
@@ -143,7 +143,8 @@ JSON launcher 只接受字符串数组；Python 构造保留合法 list/tuple。
 - [x] Task 7: Forge runtime-K 语法一致性。
 - [x] Task 8: Forge launcher 类型验证。
 - [x] Task 9: 默认安装态消费链。
-- [ ] Task 10: 集成 CI、差异复审与两侧合入。
+- [x] Task 10: Forge 集成 CI、差异复审与 PR #16 合入。
+- [ ] Paimon platform MR / owner merge confirmation（branch `a05448c7e` 已推送）。
 
 ## Execution record
 
@@ -153,4 +154,5 @@ JSON launcher 只接受字符串数组；Python 构造保留合法 list/tuple。
 - 初版独立审查后修复：完整 PP/ORB legacy projection、SCF-only 契约 fence、三分量 `kspacing`、空环境值和 docs；当时发现已关闭。2026-10-29 后续复审在上述 HEAD 复现 Task 6 的 P1 与 Task 7/8 的两项 P2，三项均待修复；不能继续沿用“全部 closed”作为当前合入结论。
 - 本轮复审：Paimon 真实 collector/envelope 反例先复现 `false → true → passed`；修复后混合标记保持 `false` 且 `charge_density_convergence=failed`。Forge 反例复现 launcher object 丢值与合法 runtime-K 输入误拒；修复后 focused 和全量回归通过。复审时远端两条 feature 分支尚不存在，Forge 无对应 HEAD 的 CI；日常 `abacus-env` 仍导入 canonical main 的旧 editable Forge，因此 Task 9 使用独立隔离 venv，而不是覆盖日常环境。
 - Task 9：从 Forge `d9eb12a` 构建 wheel `abacus_forge-0.1.0-py3-none-any.whl`（SHA-256 `a4bba28e3a4379a6079a0968a865c4bb5752eb9a31db1ad6158a029b8baa8ae5`），装入隔离 venv 后用真实 default request/service factories、stub engine、完整 PP/ORB 依赖树和失败 envelope 执行 `toolbox/ABACUS/scripts/verify_forge_scf_installed_consumer.py`，exit 0。隔离环境 focused suite 366 passed / 2 deselected。Paimon evidence entry HEAD `a05448c7e`。
+- Task 10：独立复核修复后判定 `READY_FOR_SCF_SLICE_MERGE`。Forge push CI run `40918559177` 在 head `b0502d690e0f6a805be4f6fe6009722d7cf65264` 通过 Python 3.10/3.11/3.12/3.13 的 `test` 与 `installed-package` 共 8 个 job。PR #16 已 merge 为 `main@7f1fdfbab4ead1dedbd2c4ef91c42ab311dd593e`。Paimon branch `feat/paimon-v3-forge-scf-consumer-chain-20261029 @ a05448c7e` 已推送，等待平台 MR/owner 合入。
 - Deferred：malformed runtime-K source 的诊断仍保守折叠为缺 KPT；Paimon Forge 失败 outcome 目前随 exception 保留，尚不生成 durable failure evidence；installed-wheel end-to-end、真实 ABACUS/SAI/GPU 和 Benchmark parity 仍未执行，不作为本切片验收声明。
