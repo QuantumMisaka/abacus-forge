@@ -388,11 +388,15 @@ def _input_has_runtime_k_source(input_path: Path) -> bool:
             pass
     kspacing = parameters.get("kspacing")
     if kspacing is not None:
+        # ABACUS accepts a scalar spacing or an isotropic-equivalent triple.
+        tokens = kspacing.split()
+        if len(tokens) not in (1, 3):
+            return False
         try:
-            spacing = float(kspacing.strip())
+            spacings = [float(token) for token in tokens]
         except ValueError:
             return False
-        if math.isfinite(spacing) and spacing > 0:
+        if all(math.isfinite(spacing) and spacing > 0 for spacing in spacings):
             return True
     return False
 
@@ -443,6 +447,7 @@ class _ExecuteService:
                         },
                     )
                 else:
+                    is_scf_execute = self._request_type is ScfExecuteRequest
                     for input_name in ("INPUT", "STRU"):
                         input_path = self._context.workspace_path(
                             workspace, f"inputs/{input_name}", f"inputs/{input_name}"
@@ -452,19 +457,21 @@ class _ExecuteService:
                         )
                     raw_input = self._context.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
                     kpt_path = self._context.workspace_path(workspace, "inputs/KPT", "inputs/KPT")
-                    if not _input_has_runtime_k_source(raw_input):
+                    if not (is_scf_execute and _input_has_runtime_k_source(raw_input)):
                         self._context.require_file(kpt_path, "inputs/KPT", "inputs/KPT")
+                    runner_kwargs: dict[str, object] = {
+                        "executable": typed_request.executable,  # type: ignore[attr-defined]
+                        "mpi_ranks": typed_request.mpi_ranks,  # type: ignore[attr-defined]
+                        "omp_threads": typed_request.omp_threads,  # type: ignore[attr-defined]
+                        "timeout_seconds": typed_request.timeout_seconds,  # type: ignore[attr-defined]
+                    }
+                    if is_scf_execute:
+                        runner_kwargs["launcher"] = tuple(typed_request.launcher)  # type: ignore[attr-defined]
+                        runner_kwargs["env_overrides"] = dict(typed_request.env_overrides)  # type: ignore[attr-defined]
                     # Build each default runner from this request.  The factory
                     # hook is only for integration/test doubles; request fields
                     # remain the sole configuration source for normal callers.
-                    runner = self._context.runner_factory(
-                        executable=typed_request.executable,  # type: ignore[attr-defined]
-                        mpi_ranks=typed_request.mpi_ranks,  # type: ignore[attr-defined]
-                        omp_threads=typed_request.omp_threads,  # type: ignore[attr-defined]
-                        timeout_seconds=typed_request.timeout_seconds,  # type: ignore[attr-defined]
-                        launcher=tuple(typed_request.launcher),  # type: ignore[attr-defined]
-                        env_overrides=dict(typed_request.env_overrides),  # type: ignore[attr-defined]
-                    )
+                    runner = self._context.runner_factory(**runner_kwargs)
                     preflight = getattr(runner, "preflight", None)
                     if callable(preflight):
                         try:
