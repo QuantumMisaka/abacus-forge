@@ -62,7 +62,7 @@ Paimon/站点适配器继续负责 `resAlloc`、partition/QOS、GPU 档位、分
 
 Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新增 GPU 数、设备绑定或实际分配信息，应随具体执行适配接入并验证；暂不发布脱离运行消费者的 ResourceSpec。通用资源表示需要覆盖零 GPU 的 CPU 操作；这不改变现役 Paimon 的 ABACUS GPU 准入，也不授权自动 CPU 降级。本次不增加新的资源调度实现。
 
-当前 SCF execute 裁决：只按 SCF 消费者暴露站点 `launcher` 与 `env_overrides`，并分别记录 requested command 与 resolved command；无法解析可执行文件时 resolved launch 保持 unknown。无 KPT 的 SCF execute 只有在 INPUT 提供 `gamma_only` 或 1/3 个 finite positive `kspacing` token 时才可 admission。这些扩展不进入 Relax/MD execute 契约；后续实际消费者需要时另行裁决。
+当前 SCF execute 裁决：只按 SCF 消费者暴露站点 `launcher` 与 `env_overrides`，并分别记录 requested command 与 resolved command；无法解析可执行文件时 resolved launch 保持 unknown。`launcher` 的 JSON 输入是字符串数组，错误类型在请求解码处拒绝，不得将 object 的 key 静默当成 argv。无 KPT 的 SCF execute 只有在 INPUT 以有效布尔值启用 `gamma_only`，或提供 1/3 个 finite positive `kspacing` token 时才可 admission；解析遵循所支持 ABACUS 的布尔 token 与行内注释语法，避免误拒合法输入。这些扩展不进入 Relax/MD execute 契约；后续实际消费者需要时另行裁决。
 
 资源请求、实际分配和实际启动三者分别记录，未知观测不写成零。MPI ranks 与 GPU 数由引擎和启动方式映射，不设置通用一比一规则。发生 OOM、超时或非零退出时，Forge 返回有来源的事实；外层决定升档、重新申请和重试。整个作业被平台杀死时，终态记录由外部执行管理层补充，不要求进程内必然落盘。
 
@@ -73,6 +73,8 @@ Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新�
 **目录放置。** 先复用调用方已有 project parent 和路径解析，向 Forge 提供明确 workspace。只有可复用的路径解析、冲突检查确实缺失时才抽取小型 helper。不预建 ProjectContext / WorkspaceAllocator / ProjectManifest 框架、固定 role 枚举或跨 workspace 的第二套审计索引。既有路径 containment 和 append-only event 继续保护实际工件交接。
 
 **输出映射。** Paimon 中声明来自 Forge 的输出核对实际工件、单位、来源和缺失语义，允许显式重命名与有依据的派生。摘要、报告及平台输出由 Paimon 自有契约定义。多个操作的组合属于调用方；不要求全部 Tool 输出是 Forge canonical outputs 的子集，不自动生成整套 Tool。
+
+收敛投影沿用 Forge 已报告的事实与缺失语义；同一结果包含正负标记时，不得把 Forge 的未收敛事实改写为收敛。`collection=complete` 表示采集完整，不表示计算收敛或科学可接受。本次 SCF 收敛修复的回归经过真实 collector/envelope 和消费侧事实生成，防止手造成功结果掩盖语义漂移。
 
 **诊断。** 复用已有错误 envelope、运行退出事实、observations 和 diagnostics。遇到真实消费缺口再补稳定字段，不另建 collector registry、封闭的全局 diagnostic 枚举或恢复动作语言。平台特有信息由 adapter 解释为有来源的事实；Forge 不直接读取 ATP/Slurm 传输协议。数据保真、有效 JSON 与既有错误类别仍需验证。
 
@@ -88,5 +90,7 @@ Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新�
 - 仅收缩未消费的元数据原型，比较保留接口及相关离线行为；不为删设计新增真实计算。
 - 安装、引擎启动或打包边界改变，补对应安装态或真实运行证据；相关输入未变时复用已有证据。
 - 在完整迁移或发布验收处汇总候选和适用证据，不要求每个小切片重跑全套 Benchmark、冻结全部哈希或重复 SAI 计算。
+
+验收分为三层：SCF 切片合入检查相应源码修复、默认安装态消费链和集成 CI；Forge 0.1.0 发布检查发布提交与受测制品，流程复用[发行手册](../../releasing.md)；Paimon v3 替代检查实际能力覆盖、旧运行时依赖解除、平台运行和 Benchmark parity。各层证据分别支撑其结论。安装态消费检查使用真实已安装 Forge request/service，仅计算引擎可用 stub；注入 request/service doubles 的单元测试不能证明这一交接。资源档位映射先做离线检查，真实 GPU 验证按不同启动与绑定方式选择代表案例，有实际差异时再扩展档位。
 
 本修订不批准旧 Contract System M1–M4，不替换专用科学方法设计，也不新增发布、平台上传或生产运行授权。后续实现按具体缺口推进，不以完成一套预设架构层级作为交付目标。
