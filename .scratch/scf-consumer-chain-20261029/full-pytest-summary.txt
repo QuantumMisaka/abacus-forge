@@ -1,0 +1,5 @@
+Full offline pytest evidence — forge scf consumer chain Task 1
+repo: QuantumMisaka/abacus-forge branch: feat/forge-scf-consumer-chain-20261029
+command: conda run --no-capture-output -n abacus-env env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider
+exit: 0
+1608 passed, 35 skipped, 176 warnings in 141.31s (0:02:21)
