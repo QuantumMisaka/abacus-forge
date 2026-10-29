@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from dataclasses import replace
 import hashlib
+import math
 from typing import Callable, Protocol, runtime_checkable
 
 from abacus_forge.collection import collect_contained as collect
@@ -28,7 +29,12 @@ from abacus_forge.contracts import (
     ScfModifyRequest,
     ScfPrepareRequest,
 )
-from abacus_forge.input_io import input_calculation_values, read_input, serialized_calculation_values
+from abacus_forge.input_io import (
+    input_calculation_values,
+    read_input,
+    read_input_tokens,
+    serialized_calculation_values,
+)
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -363,6 +369,39 @@ class ScfModifyService(_ModifyService):
         super().__init__(context, ScfModifyRequest)
 
 
+def _input_has_runtime_k_source(input_path: Path) -> bool:
+    """Return whether INPUT derives the k mesh at runtime without a KPT file.
+
+    ABACUS accepts ``gamma_only`` sampling or a positive ``kspacing`` as a
+    runtime K source, so a missing ``KPT`` file is only an admission failure
+    when INPUT provides neither.  Unreadable or invalid values stay
+    conservative: they never admit execution without KPT.
+    """
+    try:
+        parameters = read_input_tokens(input_path)
+    except (OSError, ValueError):
+        return False
+
+    gamma_only = parameters.get("gamma_only")
+    if gamma_only is not None:
+        normalized = gamma_only[0].lower()
+        if normalized in {"1", "true", "t", "yes", "y", "on", ".true."}:
+            return True
+    kspacing = parameters.get("kspacing")
+    if kspacing is not None:
+        # ABACUS accepts a scalar spacing or an isotropic-equivalent triple.
+        tokens = kspacing
+        if len(tokens) not in (1, 3):
+            return False
+        try:
+            spacings = [float(token) for token in tokens]
+        except ValueError:
+            return False
+        if all(math.isfinite(spacing) and spacing > 0 for spacing in spacings):
+            return True
+    return False
+
+
 class _ExecuteService:
     def __init__(self, context: _AbacusServiceContext, request_type: type[object]) -> None:
         self._context = context
@@ -409,22 +448,31 @@ class _ExecuteService:
                         },
                     )
                 else:
-                    for input_name in ("INPUT", "STRU", "KPT"):
+                    is_scf_execute = self._request_type is ScfExecuteRequest
+                    for input_name in ("INPUT", "STRU"):
                         input_path = self._context.workspace_path(
                             workspace, f"inputs/{input_name}", f"inputs/{input_name}"
                         )
                         self._context.require_file(
                             input_path, f"inputs/{input_name}", f"inputs/{input_name}"
                         )
+                    raw_input = self._context.workspace_path(workspace, "inputs/INPUT", "inputs/INPUT")
+                    kpt_path = self._context.workspace_path(workspace, "inputs/KPT", "inputs/KPT")
+                    if not (is_scf_execute and _input_has_runtime_k_source(raw_input)):
+                        self._context.require_file(kpt_path, "inputs/KPT", "inputs/KPT")
+                    runner_kwargs: dict[str, object] = {
+                        "executable": typed_request.executable,  # type: ignore[attr-defined]
+                        "mpi_ranks": typed_request.mpi_ranks,  # type: ignore[attr-defined]
+                        "omp_threads": typed_request.omp_threads,  # type: ignore[attr-defined]
+                        "timeout_seconds": typed_request.timeout_seconds,  # type: ignore[attr-defined]
+                    }
+                    if is_scf_execute:
+                        runner_kwargs["launcher"] = tuple(typed_request.launcher)  # type: ignore[attr-defined]
+                        runner_kwargs["env_overrides"] = dict(typed_request.env_overrides)  # type: ignore[attr-defined]
                     # Build each default runner from this request.  The factory
                     # hook is only for integration/test doubles; request fields
                     # remain the sole configuration source for normal callers.
-                    runner = self._context.runner_factory(
-                        executable=typed_request.executable,  # type: ignore[attr-defined]
-                        mpi_ranks=typed_request.mpi_ranks,  # type: ignore[attr-defined]
-                        omp_threads=typed_request.omp_threads,  # type: ignore[attr-defined]
-                        timeout_seconds=typed_request.timeout_seconds,  # type: ignore[attr-defined]
-                    )
+                    runner = self._context.runner_factory(**runner_kwargs)
                     preflight = getattr(runner, "preflight", None)
                     if callable(preflight):
                         try:
@@ -444,6 +492,7 @@ class _ExecuteService:
                             "status": runner_result.status,
                             "returncode": runner_result.returncode,
                             "command": runner_result.command,
+                            "resolved_command": runner_result.resolved_command,
                         },
                     )
                     envelope = _with_workspace(runner_result.to_envelope(), typed_request.workspace_rel)  # type: ignore[attr-defined]

@@ -4,8 +4,21 @@
 
 ## 当前工作入口
 
-Forge 0.1.0 独立公开交付准备已完成：[设计](specs/2026-10-21-forge-public-release-design.md)、[计划](plans/2026-10-21-forge-public-release.md)与[验收证据](evidence/2026-10-21-forge-public-release.md)。环境诊断、安装态人类/Agent 上手和受验证制品的发布管线已由 PR #8 合入 main；两版源码/安装态远端 CI 均通过。PR #9 合入后，standalone public candidate 已推进到 [`main@972477c`](evidence/2026-10-23-forge-main-972477c-candidate/README.md)，当前 wheel 为 `ac2f46d…`；GitHub 发布环境已配置，PyPI 账户配置与实际发布按用户要求延后。Paimon 验收仍由另一会话负责。
-release matrix gate 已在 [`68d42658`](evidence/2026-10-23-forge-release-matrix-gate-candidate/README.md) 通过本地/远端验证并进入 [PR #15](https://github.com/QuantumMisaka/abacus-forge/pull/15)；合入前 main candidate 仍为 `972477c`。
+2026-10-29 用户确认收缩“算筹工场”设计并消融不必要框架：
+[当前设计](specs/2026-10-29-forge-computation-factory-target-architecture-design.md)与
+[Phase A 原型撤回记录](plans/2026-10-29-forge-computation-factory-phase-a.md)与
+[SCF consumer chain 计划](plans/2026-10-29-forge-scf-consumer-chain.md)。
+该切片初版离线实现已交付；复审 P1/P2 源码修复已分别落在
+Paimon `a05448c7e` 与 Forge `d9eb12a`，fresh-wheel 默认安装态
+检查已通过；远端 CI 与两侧合入确认仍按计划 Task 10 执行。
+复用现有 discovery、操作契约、runner 和 provenance；撤回平行 registry、
+通用 identity 硬门及 Paimon 全输出投影约束。ABACUS 默认 GPU、独立 CPU 任务
+的分工保持；资源接入按实际消费者推进，不增加统一调度框架。
+下述发布候选和 Benchmark 记录仍只证明各自冻结组合，不代表本次源码或
+Paimon 1.2.84 替代已验收。
+
+Forge 0.1.0 已有发布设计与管线：[设计](specs/2026-10-21-forge-public-release-design.md)、[计划](plans/2026-10-21-forge-public-release.md)与[历史验收证据](evidence/2026-10-21-forge-public-release.md)。历史 standalone candidate [`main@972477c`](evidence/2026-10-23-forge-main-972477c-candidate/README.md) 的 wheel 为 `ac2f46d…`，不包含当前设计收缩和 SCF 扩展。修复合入后需按[发行手册](../releasing.md)产生新 candidate，不能直接沿用旧包作为当前交付。
+release matrix gate 在 [`68d42658`](evidence/2026-10-23-forge-release-matrix-gate-candidate/README.md) 留有本地/远端验证，并已通过 [PR #15](https://github.com/QuantumMisaka/abacus-forge/pull/15) 合入远端 `main@388f6b5`。当前 CI 为 Python 3.10/3.11/3.12/3.13 的 test 与 installed-package 共八个 job；GitHub 发布环境已有配置，PyPI 账户配置与实际发布仍待 owner 完成。
 
 Forge 已补安装态 CI：Python 3.10/3.12 的构建、安装与 optional parser parity 命令本地重放各 55 项通过；GitHub 托管运行与 wheel/sdist artifact 上传也已通过。见[验证记录](evidence/2026-10-21-forge-installed-package-ci.md)。Paimon Benchmark 由另一会话负责。
 
@@ -47,6 +60,7 @@ ATST 上游实算已按用户决定复用，串行/并行真实轨迹通过当�
 
 | 规范 | 适用范围 |
 | --- | --- |
+| [2026-10-29 算筹工场收缩设计](specs/2026-10-29-forge-computation-factory-target-architecture-design.md) | 用户确认消融方向；取代同文件原七层架构与 Phase A–F 框架方案。保留既有 v1 契约，以实际消费补齐能力；SCF-only launcher/env 与 runtime-K admission 见其 [consumer chain 记录](plans/2026-10-29-forge-scf-consumer-chain.md)。不整体批准下方历史 Draft。 |
 | [2026-09-01 契约优先重构](specs/2026-09-01-forge-contract-first-rearchitecture-design.html) | Approved；产品边界、契约和总体迁移。 |
 | [2026-09-02 Service/Status](specs/2026-09-02-forge-service-status-migration-design.html) | Approved；operation identity、受理、execution/collection、v1 CLI/error 与兼容迁移。仅在这些细化范围内优先于 09-01。 |
 | [Typed MD postprocess](specs/2026-09-10-forge-typed-md-postprocess-design.html) | Approved for this implementation thread；显式 trajectory 与独立后处理。 |

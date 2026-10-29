@@ -23,6 +23,29 @@ def read_input(path: str | Path) -> dict[str, str]:
     return values
 
 
+def read_input_tokens(path: str | Path) -> dict[str, tuple[str, ...]]:
+    """Read ABACUS INPUT values using whitespace-token comment semantics.
+
+    ABACUS starts a comment at a whitespace-delimited token whose first
+    character is ``#`` or ``!``.  A comment marker inside an otherwise normal
+    token remains part of that value, so admission cannot silently repair a
+    malformed token such as ``1#typo``.
+    """
+    values: dict[str, tuple[str, ...]] = {}
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.upper().startswith("INPUT_PARAMETERS"):
+            continue
+        active: list[str] = []
+        for token in stripped.split():
+            if token[0] in {"#", "!"}:
+                break
+            active.append(token)
+        if len(active) >= 2:
+            values[active[0]] = tuple(active[1:])
+    return values
+
+
 def input_calculation_values(path: str | Path) -> tuple[str | None, ...]:
     """Return all calculation directives, preserving duplicate occurrences."""
     values: list[str | None] = []

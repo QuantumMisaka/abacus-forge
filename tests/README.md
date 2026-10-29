@@ -62,7 +62,9 @@ PyPI 安装包。该 job 复用上述 installed-only 检查，缺少 fixture 目
 - 修改 README、docs、evidence 或 PLAN 中的相对链接时，运行 `tests/test_documentation_links.py`；该测试防止证据链接指向缺失的仓库目标，不校验外部 URL 或锚点文本。
 - `tests/test_diagnostics.py` 覆盖只读环境诊断、无科学库导入的入口与错误退出；`tests/test_getting_started.py` 在安装环境中实际执行 README、quickstart 和 Agent 示例，开发态也需先安装包。`tests/test_release.py` 覆盖发布来源、制品完整性和版本不一致的拒绝。
 - 改动机器 CLI transport 时，同时运行 `tests/test_machine_cli.py tests/test_cli_process.py`。前者管进程内解码/发现/派发，后者管 stdout/stderr/退出码与 API/进程一致性。
-- `tests/test_architecture.py` 管生产代码导入边界与当前用户指南中的机器 CLI 示例；示例仍通过实际 CLI 解析和执行 dry-run。`tests/fixtures/abacus-native-md` 是本地格式 fixture，不能充当真实执行或科学判断。
+- `tests/test_architecture.py` 管生产代码导入边界与当前用户指南中的机器 CLI 示例；示例仍通过实际 CLI 解析和执行 dry-run。边界测试按
+  [architecture 的 boundary purpose map](../docs/architecture.md#边界测试目的)保护 runtime closure、core/API layering 和 artifact
+  neutrality，不做全局 keyword scan。`tests/fixtures/abacus-native-md` 是本地格式 fixture，不能充当真实执行或科学判断。
 
 typed SCF/Relax service tests 保持执行、收集事实与科学判断分离：`scientific` 为 `unassessed`；`dry_run` 必须显式请求；typed 执行不会根据旧 `NORMAL END` 推断跳过。`run_many(skip_completed=True)` 属于 legacy composite 兼容接口，不属于 typed status 协议。
 

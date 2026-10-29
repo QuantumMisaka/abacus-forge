@@ -8,10 +8,10 @@ from typing import Literal, Mapping
 from abacus_forge.contracts import (
     JSONValue,
     ScfCollectRequest,
-    ScfExecuteRequest,
     ScfModifyRequest,
     ScfPrepareRequest,
     _require_literal,
+    _SharedExecuteRequest,
 )
 
 
@@ -69,7 +69,7 @@ class MdModifyRequest(_MdCapabilityMixin, ScfModifyRequest):
 
 
 @dataclass(frozen=True, slots=True)
-class MdExecuteRequest(_MdCapabilityMixin, ScfExecuteRequest):
+class MdExecuteRequest(_MdCapabilityMixin, _SharedExecuteRequest):
     """Typed request for executing one MD workspace."""
 
     capability: Literal["md"] = field(kw_only=True)

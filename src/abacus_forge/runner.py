@@ -140,6 +140,7 @@ class LocalRunner:
         }
         try:
             execution_command = self._resolved_command(workspace)
+            resolved_command: list[str] | None = list(execution_command)
         except FileNotFoundError as exc:
             stdout_path.write_text("", encoding="utf-8")
             stderr_path.write_text(str(exc) + "\n", encoding="utf-8")
@@ -147,6 +148,9 @@ class LocalRunner:
                 {
                     "failure_class": "missing_executable",
                     "termination": "not_started",
+                    # The process never started, so the actual start stays
+                    # explicitly unknown instead of an empty argv placeholder.
+                    "resolved_command": None,
                     "stderr_tail": str(exc),
                     "stdout_tail": "",
                 }
@@ -162,6 +166,7 @@ class LocalRunner:
                 stderr_path=stderr_path,
                 omp_threads=self.omp_threads,
                 diagnostics=diagnostics,
+                resolved_command=None,
             )
 
         try:
@@ -197,6 +202,7 @@ class LocalRunner:
             {
                 "failure_class": failure_class,
                 "termination": termination,
+                "resolved_command": resolved_command,
                 "stdout_tail": _tail(stdout),
                 "stderr_tail": _tail(stderr),
             }
@@ -219,6 +225,7 @@ class LocalRunner:
             stderr_path=stderr_path,
             omp_threads=self.omp_threads,
             diagnostics=diagnostics,
+            resolved_command=resolved_command,
             normal_end=True if normal_end_source is not None else None,
             normal_end_source=normal_end_source,
         )

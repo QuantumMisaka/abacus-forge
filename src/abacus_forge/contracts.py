@@ -82,8 +82,6 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 
 
 def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
-    if isinstance(value, (str, bytes)):
-        raise ValueError(f"{field_name} must contain non-empty strings")
     try:
         values = tuple(value)  # type: ignore[arg-type]
     except TypeError as error:
@@ -93,8 +91,29 @@ def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
     return values
 
 
-def _string_mapping(value: object, field_name: str) -> Mapping[str, str]:
-    """Return an immutable JSON-safe map with non-empty string entries."""
+def _launcher_sequence(value: object, field_name: str) -> tuple[str, ...]:
+    """Normalize only JSON/Python ordered arrays into argv.
+
+    Mapping keys, sets and generic iterables must not be silently projected
+    into a command.  Other capability descriptor fields keep the historical
+    ``Sequence``/iterable behavior implemented by ``_string_sequence``.
+    """
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{field_name} must be an array of non-empty strings")
+    return _string_sequence(value, field_name)
+
+
+def _string_mapping(
+    value: object,
+    field_name: str,
+    *,
+    allow_empty_values: bool = False,
+) -> Mapping[str, str]:
+    """Return an immutable JSON-safe map with non-empty string keys.
+
+    ``allow_empty_values`` keeps empty string values: runner env overrides use
+    them as an explicit "set/unset to empty" instruction.
+    """
     if not isinstance(value, Mapping):
         raise ValueError(f"{field_name} must be a JSON-safe object")
     try:
@@ -103,7 +122,7 @@ def _string_mapping(value: object, field_name: str) -> Mapping[str, str]:
         raise ValueError(f"{field_name} must be a JSON-safe object") from error
     if not all(isinstance(key, str) and key for key in values):
         raise ValueError(f"{field_name} keys must be non-empty strings")
-    if not all(isinstance(item, str) and item for item in values.values()):
+    if not all(isinstance(item, str) and (allow_empty_values or item) for item in values.values()):
         raise ValueError(f"{field_name} values must be non-empty strings")
     # The entry checks establish JSON-safe scalar keys and values; retain a
     # canonical detached mapping so caller mutations cannot affect the record.
@@ -570,14 +589,23 @@ class ScfModifyRequest(_ScfRequest):
 
 
 @dataclass(frozen=True, slots=True)
-class ScfExecuteRequest(_ScfRequest):
-    """Typed request for executing one SCF workspace."""
+class _SharedExecuteRequest(_ScfRequest):
+    """Shared execute runner configuration for ABACUS execute capabilities.
+
+    SCF-only contract fields (``launcher`` / ``env_overrides``) deliberately
+    live on :class:`ScfExecuteRequest` so Relax/MD requests keep rejecting them
+    as unknown fields.
+    """
 
     executable: str = "abacus"
     mpi_ranks: int = 1
     omp_threads: int = 1
     timeout_seconds: float | None = None
     dry_run: bool = False
+
+    @property
+    def operation(self) -> Literal["execute"]:
+        return "execute"
 
     def __post_init__(self) -> None:
         _ScfRequest.__post_init__(self)
@@ -602,6 +630,37 @@ class ScfExecuteRequest(_ScfRequest):
                 "omp_threads": self.omp_threads,
                 "timeout_seconds": self.timeout_seconds,
                 "dry_run": self.dry_run,
+            }
+        )
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, JSONValue]) -> _SharedExecuteRequest:
+        return cls._from_dict(payload, "execute")
+
+
+@dataclass(frozen=True, slots=True)
+class ScfExecuteRequest(_SharedExecuteRequest):
+    """Typed request for executing one SCF workspace."""
+
+    launcher: Sequence[str] = field(default_factory=tuple)
+    env_overrides: Mapping[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _SharedExecuteRequest.__post_init__(self)
+        object.__setattr__(self, "launcher", _launcher_sequence(self.launcher, "launcher"))
+        object.__setattr__(
+            self,
+            "env_overrides",
+            _string_mapping(self.env_overrides, "env_overrides", allow_empty_values=True),
+        )
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        payload = _SharedExecuteRequest.to_dict(self)
+        payload.update(
+            {
+                "launcher": list(self.launcher),
+                "env_overrides": _thaw_json(self.env_overrides),
             }
         )
         return payload

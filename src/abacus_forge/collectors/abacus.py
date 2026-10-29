@@ -558,9 +558,6 @@ def _artifact_path(artifacts: dict[str, str], suffix: str) -> Path | None:
 def _artifact_paths_matching(artifacts: dict[str, str], contains: str, suffix: str) -> list[Path]:
     matches: list[tuple[str, Path]] = []
     for relative, path in artifacts.items():
-        normalized = relative.replace("\\", "/")
-        if "/aiida/" in normalized:
-            continue
         if contains in Path(relative).name and relative.endswith(suffix):
             matches.append((relative, Path(path)))
 

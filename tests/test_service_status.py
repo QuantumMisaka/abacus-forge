@@ -32,6 +32,8 @@ from abacus_forge import (
 from abacus_forge.contracts import ScfCollectRequest, ScfExecuteRequest, ScfModifyRequest, ScfPrepareRequest
 from abacus_forge.errors import ForgeRequestError
 from abacus_forge.input_io import read_input
+from abacus_forge.md_contracts import MdExecuteRequest
+from abacus_forge.services import MdServiceSet
 from abacus_forge.relax_contracts import RelaxCollectRequest, RelaxExecuteRequest, RelaxModifyRequest, RelaxPrepareRequest
 from abacus_forge.result import RunResult
 from tests.support.fake_executables import write_fake_abacus
@@ -128,7 +130,7 @@ class _RecordingRunnerFactory:
         self.calls.append(dict(kwargs))
         # Avoid requiring an MPI installation while still exercising the
         # request's mpi_ranks mapping.
-        return LocalRunner(launcher=("true",), **kwargs)  # type: ignore[arg-type]
+        return LocalRunner(**{**kwargs, "launcher": ("true",)})  # type: ignore[arg-type]
 
 
 def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_path: Path) -> None:
@@ -160,6 +162,8 @@ def test_narrow_services_use_runtime_protocols_and_map_execute_request_once(tmp_
         "mpi_ranks": 3,
         "omp_threads": 5,
         "timeout_seconds": 12.5,
+        "launcher": (),
+        "env_overrides": {},
     }]
 
 
@@ -185,9 +189,274 @@ def test_typed_execute_runs_relative_path_executable_resolved_from_process_cwd(
     assert result.status.execution == "completed"
     assert result.envelope.diagnostics["failure_class"] == "none"
     assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
-    assert json.loads((workspace.root / "forge-result.json").read_text(encoding="utf-8"))["command"] == [
+    execution_facts = json.loads((workspace.root / "forge-result.json").read_text(encoding="utf-8"))
+    assert execution_facts["command"] == [
         "bin/fake-abacus"
     ]
+    assert execution_facts["resolved_command"][0] != "bin/fake-abacus"
+    assert execution_facts["resolved_command"][0].endswith("bin/fake-abacus")
+
+
+def test_typed_execute_hands_launcher_and_env_overrides_to_runner(tmp_path: Path) -> None:
+    _write_prepared_inputs(Workspace(tmp_path / "scf").ensure_layout())
+    executable = tmp_path / "env-echo-abacus"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "import os\n"
+        "print(f\"FORGE_ENV={os.environ.get('FORGE_ENV', 'missing')}\")\n"
+        "print(\"NORMAL END\")\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+    captured: dict[str, object] = {}
+
+    def factory(**kwargs: object) -> LocalRunner:
+        captured.update(kwargs)
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174120",
+        workspace_rel="scf",
+        executable=str(executable),
+        launcher=("env",),
+        env_overrides={"FORGE_ENV": "site-value"},
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert captured["launcher"] == ("env",)
+    assert captured["env_overrides"] == {"FORGE_ENV": "site-value"}
+    assert list(result.envelope.diagnostics["launcher"]) == ["env"]
+    assert result.envelope.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
+    assert list(result.envelope.diagnostics["resolved_command"])[1] == str(executable)
+    assert "FORGE_ENV=site-value" in (tmp_path / "scf" / "outputs" / "stdout.log").read_text(encoding="utf-8")
+
+
+def _write_runtime_k_inputs(
+    workspace: Workspace,
+    *,
+    capability: str,
+    extra_input_lines: str = "",
+    include_kpt: bool = False,
+) -> None:
+    (workspace.inputs_dir / "INPUT").write_text(
+        f"INPUT_PARAMETERS\ncalculation {capability}\n{extra_input_lines}",
+        encoding="utf-8",
+    )
+    (workspace.inputs_dir / "STRU").write_text("prepared\n", encoding="utf-8")
+    if include_kpt:
+        (workspace.inputs_dir / "KPT").write_text(
+            "K_POINTS\n0\nGamma\n1 1 1 0 0 0\n",
+            encoding="utf-8",
+        )
+
+
+@pytest.mark.parametrize(
+    ("runtime_k_lines", "operation_id"),
+    [
+        ("gamma_only 1\n", "123e4567-e89b-42d3-a456-426614174124"),
+        ("gamma_only true\n", "123e4567-e89b-42d3-a456-426614174132"),
+        ("gamma_only t\n", "123e4567-e89b-42d3-a456-426614174133"),
+        ("gamma_only yes\n", "123e4567-e89b-42d3-a456-426614174134"),
+        ("gamma_only y\n", "123e4567-e89b-42d3-a456-426614174135"),
+        ("gamma_only on\n", "123e4567-e89b-42d3-a456-426614174136"),
+        ("gamma_only .true.\n", "123e4567-e89b-42d3-a456-426614174137"),
+        ("gamma_only 1 ! Gamma sampling\n", "123e4567-e89b-42d3-a456-426614174138"),
+        ("gamma_only true # sampling\n", "123e4567-e89b-42d3-a456-426614174141"),
+        ("kspacing 0.5\n", "123e4567-e89b-42d3-a456-426614174125"),
+        ("kspacing 0.5 ! reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174139"),
+        ("kspacing 0.1 0.1 0.1\n", "123e4567-e89b-42d3-a456-426614174131"),
+        ("kspacing 0.1 0.1 0.1 # reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174140"),
+    ],
+)
+def test_typed_execute_admits_runtime_k_source_without_kpt_file(
+    tmp_path: Path,
+    runtime_k_lines: str,
+    operation_id: str,
+) -> None:
+    """Shared _ExecuteService admission: INPUT provides the runtime K source."""
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability="scf", extra_input_lines=runtime_k_lines)
+    executable = write_fake_abacus(
+        tmp_path / f"fake-abacus-{runtime_k_lines.split()[0]}", stdout_lines=["NORMAL END"]
+    )
+    entered = {"runner": False}
+
+    def factory(**kwargs: object) -> LocalRunner:
+        entered["runner"] = True
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id=operation_id,
+        workspace_rel="scf",
+        executable=str(executable),
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert entered["runner"] is True
+    assert "NORMAL END" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
+    # Admission must never fabricate a KPT file to pass its own precondition.
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    "runtime_k_lines",
+    [
+        "gamma_only 0\n",
+        "gamma_only 1.0\n",
+        "gamma_only 1#typo\n",
+        "gamma_only 1!typo\n",
+        "gamma_only abc\n",
+        "gamma_only\n",
+        "kspacing 0\n",
+        "kspacing -0.5\n",
+        "kspacing 0.1 -1 0.1\n",
+        "kspacing 0.1 0.1\n",
+        "kspacing nan\n",
+        "kspacing inf\n",
+        "kspacing 0.1 abc 0.1\n",
+        "kspacing 0.5#typo\n",
+        "kspacing 0.5!typo\n",
+        "kspacing abc\n",
+        "kspacing\n",
+        "",
+    ],
+)
+def test_typed_execute_requires_kpt_without_valid_runtime_k_source(
+    tmp_path: Path,
+    runtime_k_lines: str,
+) -> None:
+    calls = 0
+    workspace = Workspace(tmp_path / "scf")
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability="scf", extra_input_lines=runtime_k_lines)
+
+    def factory(**kwargs: object) -> LocalRunner:
+        nonlocal calls
+        calls += 1
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = ScfExecuteRequest(
+        operation_id="123e4567-e89b-42d3-a456-426614174126",
+        workspace_rel="scf",
+    )
+    result = ScfServiceSet.default(workspace_root=tmp_path, runner_factory=factory).execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert calls == 0
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "operation_id"),
+    [
+        ("relax", RelaxExecuteRequest, "123e4567-e89b-42d3-a456-426614174127"),
+        ("md", MdExecuteRequest, "123e4567-e89b-42d3-a456-426614174128"),
+    ],
+)
+def test_relax_and_md_execute_do_not_inherit_runtime_k_source_admission(
+    tmp_path: Path,
+    capability: str,
+    request_type: type[object],
+    operation_id: str,
+) -> None:
+    """Relax/MD keep the legacy KPT admission even when INPUT names a runtime K source."""
+    workspace = Workspace(tmp_path / capability)
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability=capability, extra_input_lines="gamma_only 1\n")
+    executable = write_fake_abacus(tmp_path / f"fake-abacus-{capability}", stdout_lines=["NORMAL END"])
+    calls = 0
+
+    def factory(**kwargs: object) -> LocalRunner:
+        nonlocal calls
+        calls += 1
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = request_type(
+        operation_id=operation_id,
+        workspace_rel=capability,
+        capability=capability,
+        executable=str(executable),
+    )
+    if capability == "md":
+        services = MdServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    else:
+        services = RelaxServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    result = services.execute.execute(request)
+
+    assert isinstance(result, ForgeErrorEnvelope)
+    assert result.error_class == "precondition.missing"
+    assert calls == 0
+    assert not (workspace.inputs_dir / "KPT").exists()
+
+
+@pytest.mark.parametrize(
+    ("capability", "request_type", "operation_id"),
+    [
+        ("relax", RelaxExecuteRequest, "123e4567-e89b-42d3-a456-426614174129"),
+        ("md", MdExecuteRequest, "123e4567-e89b-42d3-a456-426614174130"),
+    ],
+)
+def test_non_scf_execute_runner_factory_does_not_receive_scf_only_runner_fields(
+    tmp_path: Path,
+    capability: str,
+    request_type: type[object],
+    operation_id: str,
+) -> None:
+    captured: dict[str, object] = {}
+    workspace = Workspace(tmp_path / capability)
+    workspace.ensure_layout()
+    _write_runtime_k_inputs(workspace, capability=capability, include_kpt=True)
+    executable = write_fake_abacus(
+        tmp_path / f"fake-abacus-{capability}-factory", stdout_lines=["NORMAL END"]
+    )
+
+    def factory(**kwargs: object) -> LocalRunner:
+        captured.update(kwargs)
+        return LocalRunner(**kwargs)  # type: ignore[arg-type]
+
+    request = request_type(
+        operation_id=operation_id,
+        workspace_rel=capability,
+        capability=capability,
+        executable=str(executable),
+    )
+    if capability == "md":
+        services = MdServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    else:
+        services = RelaxServiceSet.default(workspace_root=tmp_path, runner_factory=factory)
+    result = services.execute.execute(request)
+
+    assert isinstance(result, OperationOutcome)
+    assert result.status.execution == "completed"
+    assert set(captured) == {"executable", "mpi_ranks", "omp_threads", "timeout_seconds"}
+
+
+def test_local_runner_env_overrides_allow_empty_values(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    executable = tmp_path / "env-empty-abacus"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        "import os\n"
+        "print(f\"FORGE_EMPTY={os.environ.get('FORGE_EMPTY', 'missing')}\")\n"
+        "print(\"NORMAL END\")\n",
+        encoding="utf-8",
+    )
+    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+
+    runner = LocalRunner(executable=str(executable), env_overrides={"FORGE_EMPTY": ""})
+    assert runner.preview(workspace)["env"]["FORGE_EMPTY"] == ""
+    result = runner.run(workspace)
+
+    assert result.status == "completed"
+    assert "FORGE_EMPTY=\n" in (workspace.outputs_dir / "stdout.log").read_text(encoding="utf-8")
 
 
 def test_local_runner_runs_relative_path_launcher_and_executable(
@@ -874,8 +1143,53 @@ def test_legacy_run_result_serialization_excludes_normal_end_sidecar(tmp_path: P
     stdout = tmp_path / "stdout.log"
     stderr = tmp_path / "stderr.log"
     result = RunResult(tmp_path, ["fake"], 0, "completed", stdout, stderr, 1, {}, True, tmp_path / "normal.log")
-    assert set(result.to_dict()) == {"workspace", "command", "returncode", "status", "stdout_path", "stderr_path", "omp_threads", "diagnostics"}
+    assert set(result.to_dict()) == {
+        "workspace", "command", "returncode", "status", "stdout_path",
+        "stderr_path", "omp_threads", "diagnostics", "resolved_command",
+    }
     assert "normal_end" not in result.to_envelope().to_dict()["diagnostics"]
+
+
+def test_local_runner_records_requested_and_resolved_commands(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+    launcher = tmp_path / "launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os\nimport sys\nos.execv(sys.argv[1], sys.argv[1:])\n",
+        encoding="utf-8",
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IEXEC)
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+
+    result = LocalRunner(
+        executable=str(executable),
+        launcher=(str(launcher),),
+        env_overrides={"FORGE_ENV": "site-value"},
+    ).run(workspace)
+
+    assert result.command == [str(launcher), str(executable)]
+    assert result.resolved_command == [str(launcher), str(executable)]
+    assert result.diagnostics["resolved_command"] == [str(launcher), str(executable)]
+    assert result.diagnostics["launcher"] == [str(launcher)]
+    assert result.diagnostics["env_overrides"] == {"FORGE_ENV": "site-value"}
+
+
+def test_local_runner_missing_executable_keeps_resolved_start_unknown(tmp_path: Path) -> None:
+    workspace = Workspace(tmp_path / "workspace")
+    workspace.ensure_layout()
+    _write_prepared_inputs(workspace)
+
+    result = LocalRunner(executable=str(tmp_path / "missing-abacus")).run(workspace)
+
+    assert result.resolved_command is None
+    assert result.diagnostics["resolved_command"] is None
+    assert result.diagnostics["failure_class"] == "missing_executable"
+    assert result.diagnostics["launcher"] == []
+    assert result.diagnostics["mpi_ranks"] == 1
+    assert result.diagnostics["omp_threads"] == 1
+    assert result.diagnostics["timeout_seconds"] is None
+    assert result.diagnostics["env_overrides"] == {}
 
 
 @pytest.mark.parametrize(

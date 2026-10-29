@@ -70,6 +70,7 @@ def forbidden_imports(source_root: Path, forbidden_roots: set[str] | frozenset[s
 
 
 def test_production_modules_do_not_import_forbidden_upper_layers() -> None:
+    """Production source must not import retired workflow or upper-layer systems."""
     violations = forbidden_imports(SOURCE_ROOT, FORBIDDEN_ROOTS)
     assert violations == []
 
@@ -128,6 +129,7 @@ def dependency_violations(
 
 
 def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
+    """Typed and neutral code may share primitives with legacy paths, but not route through the legacy API."""
     graph = import_graph(SOURCE_ROOT)
     roots = {
         f"abacus_forge.{name}" for name in (
@@ -161,6 +163,7 @@ def test_typed_services_and_neutral_core_do_not_depend_on_legacy_api() -> None:
 
 
 def test_dependency_gate_follows_relative_reexports_and_forbidden_transitive_imports(tmp_path: Path) -> None:
+    """Relative re-exports and transitive imports cannot hide a legacy API dependency."""
     (tmp_path / "services.py").write_text("from . import bridge\n", encoding="utf-8")
     (tmp_path / "bridge.py").write_text("from abacus_forge.api import prepare\nimport mcp.server\n", encoding="utf-8")
     assert dependency_violations(import_graph(tmp_path), {"abacus_forge.services"}) == [

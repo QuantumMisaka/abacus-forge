@@ -1,0 +1,8 @@
+Forge follow-up review TDD red — branch feat/forge-scf-consumer-chain-20261029
+Command: conda run --no-capture-output -n abacus-env env PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/test_service_status.py -q -k 'runtime_k_source or requires_kpt_without_valid'
+Exit: 1
+Result: 8 failed, 20 passed. Failures covered valid boolean/inline-comment runtime-K rejection and gamma_only 1.0 false admission.
+
+Command: conda run --no-capture-output -n abacus-env env PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/test_contracts.py tests/test_machine_cli.py -q -k 'launcher'
+Exit: 1
+Result: 4 failed, 14 passed. Launcher Mapping/set values were accepted; the new CLI regression had a test-double construction error and was corrected before implementation.

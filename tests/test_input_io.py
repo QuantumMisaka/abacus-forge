@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from abacus_forge.input_io import read_input, read_kpt, write_input, write_kpt, write_kpt_line_mode, write_kpt_mesh
+from abacus_forge.input_io import (
+    read_input,
+    read_input_tokens,
+    read_kpt,
+    write_input,
+    write_kpt,
+    write_kpt_line_mode,
+    write_kpt_mesh,
+)
 from abacus_forge.modify import modify_kpt
 from abacus_forge.validation import validate_inputs
 
@@ -21,6 +29,27 @@ def test_read_input_ignores_extended_header_and_inline_comments(tmp_path: Path) 
     path.write_text("INPUT_PARAMETERS RUNNING ABACUS-DFT\nsuffix ABACUS # output suffix\nnspin 2\n", encoding="utf-8")
 
     assert read_input(path) == {"suffix": "ABACUS", "nspin": "2"}
+
+
+def test_read_input_tokens_use_abacus_comment_token_semantics(tmp_path: Path) -> None:
+    path = tmp_path / "INPUT"
+    path.write_text(
+        "INPUT_PARAMETERS RUNNING ABACUS-DFT\n"
+        "suffix ABACUS # output suffix\n"
+        "gamma_only 1 ! Gamma sampling\n"
+        "gamma_only_bad 1#typo\n"
+        "kspacing 0.5!typo\n"
+        "old#key value\n",
+        encoding="utf-8",
+    )
+
+    assert read_input_tokens(path) == {
+        "suffix": ("ABACUS",),
+        "gamma_only": ("1",),
+        "gamma_only_bad": ("1#typo",),
+        "kspacing": ("0.5!typo",),
+        "old#key": ("value",),
+    }
 
 def test_kpt_mesh_write(tmp_path: Path) -> None:
     path = tmp_path / "KPT"

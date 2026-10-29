@@ -1,0 +1,8 @@
+Forge follow-up review repair — branch feat/forge-scf-consumer-chain-20261029
+Command: pytest tests/test_contracts.py tests/test_input_io.py tests/test_machine_cli.py -q -k 'launcher or capability_descriptor or read_input_tokens or runtime_k'
+Exit: 0; 22 passed.
+Command: pytest tests/test_service_status.py -q -k 'runtime_k_source or requires_kpt_without_valid or non_launcher_sequence'
+Exit: 0; 33 passed.
+Interim full suite exposed 9 modify-path failures because read_input was removed from services imports; import restored and affected subset was 293 passed.
+Final default offline: 1658 passed, 35 skipped, 176 warnings; exit 0.
+Repairs: restore historical _string_sequence behavior for capability fields; add launcher-only ordered-array validator; add read_input_tokens with ABACUS whitespace-token comment semantics; reject gamma_only 1#typo / 1!typo and kspacing 0.5#typo / 0.5!typo.

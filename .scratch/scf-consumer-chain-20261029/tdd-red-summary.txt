@@ -1,0 +1,20 @@
+TDD red evidence — forge scf consumer chain Task 1
+repo: QuantumMisaka/abacus-forge branch: feat/forge-scf-consumer-chain-20261029 commit: f2ac918 (tests only, on f572ca2 base)
+command: conda run --no-capture-output -n abacus-env env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py tests/test_service_status.py tests/test_cli_process.py
+exit: 1 (expected red)
+result: 15 failed, 625 passed in 79.64s
+FAILED tests/test_contracts.py::test_scf_execute_request_round_trips_local_runner_configuration
+FAILED tests/test_contracts.py::test_scf_execute_request_defaults_are_empty_and_legacy_payloads_still_round_trip
+FAILED tests/test_contracts.py::test_scf_execute_request_rejects_non_json_runner_values_at_constructor[launcher]
+FAILED tests/test_contracts.py::test_scf_execute_request_rejects_non_json_runner_values_at_constructor[env_overrides]
+FAILED tests/test_contracts.py::test_scf_execute_request_rejects_invalid_launcher_at_constructor
+FAILED tests/test_contracts.py::test_scf_request_wire_keys_remain_unchanged[ScfExecuteRequest-expected_keys2]
+FAILED tests/test_machine_cli.py::test_scf_execute_discovery_schema_declares_optional_launcher_and_env_overrides
+FAILED tests/test_machine_cli.py::test_machine_execute_decode_hands_launcher_and_env_overrides_to_service
+FAILED tests/test_machine_cli.py::test_machine_execute_decode_rejects_invalid_launcher_and_env_overrides
+FAILED tests/test_service_status.py::test_narrow_services_use_runtime_protocols_and_map_execute_request_once
+FAILED tests/test_service_status.py::test_typed_execute_runs_relative_path_executable_resolved_from_process_cwd
+FAILED tests/test_service_status.py::test_typed_execute_hands_launcher_and_env_overrides_to_runner
+FAILED tests/test_service_status.py::test_legacy_run_result_serialization_excludes_normal_end_sidecar
+FAILED tests/test_service_status.py::test_local_runner_records_requested_and_resolved_commands
+FAILED tests/test_service_status.py::test_local_runner_missing_executable_keeps_resolved_start_unknown

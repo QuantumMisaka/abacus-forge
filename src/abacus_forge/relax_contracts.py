@@ -8,10 +8,10 @@ from typing import Literal, Mapping
 from abacus_forge.contracts import (
     JSONValue,
     ScfCollectRequest,
-    ScfExecuteRequest,
     ScfModifyRequest,
     ScfPrepareRequest,
     _require_literal,
+    _SharedExecuteRequest,
 )
 
 
@@ -71,7 +71,7 @@ class RelaxModifyRequest(_RelaxCapabilityMixin, ScfModifyRequest):
 
 
 @dataclass(frozen=True, slots=True)
-class RelaxExecuteRequest(_RelaxCapabilityMixin, ScfExecuteRequest):
+class RelaxExecuteRequest(_RelaxCapabilityMixin, _SharedExecuteRequest):
     """Typed request for executing one Relax workspace."""
 
     capability: Literal["relax", "cell-relax"] = field(kw_only=True)

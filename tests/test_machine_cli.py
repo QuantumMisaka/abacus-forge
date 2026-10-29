@@ -276,6 +276,108 @@ def test_discovery_advertises_all_experimental_capabilities() -> None:
     }
 
 
+def test_scf_execute_discovery_schema_declares_optional_launcher_and_env_overrides() -> None:
+    schema = request_schema_document("scf", "execute")["request_schema"]
+    assert schema["properties"]["launcher"] == {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1},
+        "default": [],
+    }
+    assert schema["properties"]["env_overrides"] == {
+        "type": "object",
+        "propertyNames": {"type": "string", "minLength": 1},
+        "additionalProperties": {"type": "string"},
+        "default": {},
+    }
+    assert "launcher" not in schema["required"]
+    assert "env_overrides" not in schema["required"]
+
+
+@pytest.mark.parametrize("capability", ["relax", "cell-relax", "md"])
+def test_non_scf_execute_discovery_schema_excludes_scf_only_runner_fields(capability: str) -> None:
+    schema = request_schema_document(capability, "execute")["request_schema"]
+    assert "launcher" not in schema["properties"]
+    assert "env_overrides" not in schema["properties"]
+
+
+def test_machine_execute_decode_hands_launcher_and_env_overrides_to_service() -> None:
+    operation_id = "123e4567-e89b-42d3-a456-426614174013"
+    results = {name: _outcome_for(name, operation_id) for name in ("prepare", "modify", "execute", "collect")}
+    services = _AllRecordingServices(results)
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": operation_id,
+        "workspace_rel": ".",
+        "launcher": ["mpirun", "-np", "2"],
+        "env_overrides": {"OMP_PROC_BIND": "close", "EMPTY_VAR": ""},
+    }
+
+    code, output, diagnostics = _invoke(
+        ["operation", "execute", "--stdin"], request_text=json.dumps(payload), services=services
+    )
+
+    assert code == 0
+    assert diagnostics == ""
+    request = services.calls[0][1]
+    assert isinstance(request, ScfExecuteRequest)
+    assert request.launcher == ("mpirun", "-np", "2")
+    assert request.env_overrides == {"OMP_PROC_BIND": "close", "EMPTY_VAR": ""}
+
+
+def test_machine_relax_execute_decode_rejects_scf_only_runner_fields() -> None:
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+        "capability": "relax",
+        "launcher": ["mpirun"],
+    }
+    code, output, _ = _invoke(["operation", "execute", "--stdin"], request_text=json.dumps(payload))
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.schema"
+
+
+def test_machine_execute_decode_rejects_invalid_launcher_and_env_overrides() -> None:
+    base = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": OPERATION_ID,
+        "workspace_rel": ".",
+    }
+    for field, value in (("launcher", "mpirun"), ("env_overrides", {"OMP_PROC_BIND": 2})):
+        code, output, _ = _invoke(
+            ["operation", "execute", "--stdin"],
+            request_text=json.dumps({**base, field: value}),
+        )
+        assert code == 2
+        envelope = json.loads(output)
+        # The machine adapter intentionally generalizes typed decode failures
+        # into one v1 schema error; the field name stays in the typed ValueError.
+        assert envelope["error"]["class"] == "request.schema"
+
+
+def test_machine_execute_rejects_launcher_object_without_runner_call() -> None:
+    operation_id = "123e4567-e89b-42d3-a456-426614174014"
+    services = _AllRecordingServices({"execute": _outcome_for("execute", operation_id)})
+    payload = {
+        "schema_version": "forge.request/v1",
+        "operation": "execute",
+        "operation_id": operation_id,
+        "workspace_rel": ".",
+        "launcher": {"env": "-i"},
+    }
+
+    code, output, _ = _invoke(
+        ["operation", "execute", "--stdin"], request_text=json.dumps(payload), services=services
+    )
+
+    assert code == 2
+    assert json.loads(output)["error"]["class"] == "request.schema"
+    assert services.calls == []
+
+
 @pytest.mark.parametrize("capability", ["relax", "cell-relax"])
 @pytest.mark.parametrize(
     ("operation", "request_type", "extra"),

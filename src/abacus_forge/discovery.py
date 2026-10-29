@@ -549,6 +549,23 @@ def _request_properties(capability: str, operation: str) -> dict[str, JSONValue]
                 "dry_run": {"type": "boolean", "default": False},
             }
         )
+        if capability == "scf":
+            # SCF-only execute contract fields; Relax/MD keep rejecting them.
+            properties.update(
+                {
+                    "launcher": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                        "default": [],
+                    },
+                    "env_overrides": {
+                        "type": "object",
+                        "propertyNames": {"type": "string", "minLength": 1},
+                        "additionalProperties": {"type": "string"},
+                        "default": {},
+                    },
+                }
+            )
     return properties
 
 

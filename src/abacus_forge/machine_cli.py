@@ -181,6 +181,7 @@ def build_machine_parser() -> argparse.ArgumentParser:
     schema.add_argument("-h", "--help", action=_HelpAction, help="show this help message and exit")
     schema.add_argument("capability")
     schema.add_argument("operation")
+
     return parser
 
 
@@ -467,7 +468,6 @@ def run_machine_cli(
             return exit_code_for(result)
         stdout.write(render_json(document))
         return 0
-
     if args.output_format == "text" and args.pretty:
         result = _error(
             "request.invalid",

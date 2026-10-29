@@ -1,6 +1,6 @@
-# ABACUS-Forge
+# ABACUS-Forge · 算筹工场
 
-ABACUS-Forge is a lightweight Python library and command-line tool for preparing ABACUS inputs, editing individual input files, running a local process, collecting output facts, and exporting results. It works with one workspace at a time. Workflow orchestration, cluster scheduling, platform integration, and scientific acceptance remain with the caller.
+ABACUS-Forge (Chinese product name: **算筹工场**) is a lightweight Python library and command-line tool for preparing ABACUS inputs, editing individual input files, running a local process, collecting output facts, and exporting results. It is the single-source ABACUS computation backend for human researchers and AI agents. It works with one workspace at a time. Workflow orchestration, cluster scheduling, platform integration, and scientific acceptance remain with the caller.
 
 ## Install and first workspace
 

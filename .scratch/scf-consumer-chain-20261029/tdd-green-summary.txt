@@ -1,0 +1,7 @@
+TDD green evidence — implementation commit 4b0798d
+command: conda run --no-capture-output -n abacus-env env PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/test_contracts.py tests/test_machine_cli.py tests/test_service_status.py tests/test_cli_process.py
+exit: 0
+result: 640 passed, 1 warning in 80.71s
+supplemental (worktree src via PYTHONPATH, module identity asserted):
+- relax/md execute schema keys == to_dict keys; launcher/env_overrides declared
+- conftest.py inserts worktree src at sys.path[0]; pytest runs exercised worktree code
