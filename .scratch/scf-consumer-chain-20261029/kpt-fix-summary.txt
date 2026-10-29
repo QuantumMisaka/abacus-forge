@@ -1,0 +1,5 @@
+KPT runtime-K-source admission fix — implementation evidence
+change: services.py typed execute admission requires INPUT/STRU always; KPT only when INPUT lacks gamma_only(=1/true) or positive finite kspacing; uses existing input_io.read_input + numeric parsing; never fabricates KPT
+focused four files: exit 0, 652 passed (was 640 + 12 new)
+full offline pytest: exit 0, 1620 passed, 35 skipped
+supplemental: relax/md share _ExecuteService admission (covered by test_relax_and_md_execute_share_runtime_k_source_admission)

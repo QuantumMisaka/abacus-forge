@@ -1,0 +1,9 @@
+KPT runtime-K-source admission fix — TDD red evidence
+commit: aed7110 (tests only, on cc452d4)
+command: pytest -q tests/test_service_status.py -k 'runtime_k_source or share_runtime_k'
+exit: 1 (expected red)
+result: 4 failed (gamma_only/kspacing/relax/md admitted-but-rejected), 8 passed (negative paths already correct)
+  FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[gamma_only 1\n-123e4567-e89b-42d3-a456-426614174124]
+  FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[kspacing 0.5\n-123e4567-e89b-42d3-a456-426614174125]
+  FAILED tests/test_service_status.py::test_relax_and_md_execute_share_runtime_k_source_admission[relax-RelaxExecuteRequest-123e4567-e89b-42d3-a456-426614174127]
+  FAILED tests/test_service_status.py::test_relax_and_md_execute_share_runtime_k_source_admission[md-MdExecuteRequest-123e4567-e89b-42d3-a456-426614174128]
