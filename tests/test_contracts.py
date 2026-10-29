@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections import deque
 import inspect
 import json
 import re
@@ -631,6 +632,27 @@ def test_capability_descriptor_round_trips_strictly() -> None:
         missing_version = dict(payload)
         missing_version.pop("schema_version")
         CapabilityDescriptor.from_dict(missing_version)
+
+
+def test_capability_descriptor_keeps_non_launcher_sequence_iterables() -> None:
+    """Task 8 only narrows launcher argv, not shared descriptor sequences."""
+    descriptor = CapabilityDescriptor(
+        name="scf",
+        maturity="experimental",
+        engine="abacus",
+        operations=deque(("prepare", "modify", "execute", "collect")),
+        inputs={
+            "prepare": deque(("structure",)),
+            "modify": deque(("prepared_workspace",)),
+            "execute": deque(("prepared_workspace",)),
+            "collect": deque(("workspace_outputs",)),
+        },
+        artifact_roles=(role for role in ("input", "provenance_manifest", "output")),
+        optional_dependencies=(dependency for dependency in ()),
+    )
+    assert descriptor.operations == ("prepare", "modify", "execute", "collect")
+    assert descriptor.artifact_roles == ("input", "provenance_manifest", "output")
+    assert descriptor.optional_dependencies == ()
 
 
 def test_capability_descriptor_rejects_invalid_values() -> None:

@@ -29,7 +29,12 @@ from abacus_forge.contracts import (
     ScfModifyRequest,
     ScfPrepareRequest,
 )
-from abacus_forge.input_io import input_calculation_values, read_input, serialized_calculation_values
+from abacus_forge.input_io import (
+    input_calculation_values,
+    read_input,
+    read_input_tokens,
+    serialized_calculation_values,
+)
 from abacus_forge.relax_contracts import (
     RelaxCollectRequest,
     RelaxExecuteRequest,
@@ -373,26 +378,19 @@ def _input_has_runtime_k_source(input_path: Path) -> bool:
     conservative: they never admit execution without KPT.
     """
     try:
-        parameters = read_input(input_path)
+        parameters = read_input_tokens(input_path)
     except (OSError, ValueError):
         return False
 
-    def _active_value(raw: str) -> str:
-        # ABACUS INPUT supports ``#`` and ``!`` comments.  ``read_input`` owns
-        # ``#``; strip both here so admission and the engine see the same token.
-        for comment_token in ("#", "!"):
-            raw = raw.split(comment_token, 1)[0]
-        return raw.strip()
-
     gamma_only = parameters.get("gamma_only")
     if gamma_only is not None:
-        normalized = _active_value(gamma_only).lower()
+        normalized = gamma_only[0].lower()
         if normalized in {"1", "true", "t", "yes", "y", "on", ".true."}:
             return True
     kspacing = parameters.get("kspacing")
     if kspacing is not None:
         # ABACUS accepts a scalar spacing or an isotropic-equivalent triple.
-        tokens = _active_value(kspacing).split()
+        tokens = kspacing
         if len(tokens) not in (1, 3):
             return False
         try:

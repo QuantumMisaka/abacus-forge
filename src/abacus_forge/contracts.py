@@ -82,11 +82,6 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 
 
 def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
-    # JSON has one launcher shape: an ordered array.  Python callers may use
-    # a list or tuple; Mapping keys, sets and generic iterables must not be
-    # silently projected into argv.
-    if not isinstance(value, (list, tuple)):
-        raise ValueError(f"{field_name} must be an array of non-empty strings")
     try:
         values = tuple(value)  # type: ignore[arg-type]
     except TypeError as error:
@@ -94,6 +89,18 @@ def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
     if not all(isinstance(item, str) and item for item in values):
         raise ValueError(f"{field_name} must contain non-empty strings")
     return values
+
+
+def _launcher_sequence(value: object, field_name: str) -> tuple[str, ...]:
+    """Normalize only JSON/Python ordered arrays into argv.
+
+    Mapping keys, sets and generic iterables must not be silently projected
+    into a command.  Other capability descriptor fields keep the historical
+    ``Sequence``/iterable behavior implemented by ``_string_sequence``.
+    """
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f"{field_name} must be an array of non-empty strings")
+    return _string_sequence(value, field_name)
 
 
 def _string_mapping(
@@ -641,7 +648,7 @@ class ScfExecuteRequest(_SharedExecuteRequest):
 
     def __post_init__(self) -> None:
         _SharedExecuteRequest.__post_init__(self)
-        object.__setattr__(self, "launcher", _string_sequence(self.launcher, "launcher"))
+        object.__setattr__(self, "launcher", _launcher_sequence(self.launcher, "launcher"))
         object.__setattr__(
             self,
             "env_overrides",
