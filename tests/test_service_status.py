@@ -1657,6 +1657,68 @@ def test_typed_services_serialize_different_ids_for_one_workspace(tmp_path: Path
     assert all(isinstance(result, OperationOutcome) for result in results)
 
 
+def test_typed_execute_distinct_unit_workspaces_run_concurrently(tmp_path: Path) -> None:
+    """Independent unit workspaces do not inherit one-workspace serialization."""
+    for name in ("unit-a", "unit-b"):
+        _write_prepared_inputs(Workspace(tmp_path / name).ensure_layout())
+    executable = write_fake_abacus(tmp_path / "fake-abacus", stdout_lines=["NORMAL END"])
+    barrier = threading.Barrier(2, timeout=5)
+    calls: list[str] = []
+    started = {name: threading.Event() for name in ("unit-a", "unit-b")}
+
+    class ConcurrentRunner(LocalRunner):
+        def run(self, workspace, check=False):
+            name = workspace.root.name
+            calls.append(name)
+            started[name].set()
+            barrier.wait()
+            return super().run(workspace, check=check)
+
+    services = ForgeServices.default(
+        workspace_root=tmp_path,
+        runner=ConcurrentRunner(executable=str(executable)),
+    )
+    requests = [
+        _request(
+            ScfExecuteRequest,
+            "unit-a",
+            "123e4567-e89b-42d3-a456-426614174031",
+        ),
+        _request(
+            ScfExecuteRequest,
+            "unit-b",
+            "123e4567-e89b-42d3-a456-426614174032",
+        ),
+    ]
+    results: list[ForgeResultEnvelope | ForgeErrorEnvelope] = []
+    threads = [
+        threading.Thread(
+            target=lambda request=request: results.append(services.execute_scf(request))
+        )
+        for request in requests
+    ]
+    for thread in threads:
+        thread.start()
+    for name in ("unit-a", "unit-b"):
+        assert started[name].wait(timeout=5)
+    for thread in threads:
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+
+    assert sorted(calls) == ["unit-a", "unit-b"]
+    assert len(results) == 2
+    assert all(isinstance(result, OperationOutcome) for result in results)
+    assert {result.operation_id for result in results} == {
+        "123e4567-e89b-42d3-a456-426614174031",
+        "123e4567-e89b-42d3-a456-426614174032",
+    }
+    for name, request in zip(("unit-a", "unit-b"), requests):
+        manifest = json.loads(
+            (tmp_path / name / "reports/forge-workspace.json").read_text()
+        )
+        assert [event["id"] for event in manifest["events"]] == [request.operation_id]
+
+
 def test_typed_service_manifest_failure_is_class_5_and_keeps_id_blocked(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
