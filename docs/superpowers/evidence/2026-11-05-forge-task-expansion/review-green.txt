@@ -1,0 +1,13 @@
+........................................................................ [100%]
+=============================== warnings summary ===============================
+tests/test_composite_plan.py: 94 warnings
+tests/test_phonon_expansion.py: 34 warnings
+tests/test_elastic_vibration_expansion.py: 200 warnings
+tests/test_composite.py: 24 warnings
+tests/test_composite_elastic_fit.py: 14 warnings
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+72 passed, 366 warnings in 33.31s

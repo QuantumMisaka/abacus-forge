@@ -1,0 +1,212 @@
+{
+  "repo": "git@github.com:QuantumMisaka/abacus-forge",
+  "branch": "main",
+  "source_commit": "82af7d53e4646b61d7b9d0bf3591dcadc4cd8fcd",
+  "version": "0.1.0",
+  "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+  "import_path": "/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+  "direct_url": {
+    "archive_info": {
+      "hash": "sha256=49525424f803d4063b3631de9e54600f1bd1c8be9270be70a2d687989e296ff8",
+      "hashes": {
+        "sha256": "49525424f803d4063b3631de9e54600f1bd1c8be9270be70a2d687989e296ff8"
+      }
+    },
+    "url": "file:///home/james/scratch/forge-task-expansion-20261105/dist/abacus_forge-0.1.0-py3-none-any.whl"
+  },
+  "distribution_sha256": {
+    "abacus_forge-0.1.0-py3-none-any.whl": "49525424f803d4063b3631de9e54600f1bd1c8be9270be70a2d687989e296ff8",
+    "abacus_forge-0.1.0.tar.gz": "618ad54ee3ea5d69de27208187424b2874043da05714067f02cbe08ee940bf60"
+  },
+  "wheel_package_files_matching_git": 78,
+  "sdist_tracked_files_matching_git": 1522,
+  "pip_check": "No broken requirements found.",
+  "scf_launcher_env_api": true,
+  "cli_checks": [
+    {
+      "argv": [
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "abacus-forge 0.1.0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "doctor",
+        "--json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"assets\": [], \"dependencies\": [{\"name\": \"ase\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"3.29.0\"}, {\"name\": \"dpdata\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"1.1.0\"}, {\"name\": \"matplotlib\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"3.11.2\"}, {\"name\": \"numpy\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"2.5.4\"}, {\"name\": \"pymatgen\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"2026.10.24\"}], \"distribution\": {\"name\": \"abacus-forge\", \"path\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages\", \"status\": \"present\", \"suggestion\": null, \"version\": \"0.1.0\"}, \"executables\": [], \"limits\": \"Discovery and file access only; no program is started. A discoverable executable does not prove runtime or ABI compatibility, and readable assets do not prove scientific correctness.\", \"python\": {\"executable\": \"/home/james/scratch/forge-task-expansion-20261105/installed-venv/bin/python\", \"version\": \"3.12.13\"}, \"schema_version\": \"forge.environment/v1\", \"status\": \"ready\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "capabilities"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"capabilities\": [{\"artifact_roles\": [\"input\", \"provenance_manifest\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"collect\": [\"workspace_outputs\"], \"execute\": [\"prepared_workspace\"], \"modify\": [\"prepared_workspace\"], \"prepare\": [\"structure\"]}, \"maturity\": \"experimental\", \"name\": \"scf\", \"operations\": [\"prepare\", \"modify\", \"execute\", \"collect\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"provenance_manifest\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"collect\": [\"workspace_outputs\"], \"execute\": [\"prepared_workspace\"], \"modify\": [\"prepared_workspace\"], \"prepare\": [\"structure\"]}, \"maturity\": \"experimental\", \"name\": \"relax\", \"operations\": [\"prepare\", \"modify\", \"execute\", \"collect\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"provenance_manifest\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"collect\": [\"workspace_outputs\"], \"execute\": [\"prepared_workspace\"], \"modify\": [\"prepared_workspace\"], \"prepare\": [\"structure\"]}, \"maturity\": \"experimental\", \"name\": \"cell-relax\", \"operations\": [\"prepare\", \"modify\", \"execute\", \"collect\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"atst-tools\", \"inputs\": {\"execute\": [\"workflow_config\"], \"postprocess\": [\"trajectory\"], \"prepare\": [\"initial_structure\", \"final_structure\"]}, \"maturity\": \"experimental\", \"name\": \"atst-neb\", \"operations\": [\"prepare\", \"execute\", \"postprocess\"], \"optional_dependencies\": [\"atst-tools\"], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"provenance_manifest\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"collect\": [\"workspace_outputs\"], \"execute\": [\"prepared_workspace\"], \"modify\": [\"prepared_workspace\"], \"postprocess\": [\"trajectory\"], \"prepare\": [\"structure\"]}, \"maturity\": \"experimental\", \"name\": \"md\", \"operations\": [\"prepare\", \"modify\", \"execute\", \"collect\", \"postprocess\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"postprocess\": [\"band_files\"]}, \"maturity\": \"experimental\", \"name\": \"band\", \"operations\": [\"postprocess\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"postprocess\": [\"dos_files\", \"pdos\", \"tdos\"]}, \"maturity\": \"experimental\", \"name\": \"dos\", \"operations\": [\"postprocess\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"output\"], \"engine\": \"abacus\", \"inputs\": {\"postprocess\": [\"lcao_scf_workspace\"]}, \"maturity\": \"experimental\", \"name\": \"cohp\", \"operations\": [\"postprocess\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"provenance_manifest\", \"output\"], \"engine\": \"pyatb\", \"inputs\": {\"collect\": [\"workspace_outputs\"], \"execute\": [\"prepared_workspace\"], \"prepare\": [\"structure\", \"hr\", \"sr\", \"fermi_energy\", \"line_kpoints\"]}, \"maturity\": \"experimental\", \"name\": \"pyatb-band\", \"operations\": [\"prepare\", \"execute\", \"collect\"], \"optional_dependencies\": [\"pyatb\"], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"pyatb\", \"inputs\": {\"collect\": [\"spectrum\", \"metadata\"], \"execute\": [\"prepared_workspace\"], \"prepare\": [\"structure\", \"hr\", \"sr\", \"numerical_orbitals\", \"fermi_energy\", \"kpoints\", \"kpoint_weights\"]}, \"maturity\": \"experimental\", \"name\": \"pyatb-cohp\", \"operations\": [\"prepare\", \"execute\", \"collect\"], \"optional_dependencies\": [\"pyatb\"], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"abacus\", \"inputs\": {\"collect\": [\"running_log\", \"structure\", \"input\"]}, \"maturity\": \"experimental\", \"name\": \"polarization\", \"operations\": [\"collect\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"input\", \"output\"], \"engine\": \"forge\", \"inputs\": {\"postprocess\": [\"polarization_facts\", \"displacements\", \"branch_policy\"]}, \"maturity\": \"experimental\", \"name\": \"bec\", \"operations\": [\"postprocess\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}, {\"artifact_roles\": [\"output\"], \"engine\": \"forge\", \"inputs\": {\"export\": [\"source_artifact_refs\"]}, \"maturity\": \"experimental\", \"name\": \"export\", \"operations\": [\"export\"], \"optional_dependencies\": [], \"schema_version\": \"forge.capability/v1\"}], \"contracts\": {\"cohp\": {\"input_basis\": \"ABACUS NAO/LCAO outputs with IAO construction\", \"method\": \"iao\", \"operation\": \"postprocess\", \"population\": \"COHP\", \"result\": \"IAO COHP output; see postprocess request schema\"}, \"pyatb-cohp\": {\"input_basis\": \"explicit STRU, HR in Ry, SR dimensionless, numerical orbitals, EF in eV, fractional k points and nonnegative explicit weights\", \"kpoint_weight_mode\": \"explicit_normalized_by_pyatb\", \"method\": \"direct_nao\", \"operations\": [\"prepare\", \"execute\", \"collect\"], \"population\": \"COHP\", \"result\": {\"occupied_integral_occupation\": \"E <= EF (zero temperature)\", \"occupied_integral_unit\": \"eV\", \"pair_convention\": \"unordered Hermitian orbital-set pair (identical: 1, disjoint: 2)\", \"pair_factor_rule\": \"identical orbital sets use 1; disjoint sets use 2; partial overlap is rejected\", \"sign\": \"PyATB metadata records COHP or -COHP and raw/display ICOHP\", \"spectrum_energy_unit\": \"eV\", \"spectrum_value_unit\": \"dimensionless\"}}}, \"schema_version\": \"forge.capabilities/v1\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "schema",
+        "scf",
+        "execute"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"capability\": \"scf\", \"operation\": \"execute\", \"request_schema\": {\"$schema\": \"https://json-schema.org/draft/2020-12/schema\", \"additionalProperties\": false, \"properties\": {\"dry_run\": {\"default\": false, \"type\": \"boolean\"}, \"env_overrides\": {\"additionalProperties\": {\"type\": \"string\"}, \"default\": {}, \"propertyNames\": {\"minLength\": 1, \"type\": \"string\"}, \"type\": \"object\"}, \"executable\": {\"default\": \"abacus\", \"minLength\": 1, \"type\": \"string\"}, \"launcher\": {\"default\": [], \"items\": {\"minLength\": 1, \"type\": \"string\"}, \"type\": \"array\"}, \"mpi_ranks\": {\"default\": 1, \"minimum\": 1, \"type\": \"integer\"}, \"omp_threads\": {\"default\": 1, \"minimum\": 1, \"type\": \"integer\"}, \"operation\": {\"const\": \"execute\", \"type\": \"string\"}, \"operation_id\": {\"format\": \"uuid\", \"pattern\": \"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$\", \"type\": \"string\"}, \"schema_version\": {\"const\": \"forge.request/v1\", \"type\": \"string\"}, \"timeout_seconds\": {\"default\": null, \"exclusiveMinimum\": 0, \"type\": [\"number\", \"null\"]}, \"workspace_rel\": {\"minLength\": 1, \"pattern\": \"^(?:\\\\.(?=$)|(?!(?:\\\\.{1,2})(?:/|$))[^/\\\\\\\\]+(?:/(?!\\\\.{1,2}(?:/|$))[^/\\\\\\\\]+)*)$\", \"type\": \"string\"}}, \"required\": [\"schema_version\", \"operation\", \"operation_id\", \"workspace_rel\"], \"title\": \"ScfExecuteRequest\", \"type\": \"object\"}, \"schema_version\": \"forge.schema-discovery/v1\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "phonon",
+        "units",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge phonon units [-h] [--json] workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help  show this help message and exit\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "phonon",
+        "execute-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge phonon execute-unit [-h] --unit-id UNIT_ID\n                                        [--executable EXECUTABLE] [--mpi MPI]\n                                        [--omp OMP] [--timeout TIMEOUT]\n                                        [--launcher-json LAUNCHER_JSON]\n                                        [--env-json ENV_JSON] [--json]\n                                        workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --unit-id UNIT_ID\n  --executable EXECUTABLE\n  --mpi MPI\n  --omp OMP\n  --timeout TIMEOUT\n  --launcher-json LAUNCHER_JSON\n                        explicit launcher argv as a JSON string array\n  --env-json ENV_JSON   explicit child environment overrides as a JSON string\n                        map\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "phonon",
+        "collect-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge phonon collect-unit [-h] --unit-id UNIT_ID [--json]\n                                        workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help         show this help message and exit\n  --unit-id UNIT_ID\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "phonon",
+        "gather",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge phonon gather [-h] --results JSON [JSON ...] [--json]\n                                  workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "phonon",
+        "post",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge phonon post [-h] [--results JSON [JSON ...]]\n                                [--phonopy PHONOPY]\n                                [--setting-file SETTING_FILE] [--only-plot]\n                                [--qpoint QPOINT QPOINT QPOINT] [--json]\n                                workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n                        explicit collection records or gather snapshots; does\n                        not collect or execute\n  --phonopy PHONOPY\n  --setting-file SETTING_FILE\n  --only-plot\n  --qpoint QPOINT QPOINT QPOINT\n                        fractional reciprocal q point; repeatable, default\n                        Gamma\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "elastic",
+        "units",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge elastic units [-h] [--json] workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help  show this help message and exit\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "elastic",
+        "execute-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge elastic execute-unit [-h] --unit-id UNIT_ID\n                                         [--executable EXECUTABLE] [--mpi MPI]\n                                         [--omp OMP] [--timeout TIMEOUT]\n                                         [--launcher-json LAUNCHER_JSON]\n                                         [--env-json ENV_JSON] [--json]\n                                         workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --unit-id UNIT_ID\n  --executable EXECUTABLE\n  --mpi MPI\n  --omp OMP\n  --timeout TIMEOUT\n  --launcher-json LAUNCHER_JSON\n                        explicit launcher argv as a JSON string array\n  --env-json ENV_JSON   explicit child environment overrides as a JSON string\n                        map\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "elastic",
+        "collect-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge elastic collect-unit [-h] --unit-id UNIT_ID [--json]\n                                         workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help         show this help message and exit\n  --unit-id UNIT_ID\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "elastic",
+        "gather",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge elastic gather [-h] --results JSON [JSON ...] [--json]\n                                   workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "elastic",
+        "post",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge elastic post [-h] [--results JSON [JSON ...]] [--json]\n                                 workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n                        explicit collection records or gather snapshots; does\n                        not collect or execute\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vibration",
+        "units",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge vibration units [-h] [--json] workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help  show this help message and exit\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vibration",
+        "execute-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge vibration execute-unit [-h] --unit-id UNIT_ID\n                                           [--executable EXECUTABLE]\n                                           [--mpi MPI] [--omp OMP]\n                                           [--timeout TIMEOUT]\n                                           [--launcher-json LAUNCHER_JSON]\n                                           [--env-json ENV_JSON] [--json]\n                                           workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --unit-id UNIT_ID\n  --executable EXECUTABLE\n  --mpi MPI\n  --omp OMP\n  --timeout TIMEOUT\n  --launcher-json LAUNCHER_JSON\n                        explicit launcher argv as a JSON string array\n  --env-json ENV_JSON   explicit child environment overrides as a JSON string\n                        map\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vibration",
+        "collect-unit",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge vibration collect-unit [-h] --unit-id UNIT_ID [--json]\n                                           workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help         show this help message and exit\n  --unit-id UNIT_ID\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vibration",
+        "gather",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge vibration gather [-h] --results JSON [JSON ...] [--json]\n                                     workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n  --json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vibration",
+        "post",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "usage: abacus-forge vibration post [-h] [--results JSON [JSON ...]] [--json]\n                                   workspace\n\npositional arguments:\n  workspace\n\noptions:\n  -h, --help            show this help message and exit\n  --results JSON [JSON ...]\n                        explicit collection records or gather snapshots; does\n                        not collect or execute\n  --json\n",
+      "stderr": ""
+    }
+  ]
+}

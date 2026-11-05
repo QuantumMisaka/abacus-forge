@@ -1,0 +1,54 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_selected_kpoint_input_is_normalized_and_bound_to_the_unit ________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1597/test_selected_kpoint_input_is_0')
+
+    def test_selected_kpoint_input_is_normalized_and_bound_to_the_unit(tmp_path):
+        from abacus_forge.composite.plan import collect_subtask
+        from abacus_forge.input_io import read_input, read_kpt, write_input
+
+        root = tmp_path / "selected-kpt"
+        prepare(root, structure=Atoms("H", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True), task="scf")
+        (root / "inputs/selected.kpt").write_text("K_POINTS\n0\nGamma\n2 2 2 0 0 0\n")
+        write_input(root / "inputs/INPUT", {**read_input(root / "inputs/INPUT"), "kpoint_file": "selected.kpt"})
+        unit = prepare_vibration(root, atom_indices=[1]).subtasks[0]
+        inputs = Path(unit["workspace"]) / "inputs"
+>       assert read_input(inputs / "INPUT").get("kpoint_file", "KPT") == "KPT"
+E       AssertionError: assert 'selected.kpt' == 'KPT'
+E
+E         - KPT
+E         + selected.kpt
+
+tests/test_composite_plan.py:73: AssertionError
+__ test_expansion_does_not_copy_reference_engine_outputs_as_displaced_results __
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1597/test_expansion_does_not_copy_r0')
+
+    def test_expansion_does_not_copy_reference_engine_outputs_as_displaced_results(tmp_path):
+        from abacus_forge.composite.plan import collect_subtask
+
+        root = tmp_path / "reference-has-outputs"
+        prepare(root, structure=Atoms("H", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True), task="scf")
+        output = root / "inputs/OUT.ABACUS"
+        output.mkdir()
+        (output / "running_scf.log").write_text("NATOM = 1\nTOTAL ENERGY = -1.0\nSCF CONVERGED\nNORMAL END\n")
+        unit = prepare_vibration(root, atom_indices=[1]).subtasks[1]
+>       assert not (Path(unit["workspace"]) / "inputs/OUT.ABACUS").exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-james/pytest-1597/test_expansion_does_not_copy_r0/reference-has-outputs/vibration/disp_1_x_plus') / 'inputs/OUT.ABACUS').exists
+E        +      where PosixPath('/tmp/pytest-of-james/pytest-1597/test_expansion_does_not_copy_r0/reference-has-outputs/vibration/disp_1_x_plus') = Path('/tmp/pytest-of-james/pytest-1597/test_expansion_does_not_copy_r0/reference-has-outputs/vibration/disp_1_x_plus')
+
+tests/test_composite_plan.py:89: AssertionError
+=============================== warnings summary ===============================
+tests/test_composite_plan.py: 14 warnings
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_composite_plan.py::test_selected_kpoint_input_is_normalized_and_bound_to_the_unit
+FAILED tests/test_composite_plan.py::test_expansion_does_not_copy_reference_engine_outputs_as_displaced_results
+2 failed, 13 deselected, 14 warnings in 1.12s

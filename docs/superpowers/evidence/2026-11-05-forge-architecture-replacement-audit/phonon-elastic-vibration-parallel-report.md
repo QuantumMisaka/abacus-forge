@@ -134,7 +134,7 @@ PYTHONPATH=/home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/
 
 **Forge 本体已实现三类任务的可组合单元接口；上述 Paimon candidate 未修改。** 以 `main@7b54d28` 为实施基线，新增 `composite/plan.py`，复用 Workspace、LocalRunner、TaskResult、ArtifactRecord 与既有 operation guard。用户要求的优先级落实为：先交付清单和独立消费，再由上层接资源；没有新增 scheduler、registry、ExecutionIdentity 或资源模型。
 
-prepare 写相对路径计划及科学参数；`units` 枚举，`execute-unit` 与 `collect-unit` 单项消费，`gather` 按 ID 汇总显式 collection records，`post --results` 独立分析。每次单元尝试和汇总快照均保留；缺失/失败项不触发补算，不产生伪完成物性。输入摘要检查实际选中的 INPUT/STRU/KPT，尚不覆盖 PP/ORB 内容与环境。使用方法见[指南](../../../guide.md#composite-and-property-packs)，完整命令、提交、审查和包验证由[实施清单](../../plans/2026-11-05-forge-task-expansion.md)关联。
+prepare 写相对路径计划及科学参数；`units` 枚举，`execute-unit` 与 `collect-unit` 单项消费，`gather` 按 ID 汇总显式 collection records，`post --results` 独立分析。每次单元尝试和汇总快照均保留；缺失/失败项不触发补算，不产生伪完成物性。输入摘要检查实际选中的 INPUT/STRU/KPT，尚不覆盖 PP/ORB 内容与环境。使用方法见[指南](../../../guide.md#composite-and-property-packs)，完整命令、提交、审查和包验证见[交付证据](../2026-11-05-forge-task-expansion/README.md)。实现提交为 `82af7d53e4646b61d7b9d0bf3591dcadc4cd8fcd`；最终全离线 1742 passed / 35 skipped，新 wheel installed-only 750 passed。均为本地离线证据。
 
 | 初审条目 | Forge 本轮落地 | 仍待处理的归属 |
 | --- | --- | --- |
