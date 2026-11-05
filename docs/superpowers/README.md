@@ -15,6 +15,8 @@
 同日的[整体架构与替代审查](evidence/2026-11-05-forge-architecture-replacement-audit/README.md)
 进一步核对算法位置、最新 Paimon 基线、工具拆分和并发边界；复现了 launcher
 后代超时残留问题，并区分 Forge 简化 composite 与 Paimon 完整数值路径。
+针对声子谱、弹性常量与振动分析的[并行展开专项 report](evidence/2026-11-05-forge-architecture-replacement-audit/phonon-elastic-vibration-parallel-report.md)
+记录三条链当前均串行、阶段拆分与恢复差异、六项缺陷/缺口及 33 项离线消费回归。
 Paimon 的最新集成与完整替代状态由其 owner 计划维护，本文不沿用旧分支状态判断当前交付。
 复用现有 discovery、操作契约、runner 和 provenance；撤回平行 registry、
 通用 identity 硬门及 Paimon 全输出投影约束。ABACUS 默认 GPU、独立 CPU 任务

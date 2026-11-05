@@ -92,6 +92,8 @@ Paimon `toolkits/forge_scf_consumer.py:479–495` 对非 SCF 仅记录 `launcher
 
 ## 工具拆分、并行和复杂编排
 
+用户进一步指定的声子谱、弹性常量与振动分析，已在[并行展开专项 report](phonon-elastic-vibration-parallel-report.md)逐链核对并登记 PAR-01 至 PAR-06。三条链均有独立子工作区，但当前 adapter 全部固定 `max_workers=1`；专项新 wheel 消费回归为 33 passed，不代表真实 GPU 并行验收。
+
 | 问题 | 当前支持程度与使用边界 |
 | --- | --- |
 | 能否按 prepare/execute/collect/postprocess 拆工具 | 可以。typed 原语已有独立输入输出；Paimon 已有准备、修改、runner/collector、CP/Transition 阶段工具及弹性 CPU 派生工具。但 phonon 等内部阶段仍封在单个 Tool，不等于已全部独立暴露。 |

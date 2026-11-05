@@ -1,0 +1,37 @@
+Date: 2026-11-05
+Paimon source: integration/paimon-v3-forge-replacement-20261030@586492ad3f453d776d824b91cb5a3196b555ea7c
+Paimon source directory: /home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/toolbox/ABACUS
+Python: 3.12.13
+Forge import: /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/abacus_forge/__init__.py
+Versions: abacus-forge 0.1.0; pytest 8.4.2; ase 3.29.0; phonopy 4.9.0; pymatgen 2026.10.24
+Forge wheel SHA-256: dade7acf408bc61e945297caa8349ff94a660c9384ac69e1c40aa5899a3809ad
+Command (cwd = Paimon source directory):
+PYTHONPATH=/home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/toolbox/ABACUS /home/james/scratch/forge-followup-20261105/venv/bin/python -m pytest tests/test_phonon_forge.py tests/test_elastic_forge.py tests/test_vibration_forge.py -q -p no:cacheprovider
+Exit status: 0
+Output copied from the tool result:
+
+.................................                                        [100%]
+=============================== warnings summary ===============================
+tests/test_phonon_forge.py: 81 warnings
+tests/test_elastic_forge.py: 144 warnings
+tests/test_vibration_forge.py: 226 warnings
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+tests/test_phonon_forge.py::test_phonon_forge_end_to_end_with_injected_execution
+tests/test_phonon_forge.py::test_phonon_forge_public_entry_binds_all_units
+  /home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/toolbox/ABACUS/toolkits/phonon_forge.py:626: DeprecationWarning: get_thermal_properties_dict() is deprecated. Use the thermal_properties property to access the ThermalProperties result object; its temperatures, free_energy, entropy, and heat_capacity attributes replace the dict keys.
+    thermal = phonon.get_thermal_properties_dict()
+
+tests/test_phonon_forge.py::test_phonon_forge_end_to_end_with_injected_execution
+tests/test_phonon_forge.py::test_phonon_forge_public_entry_binds_all_units
+  /home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/toolbox/ABACUS/toolkits/phonon_forge.py:629: DeprecationWarning: get_frequencies() is deprecated. Use run_qpoints([q]); the returned QpointsPhonon object provides frequencies[0].
+    phonon.get_frequencies(q)
+
+tests/test_vibration_forge.py::test_vibration_forge_end_to_end_entry_binds_public_resources
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/thermochemistry.py:1646: UserWarning: 2 imag modes removed
+    warn(f"{n_imag} imag modes removed", UserWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+33 passed, 456 warnings in 9.57s
