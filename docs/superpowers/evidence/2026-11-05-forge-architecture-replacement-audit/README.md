@@ -93,6 +93,7 @@ Paimon `toolkits/forge_scf_consumer.py:479–495` 对非 SCF 仅记录 `launcher
 ## 工具拆分、并行和复杂编排
 
 用户进一步指定的声子谱、弹性常量与振动分析，已在[并行展开专项 report](phonon-elastic-vibration-parallel-report.md)逐链核对并登记 PAR-01 至 PAR-06。三条链均有独立子工作区，但当前 adapter 全部固定 `max_workers=1`；专项新 wheel 消费回归为 33 passed，不代表真实 GPU 并行验收。
+同日用户确认先交付可展开、独立执行与汇总的架构能力，具体资源分配后续接入；默认串行本身不否定可并行架构，优先补齐外层可消费的单元与结果交接。
 
 | 问题 | 当前支持程度与使用边界 |
 | --- | --- |
