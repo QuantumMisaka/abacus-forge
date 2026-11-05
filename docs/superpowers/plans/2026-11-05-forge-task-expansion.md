@@ -1,5 +1,7 @@
 # Forge 可组合任务展开实施清单
 
+状态：已完成并结项（2026-11-05，`82af7d5` 实现、`1e21023` 证据）。本地可组合单元验收已经满足；新增远端 CI 覆盖与公开消费入口由[公开交付计划](2026-10-21-forge-public-release.md#工程化接续待实施)接续，Paimon/资源事项仍在上层范围。
+
 用户在 2026-11-05 确认“先实现可并行任务单元展开，资源分配后续接入”，随后授权“按此落实”。本计划直接执行该要求，依据[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)与[专项 report](../evidence/2026-11-05-forge-architecture-replacement-audit/phonon-elastic-vibration-parallel-report.md)，不另设审批或框架建设阶段。
 
 交付：Forge 本体的声子、弹性、振动 prepare 生成可重载的单元清单；调用方可以分别执行/采集任意单元，再把显式结果交给汇总和后处理。默认整链/批量入口继续可用。具体 allocation、SAI/Slurm 与 Paimon ATP Tool 接线不在本轮实现范围；Paimon 当前源码只作领域算法与接口对照，不修改过期 migration checkout。

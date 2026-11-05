@@ -1,9 +1,9 @@
 # Forge “算筹工场”：面向实际消费的后端设计
 
-- 状态：2026-10-29 用户确认收缩方向并授权消融；本修订取代本文件原七层架构与 Phase A–F 框架建设方案。
+- 状态：有效。2026-10-29 用户确认收缩方向并授权消融；2026-11-05 确认任务单元展开优先、资源分配后置。本文件取代原七层架构与 Phase A–F 框架建设方案。
 - Owner：ABACUS-Forge。
 - 基础规范：[Contract-First](2026-09-01-forge-contract-first-rearchitecture-design.html)、[Service/Status](2026-09-02-forge-service-status-migration-design.html)、[Engine/Version Policy](2026-09-12-forge-engine-version-policy-design.html)。既有 v1 请求、结果、错误、单 workspace 与事件语义继续有效。
-- 实施与验证：[Phase A 收缩记录](../plans/2026-10-29-forge-computation-factory-phase-a.md)、[SCF consumer chain 记录](../plans/2026-10-29-forge-scf-consumer-chain.md)。
+- 已完成切片：[Phase A 收缩](../plans/2026-10-29-forge-computation-factory-phase-a.md)、[SCF consumer chain](../plans/2026-10-29-forge-scf-consumer-chain.md)、[任务展开](../plans/2026-11-05-forge-task-expansion.md)。后续独立消费与社区交付沿用[公开发行设计](2026-10-21-forge-public-release-design.md)及其 PLAN。
 
 ## 1. 产品目标与职责
 
@@ -39,7 +39,15 @@ ABACUS-Forge（算筹工场）为人类研发者与 AI Agent 提供可复用的 
 
 核对只针对操作实际需要的版本、功能或调用方显式要求的约束。现有 parser 的已知版本冲突、格式不支持和缺依赖处理继续有效；来源不全本身不成为新的全局拒绝条件。
 
-## 4. 资源：沿用 GPU/CPU 分工，分开申请与启动
+## 4. 任务展开优先，资源接入后置
+
+声子位移、弹性应变、振动有限差分等任务先由 prepare 产生科学单元清单；各单元有稳定编号、相对工作目录和必要的位移/应变参数。调用方能枚举清单，独立执行和采集任意单元，再将显式结果交给 gather 与 CPU 后处理。默认批量便利入口可以保留串行策略，不限制外层并行展开。
+
+汇总按编号配对，不按完成先后拼接；缺失、失败、重复和输入不匹配均需可辨认。各单元尝试保留自己的结果，重试选择与跨阶段依赖由调用方负责。复用现有 workspace guard、事件和 ArtifactRecord，不建立全局任务状态机。显式 results 的后处理不隐式补算或采集。
+
+相对路径计划可在新根目录重载；交接只要求该领域分析实际需要的文件。INPUT/STRU/KPT 摘要保护特定科学输入配对，不扩大为环境身份门禁。任务展开层的验收可以使用受控本地执行器和专业库；实际 allocation 与平台并发属于后续集成，不能倒置为这一层的开发前提。已交付的 composite 入口和数值范围见[任务展开证据](../evidence/2026-11-05-forge-task-expansion/README.md)，不等于现有 Paimon 三个 Tool 已完成接线。
+
+### GPU/CPU 分工与启动
 
 用户确认的现役策略继续保留：ABACUS 计算默认 GPU；独立输入准备、收集和 CPU 后处理按实际成本使用 CPU。资源取决于本次 operation 启动什么，不能仅凭 capability 名称推断。
 
@@ -66,7 +74,7 @@ Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新�
 
 资源请求、实际分配和实际启动三者分别记录，未知观测不写成零。MPI ranks 与 GPU 数由引擎和启动方式映射，不设置通用一比一规则。发生 OOM、超时或非零退出时，Forge 返回有来源的事实；外层决定升档、重新申请和重试。整个作业被平台杀死时，终态记录由外部执行管理层补充，不要求进程内必然落盘。
 
-先贯通单节点 ABACUS GPU 与独立 CPU 后处理，再按实际需要接 ASE/CP、NEB；多节点扩展随启动能力和真实验证推进。
+任务单元消费贯通后，再接单节点 ABACUS GPU 与独立 CPU 后处理；ASE/CP、NEB 和多节点扩展随具体消费者及真实验证推进。
 
 ## 5. 目录、输出与诊断按消费者补齐
 
@@ -80,7 +88,7 @@ Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新�
 
 ## 6. 迁移与相称验证
 
-以最新 Paimon v2 基线为需求来源，逐能力移植实际缺口。2026-10-29 读取的 `app-tools/main@38c0f9073` 为 toolbox `1.2.84`；`app-tools-forge-latest-main-sync@7cd73eeb3` 是对应规划工作树，不是已通过替代验收的新运行候选。旧 `1.2.76` Forge-route candidate 和历史 Benchmark 证据按其原身份保留。
+Paimon 实质迁移前先同步并合并最新 v2 基线，再逐能力补齐实际缺口。各次 checkout、版本和 Benchmark 身份留在 owning PLAN/evidence，不在本规范长期维护一个“最新 commit”。历史候选仅证明其冻结组合；当前归属与算法差异见[专项 report](../evidence/2026-11-05-forge-architecture-replacement-audit/phonon-elastic-vibration-parallel-report.md)。
 
 SCF 输入→执行→收集→Paimon 的默认安装态 stub 消费链已有验收，当前修复与候选状态以 [SCF 计划](../plans/2026-10-29-forge-scf-consumer-chain.md) 为准。后续按实际需要扩展 Relax/MD、CPU 后处理和驱动。完整替代仍需解除旧依赖并在相应 ABACUS Agent Benchmark 上同等或更好，不能由离线测试或删除 import 推定。
 
@@ -91,6 +99,6 @@ SCF 输入→执行→收集→Paimon 的默认安装态 stub 消费链已有验
 - 安装、引擎启动或打包边界改变，补对应安装态或真实运行证据；相关输入未变时复用已有证据。
 - 在完整迁移或发布验收处汇总候选和适用证据，不要求每个小切片重跑全套 Benchmark、冻结全部哈希或重复 SAI 计算。
 
-验收分为三层：SCF 切片合入检查相应源码修复、默认安装态消费链和集成 CI；Forge 0.1.0 发布检查发布提交与受测制品，流程复用[发行手册](../../releasing.md)；Paimon v3 替代检查实际能力覆盖、旧运行时依赖解除、平台运行和 Benchmark parity。各层证据分别支撑其结论。安装态消费检查使用真实已安装 Forge request/service，仅计算引擎可用 stub；注入 request/service doubles 的单元测试不能证明这一交接。资源档位映射先做离线检查，真实 GPU 验证按不同启动与绑定方式选择代表案例，有实际差异时再扩展档位。
+验收分为三层：能力切片检查相应源码、安装态消费与适用集成测试；Forge 公开发布检查发布提交与受测制品，流程复用[发行手册](../../releasing.md)；Paimon v3 替代检查实际能力覆盖、旧运行时依赖解除、平台运行和 Benchmark parity。各层证据分别支撑其结论。安装态消费检查使用真实已安装 Forge request/service，仅计算引擎可用 stub；注入 request/service doubles 的单元测试不能证明这一交接。资源档位映射先做离线检查，真实 GPU 验证按不同启动与绑定方式选择代表案例，有实际差异时再扩展档位。
 
 本修订不批准旧 Contract System M1–M4，不替换专用科学方法设计，也不新增发布、平台上传或生产运行授权。后续实现按具体缺口推进，不以完成一套预设架构层级作为交付目标。

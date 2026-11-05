@@ -1,5 +1,6 @@
 # Forge SCF 消费链垂直切片
 
+- 结项口径（2026-11-05）：Forge 侧实现、复审修复与本地 installed consumer 验收已完成。新候选远端 CI/发行统一转入[公开交付计划](2026-10-21-forge-public-release.md#工程化接续待实施)；Paimon/平台剩余项由其 owner 接续，不让本 Forge 切片长期保持活动待办。
 - Owner：ABACUS-Forge；Paimon v3 消费面在 migration checkout 内单独落地。
 - Status（2026-11-05）：原 SCF slice 已合入 Forge；本地 main 已同步远端 `f6957ba` 并纳入 `f18c8c9` 的并发回归。Task 11 的两项 Forge P2 已在 `2dfcae8` 修复，全离线、fresh-wheel 与默认工厂 stub 交接通过；新源码的远端 CI 与发行尚未执行。下方 Task 6–10 与 Paimon 分支状态保留为 10 月 29 日历史记录，不代表当前 Paimon 替代验收。
 - Design source：[算筹工场目标设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。

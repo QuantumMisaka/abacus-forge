@@ -2,6 +2,8 @@
 
 This is supporting evidence for [the implementation plan](2026-09-09-forge-core-fidelity.md), not a separate specification. Inspection uses local checkouts; revisions below do not claim latest upstream status. Reference repositories were not modified or introduced as runtime dependencies.
 
+2026-11-05 状态更新：下文 10-19 的草案口径是历史快照。Contract System / I/O 知识库提案已[退出当前设计并归档](../../archive/retired-designs/README.md)，旧 Typed BEC 已由 10-21 有界 SPEC 替代；现有 property manifest 保留 provisional 行为。上游刷新与 runtime pin 采用分开进行，当前行动从[公开交付接续](2026-10-21-forge-public-release.md#参考仓与外部责任)进入，不按旧 checkout 表自动更新依赖。
+
 | Reference | Inspected local HEAD | Relevant implementation | Adopt / avoid |
 | --- | --- | --- | --- |
 | Paimon v1.2 (`app-tools/toolbox/ABACUS`) | `85e55e6b83b3b1a883d41b7d149c8afa2c223aba` | `utils/stru_read.py:110` `_cell_face_heights`, `_largest_wrapped_gap`, `detect_vacuum_info`; `utils/abacus_structure_io.py:111` `atoms_from_abacus_stru_dict` | Adopt periodic fractional gap × interplanar height and explicit unit conversion. Keep platform adapter and scientific policies outside Forge. |

@@ -1,5 +1,7 @@
 # ABACUS-Forge Contract Foundation Implementation Plan
 
+**状态核对（2026-11-05）：实现已完成，本文件按历史模板收口。** 当前 `contracts.py`、workspace 与结果投影，以及[Stage 5 证据](../evidence/2026-09-13-forge-stage5-evidence.md)和[后继安装态验收](../evidence/2026-11-05-forge-task-expansion/README.md)覆盖已交付基础。下方未勾选的原始步骤不追填为历史执行事实，也不构成当前待办；既有类型与兼容语义继续受有效 SPEC 约束。
+
 > **边界修订（2026-09-03）**：本文记录早期契约基础实现。当前规范不再把 scientific policy/acceptance 作为 Forge 责任；后续实现以 `2026-09-02-forge-service-status-migration-design.html` 及其更新后的 PLAN 为准。
 >
 > **二次修订（2026-09-03 跨模型设计审查）**：正文 `OperationStatus.scientific` 样例恢复为已交付的四值类型（保留对历史 `accepted`/`guarded`/`rejected` 事件的 round-trip 能力）；Forge 新写入恒为 `unassessed`，且实现不得收窄该类型。

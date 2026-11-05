@@ -1,6 +1,8 @@
-# 0.1.0 发行操作手册
+# Forge 发行操作手册
 
 状态（2026-11-05 核对）：GitHub `pypi` environment 已配置，`v0.1.0` tag 已指向 `d5585f5`；发布 workflow 尚无运行，PyPI 的 `abacus-forge/0.1.0` 查询返回 404。Trusted Publisher 配置与实际上传仍由 owner 确认。该 tag 不含 11 月 5 日的 runtime-K 大小写和 capability 序列修复；当前本地代码需重新取得同提交 CI 与制品，不能沿用旧 candidate 宣称包含这些修复。已有 tag 的处置或版本选择由 owner 决定，不自动改指 tag。
+
+当前还包括 `82af7d5` 的三类任务展开，见[本地候选](superpowers/evidence/2026-11-05-forge-task-expansion/README.md)。执行生命周期、CI 专项覆盖和发行内容等先按[公开交付接续](superpowers/plans/2026-10-21-forge-public-release.md#工程化接续待实施)收口。下面保留 package 0.1.0 对应的现行管线说明；后继版本尚未选择，不能直接用这些命令宣称新代码已经准备好上传。
 
 ## 发行边界
 

@@ -24,9 +24,10 @@
 
 ## 设计、计划与历史
 
-- [Superpowers 治理入口](superpowers/README.md)：有效规范、草案、计划和证据的索引与状态说明。
+- [设计与计划入口](superpowers/README.md)：有效规范、已结项切片、工程化接续和历史依据。
 - [契约优先重构 SPEC](superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 和 [Service/Status 细化 SPEC](superpowers/specs/2026-09-02-forge-service-status-migration-design.html)：当前公共 operation、结果、workspace、CLI 与兼容迁移的上位设计基线。
-- [2026-10-13 文档与代码体系整理设计](superpowers/specs/2026-10-13-forge-repository-consolidation-design.md) 与 [实施计划](superpowers/plans/2026-10-13-forge-repository-consolidation.md)：本轮已确认边界与分工。
+- [收缩设计](superpowers/specs/2026-10-29-forge-computation-factory-target-architecture-design.md)：现行产品、任务展开和资源边界；[公开交付 SPEC](superpowers/specs/2026-10-21-forge-public-release-design.md) 与 [PLAN](superpowers/plans/2026-10-21-forge-public-release.md)维护外部消费与社区工程化接续。
+- [2026-10-13 文档与代码体系整理设计](superpowers/specs/2026-10-13-forge-repository-consolidation-design.md) 与 [实施计划](superpowers/plans/2026-10-13-forge-repository-consolidation.md)：已完成整理的职责与历史依据。
 - [历史归档](archive/README.md)：旧项目评审、历史实施记录与工具生成的任务报告；不作为当前开发待办或规范。
 
 用户阅读路径：README → 使用指南/参考 → 必要时对应有效 SPEC。开发路径：AGENTS → 架构说明 → owning SPEC/PLAN 与测试说明。Paimon 跨仓迁移状态由其 owner 文档维护；仅消费 Forge 不要求读取该迁移历史。

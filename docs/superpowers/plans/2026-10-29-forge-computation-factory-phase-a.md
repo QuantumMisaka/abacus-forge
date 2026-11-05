@@ -2,6 +2,7 @@
 
 - Owner：ABACUS-Forge。
 - 状态：收缩完成，离线验证与独立审查通过；原 Phase A contract-only foundation 由本次收缩取代。
+- 结项更新（2026-11-05）：撤回实现 `f02588c` 已在当前 main 历史中；下述原隔离工作树和测试结果仅记录当时实施，不再是未提交/待合入任务。
 - 日期：2026-10-29。
 - 设计源：[算筹工场设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。
 - 授权：用户确认“收缩聚焦，消融掉所有过度锁定和不必要设计”，并确认 ABACUS 默认 GPU、其他任务 CPU 的分工。
@@ -41,4 +42,4 @@ Ruling：撤回 `3d3ae52` 新增但未被运行链消费的 Phase A 原型，复
 | 独立终审 | 同家族独立 reviewer 检查未提交 diff 和消费者，无阻断项；确认实际运行代码未变、撤回与兼容边界明确，无新全局门禁。 |
 | 格式与来源 | `git diff --check` 通过；当前原型撤回之外的请求、结果、runner、workspace 与基线一致。 |
 
-真实 ABACUS/SAI、平台发布和 Benchmark 不属于此次元数据原型撤回的验证范围。改动留在上述隔离分支的工作树，尚未提交、合入 main 或推送；删除文件的本地恢复副本位于 `~/scratch/forge-design-contraction-20261029-3d3ae52/`。后续资源执行接入与 Paimon 1.2.84 迁移仍按各自能力推进，本次不宣称完成它们。
+真实 ABACUS/SAI、平台发布和 Benchmark 不属于此次元数据原型撤回的验证范围。原执行轮的本地恢复副本位于 `~/scratch/forge-design-contraction-20261029-3d3ae52/`；后继已提交并集成，如页首所述。该归档位置不作为当前开发依赖。后续资源接入与 Paimon 迁移按各自能力推进，不重启 Phase A。

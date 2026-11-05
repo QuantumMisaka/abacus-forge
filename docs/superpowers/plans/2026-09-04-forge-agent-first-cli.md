@@ -1,5 +1,7 @@
 # ABACUS-Forge Agent-first CLI Implementation Plan
 
+**状态核对（2026-11-05）：Stage 3 入口已实现，本计划结项。** capabilities/schema/operation 已被后续[公开交付](2026-10-21-forge-public-release.md#初版交付记录已完成)和[安装态验收](../evidence/2026-11-05-forge-task-expansion/README.md)覆盖。下方 SCF-only 描述与未勾选项是原实施模板，不表示当前仅有 SCF 或要求重做。新增 composite 发现/消费问题进入公开交付接续，不重启本计划。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
 **Goal:** Deliver the Stage 3 v1 machine CLI for the current typed SCF unit-operation slice, with request-file/stdin ingestion, honest capability and request-schema discovery, one-envelope output, stable exit classes, and API/CLI parity while preserving every legacy CLI behavior.
