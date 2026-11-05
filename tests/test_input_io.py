@@ -51,6 +51,21 @@ def test_read_input_tokens_use_abacus_comment_token_semantics(tmp_path: Path) ->
         "old#key": ("value",),
     }
 
+
+def test_read_input_tokens_normalizes_names_and_preserves_values(tmp_path: Path) -> None:
+    path = tmp_path / "INPUT"
+    path.write_text(
+        "INPUT_PARAMETERS\nSuFfIx AbAcUs\nGAMMA_ONLY 1\nKspacing 0.5\n",
+        encoding="utf-8",
+    )
+
+    assert read_input_tokens(path) == {
+        "suffix": ("AbAcUs",),
+        "gamma_only": ("1",),
+        "kspacing": ("0.5",),
+    }
+
+
 def test_kpt_mesh_write(tmp_path: Path) -> None:
     path = tmp_path / "KPT"
     write_kpt_mesh(path, [2, 2, 2], [1, 1, 1])

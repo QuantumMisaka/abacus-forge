@@ -268,6 +268,10 @@ def _write_runtime_k_inputs(
         ("kspacing 0.5 ! reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174139"),
         ("kspacing 0.1 0.1 0.1\n", "123e4567-e89b-42d3-a456-426614174131"),
         ("kspacing 0.1 0.1 0.1 # reciprocal spacing\n", "123e4567-e89b-42d3-a456-426614174140"),
+        ("GAMMA_ONLY 1\n", "123e4567-e89b-42d3-a456-426614174142"),
+        ("Gamma_Only .true.\n", "123e4567-e89b-42d3-a456-426614174143"),
+        ("KSPACING 0.5\n", "123e4567-e89b-42d3-a456-426614174144"),
+        ("Kspacing 0.1 0.1 0.1\n", "123e4567-e89b-42d3-a456-426614174145"),
     ],
 )
 def test_typed_execute_admits_runtime_k_source_without_kpt_file(

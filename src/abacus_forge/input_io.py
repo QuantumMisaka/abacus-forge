@@ -24,10 +24,11 @@ def read_input(path: str | Path) -> dict[str, str]:
 
 
 def read_input_tokens(path: str | Path) -> dict[str, tuple[str, ...]]:
-    """Read ABACUS INPUT values using whitespace-token comment semantics.
+    """Read ABACUS INPUT values with case-insensitive parameter names.
 
-    ABACUS starts a comment at a whitespace-delimited token whose first
-    character is ``#`` or ``!``.  A comment marker inside an otherwise normal
+    Values retain their original case. ABACUS starts a comment at a
+    whitespace-delimited token whose first character is ``#`` or ``!``.
+    A comment marker inside an otherwise normal
     token remains part of that value, so admission cannot silently repair a
     malformed token such as ``1#typo``.
     """
@@ -42,7 +43,7 @@ def read_input_tokens(path: str | Path) -> dict[str, tuple[str, ...]]:
                 break
             active.append(token)
         if len(active) >= 2:
-            values[active[0]] = tuple(active[1:])
+            values[active[0].lower()] = tuple(active[1:])
     return values
 
 
