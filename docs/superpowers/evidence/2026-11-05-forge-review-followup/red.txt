@@ -1,0 +1,99 @@
+F.............FFFFFFFFFFFFFF                                             [100%]
+=================================== FAILURES ===================================
+_________ test_read_input_tokens_normalizes_names_and_preserves_values _________
+tests/test_input_io.py:62: in test_read_input_tokens_normalizes_names_and_preserves_values
+    assert read_input_tokens(path) == {
+E   AssertionError: assert {'GAMMA_ONLY'...: ('AbAcUs',)} == {'gamma_only'...: ('AbAcUs',)}
+E
+E     Left contains 3 more items:
+E     {'GAMMA_ONLY': ('1',), 'Kspacing': ('0.5',), 'SuFfIx': ('AbAcUs',)}
+E     Right contains 3 more items:
+E     {'gamma_only': ('1',), 'kspacing': ('0.5',), 'suffix': ('AbAcUs',)}
+E     Use -v to get more diff
+_ test_typed_execute_admits_runtime_k_source_without_kpt_file[GAMMA_ONLY 1\n-123e4567-e89b-42d3-a456-426614174142] _
+tests/test_service_status.py:302: in test_typed_execute_admits_runtime_k_source_without_kpt_file
+    assert isinstance(result, OperationOutcome)
+E   AssertionError: assert False
+E    +  where False = isinstance(ForgeErrorEnvelope(error_class='precondition.missing', message='inputs/KPT file not found: inputs/KPT', affected_fields=('request',), operation_id='123e4567-e89b-42d3-a456-426614174142', workspace_rel='scf', schema_version='forge.error/v1'), OperationOutcome)
+_ test_typed_execute_admits_runtime_k_source_without_kpt_file[Gamma_Only .true.\n-123e4567-e89b-42d3-a456-426614174143] _
+tests/test_service_status.py:302: in test_typed_execute_admits_runtime_k_source_without_kpt_file
+    assert isinstance(result, OperationOutcome)
+E   AssertionError: assert False
+E    +  where False = isinstance(ForgeErrorEnvelope(error_class='precondition.missing', message='inputs/KPT file not found: inputs/KPT', affected_fields=('request',), operation_id='123e4567-e89b-42d3-a456-426614174143', workspace_rel='scf', schema_version='forge.error/v1'), OperationOutcome)
+_ test_typed_execute_admits_runtime_k_source_without_kpt_file[KSPACING 0.5\n-123e4567-e89b-42d3-a456-426614174144] _
+tests/test_service_status.py:302: in test_typed_execute_admits_runtime_k_source_without_kpt_file
+    assert isinstance(result, OperationOutcome)
+E   AssertionError: assert False
+E    +  where False = isinstance(ForgeErrorEnvelope(error_class='precondition.missing', message='inputs/KPT file not found: inputs/KPT', affected_fields=('request',), operation_id='123e4567-e89b-42d3-a456-426614174144', workspace_rel='scf', schema_version='forge.error/v1'), OperationOutcome)
+_ test_typed_execute_admits_runtime_k_source_without_kpt_file[Kspacing 0.1 0.1 0.1\n-123e4567-e89b-42d3-a456-426614174145] _
+tests/test_service_status.py:302: in test_typed_execute_admits_runtime_k_source_without_kpt_file
+    assert isinstance(result, OperationOutcome)
+E   AssertionError: assert False
+E    +  where False = isinstance(ForgeErrorEnvelope(error_class='precondition.missing', message='inputs/KPT file not found: inputs/KPT', affected_fields=('request',), operation_id='123e4567-e89b-42d3-a456-426614174145', workspace_rel='scf', schema_version='forge.error/v1'), OperationOutcome)
+_ test_capability_descriptor_rejects_scalar_sequences[False-inputs-invalid_value0] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[False-artifact_roles-input] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-numpy] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-0] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-1] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[True-inputs-invalid_value0] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[True-artifact_roles-input] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-numpy] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-0] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-1] _
+tests/test_contracts.py:682: in test_capability_descriptor_rejects_scalar_sequences
+    with pytest.raises(ValueError, match=field_name):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+=========================== short test summary info ============================
+FAILED tests/test_input_io.py::test_read_input_tokens_normalizes_names_and_preserves_values
+FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[GAMMA_ONLY 1\n-123e4567-e89b-42d3-a456-426614174142]
+FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[Gamma_Only .true.\n-123e4567-e89b-42d3-a456-426614174143]
+FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[KSPACING 0.5\n-123e4567-e89b-42d3-a456-426614174144]
+FAILED tests/test_service_status.py::test_typed_execute_admits_runtime_k_source_without_kpt_file[Kspacing 0.1 0.1 0.1\n-123e4567-e89b-42d3-a456-426614174145]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[False-inputs-invalid_value0]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[False-artifact_roles-input]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-numpy]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-0]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[False-optional_dependencies-1]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[True-inputs-invalid_value0]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[True-artifact_roles-input]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-numpy]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-0]
+FAILED tests/test_contracts.py::test_capability_descriptor_rejects_scalar_sequences[True-optional_dependencies-1]
+15 failed, 13 passed, 542 deselected in 3.66s

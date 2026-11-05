@@ -1,7 +1,7 @@
 # Forge SCF 消费链垂直切片
 
 - Owner：ABACUS-Forge；Paimon v3 消费面在 migration checkout 内单独落地。
-- Status：Forge SCF slice merged。复审 P1/P2 及独立复核修复已在 Paimon `a05448c7e` 和 Forge `d9eb12a` 完成，fresh-wheel `a4bba28e…`、远端 CI 8/8 与差异复审通过；Forge PR #16 已合入 `main@7f1fdfb`。Paimon 分支已推送至 origin，平台 MR/owner 合入确认仍待完成。
+- Status（2026-11-05）：原 SCF slice 已合入 Forge；本地 main 已同步远端 `f6957ba` 并纳入 `f18c8c9` 的并发回归。Task 11 的两项 Forge P2 已在 `2dfcae8` 修复，全离线、fresh-wheel 与默认工厂 stub 交接通过；新源码的远端 CI 与发行尚未执行。下方 Task 6–10 与 Paimon 分支状态保留为 10 月 29 日历史记录，不代表当前 Paimon 替代验收。
 - Design source：[算筹工场目标设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。
 - Forge baseline：`QuantumMisaka/abacus-forge`，branch `feat/forge-scf-consumer-chain-20261029`，commit `f02588c`（已包含用户确认的设计收缩）。
 - Paimon planning baseline：`app-tools-forge-latest-main-sync`，branch `integration/paimon-v3-baseline-1.2.84-20261029`，commit `7cd73eeb3`（toolbox `1.2.84` 来源）。
@@ -77,7 +77,7 @@ JSON launcher 只接受字符串数组；Python 构造保留合法 list/tuple。
 - 修复 Critical/Important 发现并复跑受影响检查；Minor 可记录延后。
 - 完成声明只能覆盖本切片的离线消费链，不扩大到 Relax/MD、CPU postprocess、多节点或发布。
 
-## 复审接续任务（待完成）
+## 2026-10-29 复审接续任务（Forge 侧已完成）
 
 复审对象：Forge `feat/forge-scf-consumer-chain-20261029@8496e7e`（package `0.1.0`）与 `app-tools-forge-latest-main-sync` 中的 `feat/paimon-v3-forge-scf-consumer-chain-20261029@be95cd86e`（toolbox `1.2.84`，显式 `backend=forge`，默认仍为 legacy）。2026-10-29 读取的 Paimon `origin/main@181c4b7ac` 相对原 `38c0f9073` 仅增加发布报告内容；接续开发按工作区规则同步最新 main，相关实现未变的既有证据继续可用。
 
@@ -117,6 +117,18 @@ JSON launcher 只接受字符串数组；Python 构造保留合法 list/tuple。
 
 ## 后续交付边界
 
+### Task 11: 2026-11-05 Forge 复审修复与本地交付
+
+用户授权先完成 Forge 相关开发；本任务沿用已批准设计，不扩展资源、identity 或 registry 框架。
+
+- 修复 `read_input_tokens` 的参数名归一化，使大写／混合大小写的 `gamma_only`、`kspacing` 在无 KPT 时正常进入 SCF runner；保留值原文、非法 token 拒绝和 Relax/MD 既有行为。
+- 恢复 capability 字符串序列对 scalar str/bytes 的拒绝；保持其他 iterable 兼容与 launcher 专用数组校验。通过 constructor/from_dict 的真实反例保护边界。
+- main 同步远端并纳入已有并发回归；在 main 开发，日常 editable 导入随主目录更新。保留其他工作树及原有未跟踪证据。
+- 验收：新增反例 RED → owning tests GREEN → 默认全离线；从修复提交构建 wheel/sdist，在无 system-site-packages 的新 venv 验证 installed-only 回归、CLI、pip check 和真实默认工厂的 stub 消费链；记录源码、包摘要与消费者来源。
+- 同家族独立审查修复 diff；更新 SPEC 语法说明、PLAN、索引与发行状态。新源码的远端 CI、tag 处置与 PyPI 上传仍待后续集成／发行，不把本地 wheel 当作正式 CI 发布制品。
+
+### 后续验收
+
 | 交付 | 前置与验收 | 计划详度 |
 | --- | --- | --- |
 | Forge 0.1.0 | Forge 修复合入后的发布 commit，成功 push CI 的八个 job 与同次 `forge-distributions-3.12` 制品；记录 wheel/sdist 各自 SHA、run ID/head SHA；按发行手册 tag、owner 发布与干净安装回验。发布上传已受测制品，不本地重建另一份替代。 | 复用[发行手册](../../releasing.md)与[发布计划](2026-10-21-forge-public-release.md)，重新生成当前 candidate；Paimon 全量替代不作为独立 Forge 发布前置。 |
@@ -144,15 +156,17 @@ JSON launcher 只接受字符串数组；Python 构造保留合法 list/tuple。
 - [x] Task 8: Forge launcher 类型验证。
 - [x] Task 9: 默认安装态消费链。
 - [x] Task 10: Forge 集成 CI、差异复审与 PR #16 合入。
-- [ ] Paimon platform MR / owner merge confirmation（branch `a05448c7e` 已推送）。
+- 2026-10-29 历史待办：Paimon platform MR / owner merge confirmation（当时 branch `a05448c7e` 已推送；后续状态以 Paimon owner 计划为准）。
+- [x] Task 11: Forge 大小写／序列修复、本地主线和安装态交付。
 
 ## Execution record
 
 - Forge implementation：`QuantumMisaka/abacus-forge`，branch `feat/forge-scf-consumer-chain-20261029`，初版验收记录提交 `5ac3e72`，复审文档 HEAD `8496e7e`，Task 7–8 修复 HEAD `baee443`，独立复核修复 HEAD `d9eb12a`。覆盖 SCF-only `launcher` / `env_overrides`、requested vs resolved launch、ABACUS token-style runtime-K comments、launcher ordered-array admission、capability sequence compatibility、服务错误 envelope 事实和文档。修复后默认离线回归 1658 passed / 35 skipped。
 - Paimon v3 implementation：`app-tools-forge-latest-main-sync`，branch `feat/paimon-v3-forge-scf-consumer-chain-20261029`，初版 final HEAD `be95cd86e`，Task 6 修复 HEAD `9cac98d85`。覆盖显式 Forge backend、immutable consumer outcome record、完整 legacy dependency-tree projection、runtime launcher mapping、negative-priority convergence projection、unknown allocation observation 和既有 output/evidence 合同。Task 6 focused consumer tests 14 passed；SCF focused suite 366 passed / 2 deselected。
 - 控制器跨源 stub probe 用 Forge branch 的真实 `ScfServiceSet` 驱动 Paimon adapter：无 KPT + `gamma_only=1` 的 execute/collect 成功，normal-end/converge/energy 与 resolved command 可读，allocation 保持 unknown。
-- 初版独立审查后修复：完整 PP/ORB legacy projection、SCF-only 契约 fence、三分量 `kspacing`、空环境值和 docs；当时发现已关闭。2026-10-29 后续复审在上述 HEAD 复现 Task 6 的 P1 与 Task 7/8 的两项 P2，三项均待修复；不能继续沿用“全部 closed”作为当前合入结论。
+- 初版独立审查后修复：完整 PP/ORB legacy projection、SCF-only 契约 fence、三分量 `kspacing`、空环境值和 docs；当时发现已关闭。2026-10-29 后续复审在上述 HEAD 复现 Task 6 的 P1 与 Task 7/8 的两项 P2，随后在 Task 6–10 修复并验收。
 - 本轮复审：Paimon 真实 collector/envelope 反例先复现 `false → true → passed`；修复后混合标记保持 `false` 且 `charge_density_convergence=failed`。Forge 反例复现 launcher object 丢值与合法 runtime-K 输入误拒；修复后 focused 和全量回归通过。复审时远端两条 feature 分支尚不存在，Forge 无对应 HEAD 的 CI；日常 `abacus-env` 仍导入 canonical main 的旧 editable Forge，因此 Task 9 使用独立隔离 venv，而不是覆盖日常环境。
 - Task 9：从 Forge `d9eb12a` 构建 wheel `abacus_forge-0.1.0-py3-none-any.whl`（SHA-256 `a4bba28e3a4379a6079a0968a865c4bb5752eb9a31db1ad6158a029b8baa8ae5`），装入隔离 venv 后用真实 default request/service factories、stub engine、完整 PP/ORB 依赖树和失败 envelope 执行 `toolbox/ABACUS/scripts/verify_forge_scf_installed_consumer.py`，exit 0。隔离环境 focused suite 366 passed / 2 deselected。Paimon evidence entry HEAD `a05448c7e`。
 - Task 10：独立复核修复后判定 `READY_FOR_SCF_SLICE_MERGE`。Forge push CI run `40918559177` 在 head `b0502d690e0f6a805be4f6fe6009722d7cf65264` 通过 Python 3.10/3.11/3.12/3.13 的 `test` 与 `installed-package` 共 8 个 job。PR #16 已 merge 为 `main@7f1fdfbab4ead1dedbd2c4ef91c42ab311dd593e`。Paimon branch `feat/paimon-v3-forge-scf-consumer-chain-20261029 @ a05448c7e` 已推送，等待平台 MR/owner 合入。
-- Deferred：malformed runtime-K source 的诊断仍保守折叠为缺 KPT；Paimon Forge 失败 outcome 目前随 exception 保留，尚不生成 durable failure evidence；installed-wheel end-to-end、真实 ABACUS/SAI/GPU 和 Benchmark parity 仍未执行，不作为本切片验收声明。
+- Deferred（本切片范围）：malformed runtime-K source 的诊断仍保守折叠为缺 KPT；Paimon 失败持久化由消费方计划接续。installed-wheel stub 交接已由 Task 9 验证；真实 ABACUS/SAI/GPU 与完整 Benchmark parity 不属于本切片验收声明。
+- Task 11：`main@2dfcae8` 修复两项 P2，独立源码审查无阻断。RED 15 failed / 13 passed，owning GREEN 729 passed；新 venv（Python 3.12.13、pytest 8.4.2、无 system-site）全离线 1676 passed / 33 skipped、installed-only 595 passed，默认工厂的 SCF 成功／失败 stub 消费通过。wheel `dade7acf…` 与 sdist `9daca95c…` 绑定该修复提交，详细命令、环境与边界见[本轮证据](../evidence/2026-11-05-forge-review-followup/README.md)。

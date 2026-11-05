@@ -1,0 +1,23 @@
+........................................................................ [  9%]
+........................................................................ [ 19%]
+........................................................................ [ 29%]
+........................................................................ [ 39%]
+........................................................................ [ 49%]
+........................................................................ [ 59%]
+........................................................................ [ 69%]
+........................................................................ [ 79%]
+........................................................................ [ 88%]
+........................................................................ [ 98%]
+.........                                                                [100%]
+=============================== warnings summary ===============================
+tests/test_units.py::test_prepare_unit_writes_manifest_and_handoffs_source_artifacts
+tests/test_units.py::test_prepare_unit_reproduces_reference_dos_nscf_controls
+tests/test_units.py::test_execute_and_collect_unit_are_decoupled_for_abacus
+tests/test_units.py::test_modify_unit_edits_prepared_workspace_inputs
+tests/test_units.py::test_modify_unit_edits_prepared_workspace_inputs
+  /home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+729 passed, 5 warnings in 21.89s

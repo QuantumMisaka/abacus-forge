@@ -1,6 +1,6 @@
 # 0.1.0 发行操作手册
 
-状态：发行流程已准备。GitHub `pypi` environment 已配置，PyPI Trusted Publisher 尚待配置；尚未创建 tag、触发发布流程或上传 PyPI。本文供维护者在账户配置完成后执行。
+状态（2026-11-05 核对）：GitHub `pypi` environment 已配置，`v0.1.0` tag 已指向 `d5585f5`；发布 workflow 尚无运行，PyPI 的 `abacus-forge/0.1.0` 查询返回 404。Trusted Publisher 配置与实际上传仍由 owner 确认。该 tag 不含 11 月 5 日的 runtime-K 大小写和 capability 序列修复；当前本地代码需重新取得同提交 CI 与制品，不能沿用旧 candidate 宣称包含这些修复。已有 tag 的处置或版本选择由 owner 决定，不自动改指 tag。
 
 ## 发行边界
 

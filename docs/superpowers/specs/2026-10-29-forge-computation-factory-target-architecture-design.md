@@ -62,7 +62,7 @@ Paimon/站点适配器继续负责 `resAlloc`、partition/QOS、GPU 档位、分
 
 Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新增 GPU 数、设备绑定或实际分配信息，应随具体执行适配接入并验证；暂不发布脱离运行消费者的 ResourceSpec。通用资源表示需要覆盖零 GPU 的 CPU 操作；这不改变现役 Paimon 的 ABACUS GPU 准入，也不授权自动 CPU 降级。本次不增加新的资源调度实现。
 
-当前 SCF execute 裁决：只按 SCF 消费者暴露站点 `launcher` 与 `env_overrides`，并分别记录 requested command 与 resolved command；无法解析可执行文件时 resolved launch 保持 unknown。`launcher` 的 JSON 输入是字符串数组，错误类型在请求解码处拒绝，不得将 object 的 key 静默当成 argv。无 KPT 的 SCF execute 只有在 INPUT 以有效布尔值启用 `gamma_only`，或提供 1/3 个 finite positive `kspacing` token 时才可 admission；解析遵循所支持 ABACUS 的布尔 token 与行内注释语法，避免误拒合法输入。这些扩展不进入 Relax/MD execute 契约；后续实际消费者需要时另行裁决。
+当前 SCF execute 裁决：只按 SCF 消费者暴露站点 `launcher` 与 `env_overrides`，并分别记录 requested command 与 resolved command；无法解析可执行文件时 resolved launch 保持 unknown。`launcher` 的 JSON 输入是字符串数组，错误类型在请求解码处拒绝，不得将 object 的 key 静默当成 argv。无 KPT 的 SCF execute 只有在 INPUT 以有效布尔值启用 `gamma_only`，或提供 1/3 个 finite positive `kspacing` token 时才可 admission；解析遵循所支持 ABACUS 的参数名大小写不敏感、布尔 token 与行内注释语法，值 token 保留原文。这些扩展不进入 Relax/MD execute 契约；后续实际消费者需要时另行裁决。
 
 资源请求、实际分配和实际启动三者分别记录，未知观测不写成零。MPI ranks 与 GPU 数由引擎和启动方式映射，不设置通用一比一规则。发生 OOM、超时或非零退出时，Forge 返回有来源的事实；外层决定升档、重新申请和重试。整个作业被平台杀死时，终态记录由外部执行管理层补充，不要求进程内必然落盘。
 
@@ -82,7 +82,7 @@ Forge runner 复用当前 MPI/OMP、timeout、命令和环境传递能力。新�
 
 以最新 Paimon v2 基线为需求来源，逐能力移植实际缺口。2026-10-29 读取的 `app-tools/main@38c0f9073` 为 toolbox `1.2.84`；`app-tools-forge-latest-main-sync@7cd73eeb3` 是对应规划工作树，不是已通过替代验收的新运行候选。旧 `1.2.76` Forge-route candidate 和历史 Benchmark 证据按其原身份保留。
 
-近期先完成一条 SCF 输入→执行→收集→Paimon 消费链，按实际需要补目录放置、资源交接和输出映射；再扩展 Relax/MD、CPU 后处理和驱动。完整替代仍需解除旧依赖并在相应 ABACUS Agent Benchmark 上同等或更好，不能由离线测试或删除 import 推定。
+SCF 输入→执行→收集→Paimon 的默认安装态 stub 消费链已有验收，当前修复与候选状态以 [SCF 计划](../plans/2026-10-29-forge-scf-consumer-chain.md) 为准。后续按实际需要扩展 Relax/MD、CPU 后处理和驱动。完整替代仍需解除旧依赖并在相应 ABACUS Agent Benchmark 上同等或更好，不能由离线测试或删除 import 推定。
 
 验证强度随变更及所声称的结果选择：
 
