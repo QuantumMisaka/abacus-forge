@@ -24,14 +24,17 @@ def ensure_root(workspace: str | Path | Workspace) -> Workspace:
 
 def require_prepared_inputs(root: Workspace) -> tuple[dict[str, str], AbacusStructure, dict[str, Any] | None]:
     input_path = root.inputs_dir / "INPUT"
-    stru_path = root.inputs_dir / "STRU"
-    if not input_path.exists() or not stru_path.exists():
-        raise FileNotFoundError("composite prepare requires an existing Forge workspace with inputs/INPUT and inputs/STRU")
+    if not input_path.is_file():
+        raise FileNotFoundError("composite prepare requires inputs/INPUT")
+    parameters = read_input(input_path)
+    stru_path = root.resolve_relative(Path("inputs") / parameters.get("stru_file", "STRU"))
+    if not stru_path.is_file():
+        raise FileNotFoundError("composite prepare requires the structure selected by inputs/INPUT")
     kpt_payload = None
-    kpt_path = root.inputs_dir / "KPT"
+    kpt_path = root.resolve_relative(Path("inputs") / parameters.get("kpoint_file", "KPT"))
     if kpt_path.exists():
         kpt_payload = read_kpt(kpt_path)
-    return read_input(input_path), AbacusStructure.from_input(stru_path, structure_format="stru"), kpt_payload
+    return parameters, AbacusStructure.from_input(stru_path, structure_format="stru"), kpt_payload
 
 
 def write_subtask(
@@ -42,14 +45,18 @@ def write_subtask(
     structure: AbacusStructure,
     kpt_payload: dict[str, Any] | None,
     metadata: dict[str, Any],
+    copy_reference_outputs: bool = True,
 ) -> Workspace:
     sub = Workspace(root.root / relative)
     sub.ensure_layout()
-    write_input(sub.inputs_dir / "INPUT", input_params)
+    # Generated units use their own STRU, not a copied parent selector which
+    # would silently make every displacement/strain run the reference input.
+    parameters = {key: value for key, value in input_params.items() if key not in {"stru_file", "kpoint_file"}}
+    write_input(sub.inputs_dir / "INPUT", parameters)
     sub.write_text("inputs/STRU", structure.to_stru())
     if kpt_payload is not None:
         write_kpt(sub.inputs_dir / "KPT", kpt_payload)
-    _copy_auxiliary_inputs(root.inputs_dir, sub.inputs_dir)
+    _copy_auxiliary_inputs(root.inputs_dir, sub.inputs_dir, copy_reference_outputs=copy_reference_outputs)
     sub.record_metadata({"kind": "abacus-forge.composite-subtask", **metadata})
     return sub
 
@@ -123,7 +130,10 @@ def scaled_structure(structure: AbacusStructure, volume_scale: float) -> AbacusS
 def strained_structure(structure: AbacusStructure, strain: np.ndarray) -> AbacusStructure:
     atoms = structure.atoms.copy()
     cell = np.asarray(atoms.cell)
-    atoms.set_cell(np.dot(np.eye(3) + strain, cell), scale_atoms=True)
+    # ASE stores lattice vectors as rows. A Cartesian deformation F acts as
+    # cell @ F.T; left multiplication instead mixes lattice vectors and gives
+    # the wrong shear for unequal or oblique lattice vectors.
+    atoms.set_cell(np.dot(cell, (np.eye(3) + strain).T), scale_atoms=True)
     return AbacusStructure(atoms, source_format=structure.source_format)
 
 
@@ -135,9 +145,13 @@ def displaced_structure(structure: AbacusStructure, atom_index: int, axis: int, 
     return AbacusStructure(atoms, source_format=structure.source_format)
 
 
-def _copy_auxiliary_inputs(source: Path, target: Path) -> None:
+def _copy_auxiliary_inputs(source: Path, target: Path, *, copy_reference_outputs: bool = True) -> None:
     for path in source.iterdir():
         if path.name in {"INPUT", "STRU", "KPT"}:
+            continue
+        # Displaced/strained units opt out of inherited reference results.
+        # Legacy property packs still copy outputs used as restart inputs.
+        if not copy_reference_outputs and (path.name.startswith("OUT.") or path.name in {"stdout.log", "stderr.log"}):
             continue
         destination = target / path.name
         if path.is_file():

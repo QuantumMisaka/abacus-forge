@@ -4,6 +4,14 @@
 
 First public release candidate for the protocol-neutral ABACUS Forge library and CLI.
 
+- Experimental phonon, elastic and vibration packs now expose relocatable unit
+  plans, independent execute/collect, and explicit result gathering through
+  Python and JSON CLI. Per-unit failures and gather snapshots are retained;
+  missing results never trigger implicit execution. Phonon generates real
+  displacements and force constants/q-point frequencies, vibration analyzes
+  finite-displacement frequencies/ZPE with ASE, and elastic reports Voigt moduli.
+  These are offline composition capabilities, not scheduler or scientific parity claims.
+
 - Owner-authorized pre-release withdrawal of the unused Phase A
   `capability_registry` records and `capability-contracts` command introduced
   at `3d3ae52`. Existing capabilities/schema discovery and computation

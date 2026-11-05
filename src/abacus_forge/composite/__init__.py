@@ -31,8 +31,14 @@ from abacus_forge.composite.properties import (
     run_workfunc,
 )
 from abacus_forge.composite.vibration import post_vibration, prepare_vibration, run_vibration
+from abacus_forge.composite.plan import collect_subtask, execute_subtask, gather_subtasks, list_subtasks, load_plan
 
 __all__ = [
+    "collect_subtask",
+    "execute_subtask",
+    "gather_subtasks",
+    "list_subtasks",
+    "load_plan",
     "post_bader",
     "post_bec",
     "post_charge_density",

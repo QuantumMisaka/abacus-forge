@@ -1,6 +1,6 @@
 # 声子谱、弹性常量与振动分析：并行展开专项 report
 
-2026-11-05。面向 Forge / Paimon v3 开发维护者，回应“并行展开”在三个具体科学任务中的实现状态。本报告补充[整体架构审查](README.md)，记录现状、缺陷归属与修复验收方向；本轮只读审查运行代码并新增离线验证，没有修改实现或发起计算作业。
+2026-11-05。面向 Forge / Paimon v3 开发维护者，回应“并行展开”在三个具体科学任务中的实现状态。本报告补充[整体架构审查](README.md)。第 1–6 节保留初次只读审查与离线验证的基线；用户随后授权的 Forge 实现与缺陷状态更新见第 7 节，未发起平台计算作业。
 
 **确认：三个任务在输入确定后都能展开为独立 ABACUS 子计算，现有 workspace 和执行基元适合承接；当前 Paimon candidate 三条链却全部固定 `max_workers=1`。因此已具备算法和文件拆分基础，尚未交付按子任务分配资源、并行执行、独立恢复、CPU 汇总的完整链路。现有架构无需推倒重建。**
 
@@ -80,7 +80,7 @@ ABACUS 默认 GPU、后处理 CPU 的职责分工可以保持。实现并行可�
 
 ## 4. 当前缺陷和缺口登记
 
-以下条目在本次代码版本均为 **open**；本轮只登记，没有用文档提交代替实现完成。功能缺口不等同于当前串行计算会算错。
+以下条目在第 1 节绑定的初审代码版本均为 **open**；第 7 节登记后续实现的分层关闭状态。功能缺口不等同于当前串行计算会算错。
 
 | ID / 性质 | 触发、现状与影响 | 归属与最小处理 | 关闭所需证据 |
 | --- | --- | --- | --- |
@@ -129,3 +129,22 @@ PYTHONPATH=/home/james/work/sidereus/workplace/app-tools-forge-latest-main-sync/
 初版报告（`712ef23`）与日志经一次独立只读复核，无实质修正项；文档链接检查 2 passed，额外核对本报告 13 个链接（含跨仓源码）均存在。同日后续按用户确认调整架构与资源接入优先级；上述 33 项运行证据仍对应原代码，本次文案修订没有新增实现完成声明。
 
 本轮没有验证 GPU/SAI 并发、加速比、跨 Flow 节点交接或当前候选的 Benchmark parity。不同 typed workspace 可并发的既有回归可支持 Forge 原语可组合性，但不证明三个 legacy adapter 已获得相同保护。**可以确认架构能够承载这三类展开；不能确认当前产品已完成并行交付或据此完成现役替代。**
+
+## 7. 用户授权后的 Forge 实现接续
+
+**Forge 本体已实现三类任务的可组合单元接口；上述 Paimon candidate 未修改。** 以 `main@7b54d28` 为实施基线，新增 `composite/plan.py`，复用 Workspace、LocalRunner、TaskResult、ArtifactRecord 与既有 operation guard。用户要求的优先级落实为：先交付清单和独立消费，再由上层接资源；没有新增 scheduler、registry、ExecutionIdentity 或资源模型。
+
+prepare 写相对路径计划及科学参数；`units` 枚举，`execute-unit` 与 `collect-unit` 单项消费，`gather` 按 ID 汇总显式 collection records，`post --results` 独立分析。每次单元尝试和汇总快照均保留；缺失/失败项不触发补算，不产生伪完成物性。输入摘要检查实际选中的 INPUT/STRU/KPT，尚不覆盖 PP/ORB 内容与环境。使用方法见[指南](../../../guide.md#composite-and-property-packs)，完整命令、提交、审查和包验证由[实施清单](../../plans/2026-11-05-forge-task-expansion.md)关联。
+
+| 初审条目 | Forge 本轮落地 | 仍待处理的归属 |
+| --- | --- | --- |
+| PAR-01 | 三类任务可枚举、独立执行/采集、按 ID 汇总；受控 barrier 证明不同单元能同时执行。 | Paimon 公开 Tool 尚未消费这些阶段接口。 |
+| PAR-02 | 保留各单元 runner 的 launcher/env 接缝；不需要 allocation 即可验证结构性展开。 | Paimon/平台后续接入真实资源和并发预算。 |
+| PAR-03 | 新计划可重定位；CPU 后处理消费显式结果。声子仅需 plan+YAML+力记录，弹性需 plan+应力，振动另需 eq 输入。 | 跨 ATP/Flow 文件端口与工具拆分未实施。 |
+| PAR-04 | 单元结果逐次落盘；调用方可仅重试失败项，成功事实可复用；部分 gather 明确列出缺失/失败项。 | Paimon 自动恢复策略和原 adapter 的失败交付仍待接线。 |
+| PAR-05 | 新单元接口复用 workspace guard；不同单元不共用锁。 | 旧批量 run 的边界未提升；runner timeout 后代残留未修复，不能宣称超时重试安全。 |
+| PAR-06 | 新单元接口捕获执行/采集调用的普通异常并保留该项失败事实，其他单元独立保留；写入结果本身失败仍可抛错。 | 原 `run_many` 的异常批次语义与 Paimon 整链包装未修改。 |
+
+领域算法也有实际补齐：声子用真实 phonopy 位移、力常数及 q 点频率，缺依赖不生成伪位移；振动用中心差分 Hessian 与 ASE 频率/ZPE，支持 native collector 的扁平力；弹性修正非立方/斜胞应变与 Voigt 模量。独立审查推动修复 Bohr/Å、默认 post 输入配对、笛卡尔应变、声子质量/species、实际 KPT 选择五项问题。参考 OUT 过滤引入的旧 property restart 回归也已收窄修复。
+
+**当前仍是 experimental，不能据此宣布 Paimon 完整替代。** Forge 弹性保留原有 13 单元采样，不是 Paimon 的 25 单元方法；振动没有移植完整热力学展示；声子 Python 分析提供力常数和指定 q 点频率，未新增完整能带路径/DOS/热力学流程。声子同元素多种 ABACUS species 暂不支持并提前拒绝；单 species 的自定义 label、质量、PP/ORB 引用已保留。真实 ABACUS 科学对拍、最新 Paimon 基线接线及 Benchmark parity 都需后续单独验收。

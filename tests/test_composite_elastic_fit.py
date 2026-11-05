@@ -62,22 +62,23 @@ def test_elastic_fit_requires_base_and_deformed_rows():
 def test_post_elastic_publishes_fit_from_collected_stresses(tmp_path, monkeypatch):
     from abacus_forge.api import prepare
     from abacus_forge.composite import elastic
+    from abacus_forge.composite import plan
+    from abacus_forge.result import CollectionResult
     from ase import Atoms
 
     workspace = tmp_path / "elastic-case"
     prepare(workspace, structure=Atoms("Si", positions=[[0, 0, 0]], cell=[5, 5, 5], pbc=True), task="scf")
     prepared = elastic.prepare_elastic(workspace)
     synthetic = _rows_for_cubic_tensor()
-    rows = [
-        {
-            "workspace": item["workspace"],
-            "status": "completed",
-            "metrics": {"stress": synthetic[index]["stress"]},
-            "diagnostics": {},
-        }
+    metrics_by_workspace = {
+        item["workspace"]: {"stress": synthetic[index]["stress"], "converge": True, "normal_end": True}
         for index, item in enumerate(prepared.subtasks)
-    ]
-    monkeypatch.setattr(elastic, "collect_subtasks", lambda _paths: rows)
+    }
+    monkeypatch.setattr(
+        plan,
+        "collect",
+        lambda workspace: CollectionResult(workspace.root, "completed", metrics=metrics_by_workspace[str(workspace.root)]),
+    )
 
     result = elastic.post_elastic(workspace)
 

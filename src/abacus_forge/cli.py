@@ -224,10 +224,34 @@ def build_parser() -> argparse.ArgumentParser:
         _add_composite_run_arguments(run_subparser)
         post_subparser = task_subparsers.add_parser("post", help=f"postprocess {task_name} subdirectories")
         post_subparser.add_argument("workspace")
+        if task_name != "eos":
+            post_subparser.add_argument("--results", nargs="+", metavar="JSON", help="explicit collection records or gather snapshots; does not collect or execute")
+            units_subparser = task_subparsers.add_parser("units", help="list prepared units without running them")
+            units_subparser.add_argument("workspace")
+            units_subparser.add_argument("--json", action="store_true")
+            execute_subparser = task_subparsers.add_parser("execute-unit", help="execute one prepared unit without collecting")
+            execute_subparser.add_argument("workspace")
+            execute_subparser.add_argument("--unit-id", required=True)
+            execute_subparser.add_argument("--executable", default="abacus")
+            execute_subparser.add_argument("--mpi", type=int, default=1)
+            execute_subparser.add_argument("--omp", type=int, default=1)
+            execute_subparser.add_argument("--timeout", type=float)
+            execute_subparser.add_argument("--launcher-json", help="explicit launcher argv as a JSON string array")
+            execute_subparser.add_argument("--env-json", help="explicit child environment overrides as a JSON string map")
+            execute_subparser.add_argument("--json", action="store_true")
+            collect_subparser = task_subparsers.add_parser("collect-unit", help="collect one unit without executing")
+            collect_subparser.add_argument("workspace")
+            collect_subparser.add_argument("--unit-id", required=True)
+            collect_subparser.add_argument("--json", action="store_true")
+            gather_subparser = task_subparsers.add_parser("gather", help="join explicit unit collection records by ID")
+            gather_subparser.add_argument("workspace")
+            gather_subparser.add_argument("--results", nargs="+", required=True, metavar="JSON")
+            gather_subparser.add_argument("--json", action="store_true")
         if task_name == "phonon":
             post_subparser.add_argument("--phonopy", default="phonopy")
             post_subparser.add_argument("--setting-file", default="setting.conf")
             post_subparser.add_argument("--only-plot", action="store_true")
+            post_subparser.add_argument("--qpoint", nargs=3, type=float, action="append", help="fractional reciprocal q point; repeatable, default Gamma")
         post_subparser.add_argument("--json", action="store_true")
 
     for task_name in ("convergence", "charge-density", "spin-density", "charge-diff", "elf", "bader", "workfunc", "vacancy", "bec"):
@@ -587,11 +611,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command in {"eos", "elastic", "vibration", "phonon"}:
-        result = _dispatch_composite(args)
+        try:
+            result = _dispatch_composite(args)
+        except (ValueError, OSError) as error:
+            if getattr(args, "json", False):
+                print(json.dumps({"status": "failed", "error": str(error)}))
+            else:
+                print(str(error), file=sys.stderr)
+            return 2
+        payload = result if isinstance(result, dict) else result.to_dict()
         if getattr(args, "json", False):
-            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+            print(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False))
         else:
-            print(result.status)
+            print(payload["status"])
+        if args.command != "eos" and (args.composite_command in {"execute-unit", "collect-unit", "gather"} or getattr(args, "results", None) is not None):
+            return 0 if payload["status"] in {"completed", "prepared"} else 1
         return 0
 
     if args.command in {"convergence", "charge-density", "spin-density", "charge-diff", "elf", "bader", "workfunc", "vacancy", "bec"}:
@@ -749,6 +783,8 @@ def _add_composite_prepare_arguments(parser: argparse.ArgumentParser, *, task_na
     elif task_name == "phonon":
         parser.add_argument("--phonopy", default="phonopy")
         parser.add_argument("--setting-file", default="setting.conf")
+        parser.add_argument("--supercell", nargs=3, type=int, help="generate displacements with the phonopy Python library")
+        parser.add_argument("--displacement-stepsize", type=float, default=0.01)
 
 
 def _add_composite_run_arguments(parser: argparse.ArgumentParser) -> None:
@@ -791,7 +827,37 @@ def _add_property_post_arguments(parser: argparse.ArgumentParser, *, task_name: 
         parser.add_argument("--executable", default="bader")
 
 
+def _collection_records(paths: list[str]) -> list[dict[str, Any]]:
+    records = []
+    for path in paths:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        rows = payload.get("subtasks", [payload]) if isinstance(payload, dict) else payload
+        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+            raise ValueError("results JSON must contain collection records or a gather snapshot")
+        records.extend(rows)
+    return records
+
+
 def _dispatch_composite(args: argparse.Namespace):
+    if args.command != "eos":
+        from abacus_forge.composite.plan import collect_subtask, execute_subtask, gather_subtasks, list_subtasks
+
+        if args.composite_command == "units":
+            return list_subtasks(args.workspace, args.command)
+        if args.composite_command == "execute-unit":
+            launcher = json.loads(args.launcher_json) if args.launcher_json is not None else []
+            environment = json.loads(args.env_json) if args.env_json is not None else {}
+            if not isinstance(launcher, list) or not all(isinstance(value, str) and value for value in launcher):
+                raise ValueError("launcher-json must be an array of non-empty strings")
+            if not isinstance(environment, dict) or not all(isinstance(key, str) and isinstance(value, str) for key, value in environment.items()):
+                raise ValueError("env-json must be an object with string keys and values")
+            runner = LocalRunner(executable=args.executable, mpi_ranks=args.mpi, omp_threads=args.omp, timeout_seconds=args.timeout, launcher=launcher, env_overrides=environment)
+            return execute_subtask(args.workspace, args.command, args.unit_id, runner=runner)
+        if args.composite_command == "collect-unit":
+            return collect_subtask(args.workspace, args.command, args.unit_id)
+        if args.composite_command == "gather":
+            return gather_subtasks(args.workspace, args.command, _collection_records(args.results))
+    post_kwargs = {"results": _collection_records(args.results)} if getattr(args, "results", None) is not None else {}
     if args.command == "eos":
         if args.composite_command == "prepare":
             return prepare_eos(args.workspace, start=args.start, end=args.end, step=args.step, calculation=args.calculation)
@@ -803,19 +869,19 @@ def _dispatch_composite(args: argparse.Namespace):
             return prepare_elastic(args.workspace, normal_strain=args.normal_strain, shear_strain=args.shear_strain, relax_atoms=args.relax_atoms)
         if args.composite_command == "run":
             return run_elastic(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
-        return post_elastic(args.workspace)
+        return post_elastic(args.workspace, **post_kwargs)
     if args.command == "vibration":
         if args.composite_command == "prepare":
             return prepare_vibration(args.workspace, stepsize=args.stepsize, atom_indices=args.atom_indices)
         if args.composite_command == "run":
             return run_vibration(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
-        return post_vibration(args.workspace)
+        return post_vibration(args.workspace, **post_kwargs)
     if args.command == "phonon":
         if args.composite_command == "prepare":
-            return prepare_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file)
+            return prepare_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file, supercell=args.supercell, displacement_stepsize=args.displacement_stepsize)
         if args.composite_command == "run":
             return run_phonon(args.workspace, executable=args.executable, mpi=args.mpi, omp=args.omp, timeout_seconds=args.timeout, max_workers=args.max_workers, skip_completed=args.skip_completed)
-        return post_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file, only_plot=args.only_plot)
+        return post_phonon(args.workspace, phonopy=args.phonopy, setting_file=args.setting_file, only_plot=args.only_plot, qpoints=args.qpoint, **post_kwargs)
     raise SystemExit(f"unsupported composite command: {args.command}")
 
 
