@@ -1,0 +1,3 @@
+{"forge_module": "/home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/abacus_forge/__init__.py", "workspace": "/tmp/forge-timeout-audit-tm8zu_1w", "result_status": "failed", "failure_class": "timeout", "marker_at_return": false}
+{"marker_after_return": true, "content": "written after timeout"}
+{"probe_child_state": "exited", "probe_child_running": false}

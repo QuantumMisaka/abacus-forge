@@ -1,0 +1,5 @@
+cwd: /home/james/work/sidereus/workplace/abacus-forge
+PYTHONPATH='' ABACUS_FORGE_INSTALLED_PACKAGE_ONLY=1 /home/james/scratch/forge-followup-20261105/venv/bin/python -m pytest tests/benchmark/test_abacustest_compatibility.py tests/benchmark/test_core_capability_facts.py tests/test_architecture.py -q --run-benchmark -p no:cacheprovider
+
+..............                                                           [100%]
+14 passed in 10.14s
