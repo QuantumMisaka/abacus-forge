@@ -1,0 +1,148 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+_ test_prepare_phonon_compatibility_executable_uses_new_dataset_and_actual_distance _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1596/test_prepare_phonon_compatibil0')
+
+    def test_prepare_phonon_compatibility_executable_uses_new_dataset_and_actual_distance(tmp_path: Path):
+        pytest.importorskip("phonopy")
+        executable = Path(sys.executable).with_name("phonopy")
+        if not executable.is_file():
+            pytest.skip("installed phonopy CLI unavailable")
+        root = _workspace(tmp_path)
+        setting = root / "setting.conf"
+        setting.write_text("DIM = 1 1 1\nDISPLACEMENT_DISTANCE = 0.03\n")
+        (root / "STRU-999").write_bytes((root / "inputs/STRU").read_bytes())
+
+        result = phonon.prepare_phonon(root, phonopy=str(executable))
+
+        assert result.status == "prepared", result.diagnostics
+        plan = json.loads((root / "reports/phonon_plan.json").read_text())
+        # phonopy's ABACUS initializer takes its displacement distance in bohr.
+>       assert plan["displacement_stepsize"] == pytest.approx(0.01587531622271844)
+E       assert 0.03 == 0.01587531622271844 ± 1.6e-08
+E
+E         comparison failed
+E         Obtained: 0.03
+E         Expected: 0.01587531622271844 ± 1.6e-08
+
+tests/test_phonon_expansion.py:132: AssertionError
+_ test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response __
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1596/test_phonon_cli_and_python_pre0')
+
+    def test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response(tmp_path: Path):
+        from phonopy.file_IO import parse_FORCE_CONSTANTS
+
+        pytest.importorskip("phonopy")
+        executable = Path(sys.executable).with_name("phonopy")
+        if not executable.is_file():
+            pytest.skip("installed phonopy CLI unavailable")
+        cli_root = _workspace(tmp_path / "cli")
+        python_root = _workspace(tmp_path / "python")
+        (cli_root / "setting.conf").write_text(
+            "DIM = 1 1 1\nDISPLACEMENT_DISTANCE = 0.03779452249251541\n"
+        )
+        cli = phonon.prepare_phonon(cli_root, phonopy=str(executable))
+        python = phonon.prepare_phonon(python_root, supercell=(1, 1, 1), displacement_stepsize=0.02)
+        assert cli.status == python.status == "prepared"
+        source = AbacusStructure.from_input(python_root / "inputs/STRU", structure_format="stru").atoms
+        for root, result in ((cli_root, cli), (python_root, python)):
+            plan = json.loads((root / "reports/phonon_plan.json").read_text())
+>           assert plan["displacement_stepsize"] == pytest.approx(0.02)
+E           assert 0.0377945224925154 == 0.02 ± 2.0e-08
+E
+E             comparison failed
+E             Obtained: 0.0377945224925154
+E             Expected: 0.02 ± 2.0e-08
+
+tests/test_phonon_expansion.py:178: AssertionError
+__ test_phonon_preserves_single_species_label_resources_and_mass_in_supercell __
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1596/test_phonon_preserves_single_s0')
+
+    def test_phonon_preserves_single_species_label_resources_and_mass_in_supercell(tmp_path: Path):
+        library = pytest.importorskip("phonopy")
+        root = _workspace(tmp_path)
+        source = AbacusStructure.from_input(root / "inputs/STRU", structure_format="stru")
+        source.atoms.set_masses([30.0, 30.0])
+        source.atoms.info["abacus_atom_labels"] = ["Si1", "Si1"]
+        source.atoms.info["abacus_species_meta"] = {"Si1": {"mass": 30.0, "pp": "isotope.upf", "orb": "isotope.orb"}}
+        (root / "inputs/STRU").write_text(source.to_stru())
+        (root / "inputs/isotope.upf").write_text("offline pseudo fixture")
+        (root / "inputs/isotope.orb").write_text("offline orbital fixture")
+
+        result = phonon.prepare_phonon(root, supercell=(2, 1, 1))
+
+        plan = json.loads((root / "reports/phonon_plan.json").read_text())
+        model = library.load(root / plan["phonopy_file"], produce_fc=False)
+>       np.testing.assert_array_equal(model.unitcell.masses, [30.0, 30.0])
+E       AssertionError:
+E       Arrays are not equal
+E
+E       Mismatched elements: 2 / 2 (100%)
+E       Mismatch at indices:
+E        [0]: 28.0855 (ACTUAL), 30.0 (DESIRED)
+E        [1]: 28.0855 (ACTUAL), 30.0 (DESIRED)
+E       Max absolute difference among violations: 1.9145
+E       Max relative difference among violations: 0.06381667
+E        ACTUAL: array([28.0855, 28.0855])
+E        DESIRED: array([30., 30.])
+
+tests/test_phonon_expansion.py:209: AssertionError
+_ test_phonon_rejects_multiple_abacus_species_for_same_element_before_expansion _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1596/test_phonon_rejects_multiple_a0')
+
+    def test_phonon_rejects_multiple_abacus_species_for_same_element_before_expansion(tmp_path: Path):
+        pytest.importorskip("phonopy")
+        root = _workspace(tmp_path)
+        atoms = Atoms("Fe2", positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True, masses=[55.0, 57.0])
+        atoms.info["abacus_atom_labels"] = ["Fe1", "Fe2"]
+        atoms.info["abacus_species_meta"] = {
+            "Fe1": {"mass": 55.0, "pp": "FeA.upf", "orb": "FeA.orb"},
+            "Fe2": {"mass": 57.0, "pp": "FeB.upf", "orb": "FeB.orb"},
+        }
+        (root / "inputs/STRU").write_text(AbacusStructure.from_input(atoms).to_stru())
+
+>       with pytest.raises(ValueError, match="species"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_phonon_expansion.py:232: Failed
+____ test_default_phonon_post_rejects_changed_unit_inputs_before_collection ____
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1596/test_default_phonon_post_rejec0')
+
+    def test_default_phonon_post_rejects_changed_unit_inputs_before_collection(tmp_path: Path):
+        pytest.importorskip("phonopy")
+        root = _workspace(tmp_path)
+        result = phonon.prepare_phonon(root, supercell=(1, 1, 1))
+        input_path = Path(result.subtasks[0]["workspace"]) / "inputs/INPUT"
+        input_path.write_text(input_path.read_text() + "\n# changed after prepare\n")
+
+>       with pytest.raises(ValueError, match="inputs changed"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_phonon_expansion.py:245: Failed
+=============================== warnings summary ===============================
+tests/test_phonon_expansion.py::test_prepare_phonon_compatibility_executable_uses_new_dataset_and_actual_distance
+tests/test_phonon_expansion.py::test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response
+tests/test_phonon_expansion.py::test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response
+tests/test_phonon_expansion.py::test_phonon_preserves_single_species_label_resources_and_mass_in_supercell
+tests/test_phonon_expansion.py::test_phonon_rejects_multiple_abacus_species_for_same_element_before_expansion
+tests/test_phonon_expansion.py::test_phonon_rejects_multiple_abacus_species_for_same_element_before_expansion
+tests/test_phonon_expansion.py::test_default_phonon_post_rejects_changed_unit_inputs_before_collection
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_phonon_expansion.py::test_prepare_phonon_compatibility_executable_uses_new_dataset_and_actual_distance
+FAILED tests/test_phonon_expansion.py::test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response
+FAILED tests/test_phonon_expansion.py::test_phonon_preserves_single_species_label_resources_and_mass_in_supercell
+FAILED tests/test_phonon_expansion.py::test_phonon_rejects_multiple_abacus_species_for_same_element_before_expansion
+FAILED tests/test_phonon_expansion.py::test_default_phonon_post_rejects_changed_unit_inputs_before_collection
+5 failed, 20 deselected, 7 warnings in 2.86s

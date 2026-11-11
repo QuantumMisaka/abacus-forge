@@ -1,0 +1,57 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_legacy_charge_density_still_stages_requested_restart ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1604/test_legacy_charge_density_sti0')
+
+    def test_legacy_charge_density_still_stages_requested_restart(tmp_path):
+        from abacus_forge.composite.properties import prepare_charge_density
+        from abacus_forge.input_io import read_input, write_input
+
+        root = tmp_path / "charge-restart"
+        prepare(root, structure=Atoms("H", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True), task="scf")
+        inputs = root / "inputs"
+        write_input(inputs / "INPUT", {**read_input(inputs / "INPUT"), "init_chg": "file", "read_file_dir": "OUT.ABACUS"})
+        restart = inputs / "OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart"
+        restart.parent.mkdir()
+        restart.write_bytes(b"reference restart fixture")
+        result = prepare_charge_density(root)
+        assert result.status == "prepared"
+        child_inputs = Path(result.subtasks[0]["workspace"]) / "inputs"
+        assert read_input(child_inputs / "INPUT")["init_chg"] == "file"
+>       assert (child_inputs / "OUT.ABACUS" / restart.name).read_bytes() == restart.read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_composite_plan.py:126:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/tmp/pytest-of-james/pytest-1604/test_legacy_charge_density_sti0/charge-restart/charge-density/scf/inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-james/pytest-1604/test_legacy_charge_density_sti0/charge-restart/charge-density/scf/inputs/OUT.ABACUS/ABACUS-CHARGE-DENSITY.restart'
+
+/home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/pathlib.py:1013: FileNotFoundError
+=============================== warnings summary ===============================
+tests/test_composite_plan.py::test_legacy_charge_density_still_stages_requested_restart
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_composite_plan.py::test_legacy_charge_density_still_stages_requested_restart
+1 failed, 16 deselected, 1 warning in 0.74s

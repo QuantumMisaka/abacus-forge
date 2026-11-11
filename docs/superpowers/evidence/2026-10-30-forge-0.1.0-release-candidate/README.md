@@ -2,7 +2,7 @@
 
 ## Status
 
-Candidate provenance and distributions are ready. Tag creation and PyPI publication remain owner-gated。
+Historical candidate provenance and distributions are recorded below. As checked on 2026-11-05, `v0.1.0` points to `d5585f5`, but PyPI publication has not occurred. The local 2026-11-05 fixes supersede this candidate for current-source validation; its CI and artifacts do not cover those fixes. Tag/version disposition remains with the owner.
 
 ## Identity
 
@@ -40,9 +40,11 @@ Candidate provenance and distributions are ready. Tag creation and PyPI publicat
 
 `scripts/release_validate.py verify-distributions` passed and returned exactly the wheel/sdist hashes above。
 
-## Clean install check
+## Installed-package check
 
-- Created an isolated venv。
+2026-11-05 follow-up: the retained `/tmp/forge-release-candidate-venv/pyvenv.cfg` has `include-system-site-packages = true`. This historical check establishes the Forge wheel import, but does not establish dependency isolation. A new venv without system-site packages was verified in the [2026-11-05 follow-up](../2026-11-05-forge-review-followup/README.md).
+
+- Created a venv。
 - Installed only the official CI wheel。
 - `pip check`: no broken requirements。
 - `abacus-forge --version`: `0.1.0`。
@@ -50,9 +52,9 @@ Candidate provenance and distributions are ready. Tag creation and PyPI publicat
 - `ScfExecuteRequest` exposes `launcher` / `env_overrides`。
 - `abacus-forge capabilities` emitted valid JSON。
 
-## Publication inputs
+## Historical publication inputs
 
-Future owner publication should dispatch `publish.yml` at ref `v0.1.0` with:
+The following inputs bind only the frozen `d5585f5` candidate, not subsequent fixes:
 
 ```text
 tag=v0.1.0

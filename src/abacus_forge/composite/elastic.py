@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 
-from abacus_forge.composite.common import artifacts_under, collect_subtasks, ensure_root, require_prepared_inputs, run_subtasks, strained_structure, write_subtask, write_task_result
+from abacus_forge.composite.common import artifacts_under, ensure_root, require_prepared_inputs, run_subtasks, strained_structure, write_subtask, write_task_result
+from abacus_forge.composite.plan import collect_subtask, gather_subtasks, load_plan, save_plan
 from abacus_forge.result import TaskResult
 
 
@@ -19,7 +20,14 @@ def prepare_elastic(
     shear_strain: float = 0.01,
     relax_atoms: bool = True,
 ) -> TaskResult:
-    root = ensure_root(workspace)
+    root = ensure_root(Path(workspace).expanduser().resolve())
+    if (root.reports_dir / "elastic_plan.json").exists():
+        raise FileExistsError("elastic plan already exists; prepare in a new workspace")
+    for name, value in (("normal_strain", normal_strain), ("shear_strain", shear_strain)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be a finite positive number")
+    if not isinstance(relax_atoms, bool):
+        raise ValueError("relax_atoms must be a boolean")
     input_params, structure, kpt_payload = require_prepared_inputs(root)
     strains = _strain_set(normal_strain=normal_strain, shear_strain=shear_strain)
     subtasks = []
@@ -34,9 +42,11 @@ def prepare_elastic(
             structure=strained_structure(structure, strain),
             kpt_payload=kpt_payload,
             metadata={"task": "elastic", "subtask_index": index, "strain": strain.tolist()},
+            copy_reference_outputs=False,
         )
         subtasks.append({"workspace": str(sub.root), "strain": strain.tolist()})
-    path = write_task_result(root, "reports/elastic_plan.json", {"task": "elastic", "subtasks": subtasks})
+    path = save_plan(root, "elastic", subtasks, normal_strain=normal_strain, shear_strain=shear_strain, relax_atoms=relax_atoms)
+    subtasks = load_plan(root, "elastic")["subtasks"]
     return TaskResult(
         task="elastic",
         workspace=root.root,
@@ -48,35 +58,50 @@ def prepare_elastic(
 
 
 def run_elastic(workspace: str | Path, **kwargs: Any) -> TaskResult:
-    root = ensure_root(workspace)
-    subtasks = sorted((root.root / "elastic").glob("deformed_*"))
+    root = ensure_root(Path(workspace).expanduser().resolve())
+    subtasks = [Path(item["workspace"]) for item in load_plan(root, "elastic")["subtasks"]]
     return run_subtasks("elastic", root, subtasks, **kwargs)
 
 
-def post_elastic(workspace: str | Path) -> TaskResult:
-    root = ensure_root(workspace)
-    paths = sorted((root.root / "elastic").glob("deformed_*"))
-    rows = collect_subtasks(paths)
-    plan = json.loads((root.root / "reports/elastic_plan.json").read_text(encoding="utf-8"))
-    strain_by_name = {
-        Path(item["workspace"]).name: item.get("strain")
-        for item in plan.get("subtasks", [])
-    }
+def post_elastic(workspace: str | Path, *, results: Iterable[dict[str, Any]] | None = None) -> TaskResult:
+    """Fit explicit stress facts, or collect the prepared plan for convenience."""
+    root = ensure_root(Path(workspace).expanduser().resolve())
+    plan = load_plan(root, "elastic")
+    if results is None:
+        results = [
+            collect_subtask(root, "elastic", item["unit_id"])
+            for item in plan["subtasks"]
+        ]
+    gathered = gather_subtasks(root, "elastic", results)
+    rows = gathered.subtasks
+    invalid_units = []
     stress_rows = [
         {
             "workspace": row["workspace"],
-            "name": Path(row["workspace"]).name,
-            "strain": strain_by_name.get(Path(row["workspace"]).name),
+            "name": row["unit_id"],
+            "strain": row.get("strain"),
             "stress": row["metrics"].get("stress"),
         }
         for row in rows
         if row["metrics"].get("stress") is not None
     ]
-    fit = _fit_elastic(stress_rows)
+    for row in rows:
+        metric = row.get("metrics", {})
+        try:
+            stress = np.asarray(metric.get("stress"), dtype=float)
+            valid = stress.size in {6, 9} and np.isfinite(stress).all()
+        except (TypeError, ValueError):
+            valid = False
+        if metric.get("converge") is not True or not valid:
+            invalid_units.append(row["unit_id"])
+    fit = _fit_elastic(stress_rows) if gathered.status == "completed" and not invalid_units else None
     summary = {
         "stress_count": len(stress_rows),
         "stress_rows": stress_rows,
         "elastic_fit": "available" if fit is not None else "unavailable",
+        "missing_units": gathered.summary.get("missing_units", []),
+        "failed_units": gathered.summary.get("failed_units", []),
+        "invalid_units": invalid_units,
     }
     json_payload = {**summary, **({"fit": fit} if fit is not None else {})}
     json_path = write_task_result(root, "reports/metrics_elastic.json", json_payload)
@@ -110,7 +135,7 @@ def post_elastic(workspace: str | Path) -> TaskResult:
     return TaskResult(
         task="elastic",
         workspace=root.root,
-        status="completed" if fit is not None or stress_rows else "degraded",
+        status="completed" if fit is not None else "degraded",
         subtasks=rows,
         summary=summary,
         artifacts=artifacts,
@@ -182,20 +207,30 @@ def _fit_elastic(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     if len(base_rows) != 1 or len(deformed) < 6:
         return None
 
-    strain_rows = np.asarray([_strain_voigt(row["strain"]) for row in deformed])
-    stress_rows = np.asarray([
-        np.asarray(_stress_voigt(row["stress"]), dtype=float) * -0.1
-        for row in deformed
-    ])
+    try:
+        strain_rows = np.asarray([_strain_voigt(row["strain"]) for row in deformed])
+        equilibrium_stress = _stress_voigt(base_rows[0]["stress"]) * -0.1
+        stress_rows = np.asarray([
+            np.asarray(_stress_voigt(row["stress"]), dtype=float) * -0.1 - equilibrium_stress
+            for row in deformed
+        ])
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(strain_rows).all() or not np.isfinite(stress_rows).all():
+        return None
+    if np.linalg.matrix_rank(strain_rows) != 6:
+        return None
     voigt, *_ = np.linalg.lstsq(strain_rows, stress_rows, rcond=None)
+    voigt = voigt.T
+    voigt = (voigt + voigt.T) / 2
     if not np.isfinite(voigt).all():
         return None
     bulk = (voigt[0, 0] + voigt[1, 1] + voigt[2, 2] + 2 * (
         voigt[0, 1] + voigt[0, 2] + voigt[1, 2]
     )) / 9
-    # Reuss shear for the general 6x6 Voigt compliance is intentionally not
-    # approximated here; Hill moduli require the full rank-4 tensor.
-    shear = float(np.mean(np.diag(voigt)[3:]))
+    shear = float((voigt[0, 0] + voigt[1, 1] + voigt[2, 2]
+                   - voigt[0, 1] - voigt[0, 2] - voigt[1, 2]
+                   + 3 * (voigt[3, 3] + voigt[4, 4] + voigt[5, 5])) / 15)
     young_numerator = 9 * bulk * shear
     young_denominator = 3 * bulk + shear
     young = young_numerator / young_denominator if young_denominator else float("nan")

@@ -1,5 +1,7 @@
 # Use Forge from a general Agent
 
+For phonon, elastic and vibration task expansion, use the existing [composite unit interfaces](guide.md#composite-and-property-packs): prepare, units, execute-unit, collect-unit, gather, then post with explicit results. They are experimental and currently separate from typed capabilities/schema. Use their documented JSON and exit codes; do not send a typed operation merely because a composite command exists. The typed workflow below applies to capabilities actually returned by discovery.
+
 The machine CLI accepts one typed operation per request. The Agent chooses and sequences operations; Forge records each operation in its workspace. Begin with [the installed-package quickstart](quickstart.md) to create `forge-first-run/scf`, then run the following from the directory containing `forge-first-run`:
 
 ```bash

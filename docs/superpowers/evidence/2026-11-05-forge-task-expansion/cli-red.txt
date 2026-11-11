@@ -1,0 +1,36 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________________ test_cli_unit_handoff_and_partial_gather ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1576/test_cli_unit_handoff_and_part0')
+
+    @pytest.mark.cli
+    def test_cli_unit_handoff_and_partial_gather(tmp_path):
+        from tests.support.process import run_cli
+
+        root = _prepared(tmp_path)
+        listed = run_cli("vibration", "units", root, "--json")
+>       assert listed.returncode == 0, listed.stderr
+E       AssertionError: usage: abacus-forge vibration [-h] {prepare,run,post} ...
+E         abacus-forge vibration: error: argument composite_command: invalid choice: 'units' (choose from prepare, run, post)
+E
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/home/james/scratch/forge-followup-20261105/venv/bin/python', '-m', 'abacus_forge.cli', 'vibra...abacus-forge vibration: error: argument composite_command: invalid choice: 'units' (choose from prepare, run, post)\n").returncode
+
+tests/test_composite_plan.py:148: AssertionError
+=============================== warnings summary ===============================
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_composite_plan.py::test_cli_unit_handoff_and_partial_gather
+1 failed, 7 warnings in 1.52s

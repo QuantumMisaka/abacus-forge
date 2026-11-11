@@ -4,6 +4,14 @@
 
 First public release candidate for the protocol-neutral ABACUS Forge library and CLI.
 
+- Experimental phonon, elastic and vibration packs now expose relocatable unit
+  plans, independent execute/collect, and explicit result gathering through
+  Python and JSON CLI. Per-unit failures and gather snapshots are retained;
+  missing results never trigger implicit execution. Phonon generates real
+  displacements and force constants/q-point frequencies, vibration analyzes
+  finite-displacement frequencies/ZPE with ASE, and elastic reports Voigt moduli.
+  These are offline composition capabilities, not scheduler or scientific parity claims.
+
 - Owner-authorized pre-release withdrawal of the unused Phase A
   `capability_registry` records and `capability-contracts` command introduced
   at `3d3ae52`. Existing capabilities/schema discovery and computation
@@ -12,6 +20,8 @@ First public release candidate for the protocol-neutral ABACUS Forge library and
 - `pip` installable wheel and source distribution, Python 3.10 or newer.
 - Human-oriented prepare, execute, collect primitives and typed JSON capabilities/schema/operation interface for agents.
 - Typed SCF execute accepts site launcher argv and environment overrides, records the resolved launch separately from the requested launch, and admits missing KPT only when INPUT provides `gamma_only` or one/three positive `kspacing` tokens. Relax and MD execute retain their existing request contracts.
+- Runtime-K admission accepts case-insensitive INPUT parameter names, matching ABACUS while preserving value tokens.
+- Capability sequence fields reject scalar strings and bytes again; existing iterable inputs remain supported, and launcher argv keeps its array-only validation.
 - Read-only `doctor` environment report and `--version` entry point.
 - Optional `abacuslite==1.2.2` parser extra; ABACUS, PyATB and ATST executable integrations remain explicit.
 - Documented request/result contracts remain versioned; scientific acceptance belongs to the caller. Some specialized property operations are experimental and have limited real-engine validation.

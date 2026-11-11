@@ -11,6 +11,7 @@
 - 单任务 API/CLI 包括 `run_scf`/`scf`、`run_relax`/`relax`、`run_cell_relax`/`cell-relax`、`run_md`/`md`、`run_band`/`band`、`run_dos`/`dos`。它们是已有便捷闭环，不能据此推断 typed capability 也支持相同操作。单任务 CLI 的 `--dry-run` 只准备 workspace 并返回命令预览。
 - `run_band_sequence`、`run_dos_sequence` 是本地兼容 helper；band sequence 的 `backend="pyatb"` 组合 ABACUS LCAO SCF 产物、PyATB 输入、执行和收集。它们负责现有本地目录/阶段语义，不是 typed service 的多操作协议。
 - Composite packs：`eos`、`elastic`、`vibration`、`phonon`。Property packs：`convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy`、`bec`。这些是本地兼容 pack 接口；property packs 保持 experimental。详见[使用指南](guide.md#composite-and-property-packs)。
+- `composite.list_subtasks/execute_subtask/collect_subtask/gather_subtasks`：消费 phonon/elastic/vibration 的相对路径计划；execute/collect 按单元 ID 独立调用，gather 只归并显式 collection records，三个 post 的 `results=` 不隐式采集。对应 CLI 为 `<pack> units|execute-unit|collect-unit|gather` 与 `<pack> post --results`，仍为 experimental composite 接口。
 
 以上各面会复用部分底层能力，但参数默认值、资产解析和调用行为具有各自兼容契约。调用方应使用目标入口自身的 `--help` 或 Python 签名，不应假设可在入口间机械替换。
 

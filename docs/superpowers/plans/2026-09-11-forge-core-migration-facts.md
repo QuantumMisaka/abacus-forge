@@ -1,5 +1,7 @@
 # Forge Core Migration Fact Matrix Implementation Plan
 
+**状态核对（2026-11-05）：已实现并结项。** `tests/benchmark/test_core_capability_facts.py` 和对应 fixture/helper 已在仓内，原始验证见[四 capability follow-up](2026-09-11-forge-maturity-gates-integration.md#core-migration-fact-matrix-follow-up-2026-09-11)。下方未勾选模板不追填为历史执行事实；本矩阵只证明 collection 投影，不关闭 Paimon 完整替代或科学验收。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (\`- [ ]\`) syntax for tracking.
 
 **Goal:** 为 v1.3 首批核心能力建立可重复的 SCF、relax、cell-relax、MD 迁移事实矩阵，记录 Forge 在 checked-in fixtures 上的 collection/parser/artifact/envelope/status 投影，并明确不把科学验收、编排、调度、prepare/profile 等价性或 process parity 引入 Forge。

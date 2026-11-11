@@ -1,0 +1,166 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_default_post_rejects_changed_nonreference_unit_before_collection[abacus_forge.composite.elastic] _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1592/test_default_post_rejects_chan0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7869850bd0a0>
+task = <module 'abacus_forge.composite.elastic' from '/home/james/work/sidereus/workplace/abacus-forge/src/abacus_forge/composite/elastic.py'>
+
+    @pytest.mark.parametrize("task", [elastic, vibration])
+    def test_default_post_rejects_changed_nonreference_unit_before_collection(tmp_path, monkeypatch, task):
+        from abacus_forge.composite import common, plan
+
+        root = _root(tmp_path)
+        prepare_task = task.prepare_elastic if task is elastic else task.prepare_vibration
+        post_task = task.post_elastic if task is elastic else task.post_vibration
+        prepared = prepare_task(root)
+        metric_for = _stress if task is elastic else _harmonic_force
+        by_workspace = {Path(item["workspace"]): item for item in prepared.subtasks}
+
+        def collect(workspace):
+            metrics = {"converge": True, "normal_end": True, **metric_for(by_workspace[workspace.root])}
+            return CollectionResult(workspace.root, "completed", metrics=metrics)
+
+        # Cover both collector routes so bypassing the guarded unit API is detected.
+        monkeypatch.setattr(common, "collect", collect)
+        monkeypatch.setattr(plan, "collect", collect)
+        changed_input = Path(prepared.subtasks[-1]["workspace"]) / "inputs/INPUT"
+        changed_input.write_text(changed_input.read_text() + "\n# changed after preparation\n")
+
+>       with pytest.raises(ValueError, match="inputs changed"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_elastic_vibration_expansion.py:189: Failed
+_ test_default_post_rejects_changed_nonreference_unit_before_collection[abacus_forge.composite.vibration] _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1592/test_default_post_rejects_chan1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x786982933fb0>
+task = <module 'abacus_forge.composite.vibration' from '/home/james/work/sidereus/workplace/abacus-forge/src/abacus_forge/composite/vibration.py'>
+
+    @pytest.mark.parametrize("task", [elastic, vibration])
+    def test_default_post_rejects_changed_nonreference_unit_before_collection(tmp_path, monkeypatch, task):
+        from abacus_forge.composite import common, plan
+
+        root = _root(tmp_path)
+        prepare_task = task.prepare_elastic if task is elastic else task.prepare_vibration
+        post_task = task.post_elastic if task is elastic else task.post_vibration
+        prepared = prepare_task(root)
+        metric_for = _stress if task is elastic else _harmonic_force
+        by_workspace = {Path(item["workspace"]): item for item in prepared.subtasks}
+
+        def collect(workspace):
+            metrics = {"converge": True, "normal_end": True, **metric_for(by_workspace[workspace.root])}
+            return CollectionResult(workspace.root, "completed", metrics=metrics)
+
+        # Cover both collector routes so bypassing the guarded unit API is detected.
+        monkeypatch.setattr(common, "collect", collect)
+        monkeypatch.setattr(plan, "collect", collect)
+        changed_input = Path(prepared.subtasks[-1]["workspace"]) / "inputs/INPUT"
+        changed_input.write_text(changed_input.read_text() + "\n# changed after preparation\n")
+
+>       with pytest.raises(ValueError, match="inputs changed"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_elastic_vibration_expansion.py:189: Failed
+_ test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells[cell0] _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1592/test_elastic_tensor_matches_st0')
+cell = [[2, 0, 0], [0, 4, 0], [0, 0, 6]]
+
+    @pytest.mark.parametrize("cell", [
+        [[2, 0, 0], [0, 4, 0], [0, 0, 6]],
+        [[2, 0.3, 0.1], [0, 4, 0.2], [0.4, 0.6, 6]],
+    ])
+    def test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells(tmp_path, cell):
+        root = tmp_path / "non-cubic"
+        prepare(root, structure=Atoms("H", positions=[[0, 0, 0]], cell=cell, pbc=True), task="scf")
+        prepared = elastic.prepare_elastic(root)
+        reference = np.asarray(AbacusStructure.from_input(root / "inputs/STRU", structure_format="stru").atoms.cell)
+        records = []
+        for item in prepared.subtasks:
+            generated = np.asarray(AbacusStructure.from_input(Path(item["workspace"]) / "inputs/STRU", structure_format="stru").atoms.cell)
+            # ASE cells contain lattice vectors as rows: B = A @ F.T.
+            deformation = np.linalg.solve(reference, generated).T
+            strain = 0.5 * (deformation + deformation.T) - np.eye(3)
+            voigt = np.array([strain[0, 0], strain[1, 1], strain[2, 2], 2 * strain[1, 2], 2 * strain[0, 2], 2 * strain[0, 1]])
+            stress = -1000 * voigt  # C = 100 GPa identity, ABACUS stress in kbar.
+            records.append({
+                **item,
+                "task": "elastic",
+                "status": "completed",
+                "metrics": {"converge": True, "stress": stress.tolist()},
+            })
+        result = elastic.post_elastic(root, results=records)
+        assert result.status == "completed"
+        tensor = json.loads((root / "reports/elastic_tensor.json").read_text())["elastic_tensor_GPa"]
+>       assert np.asarray(tensor) == pytest.approx(np.eye(6) * 100, abs=1e-8)
+E       assert array([[100. ...25.        ]]) == approx([[100....0 ± 1.0e-08]])
+E
+E         comparison failed. Mismatched elements: 3 / 36:
+E         Max absolute difference: 66.66666666666671
+E         Max relative difference: 0.4000000000000002
+E         Index  | Obtained           | Expected
+E         (3, 3) | 108.33333333333336 | 100.0 ± 1.0e-08
+E         (4, 4) | 166.6666666666667  | 100.0 ± 1.0e-08
+E         (5, 5) | 125.00000000000001 | 100.0 ± 1.0e-08
+
+tests/test_elastic_vibration_expansion.py:219: AssertionError
+_ test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells[cell1] _
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1592/test_elastic_tensor_matches_st1')
+cell = [[2, 0.3, 0.1], [0, 4, 0.2], [0.4, 0.6, 6]]
+
+    @pytest.mark.parametrize("cell", [
+        [[2, 0, 0], [0, 4, 0], [0, 0, 6]],
+        [[2, 0.3, 0.1], [0, 4, 0.2], [0.4, 0.6, 6]],
+    ])
+    def test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells(tmp_path, cell):
+        root = tmp_path / "non-cubic"
+        prepare(root, structure=Atoms("H", positions=[[0, 0, 0]], cell=cell, pbc=True), task="scf")
+        prepared = elastic.prepare_elastic(root)
+        reference = np.asarray(AbacusStructure.from_input(root / "inputs/STRU", structure_format="stru").atoms.cell)
+        records = []
+        for item in prepared.subtasks:
+            generated = np.asarray(AbacusStructure.from_input(Path(item["workspace"]) / "inputs/STRU", structure_format="stru").atoms.cell)
+            # ASE cells contain lattice vectors as rows: B = A @ F.T.
+            deformation = np.linalg.solve(reference, generated).T
+            strain = 0.5 * (deformation + deformation.T) - np.eye(3)
+            voigt = np.array([strain[0, 0], strain[1, 1], strain[2, 2], 2 * strain[1, 2], 2 * strain[0, 2], 2 * strain[0, 1]])
+            stress = -1000 * voigt  # C = 100 GPa identity, ABACUS stress in kbar.
+            records.append({
+                **item,
+                "task": "elastic",
+                "status": "completed",
+                "metrics": {"converge": True, "stress": stress.tolist()},
+            })
+        result = elastic.post_elastic(root, results=records)
+        assert result.status == "completed"
+        tensor = json.loads((root / "reports/elastic_tensor.json").read_text())["elastic_tensor_GPa"]
+>       assert np.asarray(tensor) == pytest.approx(np.eye(6) * 100, abs=1e-8)
+E       AssertionError: assert array([[ 1.00...4850916e+02]]) == approx([[100....0 ± 1.0e-08]])
+E
+E         comparison failed. Mismatched elements: 36 / 36:
+E         Max absolute difference: 66.51898202586932
+E         Max relative difference: 1.0
+E         Index  | Obtained            | Expected
+E         (0, 0) | 100.28557030068883  | 100.0 ± 1.0e-08
+E         (0, 1) | 0.02519737947265232 | 0.0 ± 1.0e-08  ...
+E
+E         ...Full output truncated (34 lines hidden), use '-vv' to show
+
+tests/test_elastic_vibration_expansion.py:219: AssertionError
+=============================== warnings summary ===============================
+tests/test_elastic_vibration_expansion.py: 53 warnings
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_elastic_vibration_expansion.py::test_default_post_rejects_changed_nonreference_unit_before_collection[abacus_forge.composite.elastic]
+FAILED tests/test_elastic_vibration_expansion.py::test_default_post_rejects_changed_nonreference_unit_before_collection[abacus_forge.composite.vibration]
+FAILED tests/test_elastic_vibration_expansion.py::test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells[cell0]
+FAILED tests/test_elastic_vibration_expansion.py::test_elastic_tensor_matches_strain_of_actual_non_cubic_generated_cells[cell1]
+4 failed, 20 deselected, 53 warnings in 2.40s

@@ -25,6 +25,11 @@ flowchart TD
 复用已有发现、结果和来源记录，按实际缺口补齐目录、资源和输出交接。
 Paimon 自有展示与平台输出留在上层；不预建第二套 identity、registry 或 project runtime。
 
+声子、弹性与振动在既有 composite 面提供文件清单与独立单元消费。
+`composite/plan.py` 只负责相对路径重载、单元执行/采集和显式结果归并；各 pack
+持有位移/应变展开及科学后处理。调度器可以独立派发清单项，gather 按编号归位；
+不需要在 Forge 中建立资源池或工作流运行时。具体调用见[使用指南](guide.md#composite-and-property-packs)。
+
 根包 `__init__.py` 保留原有导出名称，按需加载其所属模块。基础文本 I/O 可直接导入 `abacus_forge.input_io`；这不意味着所有结构或科学功能都不需要第三方库。安装依赖保持当前 `pyproject.toml` 定义，候选调整见[路线图](../ROADMAP.md#可废弃与依赖调整候选)。
 
 ## 模块职责

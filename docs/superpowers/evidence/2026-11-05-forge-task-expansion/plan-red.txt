@@ -1,0 +1,31 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_expanded_plan_is_portable ________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-james/pytest-1569/test_expanded_plan_is_portable0')
+
+    def test_expanded_plan_is_portable(tmp_path):
+        root = _prepared(tmp_path)
+        payload = json.loads((root / "reports/vibration_plan.json").read_text())
+        assert len(payload["subtasks"]) == 7
+>       assert all(item.get("unit_id") and item.get("workspace_rel") for item in payload["subtasks"])
+E       assert False
+E        +  where False = all(<generator object test_expanded_plan_is_portable.<locals>.<genexpr> at 0x752a20450c70>)
+
+tests/test_composite_plan.py:32: AssertionError
+=============================== warnings summary ===============================
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+tests/test_composite_plan.py::test_expanded_plan_is_portable
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_composite_plan.py::test_expanded_plan_is_portable - assert ...
+1 failed, 7 warnings in 0.81s

@@ -1,5 +1,7 @@
 # Engine/Version Policy 分阶段实施计划
 
+**状态导航（2026-11-05）：** 本计划保留版本政策、已完成的包/双轨交付与跨仓证据，不再充当 Forge 当前开发总清单。已完成范围见下方 1.2.2 更新及[10-19 双轨验收](../evidence/2026-10-19-forge-dual-track-atst230.md)；历史“缺包/待实算”checkbox 按各自日期理解，不重启已被后继证据覆盖的工作。更广平台/材料、Paimon kit/Benchmark 留在对应 owner；新的包版本升级按实际需求接续。独立发行工程化由[公开交付 PLAN](2026-10-21-forge-public-release.md#工程化接续待实施)维护。
+
 **Goal:** 保持 native 默认和既有 typed collection 行为，先交付版本兼容增量，再验证可选 abacuslite 后端。
 
 **Spec:** [Engine/Version Policy](../specs/2026-09-12-forge-engine-version-policy-design.html)，2026-09-14 Stage 0 状态版本。

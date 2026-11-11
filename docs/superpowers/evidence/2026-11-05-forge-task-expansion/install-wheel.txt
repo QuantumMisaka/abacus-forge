@@ -1,0 +1,6 @@
+Processing /home/james/scratch/forge-task-expansion-20261105/dist/abacus_forge-0.1.0-py3-none-any.whl
+Installing collected packages: abacus-forge
+Successfully installed abacus-forge-0.1.0
+
+[notice] A new release of pip is available: 25.0.1 -> 26.3
+[notice] To update, run: /home/james/scratch/forge-task-expansion-20261105/installed-venv/bin/python -m pip install --upgrade pip

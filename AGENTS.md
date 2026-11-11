@@ -55,11 +55,13 @@
 - **`docs/superpowers/plans/*.md`**：从已批准 SPEC 推导的执行清单，不得反向发明或改变架构。
 - **`ROADMAP.md`**：方向和候选里程碑，不是 API 或持久化契约。
 
-按当前 Superpowers 路由开发：L1 局部可逆修改做最小验证；L2 行为变更先建立回归证据，适用时使用 TDD；L3α（设计未定的公共边界）先 `brainstorming` 和 SPEC，L3β（用户已拍板的多步骤工作）先 `writing-plans`。L3 的 SPEC/PLAN 必须存入 `docs/superpowers/`；实施前应取得对应设计/计划批准。完成声明只认 diff 与命令输出。
+局部可逆修改做最近行为验证；跨模块或多步骤工作按已有 SPEC/PLAN 组织；影响产品或公共兼容的未决设计先确认，已授权的普通实现自主推进。使用 Superpowers 的开发环境可按其 L1/L2/L3 路由执行；独立贡献者不需要安装私人 Skill。需要新建 SPEC/PLAN 时存入 `docs/superpowers/`，完成声明以实际 diff 与命令输出为准。
 
 当前 Paimon v1.3 迁移的设计基线由 [契约优先重构 SPEC](docs/superpowers/specs/2026-09-01-forge-contract-first-rearchitecture-design.html) 与其 [Service/Status 细化 SPEC](docs/superpowers/specs/2026-09-02-forge-service-status-migration-design.html) 共同构成；后者在 operation identity、执行/收集状态、v1 CLI/error 协议与兼容迁移范围内优先。实施不得绕过其中任一 SPEC 修改公共 CLI、结果 schema、workspace 持久化语义或 ATP adapter 边界。
 
+[收缩设计](docs/superpowers/specs/2026-10-29-forge-computation-factory-target-architecture-design.md) 约束当前能力组合与资源边界：任务单元展开优先，具体 allocation 后置；不恢复已撤回的 registry/identity/知识库框架。[公开交付设计](docs/superpowers/specs/2026-10-21-forge-public-release-design.md) 及其 PLAN 承接社区和外部 Agent 的工程化收口。已完成 PLAN 是实施记录，有效 SPEC 继续约束对应接口。
+
 ## 6. 跨项目联动说明
-在进行实质性开发前，应核对工作区当前产品边界：
-- [工作区 AGENTS.md](../AGENTS.md)
-- 已结项 `paimon/` 仅是历史设计和能力抽取证据，不是 Forge 的上级规范或运行时依赖。
+独立 clone 的 Forge 开发以本仓入口和测试说明为准，无需相邻仓库、公司账号或父目录配置。位于维护者 workplace 且进行跨仓工作时，另读存在的 [工作区 AGENTS.md](../AGENTS.md)，核对生产与 migration checkout 的身份、基线和 owner。
+
+已结项 `paimon/` 仅是历史设计和能力抽取证据，不是 Forge 的上级规范或运行时依赖。更新参考仓不自动改变本包 runtime pin 或已冻结验收基线。

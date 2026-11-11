@@ -82,6 +82,8 @@ def _require_literal(value: str, allowed: frozenset[str], field_name: str) -> No
 
 
 def _string_sequence(value: object, field_name: str) -> tuple[str, ...]:
+    if isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must contain non-empty strings")
     try:
         values = tuple(value)  # type: ignore[arg-type]
     except TypeError as error:

@@ -6,6 +6,7 @@ import re
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+IS_SOURCE_DISTRIBUTION = (ROOT / "PKG-INFO").is_file()
 SKIP_DIRECTORIES = {".git", ".worktrees", ".venv", "node_modules"}
 _MARKDOWN_LINK = re.compile(
     r"\[[^\]\n]+\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)"
@@ -52,6 +53,8 @@ def _broken_relative_markdown_links() -> list[str]:
 
 @pytest.mark.core
 def test_markdown_relative_link_targets_exist() -> None:
+    if IS_SOURCE_DISTRIBUTION:
+        pytest.skip("repository history-link audit is not part of the narrowed sdist")
     files = _iter_markdown_files()
     assert files, "expected repository Markdown documentation to be present"
 
@@ -63,6 +66,8 @@ def test_markdown_relative_link_targets_exist() -> None:
 
 @pytest.mark.core
 def test_markdown_link_guard_has_repository_coverage() -> None:
+    if IS_SOURCE_DISTRIBUTION:
+        pytest.skip("repository history-link audit is not part of the narrowed sdist")
     files = _iter_markdown_files()
     readme = ROOT / "README.md"
     candidate_evidence = (

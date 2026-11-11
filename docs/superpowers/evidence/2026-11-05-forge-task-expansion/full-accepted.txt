@@ -1,0 +1,70 @@
+sssssssssssssssssssssssssssssssss....................................... [  4%]
+........................................................................ [  8%]
+........................................................................ [ 12%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+........................................................................ [ 28%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+.............................ss......................................... [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+........................................................................ [ 81%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+.................................................                        [100%]
+=============================== warnings summary ===============================
+tests/test_api.py: 10 warnings
+tests/test_cli.py: 14 warnings
+tests/test_cli_process.py: 1 warning
+tests/test_composite.py: 24 warnings
+tests/test_composite_elastic_fit.py: 14 warnings
+tests/test_composite_plan.py: 95 warnings
+tests/test_elastic_vibration_expansion.py: 200 warnings
+tests/test_maturation_packs.py: 32 warnings
+tests/test_modify.py: 20 warnings
+tests/test_perturbation.py: 3 warnings
+tests/test_phonon_expansion.py: 34 warnings
+tests/test_polarization_recipe.py: 3 warnings
+tests/test_pyatb.py: 10 warnings
+tests/test_structure.py: 26 warnings
+tests/test_tasks.py: 11 warnings
+tests/test_units.py: 5 warnings
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+tests/test_modify.py::test_modify_stru_standardization_keeps_distinct_species_resources
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/geometry/geometry.py:403: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    D.shape = (-1, len(p2), 3)
+
+tests/test_modify.py::test_modify_stru_standardization_keeps_distinct_species_resources
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/geometry/geometry.py:404: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    D_len.shape = (-1, len(p2))
+
+tests/test_modify.py::test_modify_stru_standardization_keeps_distinct_species_resources
+  /home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/ase/atoms.py:1551: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    D_len.shape = (-1,)
+
+tests/test_workspace.py::test_workspace_concurrent_events_preserve_all_manifest_references
+tests/test_workspace.py::test_workspace_concurrent_events_preserve_all_manifest_references
+tests/test_workspace.py::test_public_manifest_initialization_waits_for_append_lock
+tests/test_workspace.py::test_public_manifest_initialization_waits_for_append_lock
+  /home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=1742151) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1742 passed, 35 skipped, 509 warnings in 163.21s (0:02:43)

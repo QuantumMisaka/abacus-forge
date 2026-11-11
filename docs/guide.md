@@ -177,6 +177,67 @@ Python API 通过 `UnitSpec`、`prepare_unit`、`modify_unit`、`execute_unit` �
 
 CLI 提供本地 `eos`、`elastic`、`vibration` 和 `phonon` composite 命令，每个 pack 有 `prepare|run|post` 操作。`phonon` 需要可选依赖 `phonopy`。这些 pack 使用本地子目录和本地 runner，不会生成 Slurm、Bohrium 或 DPDispatcher 配置。拟合数据不足时，`elastic post` 会将结果明确标为 `unavailable`。
 
+#### 展开、独立消费与显式汇总
+
+`phonon`、`elastic`、`vibration` 还提供 `units`、`execute-unit`、`collect-unit` 和 `gather`。先用普通 prepare 准备完整 ABACUS 输入，再由领域 prepare 生成位移/应变清单。清单写入 `reports/<task>_plan.json`，各项包含 `unit_id`、相对 `workspace_rel` 和展开参数。单元执行不采集，采集不执行；外层可以按需要串行、并行或分批消费。
+
+以已准备好 `runs/vib/inputs` 的振动任务为例：
+
+```bash
+abacus-forge vibration prepare runs/vib --atom-indices 1 --stepsize 0.01 --json
+abacus-forge vibration units runs/vib --json
+
+# 每个 unit_id 均来自 units 输出；这里只展示其中一个。
+abacus-forge vibration execute-unit runs/vib --unit-id vibration/eq --executable abacus --json
+abacus-forge vibration collect-unit runs/vib --unit-id vibration/eq --json > eq.json
+abacus-forge vibration gather runs/vib --results eq.json --json > partial.json
+```
+
+只有 eq 结果时，gather 会输出 `degraded`、缺失单元列表并返回退出码 1；它不会启动缺失的计算。将全部单元的 collection JSON 文件传给 `--results`，得到完整汇总后，可独立调用：
+
+```bash
+abacus-forge vibration post runs/vib --results gathered.json --json
+```
+
+`--results` 接受单元 collection record、record 数组或 gather 输出；多个文件会合并，重复 ID 拒绝，重试后由调用方选择要使用的那次结果。没有 `--results` 的原 post 仍会读取该计划内各目录以便本地使用；显式传入时不会隐式采集或执行。
+
+Python 使用同一组接口，以下例子在调用方已有的运行环境中逐项执行；可将循环替换成自己的 executor，而不改变准备和汇总：
+
+```python
+from abacus_forge.composite import (
+    list_subtasks, execute_subtask, collect_subtask, gather_subtasks, post_vibration,
+)
+from abacus_forge.runner import LocalRunner
+
+root = "runs/vib"
+runner = LocalRunner(executable="abacus")
+records = []
+for unit in list_subtasks(root, "vibration").subtasks:
+    execution = execute_subtask(root, "vibration", unit["unit_id"], runner=runner)
+    if execution["status"] == "completed":
+        records.append(collect_subtask(root, "vibration", unit["unit_id"]))
+gathered = gather_subtasks(root, "vibration", records)
+analysis = post_vibration(root, results=gathered.subtasks)
+```
+
+每次单元执行/采集的结果保存于该单元的 `reports/subtask-results/`，旧尝试不覆盖；单个执行或采集异常会返回该项失败事实。gather 按计划顺序归并乱序结果，写独立汇总快照。单元 ID 是科学清单中的位置标识；操作 UUID 仅沿用既有事件记录，不承担 workflow Task-ID 或缓存键职责。调用方显式重试指定单元，不必重跑其他单元。
+
+| Pack | 展开与分析范围 | CPU 后处理所需文件 |
+| --- | --- | --- |
+| phonon | `prepare --supercell 2 2 2 --displacement-stepsize 0.01` 使用 phonopy Python 库生成真实位移；post 输出力常数、可重载 YAML 和 `--qpoint qx qy qz` 指定 q 点的 THz 频率，默认 Gamma，参数可重复。 | plan、plan 引用的位移 YAML、显式力记录；不需要全部位移工作区。 |
+| elastic | 保留 Forge 原有 13 单元的小应变采样，拟合 Cij 与 Voigt 派生模量；与 Paimon 的 25 单元 independent-strains 方法不同。 | plan 与显式应力记录。 |
+| vibration | M 个选定原子生成 `6M+1` 单元，ASE 分析 Hessian、cm⁻¹ 频率和 eV ZPE；负频率表示虚频，科学接受由调用方决定。 | plan、eq 单元输入与显式力记录。 |
+
+新计划只持久化相对单元路径，复制到新根目录后可重新绑定。输入摘要只保护生成的 INPUT/STRU/KPT 配对，未覆盖 PP/ORB 文件内容或运行环境；这些资产的正确交接仍由调用方负责。更换科学输入时在新工作区 prepare，避免原结果被覆盖。旧 unversioned plan 在原位置仍可消费，但没有历史输入摘要，不能据此追认原始计算身份。
+
+三类展开会读取父 INPUT 实际选中的结构和 K 点文件，并将生成单元归一为 `STRU` / `KPT`，避免每个位移仍指向参考结构。新单元不隐式复制父 `OUT.*` 和运行日志；需要 restart 的调用方应显式准备对应资产，不能把参考计算结果当作位移/应变结果。其他 legacy property pack 保留原有 restart 复制行为。
+
+声子保留 setting-file/executable prepare 及显式 `post --only-plot` CPU 绘图入口；Python 分析路径用 `--qpoint`，不读取 post 的自定义 setting file。`only-plot` 不与显式 results/qpoints 混用。缺 phonopy 时不生成未位移的伪任务；缺力、应力或收敛事实时不报告物性计算完成。上述三类可组合 pack 仍为 experimental，本地与合成响应测试不等于真实 ABACUS 或科学 parity 验收。
+
+声子 Python 路径的位移步长以 Å 为单位；旧 phonopy ABACUS setting-file 路径遵循其 Bohr 约定，保存到 Forge plan 时统一换算为 Å。每种元素只有一种 ABACUS species 时保留自定义 label、质量和 PP/ORB 引用；同元素的多种独立 species 暂不支持，会在展开前明确拒绝，避免错误合并其对称性。
+
+新单元 CLI、gather 与显式 results 的 post 返回 0 表示操作完成，1 表示失败/部分结果，2 表示参数或文件错误；JSON 中保留具体状态。它们属于 composite 消费面，未增加 typed `capabilities` 的声明。真实 GPU/CPU allocation 留在调用方；可先用受控执行器验证展开与汇总，再接站点 launcher/env。`LocalRunner` 会在 timeout 或调用方中断时终止并 drain 本次创建的受控进程组；主动脱离原 process group 的后代不会被无边界追杀，Linux 组枚举依赖 `/proc`，非 Linux 仅保留 POSIX 组信号和管道 drain 边界。
+
 `convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy` 和 `bec` property pack 暴露本地 `prepare|run|post` 命令。它们均为实验性能力：大多数仅有 mock/fixture 证据；`convergence`、`spin-density`、`workfunc` 和 `charge-diff` 各有一次本地 serial-PW 操作与解析 smoke。这些证据不能将它们提升为稳定产品能力，也不构成科学验收。legacy `bec` pack 保持 fixture/legacy 形态，不会被下方独立的原生 typed polarization/BEC 路径数值替换。`bader post` 只调用本机已安装的 `bader` executable，不会安装该程序。
 
 以下命令展示 convergence、spin-density 和 workfunc 的不同参数。实际运行前需提供相应 ABACUS 输入/产物以及本机可用的可执行文件：

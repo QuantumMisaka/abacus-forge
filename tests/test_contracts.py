@@ -655,6 +655,37 @@ def test_capability_descriptor_keeps_non_launcher_sequence_iterables() -> None:
     assert descriptor.optional_dependencies == ()
 
 
+@pytest.mark.parametrize(
+    ("field_name", "invalid_value"),
+    [
+        ("inputs", {"prepare": "structure"}),
+        ("artifact_roles", "input"),
+        ("optional_dependencies", "numpy"),
+        ("optional_dependencies", ""),
+        ("optional_dependencies", b""),
+    ],
+)
+@pytest.mark.parametrize("from_dict", [False, True])
+def test_capability_descriptor_rejects_scalar_sequences(
+    field_name: str, invalid_value: object, from_dict: bool,
+) -> None:
+    payload = {
+        "name": "scf",
+        "maturity": "experimental",
+        "engine": "abacus",
+        "operations": ["prepare"],
+        "inputs": {"prepare": ["structure"]},
+        "artifact_roles": ["input"],
+        "optional_dependencies": [],
+        field_name: invalid_value,
+    }
+    with pytest.raises(ValueError, match=field_name):
+        if from_dict:
+            CapabilityDescriptor.from_dict({**payload, "schema_version": "forge.capability/v1"})
+        else:
+            CapabilityDescriptor(**payload)
+
+
 def test_capability_descriptor_rejects_invalid_values() -> None:
     kwargs = dict(
         name="scf",

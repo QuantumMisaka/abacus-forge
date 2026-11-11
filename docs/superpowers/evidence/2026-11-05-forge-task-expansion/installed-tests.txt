@@ -1,0 +1,32 @@
+........................................................................ [  9%]
+........................................................................ [ 19%]
+........................................................................ [ 28%]
+........................................................................ [ 38%]
+........................................................................ [ 48%]
+........................................................................ [ 57%]
+........................................................................ [ 67%]
+........................................................................ [ 76%]
+........................................................................ [ 86%]
+........................................................................ [ 96%]
+..............................                                           [100%]
+=============================== warnings summary ===============================
+tests/test_composite_plan.py: 95 warnings
+tests/test_elastic_vibration_expansion.py: 200 warnings
+tests/test_phonon_expansion.py: 34 warnings
+tests/test_composite.py: 24 warnings
+tests/test_composite_elastic_fit.py: 14 warnings
+tests/test_units.py: 5 warnings
+tests/test_cli.py: 14 warnings
+  /home/james/scratch/forge-task-expansion-20261105/installed-venv/lib/python3.12/site-packages/ase/atoms.py:432: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    a.shape = (-1,) + shape
+
+tests/test_workspace.py::test_workspace_concurrent_events_preserve_all_manifest_references
+tests/test_workspace.py::test_workspace_concurrent_events_preserve_all_manifest_references
+tests/test_workspace.py::test_public_manifest_initialization_waits_for_append_lock
+tests/test_workspace.py::test_public_manifest_initialization_waits_for_append_lock
+  /home/james/apps/miniforge3/envs/abacus-env/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=1750994) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+750 passed, 390 warnings in 62.83s (0:01:02)

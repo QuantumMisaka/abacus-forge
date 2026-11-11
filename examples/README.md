@@ -21,6 +21,10 @@ python examples/property_manifest_consumer.py \
 Paimon 平台接线或科学接受判据。小型 cube 的正向与缺失场景由
 `tests/test_maturation_packs.py` 验证。
 
+## 独立 composite 单元消费
+
+[`composite_unit_consumer.py`](composite_unit_consumer.py) 使用公开 Python API 和调用方提供的受控 executable，演示 vibration 的清单、乱序独立执行/采集、显式 partial gather、缺失项和指定单元重试。它不启动真实 ABACUS，也不把进程成功解释为科学接受；真实引擎路径只需把 `LocalRunner(executable=...)` 指向 ABACUS 并由调用方管理资源。
+
 ## NiO 输入
 
 `NiO_inputs/` 保存一份 ABACUS NiO 输入样例。三个文件各有自己的来源和用途：

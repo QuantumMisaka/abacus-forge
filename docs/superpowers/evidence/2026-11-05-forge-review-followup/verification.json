@@ -1,0 +1,65 @@
+{
+  "distributions": {
+    "abacus_forge-0.1.0-py3-none-any.whl": "dade7acf408bc61e945297caa8349ff94a660c9384ac69e1c40aa5899a3809ad",
+    "abacus_forge-0.1.0.tar.gz": "9daca95c9b32c01dc15cffc2eb2f46a44455f2fec04edaa8b4921a6dfccfa74f"
+  },
+  "source-binding": {
+    "source_commit": "2dfcae89f73a5e128f7f12dae585d99607c93597",
+    "wheel_package_files_matched": 77,
+    "sdist_tracked_file_mismatches": []
+  },
+  "installed-api": {
+    "version": "0.1.0",
+    "pytest": "8.4.2",
+    "module": "/home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+    "editable": false,
+    "system_site_packages": false,
+    "request_fields": [
+      "launcher",
+      "env_overrides"
+    ],
+    "schema_fields": [
+      "launcher",
+      "env_overrides"
+    ],
+    "capabilities": 13,
+    "doctor_schema": "forge.environment/v1",
+    "pip_check": "passed"
+  },
+  "editable": {
+    "module": "/home/james/work/sidereus/workplace/abacus-forge/src/abacus_forge/__init__.py",
+    "launcher": true,
+    "env_overrides": true
+  },
+  "consumer": {
+    "allocation_observation": "unknown",
+    "converge": true,
+    "default_factories": true,
+    "engine": "executable_stub",
+    "failure_envelope": "preserved_without_collect",
+    "forge_module": "/home/james/scratch/forge-followup-20261105/venv/lib/python3.12/site-packages/abacus_forge/__init__.py",
+    "operations": [
+      "execute",
+      "collect"
+    ],
+    "resolved_launch": "recorded"
+  },
+  "pypi": {
+    "url": "https://pypi.org/pypi/abacus-forge/0.1.0/json",
+    "http_status": 404,
+    "checked_date": "2026-11-05"
+  },
+  "github": {
+    "queried_date": "2026-11-05",
+    "origin_main": "f6957ba26cafdb62c039473dd20ded3c0e824598",
+    "v0.1.0": "d5585f5d1d9dbcbca57ca9efea11280eb1b0adb8",
+    "publish_workflow_total_count": 0,
+    "new_source_ci": "not_run"
+  },
+  "tests": {
+    "red": "15 failed, 13 passed, 542 deselected",
+    "owning_green": "729 passed, 5 warnings",
+    "full": "1676 passed, 33 skipped, 176 warnings",
+    "installed": "595 passed"
+  }
+}
