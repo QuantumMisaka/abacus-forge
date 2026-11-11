@@ -1,8 +1,8 @@
 # Forge 独立公开交付与工程化收口计划
 
-状态（2026-11-11）：Task 1–4 的初版实现已结项；Task 5、7、8、9 已完成本地实现与验收，Task 6 已完成，远端四版本矩阵通过；实际 PyPI 发行未执行。本轮证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。用户要求随社区/外部 Agent 交付目标调整 SPEC/PLAN，当前接续事项集中到 Task 5–10，不重新打开已完成计划，也不新增第二份总计划。本轮交付是文档修订，接续代码/CI 工作未执行。
+状态（2026-11-11）：Task 1–9 已完成实现与验收；Task 6 和候选 `c65931d` 的远端四版本矩阵通过。Task 10 剩余主分支集成、owner 版本/tag 决策与授权发布；实际 PyPI 发行未执行。证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。
 
-规范为[公开交付设计](../specs/2026-10-21-forge-public-release-design.md)与[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。接续基线：`QuantumMisaka/abacus-forge`，checkout `abacus-forge`，`main@1e21023`，package `0.1.0`；runtime 为 `82af7d5`。本地新 wheel 与三类展开验收见[证据](../evidence/2026-11-05-forge-task-expansion/README.md)。
+规范为[公开交付设计](../specs/2026-10-21-forge-public-release-design.md)与[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。工程化候选基线：`QuantumMisaka/abacus-forge` branch `codex/forge-public-engineering-20261111@c65931d`，package `0.1.0`。本地新 wheel 与三类展开验收见[证据](../evidence/2026-11-05-forge-task-expansion/README.md)。
 
 ## 初版交付记录（已完成）
 
@@ -32,7 +32,9 @@
 
 实现 `cc68920` 已通过四矩阵远端 CI，并由 [PR #8](https://github.com/QuantumMisaka/abacus-forge/pull/8) 合入 `main@93cd2cc`。源码与安装态结果见[验收记录](../evidence/2026-10-21-forge-public-release.md#远端集成)。本轮实现及其余配置已完成；PyPI 延后项保持开放。
 
-## 工程化接续（待实施）
+<a id="工程化接续待实施"></a>
+
+## 工程化接续（Task 10 待完成）
 
 ### Task 5：执行生命周期
 
@@ -64,7 +66,7 @@
 ### Task 9：独立贡献入口
 
 - [x] 增补简短 `CONTRIBUTING.md`、issue/PR 模板；复用 `tests/README.md` 解释按变更选择测试、失败复现和审查证据。
-- [ ] 仓库 `AGENTS.md`、开发命令和示例在独立 clone 中成立，不要求私人 Skill 或父 workplace；跨仓对拍与真实引擎按需启用。本文档修订已解除强制父工作区入口，完整贡献者验收仍未执行。
+- [x] 仓库 `AGENTS.md`、开发命令和示例在独立 clone 中成立，不要求私人 Skill 或父 workplace；跨仓对拍与真实引擎按需启用。`c65931d` clean clone 使用公开依赖完成 focused 测试、composite 示例、CLI discovery 和 `pip check`，见工程化切片记录。
 - [x] 核对复用实现、示例与 fixture 的来源/许可记录，修正实际缺失；不凭 legacy 名称删除已有功能，不引入无实际维护需求的治理层。
 - 验收：仅本仓与公开可安装依赖完成基础开发和用户示例；文档链接、CLI 示例与当前接口一致。
 

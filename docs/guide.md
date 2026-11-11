@@ -236,7 +236,7 @@ analysis = post_vibration(root, results=gathered.subtasks)
 
 声子 Python 路径的位移步长以 Å 为单位；旧 phonopy ABACUS setting-file 路径遵循其 Bohr 约定，保存到 Forge plan 时统一换算为 Å。每种元素只有一种 ABACUS species 时保留自定义 label、质量和 PP/ORB 引用；同元素的多种独立 species 暂不支持，会在展开前明确拒绝，避免错误合并其对称性。
 
-新单元 CLI、gather 与显式 results 的 post 返回 0 表示操作完成，1 表示失败/部分结果，2 表示参数或文件错误；JSON 中保留具体状态。它们属于 composite 消费面，未增加 typed `capabilities` 的声明。真实 GPU/CPU allocation 留在调用方；可先用受控执行器验证展开与汇总，再接站点 launcher/env。既有 runner 的 launcher 后代超时清理限制仍见[专项审查](superpowers/evidence/2026-11-05-forge-architecture-replacement-audit/README.md#本轮发现与处置)。
+新单元 CLI、gather 与显式 results 的 post 返回 0 表示操作完成，1 表示失败/部分结果，2 表示参数或文件错误；JSON 中保留具体状态。它们属于 composite 消费面，未增加 typed `capabilities` 的声明。真实 GPU/CPU allocation 留在调用方；可先用受控执行器验证展开与汇总，再接站点 launcher/env。`LocalRunner` 会在 timeout 或调用方中断时终止并 drain 本次创建的受控进程组；主动脱离原 process group 的后代不会被无边界追杀，Linux 组枚举依赖 `/proc`，非 Linux 仅保留 POSIX 组信号和管道 drain 边界。
 
 `convergence`、`charge-density`、`spin-density`、`charge-diff`、`elf`、`bader`、`workfunc`、`vacancy` 和 `bec` property pack 暴露本地 `prepare|run|post` 命令。它们均为实验性能力：大多数仅有 mock/fixture 证据；`convergence`、`spin-density`、`workfunc` 和 `charge-diff` 各有一次本地 serial-PW 操作与解析 smoke。这些证据不能将它们提升为稳定产品能力，也不构成科学验收。legacy `bec` pack 保持 fixture/legacy 形态，不会被下方独立的原生 typed polarization/BEC 路径数值替换。`bader post` 只调用本机已安装的 `bader` executable，不会安装该程序。
 

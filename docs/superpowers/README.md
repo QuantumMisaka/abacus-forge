@@ -4,9 +4,9 @@
 
 ## 当前唯一工程化接续
 
-[公开交付 PLAN 的 Task 5–10](plans/2026-10-21-forge-public-release.md#工程化接续待实施) 集中维护 Forge 后续待办：执行生命周期、默认/optional 与安装态 CI、Agent 单元消费入口、发行内容、独立贡献路径及最终发行。当前这些接续项**待实施**；本轮只调整文档，不把计划写成已交付。
+[公开交付 PLAN 的 Task 10](plans/2026-10-21-forge-public-release.md#工程化接续待实施) 集中管理最终集成与发行。Task 5–9 已完成：受控执行生命周期、四版本安装态 CI、Agent composite 消费示例、收窄发行内容和独立贡献入口均有实现与证据。
 
-Forge 当前本地 runtime 为 `82af7d5`，证据提交 `1e21023`，package `0.1.0`。三类任务展开的全离线 1742 passed / 35 skipped、新 wheel installed-only 750 passed 只证明[该本地组合](evidence/2026-11-05-forge-task-expansion/README.md)。新能力的远端 CI 覆盖和正式发行尚未完成；历史 `v0.1.0` 候选不包含这些改动。版本/tag 与实际发布按[发行手册](../releasing.md)及 owner 决定执行。
+当前工程化候选为 branch `codex/forge-public-engineering-20261111@c65931d`，package `0.1.0`。该候选通过 Python 3.10–3.13 source/installed-package CI、完整 extracted-sdist/installed-wheel 默认套件（1727 passed / 59 skipped）和独立贡献者 focused 验收，见[2026-11-11 证据](evidence/2026-11-11-forge-public-engineering-slices/README.md)。主分支集成、后继版本/tag 和 PyPI 发布仍未执行；历史 `v0.1.0` 不包含这些改动。
 
 ## 已完成并收口
 
