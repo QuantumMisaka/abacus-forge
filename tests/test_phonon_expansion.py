@@ -158,9 +158,9 @@ def test_prepare_phonon_cli_uses_custom_structure_selector(tmp_path: Path):
 
 
 def test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response(tmp_path: Path):
+    pytest.importorskip("phonopy")
     from phonopy.file_IO import parse_FORCE_CONSTANTS
 
-    pytest.importorskip("phonopy")
     executable = Path(sys.executable).with_name("phonopy")
     if not executable.is_file():
         pytest.skip("installed phonopy CLI unavailable")

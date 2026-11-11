@@ -1,6 +1,6 @@
 # Forge 独立公开交付与工程化收口计划
 
-状态（2026-11-05）：Task 1–4 的初版实现已结项；实际 PyPI 发行未执行。用户要求随社区/外部 Agent 交付目标调整 SPEC/PLAN，当前接续事项集中到 Task 5–10，不重新打开已完成计划，也不新增第二份总计划。本轮交付是文档修订，接续代码/CI 工作未执行。
+状态（2026-11-11）：Task 1–4 的初版实现已结项；Task 5、7、8、9 已完成本地实现与验收，Task 6 已完成本地测试/CI 配置切片但远端矩阵未跑；实际 PyPI 发行未执行。本轮证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。用户要求随社区/外部 Agent 交付目标调整 SPEC/PLAN，当前接续事项集中到 Task 5–10，不重新打开已完成计划，也不新增第二份总计划。本轮交付是文档修订，接续代码/CI 工作未执行。
 
 规范为[公开交付设计](../specs/2026-10-21-forge-public-release-design.md)与[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。接续基线：`QuantumMisaka/abacus-forge`，checkout `abacus-forge`，`main@1e21023`，package `0.1.0`；runtime 为 `82af7d5`。本地新 wheel 与三类展开验收见[证据](../evidence/2026-11-05-forge-task-expansion/README.md)。
 
@@ -36,36 +36,36 @@
 
 ### Task 5：执行生命周期
 
-- [ ] 在既有 `runner.py` 内修复已复现的 timeout 后 launcher 后代残留，并核对中断退出；限定受控执行树，不误杀无关进程，不引入调度或自动重试。
-- [ ] 用会派生子进程的受控 executable 验证：失败状态及日志可读、操作返回后旧子进程不再写结果，原执行清理后才允许后续消费/重试；覆盖直接 runner 和新单元入口。
+- [x] 在既有 `runner.py` 内修复已复现的 timeout 后 launcher 后代残留，并核对中断退出；限定受控执行树，不误杀无关进程，不引入调度或自动重试。
+- [x] 用会派生子进程的受控 executable 验证：失败状态及日志可读、操作返回后旧子进程不再写结果，原执行清理后才允许后续消费/重试；覆盖直接 runner 和新单元入口。
 - 验证入口：runner、workspace、service 和 composite plan 的 owning tests；真实 Slurm allocation 不作为此项前置。原始问题见[架构审查 F1](../evidence/2026-11-05-forge-architecture-replacement-audit/README.md#本轮发现与处置)。
 
 ### Task 6：把新增消费面纳入持续验证
 
-- [ ] 修正默认 `[dev]` 安装时 optional phonopy 测试的缺依赖处理；已发现 `test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response` 在 `importorskip` 前导入 optional 模块。
+- [x] 修正默认 `[dev]` 安装时 optional phonopy 测试的缺依赖处理；已发现 `test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response` 在 `importorskip` 前导入 optional 模块。
 - [ ] 在现有 `.github/workflows/ci.yml` 中覆盖默认安装及含 phonon extra 的真实科学库路径；installed-package 加入三类展开和共享单元消费测试，保留现有 parser/包/上手验收。
 - [ ] 对当前声明的 Python 矩阵验证实际可安装组合及调用行为；不能用源码 job 跳过 phonopy、安装态 job 不选择展开测试的组合宣称声子已通过 CI。
 - 验证入口：三类 expansion tests、`test_composite_plan.py`、既有安装态包/CLI 与 release matrix tests。本地先重放变更的安装组合，远端 CI 在 Task 10 对正式集成候选运行。
 
 ### Task 7：外部 Agent 能找到并消费任务展开
 
-- [ ] 将 `docs/agents.md`、compatibility 和已有 CLI/discovery 说明对齐：typed operation 与 composite 单元入口分别准确描述，不把新增能力藏在“legacy 不推荐”之后。
-- [ ] 提供一个只消费公开 API/CLI 的声子或振动展开示例，包含独立执行/采集、乱序汇总、缺失项和指定单元重试；免引擎版本明确使用受控 executable。
-- [ ] 核对现有机器发现是否足以指向真实入口。若需要扩展发现字段，先在原公开交付 SPEC 写明兼容字段与可运行调用样例，再实现；不预设新 schema/registry，也不伪报 typed operation 已支持。
+- [x] 将 `docs/agents.md`、compatibility 和已有 CLI/discovery 说明对齐：typed operation 与 composite 单元入口分别准确描述，不把新增能力藏在“legacy 不推荐”之后。
+- [x] 提供一个只消费公开 API/CLI 的声子或振动展开示例，包含独立执行/采集、乱序汇总、缺失项和指定单元重试；免引擎版本明确使用受控 executable。
+- [x] 核对现有机器发现是否足以指向真实入口。若需要扩展发现字段，先在原公开交付 SPEC 写明兼容字段与可运行调用样例，再实现；不预设新 schema/registry，也不伪报 typed operation 已支持。
 - 验收：新 wheel、独立工作目录中，按公开说明完成清单→单元→显式汇总→CPU 分析；旧机器请求/结果和 CLI 退出语义不回退。
 
 ### Task 8：收窄发行内容
 
-- [ ] 在 `pyproject.toml` 及必要构建配置中明确 wheel/sdist 内容。当前 `82af7d5` sdist 带入 1202 个 evidence 文件和 10 个 `.scratch` 文件；排除无关历史过程材料，不删除仓库中的验收记录。
-- [ ] 保留源码构建、包契约检查与公开示例实际读取的文件，尤其 optional parser provenance、测试 fixture 和用户文档；不能整体排除 evidence 后破坏现有 package tests。
-- [ ] 从 sdist 重建 wheel，在新 venv 验证 metadata、`pip check`、公共导入、文档示例及新增单元消费；检查压缩包实际清单。
+- [x] 在 `pyproject.toml` 及必要构建配置中明确 wheel/sdist 内容。当前 `82af7d5` sdist 带入 1202 个 evidence 文件和 10 个 `.scratch` 文件；排除无关历史过程材料，不删除仓库中的验收记录。
+- [x] 保留源码构建、包契约检查与公开示例实际读取的文件，尤其 optional parser provenance、测试 fixture 和用户文档；不能整体排除 evidence 后破坏现有 package tests。
+- [x] 从 sdist 重建 wheel，在新 venv 验证 metadata、`pip check`、公共导入、文档示例及新增单元消费；检查压缩包实际清单。
 - 范围：不趁打包收口移除 dpdata 等既有默认依赖，也不自动升级已验收的 optional pin。
 
 ### Task 9：独立贡献入口
 
-- [ ] 增补简短 `CONTRIBUTING.md`、issue/PR 模板；复用 `tests/README.md` 解释按变更选择测试、失败复现和审查证据。
+- [x] 增补简短 `CONTRIBUTING.md`、issue/PR 模板；复用 `tests/README.md` 解释按变更选择测试、失败复现和审查证据。
 - [ ] 仓库 `AGENTS.md`、开发命令和示例在独立 clone 中成立，不要求私人 Skill 或父 workplace；跨仓对拍与真实引擎按需启用。本文档修订已解除强制父工作区入口，完整贡献者验收仍未执行。
-- [ ] 核对复用实现、示例与 fixture 的来源/许可记录，修正实际缺失；不凭 legacy 名称删除已有功能，不引入无实际维护需求的治理层。
+- [x] 核对复用实现、示例与 fixture 的来源/许可记录，修正实际缺失；不凭 legacy 名称删除已有功能，不引入无实际维护需求的治理层。
 - 验收：仅本仓与公开可安装依赖完成基础开发和用户示例；文档链接、CLI 示例与当前接口一致。
 
 ### Task 10：候选集成与实际发行

@@ -96,6 +96,22 @@ jobs:
             tests/test_diagnostics.py \
             tests/test_getting_started.py \
             tests/benchmark/test_abacuslite_canonical_parity.py
+      - name: Check installed expansion, CLI and release contracts
+        env:
+          ABACUS_FORGE_INSTALLED_PACKAGE_ONLY: "1"
+          ABACUS_FORGE_CANONICAL_ABACUSLITE_FIXTURES: ${{ github.workspace }}/.ci-abacuslite/tests/fixtures/io/testfiles
+          PYTHONPATH: ""
+        run: |
+          python -m pytest -q \
+            tests/test_composite_plan.py \
+            tests/test_elastic_vibration_expansion.py \
+            tests/test_phonon_expansion.py \
+            tests/test_composite.py \
+            tests/test_composite_elastic_fit.py \
+            tests/test_cli.py \
+            tests/test_installed_package_mode.py \
+            tests/test_release.py \
+            tests/test_abacuslite_release_gate.py
       - name: Retain tested distributions
         uses: actions/upload-artifact@v7
         with:

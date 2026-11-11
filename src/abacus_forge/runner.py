@@ -6,7 +6,9 @@ import os
 import hashlib
 import re
 import shutil
+import signal
 import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +16,9 @@ from typing import Sequence
 
 from abacus_forge.result import RunResult
 from abacus_forge.workspace import Workspace
+
+
+_TERMINATION_GRACE_SECONDS = 2.0
 
 
 @dataclass(slots=True)
@@ -169,31 +174,59 @@ class LocalRunner:
                 resolved_command=None,
             )
 
+        process = subprocess.Popen(
+            execution_command,
+            cwd=workspace.inputs_dir,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=0,
+            env={**os.environ, **self._run_environment()},
+            start_new_session=True,
+        )
         try:
-            completed = subprocess.run(
-                execution_command,
-                cwd=workspace.inputs_dir,
-                check=False,
-                capture_output=True,
-                text=True,
-                env={**os.environ, **self._run_environment()},
-                timeout=self.timeout_seconds,
-            )
-            stdout = completed.stdout
-            stderr = completed.stderr
-            returncode = completed.returncode
-            if returncode < 0:
-                failure_class = "signal"
-                termination = "signal"
+            if self.timeout_seconds is None:
+                stdout, stderr = process.communicate()
+                returncode = process.returncode
+                if returncode < 0:
+                    failure_class = "signal"
+                    termination = "signal"
+                else:
+                    failure_class = "none" if returncode == 0 else "nonzero_exit"
+                    termination = "exited"
             else:
-                failure_class = "none" if returncode == 0 else "nonzero_exit"
-                termination = "exited"
-        except subprocess.TimeoutExpired as exc:
-            stdout = _coerce_output(exc.stdout)
-            stderr = _coerce_output(exc.stderr) or f"Command timed out after {self.timeout_seconds} seconds\n"
-            returncode = 124
-            failure_class = "timeout"
-            termination = "timeout"
+                stdout = ""
+                stderr = ""
+                try:
+                    stdout, stderr = process.communicate(timeout=self.timeout_seconds)
+                    returncode = process.returncode
+                    if returncode < 0:
+                        failure_class = "signal"
+                        termination = "signal"
+                    else:
+                        failure_class = "none" if returncode == 0 else "nonzero_exit"
+                        termination = "exited"
+                except subprocess.TimeoutExpired:
+                    process_group = process.pid
+                    stdout, stderr = _cleanup_process_group(process, process_group)
+                    returncode = 124
+                    failure_class = "timeout"
+                    termination = "timeout"
+                    stderr += f"Command timed out after {self.timeout_seconds} seconds\n"
+
+        except KeyboardInterrupt:
+            # start_new_session deliberately detaches the engine from the
+            # caller's terminal signal group.  Convert a caller interrupt into
+            # controlled group cleanup, preserve captured output, then let the
+            # caller retain its original KeyboardInterrupt contract.
+            stdout, stderr = _cleanup_process_group(process, process.pid)
+            stdout_path.write_text(stdout, encoding="utf-8")
+            stderr_path.write_text(stderr, encoding="utf-8")
+            raise
+        finally:
+            if process.poll() is not None:
+                _close_process_streams(process)
 
         stdout_path.write_text(stdout, encoding="utf-8")
         stderr_path.write_text(stderr, encoding="utf-8")
@@ -234,6 +267,74 @@ class LocalRunner:
         env = {"OMP_NUM_THREADS": str(self.omp_threads)}
         env.update({str(key): str(value) for key, value in self.env_overrides.items()})
         return env
+
+
+def _process_group_members(process_group: int) -> set[int]:
+    """Return current Linux process IDs in the invocation's process group."""
+
+    members: set[int] = set()
+    try:
+        entries = list(Path("/proc").iterdir())
+    except OSError:
+        return members
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            raw = (entry / "stat").read_text(encoding="ascii", errors="strict")
+            fields = raw[raw.rfind(")") + 2 :].split()
+            if len(fields) >= 3 and fields[0] != "Z" and int(fields[2]) == process_group:
+                members.add(int(entry.name))
+        except (OSError, ValueError, UnicodeError):
+            continue
+    return members
+
+
+def _signal_process_group(process_group: int, signal_number: signal.Signals) -> None:
+    """Signal only the process group created for this invocation."""
+
+    try:
+        # process.pid is still unreaped and therefore cannot have been reused.
+        # Refuse to signal if the leader unexpectedly left its original group.
+        if os.getpgid(process_group) == process_group:
+            os.killpg(process_group, signal_number)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def _wait_for_process_group_exit(process_group: int) -> bool:
+    deadline = time.monotonic() + _TERMINATION_GRACE_SECONDS
+    while time.monotonic() < deadline:
+        if not _process_group_members(process_group):
+            return True
+        time.sleep(0.02)
+    return not _process_group_members(process_group)
+
+
+def _cleanup_process_group(process: subprocess.Popen[str], process_group: int) -> tuple[str, str]:
+    """Stop and drain the controlled group before returning or re-raising."""
+
+    _signal_process_group(process_group, signal.SIGTERM)
+    if not _wait_for_process_group_exit(process_group):
+        _signal_process_group(process_group, signal.SIGKILL)
+    if not _wait_for_process_group_exit(process_group):
+        raise TimeoutError(f"process group {process_group} did not terminate")
+
+    try:
+        return process.communicate(timeout=_TERMINATION_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        if process.poll() is None:
+            process.kill()
+        try:
+            return process.communicate(timeout=_TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired as drain_error:
+            raise TimeoutError("controlled process did not drain after termination") from drain_error
+
+
+def _close_process_streams(process: subprocess.Popen[str]) -> None:
+    for stream in (process.stdout, process.stderr):
+        if stream is not None:
+            stream.close()
 
 
 _NORMAL_END_MARKER = re.compile(r"\bNORMAL\s+END\b|\bTotal\s+Time\s*:", re.IGNORECASE)

@@ -51,6 +51,36 @@ abacus-forge = "abacus_forge.cli:main"
 Repository = "https://github.com/QuantumMisaka/abacus-forge"
 Documentation = "https://github.com/QuantumMisaka/abacus-forge/blob/main/docs/README.md"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/abacus_forge"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src",
+    "tests",
+    "examples",
+    "scripts/release_validate.py",
+    "docs",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+]
+exclude = [
+    "docs/archive",
+    "docs/superpowers/evidence",
+    "docs/superpowers/plans",
+    "docs/superpowers/specs",
+    ".scratch",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+".github/workflows/ci.yml" = ".github/workflows/ci.yml"
+"AGENTS.md" = "AGENTS.md"
+"ROADMAP.md" = "ROADMAP.md"
+"docs/superpowers/evidence/2026-10-21-forge-abacuslite-1.2.2-package-provenance.json" = "docs/superpowers/evidence/2026-10-21-forge-abacuslite-1.2.2-package-provenance.json"
+"docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json" = "docs/superpowers/evidence/2026-10-19-forge-abacuslite-1.2.0-package-provenance.json"
+"docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json" = "docs/superpowers/evidence/2026-09-14-forge-stage1-package-provenance.json"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
