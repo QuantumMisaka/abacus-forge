@@ -14,7 +14,7 @@ Identity: accepted in a local worktree over `QuantumMisaka/abacus-forge main@562
 
 - `test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response` now calls `pytest.importorskip("phonopy")` before importing `phonopy.file_IO`.
 - The installed-package CI job gained an installed-only expansion/CLI/release step covering composite plan, elastic/vibration/phonon expansion, shared composite consumption, CLI, installed package mode, release, and abacuslite release gate with `PYTHONPATH=""`.
-- Verification: missing-phonopy selector changed from `ModuleNotFoundError`/exit 1 to `1 skipped`/exit 0; full expansion file — 6 passed, 21 skipped; phonopy environment target — 1 passed; local installed-only CI selection — 132 passed; workflow parsed successfully. Remote Python 3.10–3.13 runners remain pending for Task 10.
+- Verification: missing-phonopy selector changed from `ModuleNotFoundError`/exit 1 to `1 skipped`/exit 0; full expansion file — 6 passed, 21 skipped; phonopy environment target — 1 passed; local installed-only CI selection — 132 passed; workflow parsed successfully. Remote branch/PR runs `42944462372` and `42944518379` completed all default-source and installed-package jobs for Python 3.10, 3.11, 3.12, and 3.13 ([PR #19](https://github.com/QuantumMisaka/abacus-forge/pull/19)).
 
 ## Task 7 — Agent-consumable task expansion
 
@@ -38,4 +38,4 @@ Identity: accepted in a local worktree over `QuantumMisaka/abacus-forge main@562
 
 ## Remaining
 
-Task 6 still requires the actual remote four-Python installed matrix; Task 10 requires integration, full remote CI, owner version/tag choice, authorized PyPI upload, and fresh public-index validation. No release is published and `v0.1.0` is unchanged.
+Task 6 is complete locally and on the four-Python PR matrix. Task 10 still requires main integration/merge, full remote CI, owner version/tag choice, authorized PyPI upload, and fresh public-index validation. No release is published and `v0.1.0` is unchanged.

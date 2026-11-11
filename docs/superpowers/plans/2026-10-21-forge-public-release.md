@@ -1,6 +1,6 @@
 # Forge 独立公开交付与工程化收口计划
 
-状态（2026-11-11）：Task 1–4 的初版实现已结项；Task 5、7、8、9 已完成本地实现与验收，Task 6 已完成本地测试/CI 配置切片但远端矩阵未跑；实际 PyPI 发行未执行。本轮证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。用户要求随社区/外部 Agent 交付目标调整 SPEC/PLAN，当前接续事项集中到 Task 5–10，不重新打开已完成计划，也不新增第二份总计划。本轮交付是文档修订，接续代码/CI 工作未执行。
+状态（2026-11-11）：Task 1–4 的初版实现已结项；Task 5、7、8、9 已完成本地实现与验收，Task 6 已完成，远端四版本矩阵通过；实际 PyPI 发行未执行。本轮证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。用户要求随社区/外部 Agent 交付目标调整 SPEC/PLAN，当前接续事项集中到 Task 5–10，不重新打开已完成计划，也不新增第二份总计划。本轮交付是文档修订，接续代码/CI 工作未执行。
 
 规范为[公开交付设计](../specs/2026-10-21-forge-public-release-design.md)与[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。接续基线：`QuantumMisaka/abacus-forge`，checkout `abacus-forge`，`main@1e21023`，package `0.1.0`；runtime 为 `82af7d5`。本地新 wheel 与三类展开验收见[证据](../evidence/2026-11-05-forge-task-expansion/README.md)。
 
@@ -43,8 +43,8 @@
 ### Task 6：把新增消费面纳入持续验证
 
 - [x] 修正默认 `[dev]` 安装时 optional phonopy 测试的缺依赖处理；已发现 `test_phonon_cli_and_python_preserve_angstrom_geometry_and_harmonic_response` 在 `importorskip` 前导入 optional 模块。
-- [ ] 在现有 `.github/workflows/ci.yml` 中覆盖默认安装及含 phonon extra 的真实科学库路径；installed-package 加入三类展开和共享单元消费测试，保留现有 parser/包/上手验收。
-- [ ] 对当前声明的 Python 矩阵验证实际可安装组合及调用行为；不能用源码 job 跳过 phonopy、安装态 job 不选择展开测试的组合宣称声子已通过 CI。
+- [x] 在现有 `.github/workflows/ci.yml` 中覆盖默认安装及含 phonon extra 的真实科学库路径；installed-package 加入三类展开和共享单元消费测试，保留现有 parser/包/上手验收。
+- [x] 对当前声明的 Python 矩阵验证实际可安装组合及调用行为；不能用源码 job 跳过 phonopy、安装态 job 不选择展开测试的组合宣称声子已通过 CI。
 - 验证入口：三类 expansion tests、`test_composite_plan.py`、既有安装态包/CLI 与 release matrix tests。本地先重放变更的安装组合，远端 CI 在 Task 10 对正式集成候选运行。
 
 ### Task 7：外部 Agent 能找到并消费任务展开
