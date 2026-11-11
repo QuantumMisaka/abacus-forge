@@ -1,6 +1,6 @@
 # 2026-11-11 Forge public engineering slices
 
-Identity: local uncommitted worktree over `QuantumMisaka/abacus-forge main@5621845`; package version `0.1.0`. These results are source-local acceptance and do not publish PyPI or select a post-`v0.1.0` tag.
+Identity: accepted in a local worktree over `QuantumMisaka/abacus-forge main@5621845` and integrated locally as `e9dbb2c`; package version `0.1.0`. These results are source-local acceptance and do not publish PyPI or select a post-`v0.1.0` tag.
 
 ## Task 5 — execution lifecycle
 
