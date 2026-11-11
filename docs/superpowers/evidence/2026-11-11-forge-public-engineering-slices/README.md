@@ -1,6 +1,6 @@
 # 2026-11-11 Forge public engineering slices
 
-Identity: accepted in a local worktree over `QuantumMisaka/abacus-forge main@5621845` and integrated locally as `e9dbb2c`; package version `0.1.0`. These results are source-local acceptance and do not publish PyPI or select a post-`v0.1.0` tag.
+Identity: accepted over `QuantumMisaka/abacus-forge main@5621845`, reviewed at `c65931d`, and integrated by [PR #19](https://github.com/QuantumMisaka/abacus-forge/pull/19) as `main@f2c1cbe`; package version `0.1.0`. These results are source-local acceptance and do not publish PyPI or select a post-`v0.1.0` tag.
 
 ## Task 5 — execution lifecycle
 
@@ -38,4 +38,4 @@ Identity: accepted in a local worktree over `QuantumMisaka/abacus-forge main@562
 
 ## Remaining
 
-Task 5–9 are complete. Task 10 still requires main integration/merge, final post-review remote CI, owner version/tag choice, authorized PyPI upload, and fresh public-index validation. No release is published and `v0.1.0` is unchanged.
+Task 5–9 are complete. PR #19 merged the reviewed candidate as `main@f2c1cbe`; main CI run `42974464142` completed all Python 3.10–3.13 source and installed-package jobs and retained its tested distributions. Remaining work is the owner version/tag decision and explicitly authorized PyPI upload followed by fresh public-index validation. No release is published and `v0.1.0` is unchanged.

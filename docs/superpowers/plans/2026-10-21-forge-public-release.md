@@ -1,6 +1,6 @@
 # Forge 独立公开交付与工程化收口计划
 
-状态（2026-11-11）：Task 1–9 已完成实现与验收；Task 6 和候选 `c65931d` 的远端四版本矩阵通过。Task 10 剩余主分支集成、owner 版本/tag 决策与授权发布；实际 PyPI 发行未执行。证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。
+状态（2026-11-11）：Task 1–9 已完成实现与验收；Task 6 和候选 `c65931d` 的远端四版本矩阵通过。Task 10 的主分支集成与完整远端 CI 已完成；owner 版本/tag 决策、授权上传与公开索引验收仍未执行。证据见[工程化切片记录](../evidence/2026-11-11-forge-public-engineering-slices/README.md)。
 
 规范为[公开交付设计](../specs/2026-10-21-forge-public-release-design.md)与[收缩设计](../specs/2026-10-29-forge-computation-factory-target-architecture-design.md)。工程化候选基线：`QuantumMisaka/abacus-forge` branch `codex/forge-public-engineering-20261111@c65931d`，package `0.1.0`。本地新 wheel 与三类展开验收见[证据](../evidence/2026-11-05-forge-task-expansion/README.md)。
 
@@ -72,7 +72,7 @@
 
 ### Task 10：候选集成与实际发行
 
-- [ ] Task 5–9 完成后做相称回归与一次整体独立审查，经仓库协作流程集成并跑完整远端 CI；记录实际 commit/run/artifact。
+- [x] Task 5–9 完成后做相称回归与一次整体独立审查，经仓库协作流程集成并跑完整远端 CI；[PR #19](https://github.com/QuantumMisaka/abacus-forge/pull/19) 合并为 `main@f2c1cbe`，main CI run `42974464142` 全部成功，tested distributions 由该 run 保留。
 - [ ] Owner 决定既有 `v0.1.0` 之后的发行版本/tag；选择后再更新版本和发行手册，不默认改指已有 tag。
 - [ ] 复用已测试制品的发布管线；当前拒绝 rerun 的行为继续生效。只有确认需要支持正常 rerun 时，才实现并验证 attempt/artifact 的准确归属，不能单纯删除校验。
 - [ ] 在明确发布授权和账户配置具备后上传 PyPI，再从公开索引新建环境安装、验收并保存发布证据。

@@ -16,7 +16,7 @@
 
 ## 下一阶段：独立公开交付
 
-Task 5–9 已由[公开交付 PLAN](docs/superpowers/plans/2026-10-21-forge-public-release.md#工程化接续待实施)完成并记录证据：受控 timeout/中断清理、四版本安装态 CI、Agent composite 示例、收窄发行内容和独立贡献入口。当前只剩 Task 10：集成候选、跑最终远端矩阵、确定后继版本/tag；获明确发布授权后完成公开索引安装验收。
+Task 5–9 已由[公开交付 PLAN](docs/superpowers/plans/2026-10-21-forge-public-release.md#工程化接续待实施)完成并记录证据：受控 timeout/中断清理、四版本安装态 CI、Agent composite 示例、收窄发行内容和独立贡献入口。Task 10 的集成与 main 四版本 CI 已完成（PR #19 / `f2c1cbe` / run `42974464142`）。剩余 owner 版本/tag 决策、明确授权后的 PyPI 上传与公开索引安装验收。
 
 当前 package 为 0.1.0，旧 v0.1.0 tag 不覆盖新能力；本路线图不选择后继版本，也不改写现有 tag。
 

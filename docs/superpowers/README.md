@@ -6,7 +6,7 @@
 
 [公开交付 PLAN 的 Task 10](plans/2026-10-21-forge-public-release.md#工程化接续待实施) 集中管理最终集成与发行。Task 5–9 已完成：受控执行生命周期、四版本安装态 CI、Agent composite 消费示例、收窄发行内容和独立贡献入口均有实现与证据。
 
-当前工程化候选为 branch `codex/forge-public-engineering-20261111@c65931d`，package `0.1.0`。该候选通过 Python 3.10–3.13 source/installed-package CI、完整 extracted-sdist/installed-wheel 默认套件（1727 passed / 59 skipped）和独立贡献者 focused 验收，见[2026-11-11 证据](evidence/2026-11-11-forge-public-engineering-slices/README.md)。主分支集成、后继版本/tag 和 PyPI 发布仍未执行；历史 `v0.1.0` 不包含这些改动。
+当前工程化候选为 branch `codex/forge-public-engineering-20261111@c65931d`，package `0.1.0`。该候选通过 Python 3.10–3.13 source/installed-package CI、完整 extracted-sdist/installed-wheel 默认套件（1727 passed / 59 skipped）和独立贡献者 focused 验收，见[2026-11-11 证据](evidence/2026-11-11-forge-public-engineering-slices/README.md)。该候选已由 [PR #19](https://github.com/QuantumMisaka/abacus-forge/pull/19) 合并为 `main@f2c1cbe`，main CI run `42974464142` 全部成功。后继版本/tag、授权 PyPI 上传和公开索引验收仍未执行；历史 `v0.1.0` 不包含这些改动。
 
 ## 已完成并收口
 
